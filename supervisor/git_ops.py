@@ -41,8 +41,8 @@ def init(
     repo_dir: pathlib.Path,
     drive_root: pathlib.Path,
     remote_url: str,
-    branch_dev: str = "ouroboros",
-    branch_stable: str = "ouroboros-stable",
+    branch_dev: str = "dev",
+    branch_stable: str = "stable",
 ) -> None:
     global REPO_DIR, DRIVE_ROOT, REMOTE_URL, BRANCH_DEV, BRANCH_STABLE
     REPO_DIR = repo_dir

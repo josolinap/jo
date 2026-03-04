@@ -22,9 +22,13 @@ from typing import Any, Dict, List, Optional, Tuple
 log = logging.getLogger(__name__)
 
 from ouroboros.utils import (
-    utc_now_iso, read_text, append_jsonl,
-    safe_relpath, truncate_for_log,
-    get_git_info, sanitize_task_for_event,
+    utc_now_iso,
+    read_text,
+    append_jsonl,
+    safe_relpath,
+    truncate_for_log,
+    get_git_info,
+    sanitize_task_for_event,
 )
 from ouroboros.llm import LLMClient, add_usage
 from ouroboros.tools import ToolRegistry
@@ -45,11 +49,12 @@ _worker_boot_lock = threading.Lock()
 # Environment + Paths
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Env:
     repo_dir: pathlib.Path
     drive_root: pathlib.Path
-    branch_dev: str = "ouroboros"
+    branch_dev: str = "dev"
 
     def repo_path(self, rel: str) -> pathlib.Path:
         return (self.repo_dir / safe_relpath(rel)).resolve()
@@ -61,6 +66,7 @@ class Env:
 # ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
+
 
 class OuroborosAgent:
     """One agent instance per worker process. Mostly stateless; long-term state lives on Drive."""
@@ -97,10 +103,16 @@ class OuroborosAgent:
                     return
                 _worker_boot_logged = True
             git_branch, git_sha = get_git_info(self.env.repo_dir)
-            append_jsonl(self.env.drive_path('logs') / 'events.jsonl', {
-                'ts': utc_now_iso(), 'type': 'worker_boot',
-                'pid': os.getpid(), 'git_branch': git_branch, 'git_sha': git_sha,
-            })
+            append_jsonl(
+                self.env.drive_path("logs") / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "worker_boot",
+                    "pid": os.getpid(),
+                    "git_branch": git_branch,
+                    "git_sha": git_sha,
+                },
+            )
             self._verify_restart(git_sha)
             self._verify_system_state(git_sha)
         except Exception:
@@ -110,7 +122,7 @@ class OuroborosAgent:
     def _verify_restart(self, git_sha: str) -> None:
         """Best-effort restart verification."""
         try:
-            pending_path = self.env.drive_path('state') / 'pending_restart_verify.json'
+            pending_path = self.env.drive_path("state") / "pending_restart_verify.json"
             claim_path = pending_path.with_name(f"pending_restart_verify.claimed.{os.getpid()}.json")
             try:
                 os.rename(str(pending_path), str(claim_path))
@@ -120,11 +132,17 @@ class OuroborosAgent:
                 claim_data = json.loads(read_text(claim_path))
                 expected_sha = str(claim_data.get("expected_sha", "")).strip()
                 ok = bool(expected_sha and expected_sha == git_sha)
-                append_jsonl(self.env.drive_path('logs') / 'events.jsonl', {
-                    'ts': utc_now_iso(), 'type': 'restart_verify',
-                    'pid': os.getpid(), 'ok': ok,
-                    'expected_sha': expected_sha, 'observed_sha': git_sha,
-                })
+                append_jsonl(
+                    self.env.drive_path("logs") / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "restart_verify",
+                        "pid": os.getpid(),
+                        "ok": ok,
+                        "expected_sha": expected_sha,
+                        "observed_sha": git_sha,
+                    },
+                )
             except Exception:
                 log.debug("Failed to log restart verify event", exc_info=True)
                 pass
@@ -141,13 +159,17 @@ class OuroborosAgent:
         """Check for uncommitted changes and attempt auto-rescue commit & push."""
         import re
         import subprocess
+
         try:
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
                 cwd=str(self.env.repo_dir),
-                capture_output=True, text=True, timeout=10, check=True
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=True,
             )
-            dirty_files = [l.strip() for l in result.stdout.strip().split('\n') if l.strip()]
+            dirty_files = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
             if dirty_files:
                 # Auto-rescue: commit and push
                 auto_committed = False
@@ -156,35 +178,39 @@ class OuroborosAgent:
                     subprocess.run(["git", "add", "-u"], cwd=str(self.env.repo_dir), timeout=10, check=True)
                     subprocess.run(
                         ["git", "commit", "-m", "auto-rescue: uncommitted changes detected on startup"],
-                        cwd=str(self.env.repo_dir), timeout=30, check=True
+                        cwd=str(self.env.repo_dir),
+                        timeout=30,
+                        check=True,
                     )
                     # Validate branch name
-                    if not re.match(r'^[a-zA-Z0-9_/-]+$', self.env.branch_dev):
+                    if not re.match(r"^[a-zA-Z0-9_/-]+$", self.env.branch_dev):
                         raise ValueError(f"Invalid branch name: {self.env.branch_dev}")
                     # Pull with rebase before push
                     subprocess.run(
                         ["git", "pull", "--rebase", "origin", self.env.branch_dev],
-                        cwd=str(self.env.repo_dir), timeout=60, check=True
+                        cwd=str(self.env.repo_dir),
+                        timeout=60,
+                        check=True,
                     )
                     # Push
                     try:
                         subprocess.run(
                             ["git", "push", "origin", self.env.branch_dev],
-                            cwd=str(self.env.repo_dir), timeout=60, check=True
+                            cwd=str(self.env.repo_dir),
+                            timeout=60,
+                            check=True,
                         )
                         auto_committed = True
                         log.warning(f"Auto-rescued {len(dirty_files)} uncommitted files on startup")
                     except subprocess.CalledProcessError:
                         # If push fails, undo the commit
-                        subprocess.run(
-                            ["git", "reset", "HEAD~1"],
-                            cwd=str(self.env.repo_dir), timeout=10, check=True
-                        )
+                        subprocess.run(["git", "reset", "HEAD~1"], cwd=str(self.env.repo_dir), timeout=10, check=True)
                         raise
                 except Exception as e:
                     log.warning(f"Failed to auto-rescue uncommitted changes: {e}", exc_info=True)
                 return {
-                    "status": "warning", "files": dirty_files[:20],
+                    "status": "warning",
+                    "files": dirty_files[:20],
                     "auto_committed": auto_committed,
                 }, 1
             else:
@@ -196,6 +222,7 @@ class OuroborosAgent:
         """Check VERSION file sync with git tags and pyproject.toml."""
         import subprocess
         import re
+
         try:
             version_file = read_text(self.env.repo_path("VERSION")).strip()
             issue_count = 0
@@ -215,7 +242,7 @@ class OuroborosAgent:
             # Check README.md version (Bible P7: VERSION == README version)
             try:
                 readme_content = read_text(self.env.repo_path("README.md"))
-                readme_match = re.search(r'\*\*Version:\*\*\s*(\d+\.\d+\.\d+)', readme_content)
+                readme_match = re.search(r"\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", readme_content)
                 if readme_match:
                     readme_version = readme_match.group(1)
                     result_data["readme_version"] = readme_version
@@ -229,14 +256,16 @@ class OuroborosAgent:
             result = subprocess.run(
                 ["git", "describe", "--tags", "--abbrev=0"],
                 cwd=str(self.env.repo_dir),
-                capture_output=True, text=True, timeout=10
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0:
                 result_data["status"] = "warning"
                 result_data["message"] = "no_tags"
                 return result_data, issue_count
             else:
-                latest_tag = result.stdout.strip().lstrip('v')
+                latest_tag = result.stdout.strip().lstrip("v")
                 result_data["latest_tag"] = latest_tag
                 if version_file != latest_tag:
                     result_data["status"] = "warning"
@@ -331,7 +360,9 @@ class OuroborosAgent:
         """Set up ToolContext, build messages, return (ctx, messages, cap_info)."""
         drive_logs = self.env.drive_path("logs")
         sanitized_task = sanitize_task_for_event(task, drive_logs)
-        append_jsonl(drive_logs / "events.jsonl", {"ts": utc_now_iso(), "type": "task_received", "task": sanitized_task})
+        append_jsonl(
+            drive_logs / "events.jsonl", {"ts": utc_now_iso(), "type": "task_received", "task": sanitized_task}
+        )
 
         # Set tool context for this task
         ctx = ToolContext(
@@ -360,10 +391,15 @@ class OuroborosAgent:
 
         if cap_info.get("trimmed_sections"):
             try:
-                append_jsonl(drive_logs / "events.jsonl", {
-                    "ts": utc_now_iso(), "type": "context_soft_cap_trim",
-                    "task_id": task.get("id"), **cap_info,
-                })
+                append_jsonl(
+                    drive_logs / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "context_soft_cap_trim",
+                        "task_id": task.get("id"),
+                        **cap_info,
+                    },
+                )
             except Exception:
                 log.warning("Failed to log context soft cap trim event", exc_info=True)
                 pass
@@ -428,11 +464,16 @@ class OuroborosAgent:
                 )
             except Exception as e:
                 tb = traceback.format_exc()
-                append_jsonl(drive_logs / "events.jsonl", {
-                    "ts": utc_now_iso(), "type": "task_error",
-                    "task_id": task.get("id"), "error": repr(e),
-                    "traceback": truncate_for_log(tb, 2000),
-                })
+                append_jsonl(
+                    drive_logs / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "task_error",
+                        "task_id": task.get("id"),
+                        "error": repr(e),
+                        "traceback": truncate_for_log(tb, 2000),
+                    },
+                )
                 text = f"⚠️ Error during processing: {type(e).__name__}: {e}"
 
             # Empty response guard
@@ -448,6 +489,7 @@ class OuroborosAgent:
             # Clean up browser if it was used during this task
             try:
                 from ouroboros.tools.browser import cleanup_browser
+
                 cleanup_browser(self.tools._ctx)
             except Exception:
                 log.debug("Failed to cleanup browser", exc_info=True)
@@ -466,9 +508,13 @@ class OuroborosAgent:
     # =====================================================================
 
     def _emit_task_results(
-        self, task: Dict[str, Any], text: str,
-        usage: Dict[str, Any], llm_trace: Dict[str, Any],
-        start_time: float, drive_logs: pathlib.Path,
+        self,
+        task: Dict[str, Any],
+        text: str,
+        usage: Dict[str, Any],
+        llm_trace: Dict[str, Any],
+        start_time: float,
+        drive_logs: pathlib.Path,
     ) -> None:
         """Emit all end-of-task events to supervisor."""
         # NOTE: per-round llm_usage events are already emitted in loop.py
@@ -476,62 +522,81 @@ class OuroborosAgent:
         # that would double-count in update_budget_from_usage.
         # Cost/token summaries are carried by task_metrics and task_done events.
 
-        self._pending_events.append({
-            "type": "send_message", "chat_id": task["chat_id"],
-            "text": text or "\u200b", "log_text": text or "",
-            "format": "markdown",
-            "task_id": task.get("id"), "ts": utc_now_iso(),
-        })
+        self._pending_events.append(
+            {
+                "type": "send_message",
+                "chat_id": task["chat_id"],
+                "text": text or "\u200b",
+                "log_text": text or "",
+                "format": "markdown",
+                "task_id": task.get("id"),
+                "ts": utc_now_iso(),
+            }
+        )
 
         duration_sec = round(time.time() - start_time, 3)
         n_tool_calls = len(llm_trace.get("tool_calls", []))
-        n_tool_errors = sum(1 for tc in llm_trace.get("tool_calls", [])
-                            if isinstance(tc, dict) and tc.get("is_error"))
+        n_tool_errors = sum(1 for tc in llm_trace.get("tool_calls", []) if isinstance(tc, dict) and tc.get("is_error"))
         try:
-            append_jsonl(drive_logs / "events.jsonl", {
-                "ts": utc_now_iso(), "type": "task_eval", "ok": True,
-                "task_id": task.get("id"), "task_type": task.get("type"),
-                "duration_sec": duration_sec,
-                "tool_calls": n_tool_calls,
-                "tool_errors": n_tool_errors,
-                "response_len": len(text),
-            })
+            append_jsonl(
+                drive_logs / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "task_eval",
+                    "ok": True,
+                    "task_id": task.get("id"),
+                    "task_type": task.get("type"),
+                    "duration_sec": duration_sec,
+                    "tool_calls": n_tool_calls,
+                    "tool_errors": n_tool_errors,
+                    "response_len": len(text),
+                },
+            )
         except Exception:
             log.warning("Failed to log task eval event", exc_info=True)
             pass
 
-        self._pending_events.append({
-            "type": "task_metrics",
-            "task_id": task.get("id"), "task_type": task.get("type"),
-            "duration_sec": duration_sec,
-            "tool_calls": n_tool_calls, "tool_errors": n_tool_errors,
-            "cost_usd": round(float(usage.get("cost") or 0), 6),
-            "prompt_tokens": int(usage.get("prompt_tokens") or 0),
-            "completion_tokens": int(usage.get("completion_tokens") or 0),
-            "total_rounds": int(usage.get("rounds") or 0),
-            "ts": utc_now_iso(),
-        })
+        self._pending_events.append(
+            {
+                "type": "task_metrics",
+                "task_id": task.get("id"),
+                "task_type": task.get("type"),
+                "duration_sec": duration_sec,
+                "tool_calls": n_tool_calls,
+                "tool_errors": n_tool_errors,
+                "cost_usd": round(float(usage.get("cost") or 0), 6),
+                "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+                "completion_tokens": int(usage.get("completion_tokens") or 0),
+                "total_rounds": int(usage.get("rounds") or 0),
+                "ts": utc_now_iso(),
+            }
+        )
 
-        self._pending_events.append({
-            "type": "task_done",
-            "task_id": task.get("id"),
-            "task_type": task.get("type"),
-            "cost_usd": round(float(usage.get("cost") or 0), 6),
-            "total_rounds": int(usage.get("rounds") or 0),
-            "prompt_tokens": int(usage.get("prompt_tokens") or 0),
-            "completion_tokens": int(usage.get("completion_tokens") or 0),
-            "ts": utc_now_iso(),
-        })
-        append_jsonl(drive_logs / "events.jsonl", {
-            "ts": utc_now_iso(),
-            "type": "task_done",
-            "task_id": task.get("id"),
-            "task_type": task.get("type"),
-            "cost_usd": round(float(usage.get("cost") or 0), 6),
-            "total_rounds": int(usage.get("rounds") or 0),
-            "prompt_tokens": int(usage.get("prompt_tokens") or 0),
-            "completion_tokens": int(usage.get("completion_tokens") or 0),
-        })
+        self._pending_events.append(
+            {
+                "type": "task_done",
+                "task_id": task.get("id"),
+                "task_type": task.get("type"),
+                "cost_usd": round(float(usage.get("cost") or 0), 6),
+                "total_rounds": int(usage.get("rounds") or 0),
+                "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+                "completion_tokens": int(usage.get("completion_tokens") or 0),
+                "ts": utc_now_iso(),
+            }
+        )
+        append_jsonl(
+            drive_logs / "events.jsonl",
+            {
+                "ts": utc_now_iso(),
+                "type": "task_done",
+                "task_id": task.get("id"),
+                "task_type": task.get("type"),
+                "cost_usd": round(float(usage.get("cost") or 0), 6),
+                "total_rounds": int(usage.get("rounds") or 0),
+                "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+                "completion_tokens": int(usage.get("completion_tokens") or 0),
+            },
+        )
 
         # Store task result for parent task retrieval
         try:
@@ -561,6 +626,7 @@ class OuroborosAgent:
         """Collect code snapshot + complexity metrics for review tasks."""
         try:
             from ouroboros.review import collect_sections, compute_complexity_metrics, format_metrics
+
             sections, stats = collect_sections(self.env.repo_dir, self.env.drive_root)
             metrics = compute_complexity_metrics(sections)
 
@@ -568,8 +634,7 @@ class OuroborosAgent:
                 "## Code Review Context\n",
                 format_metrics(metrics),
                 f"\nFiles: {stats['files']}, chars: {stats['chars']}\n",
-                "\nUse repo_read to inspect specific files. "
-                "Use run_shell for tests. Key files below:\n",
+                "\nUse repo_read to inspect specific files. Use run_shell for tests. Key files below:\n",
             ]
 
             total_chars = 0
@@ -598,11 +663,16 @@ class OuroborosAgent:
         if self._event_queue is None or self._current_chat_id is None:
             return
         try:
-            self._event_queue.put({
-                "type": "send_message", "chat_id": self._current_chat_id,
-                "text": f"💬 {text}", "format": "markdown", "is_progress": True,
-                "ts": utc_now_iso(),
-            })
+            self._event_queue.put(
+                {
+                    "type": "send_message",
+                    "chat_id": self._current_chat_id,
+                    "text": f"💬 {text}",
+                    "format": "markdown",
+                    "is_progress": True,
+                    "ts": utc_now_iso(),
+                }
+            )
         except Exception:
             log.warning("Failed to emit progress event", exc_info=True)
             pass
@@ -611,10 +681,13 @@ class OuroborosAgent:
         if self._event_queue is None or self._current_chat_id is None:
             return
         try:
-            self._event_queue.put({
-                "type": "typing_start", "chat_id": self._current_chat_id,
-                "ts": utc_now_iso(),
-            })
+            self._event_queue.put(
+                {
+                    "type": "typing_start",
+                    "chat_id": self._current_chat_id,
+                    "ts": utc_now_iso(),
+                }
+            )
         except Exception:
             log.warning("Failed to emit typing start event", exc_info=True)
             pass
@@ -623,10 +696,14 @@ class OuroborosAgent:
         if self._event_queue is None:
             return
         try:
-            self._event_queue.put({
-                "type": "task_heartbeat", "task_id": task_id,
-                "phase": phase, "ts": utc_now_iso(),
-            })
+            self._event_queue.put(
+                {
+                    "type": "task_heartbeat",
+                    "task_id": task_id,
+                    "phase": phase,
+                    "ts": utc_now_iso(),
+                }
+            )
         except Exception:
             log.warning("Failed to emit task heartbeat event", exc_info=True)
             pass
@@ -649,6 +726,7 @@ class OuroborosAgent:
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 def make_agent(repo_dir: str, drive_root: str, event_queue: Any = None) -> OuroborosAgent:
     env = Env(repo_dir=pathlib.Path(repo_dir), drive_root=pathlib.Path(drive_root))

@@ -31,7 +31,7 @@ class ToolContext:
 
     repo_dir: pathlib.Path
     drive_root: pathlib.Path
-    branch_dev: str = "ouroboros"
+    branch_dev: str = "dev"
     pending_events: List[Dict[str, Any]] = field(default_factory=list)
     current_chat_id: Optional[int] = None
     current_task_type: Optional[str] = None
@@ -77,17 +77,33 @@ class ToolEntry:
 
 
 CORE_TOOL_NAMES = {
-    "repo_read", "repo_list", "repo_write_commit", "repo_commit_push",
-    "drive_read", "drive_list", "drive_write",
-    "run_shell", "claude_code_edit",
-    "git_status", "git_diff",
-    "schedule_task", "wait_for_task", "get_task_result",
-    "update_scratchpad", "update_identity",
-    "chat_history", "web_search",
-    "send_owner_message", "switch_model",
-    "request_restart", "promote_to_stable",
-    "knowledge_read", "knowledge_write",
-    "browse_page", "browser_action", "analyze_screenshot",
+    "repo_read",
+    "repo_list",
+    "repo_write_commit",
+    "repo_commit_push",
+    "drive_read",
+    "drive_list",
+    "drive_write",
+    "run_shell",
+    "claude_code_edit",
+    "git_status",
+    "git_diff",
+    "schedule_task",
+    "wait_for_task",
+    "get_task_result",
+    "update_scratchpad",
+    "update_identity",
+    "chat_history",
+    "web_search",
+    "send_owner_message",
+    "switch_model",
+    "request_restart",
+    "promote_to_stable",
+    "knowledge_read",
+    "knowledge_write",
+    "browse_page",
+    "browser_action",
+    "analyze_screenshot",
 }
 
 
@@ -108,6 +124,7 @@ class ToolRegistry:
         import importlib
         import pkgutil
         import ouroboros.tools as tools_pkg
+
         for _importer, modname, _ispkg in pkgutil.iter_modules(tools_pkg.__path__):
             if modname.startswith("_") or modname == "registry":
                 continue
@@ -118,8 +135,8 @@ class ToolRegistry:
                         self._entries[entry.name] = entry
             except Exception:
                 import logging
-                logging.getLogger(__name__).warning(
-                    "Failed to load tool module %s", modname, exc_info=True)
+
+                logging.getLogger(__name__).warning("Failed to load tool module %s", modname, exc_info=True)
 
     def set_context(self, ctx: ToolContext) -> None:
         self._ctx = ctx
