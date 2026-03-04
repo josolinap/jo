@@ -7,6 +7,7 @@ Queue operations moved to supervisor.queue.
 
 from __future__ import annotations
 import logging
+
 log = logging.getLogger(__name__)
 
 import datetime
@@ -48,7 +49,11 @@ _SPAWN_GRACE_SEC: float = 90.0  # workers need up to ~60s to init on Colab (spaw
 # Since launcher has top-level side effects, this causes worker child crashes (exitcode=1).
 # Use "fork" by default on Linux; allow override via env.
 _DEFAULT_WORKER_START_METHOD = "fork" if sys.platform.startswith("linux") else "spawn"
-_WORKER_START_METHOD = str(os.environ.get("OUROBOROS_WORKER_START_METHOD", _DEFAULT_WORKER_START_METHOD) or _DEFAULT_WORKER_START_METHOD).strip().lower()
+_WORKER_START_METHOD = (
+    str(os.environ.get("OUROBOROS_WORKER_START_METHOD", _DEFAULT_WORKER_START_METHOD) or _DEFAULT_WORKER_START_METHOD)
+    .strip()
+    .lower()
+)
 if _WORKER_START_METHOD not in {"fork", "spawn", "forkserver"}:
     _WORKER_START_METHOD = _DEFAULT_WORKER_START_METHOD
 
@@ -61,9 +66,16 @@ def _get_ctx():
     return _CTX
 
 
-def init(repo_dir: pathlib.Path, drive_root: pathlib.Path, max_workers: int,
-         soft_timeout: int, hard_timeout: int, total_budget_limit: float,
-         branch_dev: str = "ouroboros", branch_stable: str = "ouroboros-stable") -> None:
+def init(
+    repo_dir: pathlib.Path,
+    drive_root: pathlib.Path,
+    max_workers: int,
+    soft_timeout: int,
+    hard_timeout: int,
+    total_budget_limit: float,
+    branch_dev: str = "dev",
+    branch_stable: str = "stable",
+) -> None:
     global REPO_DIR, DRIVE_ROOT, MAX_WORKERS, SOFT_TIMEOUT_SEC, HARD_TIMEOUT_SEC
     global TOTAL_BUDGET_LIMIT, BRANCH_DEV, BRANCH_STABLE
     REPO_DIR = repo_dir
@@ -77,6 +89,7 @@ def init(repo_dir: pathlib.Path, drive_root: pathlib.Path, max_workers: int,
 
     # Initialize queue module
     from supervisor import queue
+
     queue.init(drive_root, soft_timeout, hard_timeout)
     queue.init_queue_refs(PENDING, RUNNING, QUEUE_SEQ_COUNTER_REF)
 
@@ -84,6 +97,7 @@ def init(repo_dir: pathlib.Path, drive_root: pathlib.Path, max_workers: int,
 # ---------------------------------------------------------------------------
 # Worker data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Worker:
@@ -131,6 +145,7 @@ def _get_chat_agent():
     if _chat_agent is None:
         sys.path.insert(0, str(REPO_DIR))
         from ouroboros.agent import make_agent
+
         _chat_agent = make_agent(
             repo_dir=str(REPO_DIR),
             drive_root=str(DRIVE_ROOT),
@@ -139,7 +154,9 @@ def _get_chat_agent():
     return _chat_agent
 
 
-def handle_chat_direct(chat_id: int, text: str, image_data: Optional[Union[Tuple[str, str], Tuple[str, str, str]]] = None) -> None:
+def handle_chat_direct(
+    chat_id: int, text: str, image_data: Optional[Union[Tuple[str, str], Tuple[str, str, str]]] = None
+) -> None:
     try:
         agent = _get_chat_agent()
         task = {
@@ -166,6 +183,7 @@ def handle_chat_direct(chat_id: int, text: str, image_data: Optional[Union[Tuple
             get_event_q().put(e)
     except Exception as e:
         import traceback
+
         err_msg = f"⚠️ Error: {type(e).__name__}: {e}"
         append_jsonl(
             DRIVE_ROOT / "logs" / "supervisor.jsonl",
@@ -178,6 +196,7 @@ def handle_chat_direct(chat_id: int, text: str, image_data: Optional[Union[Tuple
         )
         try:
             from supervisor.telegram import get_tg
+
             get_tg().send_message(chat_id, err_msg)
         except Exception:
             log.debug("Suppressed exception", exc_info=True)
@@ -186,6 +205,7 @@ def handle_chat_direct(chat_id: int, text: str, image_data: Optional[Union[Tuple
 # ---------------------------------------------------------------------------
 # Auto-resume after restart
 # ---------------------------------------------------------------------------
+
 
 def auto_resume_after_restart() -> None:
     """If recent restart left open work, auto-resume without waiting for owner message.
@@ -235,7 +255,8 @@ def auto_resume_after_restart() -> None:
         if not stripped or stripped == "# Scratchpad" or "(empty" in stripped.lower():
             # Check if it's just the default template with all empty sections
             content_lines = [
-                ln.strip() for ln in stripped.splitlines()
+                ln.strip()
+                for ln in stripped.splitlines()
                 if ln.strip() and not ln.strip().startswith("#") and ln.strip() != "- (empty)"
             ]
             # Filter out UpdatedAt lines
@@ -248,11 +269,14 @@ def auto_resume_after_restart() -> None:
         agent = _get_chat_agent()
         if not agent._busy:
             import threading
+
             threading.Thread(
                 target=handle_chat_direct,
-                args=(int(chat_id),
-                      "[auto-resume after restart] Continue your work. Read scratchpad and identity — they contain context of what you were doing.",
-                      None),
+                args=(
+                    int(chat_id),
+                    "[auto-resume after restart] Continue your work. Read scratchpad and identity — they contain context of what you were doing.",
+                    None,
+                ),
                 daemon=True,
             ).start()
             append_jsonl(
@@ -263,25 +287,31 @@ def auto_resume_after_restart() -> None:
                 },
             )
     except Exception as e:
-        append_jsonl(DRIVE_ROOT / "logs" / "supervisor.jsonl", {
-            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "type": "auto_resume_error",
-            "error": repr(e),
-        })
+        append_jsonl(
+            DRIVE_ROOT / "logs" / "supervisor.jsonl",
+            {
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "type": "auto_resume_error",
+                "error": repr(e),
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
 # Worker process
 # ---------------------------------------------------------------------------
 
+
 def worker_main(wid: int, in_q: Any, out_q: Any, repo_dir: str, drive_root: str) -> None:
     import sys as _sys
     import traceback as _tb
     import pathlib as _pathlib
+
     _sys.path.insert(0, repo_dir)
     _drive = _pathlib.Path(drive_root)
     try:
         from ouroboros.agent import make_agent
+
         agent = make_agent(repo_dir=repo_dir, drive_root=drive_root, event_queue=out_q)
     except Exception as _e:
         _log_worker_crash(wid, _drive, "make_agent", _e, _tb.format_exc())
@@ -303,18 +333,22 @@ def worker_main(wid: int, in_q: Any, out_q: Any, repo_dir: str, drive_root: str)
 def _log_worker_crash(wid: int, drive_root: pathlib.Path, phase: str, exc: Exception, tb: str) -> None:
     """Best-effort: write crash info to supervisor.jsonl from inside worker process."""
     import os as _os
+
     try:
         path = drive_root / "logs" / "supervisor.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
-        entry = json.dumps({
-            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "type": "worker_crash",
-            "worker_id": wid,
-            "pid": _os.getpid(),
-            "phase": phase,
-            "error": repr(exc),
-            "traceback": str(tb)[:3000],
-        }, ensure_ascii=False)
+        entry = json.dumps(
+            {
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "type": "worker_crash",
+                "worker_id": wid,
+                "pid": _os.getpid(),
+                "phase": phase,
+                "error": repr(exc),
+                "traceback": str(tb)[:3000],
+            },
+            ensure_ascii=False,
+        )
         with path.open("a", encoding="utf-8") as f:
             f.write(entry + "\n")
     except Exception:
@@ -429,8 +463,7 @@ def spawn_workers(n: int = 0) -> None:
     WORKERS.clear()
     for i in range(count):
         in_q = _CTX.Queue()
-        proc = _CTX.Process(target=worker_main,
-                           args=(i, in_q, _EVENT_Q, str(REPO_DIR), str(DRIVE_ROOT)))
+        proc = _CTX.Process(target=worker_main, args=(i, in_q, _EVENT_Q, str(REPO_DIR), str(DRIVE_ROOT)))
         proc.daemon = True
         proc.start()
         WORKERS[i] = Worker(wid=i, proc=proc, in_q=in_q, busy_task_id=None)
@@ -442,6 +475,7 @@ def spawn_workers(n: int = 0) -> None:
 
 def kill_workers() -> None:
     from supervisor import queue
+
     with _queue_lock:
         cleared_running = len(RUNNING)
         for w in WORKERS.values():
@@ -457,7 +491,8 @@ def kill_workers() -> None:
             DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {
                 "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "type": "running_cleared_on_kill", "count": cleared_running,
+                "type": "running_cleared_on_kill",
+                "count": cleared_running,
             },
         )
 
@@ -466,8 +501,7 @@ def respawn_worker(wid: int) -> None:
     global _LAST_SPAWN_TIME
     ctx = _get_ctx()
     in_q = ctx.Queue()
-    proc = ctx.Process(target=worker_main,
-                       args=(wid, in_q, get_event_q(), str(REPO_DIR), str(DRIVE_ROOT)))
+    proc = ctx.Process(target=worker_main, args=(wid, in_q, get_event_q(), str(REPO_DIR), str(DRIVE_ROOT)))
     proc.daemon = True
     proc.start()
     WORKERS[wid] = Worker(wid=wid, proc=proc, in_q=in_q, busy_task_id=None)
@@ -478,13 +512,17 @@ def respawn_worker(wid: int) -> None:
 def assign_tasks() -> None:
     from supervisor import queue
     from supervisor.state import budget_remaining, EVOLUTION_BUDGET_RESERVE
+
     with _queue_lock:
         for w in WORKERS.values():
             if w.busy_task_id is None and PENDING:
                 # Find first suitable task (skip over-budget evolution tasks)
                 chosen_idx = None
                 for i, candidate in enumerate(PENDING):
-                    if str(candidate.get("type") or "") == "evolution" and budget_remaining(load_state()) < EVOLUTION_BUDGET_RESERVE:
+                    if (
+                        str(candidate.get("type") or "") == "evolution"
+                        and budget_remaining(load_state()) < EVOLUTION_BUDGET_RESERVE
+                    ):
                         continue
                     chosen_idx = i
                     break
@@ -498,15 +536,18 @@ def assign_tasks() -> None:
                 w.in_q.put(task)
                 now_ts = time.time()
                 RUNNING[task["id"]] = {
-                    "task": dict(task), "worker_id": w.wid,
-                    "started_at": now_ts, "last_heartbeat_at": now_ts,
-                    "soft_sent": False, "attempt": int(task.get("_attempt") or 1),
+                    "task": dict(task),
+                    "worker_id": w.wid,
+                    "started_at": now_ts,
+                    "last_heartbeat_at": now_ts,
+                    "soft_sent": False,
+                    "attempt": int(task.get("_attempt") or 1),
                 }
                 task_type = str(task.get("type") or "")
                 if task_type in ("evolution", "review"):
                     st = load_state()
                     if st.get("owner_chat_id"):
-                        emoji = '🧬' if task_type == 'evolution' else '🔎'
+                        emoji = "🧬" if task_type == "evolution" else "🔎"
                         send_with_budget(
                             int(st["owner_chat_id"]),
                             f"{emoji} {task_type.capitalize()} task {task['id']} started.",
@@ -518,8 +559,10 @@ def assign_tasks() -> None:
 # Health + crash storm
 # ---------------------------------------------------------------------------
 
+
 def ensure_workers_healthy() -> None:
     from supervisor import queue
+
     # Grace period: skip health check right after spawn — workers need time to initialize
     if (time.time() - _LAST_SPAWN_TIME) < _SPAWN_GRACE_SEC:
         return
@@ -584,5 +627,3 @@ def ensure_workers_healthy() -> None:
         # Kill all workers — direct chat via handle_chat_direct still works
         kill_workers()
         CRASH_TS.clear()
-
-

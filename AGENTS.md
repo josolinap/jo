@@ -63,7 +63,7 @@ from typing import Any, Dict, List, Optional
 class Env:
     repo_dir: pathlib.Path
     drive_root: pathlib.Path
-    branch_dev: str = "ouroboros"
+    branch_dev: str = "dev"
 ```
 
 ### Naming

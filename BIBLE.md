@@ -222,7 +222,7 @@ One clear intent, fully realized.
 - If you feel like you're patching — stop,
   rethink the approach from scratch.
 - If you're only adding code without simplifying — it's time to refactor.
-- If you broke something — roll back to ouroboros-stable.
+- If you broke something — roll back to stable.
 - Deep review — strategic reflection across all three axes:
   code, understanding, identity, compliance with the Constitution.
 - Before planning a change: Bible check — verify the intent
