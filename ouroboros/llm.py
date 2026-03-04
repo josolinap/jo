@@ -134,6 +134,21 @@ class LocalLLMClient:
             models.append(self._model_code)
         return models
 
+    def _get_ollama_models(self) -> List[str]:
+        """Fetch list of available models from Ollama API."""
+        try:
+            import requests
+
+            # Ollama API is at /v1/models
+            base = self._base_url.rstrip("/").replace("/v1", "")
+            resp = requests.get(f"{base}/api/tags", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                return [m["name"] for m in data.get("models", [])]
+        except Exception:
+            pass
+        return []
+
     def chat(
         self,
         messages: List[Dict[str, Any]],
@@ -146,6 +161,10 @@ class LocalLLMClient:
         """Single LLM call to local vLLM. Returns: (response_message_dict, usage_dict)."""
         client = self._get_client()
 
+        # Normalize model name - use configured local model
+        # This handles cases where the model name format differs
+        normalized_model = self._model
+
         # Map reasoning_effort to Qwen's enable_thinking
         # "none"/"minimal"/"low" = no thinking, "medium"/"high"/"xhigh" = thinking
         enable_thinking = reasoning_rank(reasoning_effort) >= 3
@@ -155,7 +174,7 @@ class LocalLLMClient:
         }
 
         kwargs: Dict[str, Any] = {
-            "model": model,
+            "model": normalized_model,
             "messages": messages,
             "max_tokens": max_tokens,
             "extra_body": extra_body,
@@ -251,22 +270,23 @@ class LLMClient:
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
         if self._is_local:
-            # Check if model is a known local model
-            local_models = self._impl.available_models()
-            is_local_model = any(
-                model
-                and m
-                and model.lower().replace("-", "").replace("_", "") in m.lower().replace("-", "").replace("_", "")
-                for m in local_models
+            # Check if this is an OpenRouter model (needs to use OpenRouter API)
+            is_openrouter = "/" in model and (
+                "google" in model.lower()
+                or "anthropic" in model.lower()
+                or "openai" in model.lower()
+                or "meta-llama" in model.lower()
+                or "x-ai" in model.lower()
+                or "cohere" in model.lower()
+                or "mistral" in model.lower()
+                or "fireworks" in model.lower()
             )
 
-            if not is_local_model:
-                # Model is not a local model (likely fallback) - use OpenRouter
+            if is_openrouter:
+                # Switch to OpenRouter for cloud models
                 return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-            # Use local client
-            if not model or model == os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6"):
-                model = self._impl.default_model()
+            # Use local client - it will use the configured LOCAL_MODEL
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter implementation
