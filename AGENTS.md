@@ -168,8 +168,8 @@ LLM_PROVIDER=local
 # Local Ollama endpoint (default port)
 LOCAL_BASE_URL=http://localhost:11434/v1
 
-# Models (Ollama model names)
-LOCAL_MODEL=nerdsking/python-coder-7b-i:Q5_K_M  # Python coder
+# Models (Ollama model names - use full format from `ollama list`)
+LOCAL_MODEL=hf.co/Nerdsking/Nerdsking-python-coder-7B-i:Q5_K_M  # Python coder
 LOCAL_MODEL_CODE=                               # Leave empty or add another model
 
 # Usually "EMPTY" for local Ollama
@@ -182,7 +182,7 @@ LOCAL_API_KEY=EMPTY
 
 2. **Pull models** (first time):
 ```bash
-ollama pull nerdsking/python-coder-7b-i:Q5_K_M
+ollama pull hf.co/Nerdsking/Nerdsking-python-coder-7B-i:Q5_K_M
 ```
 
 3. **Start Ollama server**:

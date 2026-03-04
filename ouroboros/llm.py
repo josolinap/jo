@@ -110,7 +110,7 @@ class LocalLLMClient:
 
     def __init__(self):
         self._base_url = os.environ.get("LOCAL_BASE_URL", "http://localhost:11434/v1")
-        self._model = os.environ.get("LOCAL_MODEL", "nerdsking/python-coder-7b-i:Q5_K_M")
+        self._model = os.environ.get("LOCAL_MODEL", "hf.co/Nerdsking/Nerdsking-python-coder-7B-i:Q5_K_M")
         self._model_code = os.environ.get("LOCAL_MODEL_CODE", "")
         self._api_key = os.environ.get("LOCAL_API_KEY", "EMPTY")
         self._client = None
@@ -191,6 +191,10 @@ class LLMClient:
         if provider == "local":
             self._impl = LocalLLMClient()
             self._is_local = True
+            # Initialize OpenRouter attributes for fallback
+            self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+            self._base_url = base_url
+            self._client = None
         else:
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
             self._base_url = base_url
@@ -247,12 +251,37 @@ class LLMClient:
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
         if self._is_local:
-            # Delegate to local client
+            # Check if model is a known local model
+            local_models = self._impl.available_models()
+            is_local_model = any(
+                model
+                and m
+                and model.lower().replace("-", "").replace("_", "") in m.lower().replace("-", "").replace("_", "")
+                for m in local_models
+            )
+
+            if not is_local_model:
+                # Model is not a local model (likely fallback) - use OpenRouter
+                return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
+            # Use local client
             if not model or model == os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6"):
                 model = self._impl.default_model()
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter implementation
+        return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
+    def _chat_openrouter(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """OpenRouter implementation."""
         client = self._get_client()
         effort = normalize_reasoning_effort(reasoning_effort)
 
