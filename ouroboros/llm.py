@@ -44,6 +44,7 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
     Returns empty dict on failure.
     """
     import logging
+
     log = logging.getLogger("ouroboros.llm")
 
     try:
@@ -89,7 +90,9 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
 
             # Sanity check: skip obviously wrong prices
             if prompt_price > 1000 or completion_price > 1000:
-                log.warning(f"Skipping {model_id}: prices seem wrong (prompt={prompt_price}, completion={completion_price})")
+                log.warning(
+                    f"Skipping {model_id}: prices seem wrong (prompt={prompt_price}, completion={completion_price})"
+                )
                 continue
 
             pricing_dict[model_id] = (prompt_price, cached_price, completion_price)
@@ -102,21 +105,102 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
         return {}
 
 
+class LocalLLMClient:
+    """Local Ollama/vLLM API wrapper. Compatible with OpenAI API format."""
+
+    def __init__(self):
+        self._base_url = os.environ.get("LOCAL_BASE_URL", "http://localhost:11434/v1")
+        self._model = os.environ.get("LOCAL_MODEL", "nerdsking/python-coder-7b-i:Q5_K_M")
+        self._model_code = os.environ.get("LOCAL_MODEL_CODE", "")
+        self._api_key = os.environ.get("LOCAL_API_KEY", "EMPTY")
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from openai import OpenAI
+
+            self._client = OpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key,
+            )
+        return self._client
+
+    def default_model(self) -> str:
+        return self._model
+
+    def available_models(self) -> List[str]:
+        models = [self._model]
+        if self._model_code and self._model_code != self._model:
+            models.append(self._model_code)
+        return models
+
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Single LLM call to local vLLM. Returns: (response_message_dict, usage_dict)."""
+        client = self._get_client()
+
+        # Map reasoning_effort to Qwen's enable_thinking
+        # "none"/"minimal"/"low" = no thinking, "medium"/"high"/"xhigh" = thinking
+        enable_thinking = reasoning_rank(reasoning_effort) >= 3
+
+        extra_body: Dict[str, Any] = {
+            "enable_thinking": enable_thinking,
+        }
+
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "extra_body": extra_body,
+        }
+
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = tool_choice
+
+        resp = client.chat.completions.create(**kwargs)
+        resp_dict = resp.model_dump()
+
+        usage = resp_dict.get("usage") or {}
+        choices = resp_dict.get("choices") or [{}]
+        msg = (choices[0] if choices else {}).get("message") or {}
+
+        # Local models are free - set cost to 0
+        usage["cost"] = 0.0
+
+        return msg, usage
+
+
 class LLMClient:
-    """OpenRouter API wrapper. All LLM calls go through this class."""
+    """LLM client with provider support (OpenRouter or local vLLM)."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         base_url: str = "https://openrouter.ai/api/v1",
     ):
-        self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        self._base_url = base_url
-        self._client = None
+        provider = os.environ.get("LLM_PROVIDER", "openrouter").lower()
+
+        if provider == "local":
+            self._impl = LocalLLMClient()
+            self._is_local = True
+        else:
+            self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+            self._base_url = base_url
+            self._client = None
+            self._is_local = False
 
     def _get_client(self):
         if self._client is None:
             from openai import OpenAI
+
             self._client = OpenAI(
                 base_url=self._base_url,
                 api_key=self._api_key,
@@ -131,6 +215,7 @@ class LLMClient:
         """Fetch cost from OpenRouter Generation API as fallback."""
         try:
             import requests
+
             url = f"{self._base_url.rstrip('/')}/generation?id={generation_id}"
             resp = requests.get(url, headers={"Authorization": f"Bearer {self._api_key}"}, timeout=5)
             if resp.status_code == 200:
@@ -161,6 +246,13 @@ class LLMClient:
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
+        if self._is_local:
+            # Delegate to local client
+            if not model or model == os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6"):
+                model = self._impl.default_model()
+            return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
+        # OpenRouter implementation
         client = self._get_client()
         effort = normalize_reasoning_effort(reasoning_effort)
 
@@ -211,9 +303,11 @@ class LLMClient:
         if not usage.get("cache_write_tokens"):
             prompt_details_for_write = usage.get("prompt_tokens_details") or {}
             if isinstance(prompt_details_for_write, dict):
-                cache_write = (prompt_details_for_write.get("cache_write_tokens")
-                              or prompt_details_for_write.get("cache_creation_tokens")
-                              or prompt_details_for_write.get("cache_creation_input_tokens"))
+                cache_write = (
+                    prompt_details_for_write.get("cache_write_tokens")
+                    or prompt_details_for_write.get("cache_creation_tokens")
+                    or prompt_details_for_write.get("cache_creation_input_tokens")
+                )
                 if cache_write:
                     usage["cache_write_tokens"] = int(cache_write)
 
@@ -254,16 +348,20 @@ class LLMClient:
         content: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
         for img in images:
             if "url" in img:
-                content.append({
-                    "type": "image_url",
-                    "image_url": {"url": img["url"]},
-                })
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": img["url"]},
+                    }
+                )
             elif "base64" in img:
                 mime = img.get("mime", "image/png")
-                content.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mime};base64,{img['base64']}"},
-                })
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{img['base64']}"},
+                    }
+                )
             else:
                 log.warning("vision_query: skipping image with unknown format: %s", list(img.keys()))
 
@@ -280,10 +378,15 @@ class LLMClient:
 
     def default_model(self) -> str:
         """Return the single default model from env. LLM switches via tool if needed."""
+        if self._is_local:
+            return self._impl.default_model()
         return os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6")
 
     def available_models(self) -> List[str]:
         """Return list of available models from env (for switch_model tool schema)."""
+        if self._is_local:
+            return self._impl.available_models()
+
         main = os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6")
         code = os.environ.get("OUROBOROS_MODEL_CODE", "")
         light = os.environ.get("OUROBOROS_MODEL_LIGHT", "")

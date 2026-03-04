@@ -150,6 +150,68 @@ Tools auto-discovered from `ouroboros/tools/`. Each tool module should:
 
 ---
 
+## Local Model Setup (Optional)
+
+Ouroboros supports local models via Ollama in addition to OpenRouter. This is useful for:
+- Reducing API costs
+- Offline operation
+- Privacy (no data leaves your machine)
+
+### Configuration
+
+Set these in `.env`:
+
+```bash
+# Switch between providers: "openrouter" or "local"
+LLM_PROVIDER=local
+
+# Local Ollama endpoint (default port)
+LOCAL_BASE_URL=http://localhost:11434/v1
+
+# Models (Ollama model names)
+LOCAL_MODEL=nerdsking/python-coder-7b-i:Q5_K_M  # Python coder
+LOCAL_MODEL_CODE=                               # Leave empty or add another model
+
+# Usually "EMPTY" for local Ollama
+LOCAL_API_KEY=EMPTY
+```
+
+### Starting Ollama
+
+1. **Install Ollama**: Download from [ollama.com](https://ollama.com) for Windows/macOS/Linux
+
+2. **Pull models** (first time):
+```bash
+ollama pull nerdsking/python-coder-7b-i:Q5_K_M
+```
+
+3. **Start Ollama server**:
+```bash
+# Just run this - Ollama automatically serves the API
+ollama serve
+```
+
+4. **Run Ouroboros**:
+```bash
+python -m ouroboros.main
+
+# To switch back to OpenRouter:
+# LLM_PROVIDER=openrouter python -m ouroboros.main
+```
+
+### Hardware Requirements
+
+| Model | Parameters | VRAM | Notes |
+|-------|------------|------|-------|
+| qwen2.5:0.8b | 0.8B | ~2GB | CPU-capable, general purpose |
+| qwen2.5-coder:1.5b | 1.5B | ~4GB | Coding-focused |
+
+### Switching Models
+
+The `switch_model` tool allows switching between `LOCAL_MODEL` and `LOCAL_MODEL_CODE` during runtime.
+
+---
+
 ## BIBLE.md
 
 Contains philosophical principles and constitution of Ouroboros. Defines who Ouroboros is and who it aspires to become. Key principles:
