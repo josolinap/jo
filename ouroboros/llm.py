@@ -271,15 +271,32 @@ class LLMClient:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
         if self._is_local:
             # Check if this is an OpenRouter model (needs to use OpenRouter API)
-            is_openrouter = "/" in model and (
-                "google" in model.lower()
-                or "anthropic" in model.lower()
-                or "openai" in model.lower()
-                or "meta-llama" in model.lower()
-                or "x-ai" in model.lower()
-                or "cohere" in model.lower()
-                or "mistral" in model.lower()
-                or "fireworks" in model.lower()
+            # OpenRouter models typically have patterns like:
+            # - provider/model-name (e.g., google/gemini-2.5-pro-preview)
+            # - :free suffix (e.g., z-ai/glm-4.5-air:free)
+            model_lower = model.lower()
+            is_openrouter = (
+                # Has :free or :preview suffix (OpenRouter pattern)
+                ":free" in model
+                or ":preview" in model
+                # Contains known cloud provider
+                or "google" in model_lower
+                or "anthropic" in model_lower
+                or "openai" in model_lower
+                or "meta-llama" in model_lower
+                or "x-ai" in model_lower
+                or "cohere" in model_lower
+                or "mistral" in model_lower
+                or "fireworks" in model_lower
+                or "nvidia" in model_lower
+                or "arcee" in model_lower
+                # Is a full path with / but NOT a local model
+                or (
+                    "/" in model
+                    and "nerdsking" not in model_lower
+                    and "qwen2.5" not in model_lower
+                    and "qwen3" not in model_lower
+                )
             )
 
             if is_openrouter:
