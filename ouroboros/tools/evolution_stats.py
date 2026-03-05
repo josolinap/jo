@@ -284,20 +284,24 @@ def _collect_data() -> list[dict[str, Any]]:
         py_lines, module_count = _count_py_lines(h)
         bible_bytes = _get_file_bytes(h, "BIBLE.md", "prompts/BIBLE.md")
         system_bytes = _get_file_bytes(h, "prompts/SYSTEM.md", "SYSTEM.md")
-        points.append({
-            "ts": c["ts"],
-            "hash": h[:8],
-            "msg": c["msg"][:80],
-            "version": _extract_version(c["msg"]),
-            "py_lines": py_lines,
-            "module_count": module_count,
-            "bible_bytes": bible_bytes,
-            "system_bytes": system_bytes,
-        })
+        points.append(
+            {
+                "ts": c["ts"],
+                "hash": h[:8],
+                "msg": c["msg"][:80],
+                "version": _extract_version(c["msg"]),
+                "py_lines": py_lines,
+                "module_count": module_count,
+                "bible_bytes": bible_bytes,
+                "system_bytes": system_bytes,
+            }
+        )
         if (pos + 1) % 10 == 0:
             log.info(
                 "evolution_stats: %d/%d done (%.1fs)",
-                pos + 1, len(selected), time.time() - t0,
+                pos + 1,
+                len(selected),
+                time.time() - t0,
             )
 
     log.info("evolution_stats: collected %d points in %.1fs", len(points), time.time() - t0)
@@ -348,7 +352,7 @@ def _push_to_github(data: dict[str, Any]) -> str:
     repo = os.environ.get("GITHUB_REPO", "")
     repo_slug = f"{user}/{repo}"
     file_path = "docs/evolution.json"
-    branch = os.environ.get("GITHUB_BRANCH", "ouroboros")
+    branch = os.environ.get("GITHUB_BRANCH", "dev")
 
     url = f"https://api.github.com/repos/{repo_slug}/contents/{file_path}"
     headers = {

@@ -53,7 +53,7 @@ GITHUB_USER = os.environ.get("GITHUB_USER", "").strip()
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "").strip()
 assert GITHUB_USER, "GITHUB_USER not set. Add it to your config cell (see README)."
 assert GITHUB_REPO, "GITHUB_REPO not set. Add it to your config cell (see README)."
-BOOT_BRANCH = str(os.environ.get("OUROBOROS_BOOT_BRANCH", "ouroboros"))
+BOOT_BRANCH = str(os.environ.get("OUROBOROS_BOOT_BRANCH", "dev"))
 
 REPO_DIR = pathlib.Path("/content/ouroboros_repo").resolve()
 REMOTE_URL = f"https://{GITHUB_TOKEN}:x-oauth-basic@github.com/{GITHUB_USER}/{GITHUB_REPO}.git"
@@ -70,7 +70,8 @@ subprocess.run(["git", "fetch", "origin"], cwd=str(REPO_DIR), check=True)
 # New forks (from the main-only public repo) won't have it yet.
 _rc = subprocess.run(
     ["git", "rev-parse", "--verify", f"origin/{BOOT_BRANCH}"],
-    cwd=str(REPO_DIR), capture_output=True,
+    cwd=str(REPO_DIR),
+    capture_output=True,
 ).returncode
 
 if _rc == 0:

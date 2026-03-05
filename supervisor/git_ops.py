@@ -33,8 +33,8 @@ log = logging.getLogger(__name__)
 REPO_DIR: pathlib.Path = pathlib.Path("/content/ouroboros_repo")
 DRIVE_ROOT: pathlib.Path = pathlib.Path("/content/drive/MyDrive/Ouroboros")
 REMOTE_URL: str = ""
-BRANCH_DEV: str = "ouroboros"
-BRANCH_STABLE: str = "ouroboros-stable"
+BRANCH_DEV: str = "dev"
+BRANCH_STABLE: str = "stable"
 
 
 def init(
