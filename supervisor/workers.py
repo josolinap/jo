@@ -38,8 +38,8 @@ HARD_TIMEOUT_SEC: int = 1800
 HEARTBEAT_STALE_SEC: int = 120
 QUEUE_MAX_RETRIES: int = 1
 TOTAL_BUDGET_LIMIT: float = 0.0
-BRANCH_DEV: str = "ouroboros"
-BRANCH_STABLE: str = "ouroboros-stable"
+BRANCH_DEV: str = "dev"
+BRANCH_STABLE: str = "stable"
 
 _CTX = None
 _LAST_SPAWN_TIME: float = 0.0  # grace period: don't count dead workers right after spawn
