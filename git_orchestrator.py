@@ -221,46 +221,80 @@ class PRManager:
         return branch_name
     
     def create_pr(self, branch_name: str, title: str, body: str) -> Optional[str]:
-        """Create PR on GitHub."""
+        """Create PR on GitHub using gh CLI."""
         if not self.gh_token:
             log.warning("GitHub token not configured")
             return None
         
-        # Push branch
-        subprocess.run(
-            ["git", "push", "origin", branch_name],
-            cwd=self.repo_dir,
-            check=True
-        )
-        
-        # Create PR via GitHub API
-        import requests
-        
-        url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/pulls"
-        headers = {
-            "Authorization": f"token {self.gh_token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        
-        data = {
-            "title": title,
-            "body": body,
-            "head": branch_name,
-            "base": "dev"
-        }
-        
         try:
-            response = requests.post(url, headers=headers, json=data)
+            # Push branch
+            subprocess.run(
+                ["git", "push", "origin", branch_name],
+                cwd=self.repo_dir,
+                check=True,
+                capture_output=True
+            )
             
-            if response.status_code == 201:
-                pr_data = response.json()
-                log.info(f"Created PR #{pr_data['number']}: {title}")
-                return pr_data["html_url"]
-            else:
-                log.error(f"Failed to create PR: {response.text}")
-                return None
+            # Create PR using gh CLI
+            result = subprocess.run(
+                [
+                    "gh", "pr", "create",
+                    "--title", title,
+                    "--body", body,
+                    "--head", branch_name,
+                    "--base", "dev",
+                    "--web"  # Don't open browser, just get URL
+                ],
+                cwd=self.repo_dir,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            pr_url = result.stdout.strip()
+            log.info(f"Created PR: {title}")
+            log.info(f"PR URL: {pr_url}")
+            return pr_url
+            
+        except subprocess.CalledProcessError as e:
+            log.error(f"Failed to create PR: {e.stderr}")
+            return None
         except Exception as e:
             log.error(f"PR creation error: {e}")
+            return None
+    
+    def list_prs(self, state: str = "open") -> List[Dict]:
+        """List PRs using gh CLI."""
+        try:
+            result = subprocess.run(
+                ["gh", "pr", "list", "--state", state, "--json", "number,title,author,url"],
+                cwd=self.repo_dir,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            import json
+            return json.loads(result.stdout)
+        except Exception as e:
+            log.error(f"Failed to list PRs: {e}")
+            return []
+    
+    def check_pr_status(self, pr_number: int) -> Optional[Dict]:
+        """Check PR status using gh CLI."""
+        try:
+            result = subprocess.run(
+                ["gh", "pr", "view", str(pr_number), "--json", "state,mergeable,url"],
+                cwd=self.repo_dir,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            import json
+            return json.loads(result.stdout)
+        except Exception as e:
+            log.error(f"Failed to check PR status: {e}")
             return None
 
 
