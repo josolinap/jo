@@ -189,7 +189,7 @@ class AwarenessSystem:
         except:
             return "N/A"
 
-    def def _get_memory_info(self) -> str:
+    def _get_memory_info(self) -> str:
         """Get memory info."""
         try:
             free_output = subprocess.check_output([
