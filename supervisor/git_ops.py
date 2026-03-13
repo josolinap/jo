@@ -14,9 +14,9 @@ def import_test() -> Dict[str, Any]:
     import os
     import subprocess
     from pathlib import Path
-    
+
     exe = sys.executable if (isinstance(sys.executable, str) and os.path.isfile(sys.executable)) else "python"
-    
+
     # On Windows, using shell=True helps with paths containing spaces
     kwargs: Dict[str, Any] = {
         "cwd": str(REPO_DIR),
@@ -25,7 +25,7 @@ def import_test() -> Dict[str, Any]:
         "encoding": "utf-8",
         "errors": "replace",
     }
-    
+
     if os.name == "nt":
         kwargs["shell"] = True
         # When shell=True, the command must be a string; quote exe to handle spaces
@@ -33,7 +33,7 @@ def import_test() -> Dict[str, Any]:
     else:
         # On Unix, we can pass a list (safer)
         cmd = [exe, "-c", "import ouroboros, ouroboros.agent; print('import_ok')"]
-    
+
     try:
         r = subprocess.run(cmd, **kwargs)
         return {
@@ -75,3 +75,13 @@ def sync_runtime_dependencies() -> None:
 
 def safe_restart() -> None:
     pass
+
+
+# Import GitHub API functions from separate module
+from .github_api import (
+    list_github_issues,
+    get_github_issue,
+    create_github_issue,
+    comment_on_issue,
+    close_github_issue,
+)

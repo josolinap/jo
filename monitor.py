@@ -1,0 +1,166 @@
+"""
+Ouroboros Monitor
+Monitors and manages the Ouroboros launcher for continuous operation
+"""
+
+import os
+import sys
+import time
+import pathlib
+import logging
+import subprocess
+import signal
+import asyncio
+from typing import Optional
+from pathlib import Path
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - MONITOR - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/tmp/monitor.log'),
+        logging.StreamHandler()
+    ]
+)
+
+log = logging.getLogger(__name__)
+
+class OuroborosMonitor:
+    """Monitor and manage Ouroboros launcher with integrated system."""
+    
+    def __init__(self):
+        self.process: Optional[subprocess.Popen] = None
+        self.running = True
+        self.repo_dir = Path("/root/jo-project")
+        
+        # Setup signal handlers
+        signal.signal(signal.SIGINT, self.shutdown)
+        signal.signal(signal.SIGTERM, self.shutdown)
+        
+        # Initialize integrated system
+        try:
+            from ouroboros_system import OuroborosSystem
+            self.system = OuroborosSystem()
+        except ImportError:
+            self.system = None
+            log.warning("OuroborosSystem not available")
+        
+        # Initialize git state manager (fallback)
+        try:
+            from git_state_manager import GitStateManager
+            self.git_manager = GitStateManager(self.repo_dir)
+        except ImportError:
+            self.git_manager = None
+    
+    def sync_git_state(self):
+        """Sync git state before starting launcher."""
+        if not self.git_manager:
+            return
+        
+        log.info("Syncing git state...")
+        
+        # Check for conflicts
+        conflict_status = self.git_manager.get_conflict_status()
+        if conflict_status["has_conflicts"]:
+            log.warning(f"Git conflicts detected: {conflict_status}")
+            # Try to resolve
+            self.git_manager.stash_changes("auto-resolve-conflict")
+        
+        # Pull latest changes
+        success, message = self.git_manager.pull_with_rebase("dev")
+        if success:
+            log.info("Git sync successful")
+        else:
+            log.warning(f"Git sync failed: {message}")
+            # Continue anyway - local changes are OK
+    
+    def start_launcher(self):
+        """Start the Ouroboros launcher."""
+        log.info("Starting Ouroboros launcher...")
+        
+        # Set environment variables for continuous operation
+        env = os.environ.copy()
+        env['OUROBOROS_NO_GIT_SYNC'] = '1'
+        env['OUROBOROS_CONSCIOUSNESS'] = '1'
+        
+        try:
+            self.process = subprocess.Popen(
+                [sys.executable, 'colab_launcher.py'],
+                cwd='/root/jo-project',
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            log.info(f"Launcher started with PID: {self.process.pid}")
+            return True
+        except Exception as e:
+            log.error(f"Failed to start launcher: {e}")
+            return False
+    
+    def monitor_process(self):
+        """Monitor the launcher process."""
+        if not self.process:
+            return
+        
+        while self.running:
+            if self.process.poll() is not None:
+                log.warning(f"Launcher process died with code: {self.process.returncode}")
+                log.info("Restarting launcher in 5 seconds...")
+                time.sleep(5)
+                self.start_launcher()
+            
+            # Read output
+            if self.process.stdout:
+                line = self.process.stdout.readline()
+                if line:
+                    log.info(f"LAUNCHER: {line.strip()}")
+            
+            time.sleep(0.1)
+    
+    def shutdown(self, signum=None, frame=None):
+        """Shutdown the monitor and launcher."""
+        log.info("Shutting down Ouroboros monitor...")
+        self.running = False
+        
+        if self.process:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+        
+        sys.exit(0)
+    
+    def run(self):
+        """Main monitoring loop."""
+        log.info("Ouroboros Monitor started")
+        
+        # If integrated system is available, use it
+        if self.system:
+            log.info("Starting integrated Ouroboros system...")
+            asyncio.run(self.system.start())
+        else:
+            # Fallback to legacy monitor mode
+            log.info("Using legacy monitor mode...")
+            self.sync_git_state()
+            
+            if not self.start_launcher():
+                log.error("Failed to start launcher, exiting...")
+                return
+            
+            try:
+                self.monitor_process()
+            except KeyboardInterrupt:
+                self.shutdown()
+
+def main():
+    """Main function."""
+    monitor = OuroborosMonitor()
+    monitor.run()
+
+if __name__ == "__main__":
+    main()
