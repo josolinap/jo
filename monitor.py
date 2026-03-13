@@ -11,6 +11,7 @@ import logging
 import subprocess
 import signal
 from typing import Optional
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
@@ -30,10 +31,41 @@ class OuroborosMonitor:
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
         self.running = True
+        self.repo_dir = Path("/root/jo-project")
         
         # Setup signal handlers
         signal.signal(signal.SIGINT, self.shutdown)
         signal.signal(signal.SIGTERM, self.shutdown)
+        
+        # Initialize git state manager
+        try:
+            from git_state_manager import GitStateManager
+            self.git_manager = GitStateManager(self.repo_dir)
+        except ImportError:
+            self.git_manager = None
+            log.warning("GitStateManager not available")
+    
+    def sync_git_state(self):
+        """Sync git state before starting launcher."""
+        if not self.git_manager:
+            return
+        
+        log.info("Syncing git state...")
+        
+        # Check for conflicts
+        conflict_status = self.git_manager.get_conflict_status()
+        if conflict_status["has_conflicts"]:
+            log.warning(f"Git conflicts detected: {conflict_status}")
+            # Try to resolve
+            self.git_manager.stash_changes("auto-resolve-conflict")
+        
+        # Pull latest changes
+        success, message = self.git_manager.pull_with_rebase("dev")
+        if success:
+            log.info("Git sync successful")
+        else:
+            log.warning(f"Git sync failed: {message}")
+            # Continue anyway - local changes are OK
     
     def start_launcher(self):
         """Start the Ouroboros launcher."""
@@ -98,6 +130,9 @@ class OuroborosMonitor:
     def run(self):
         """Main monitoring loop."""
         log.info("Ouroboros Monitor started")
+        
+        # Sync git state before starting
+        self.sync_git_state()
         
         if not self.start_launcher():
             log.error("Failed to start launcher, exiting...")
