@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ouroboros_system import OuroborosSystem
+from git_orchestrator import GitOrchestrator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,11 +46,20 @@ class FullStartup:
         """Start all components."""
         log.info("Starting Ouroboros Full System...")
         
-        # 1. Start integrated system (model routing, git sync, etc.)
+        # 1. Start Git Orchestrator
+        self.git_orchestrator = GitOrchestrator(
+            repo_dir=Path("/root/jo-project"),
+            drive_root=Path.home() / ".ouroboros"
+        )
+        
+        # Start continuous sync
+        asyncio.create_task(self.git_orchestrator.continuous_sync())
+        
+        # 2. Start integrated system (model routing, git sync, etc.)
         self.system = OuroborosSystem()
         system_task = asyncio.create_task(self.system.start())
         
-        # 2. Start launcher (colab_launcher.py)
+        # 3. Start launcher (colab_launcher.py)
         launcher_task = asyncio.create_task(self.start_launcher())
         
         # Wait for both
