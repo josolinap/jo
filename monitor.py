@@ -10,6 +10,7 @@ import pathlib
 import logging
 import subprocess
 import signal
+import asyncio
 from typing import Optional
 from pathlib import Path
 
@@ -26,7 +27,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 class OuroborosMonitor:
-    """Monitor and manage Ouroboros launcher."""
+    """Monitor and manage Ouroboros launcher with integrated system."""
     
     def __init__(self):
         self.process: Optional[subprocess.Popen] = None
@@ -37,13 +38,20 @@ class OuroborosMonitor:
         signal.signal(signal.SIGINT, self.shutdown)
         signal.signal(signal.SIGTERM, self.shutdown)
         
-        # Initialize git state manager
+        # Initialize integrated system
+        try:
+            from ouroboros_system import OuroborosSystem
+            self.system = OuroborosSystem()
+        except ImportError:
+            self.system = None
+            log.warning("OuroborosSystem not available")
+        
+        # Initialize git state manager (fallback)
         try:
             from git_state_manager import GitStateManager
             self.git_manager = GitStateManager(self.repo_dir)
         except ImportError:
             self.git_manager = None
-            log.warning("GitStateManager not available")
     
     def sync_git_state(self):
         """Sync git state before starting launcher."""
@@ -131,17 +139,23 @@ class OuroborosMonitor:
         """Main monitoring loop."""
         log.info("Ouroboros Monitor started")
         
-        # Sync git state before starting
-        self.sync_git_state()
-        
-        if not self.start_launcher():
-            log.error("Failed to start launcher, exiting...")
-            return
-        
-        try:
-            self.monitor_process()
-        except KeyboardInterrupt:
-            self.shutdown()
+        # If integrated system is available, use it
+        if self.system:
+            log.info("Starting integrated Ouroboros system...")
+            asyncio.run(self.system.start())
+        else:
+            # Fallback to legacy monitor mode
+            log.info("Using legacy monitor mode...")
+            self.sync_git_state()
+            
+            if not self.start_launcher():
+                log.error("Failed to start launcher, exiting...")
+                return
+            
+            try:
+                self.monitor_process()
+            except KeyboardInterrupt:
+                self.shutdown()
 
 def main():
     """Main function."""
