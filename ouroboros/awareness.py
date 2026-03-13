@@ -1,7 +1,7 @@
 import json
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -42,35 +42,30 @@ class AwarenessSystem:
             env_info = self._get_env_info()
             
             awareness_data = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "scan_id": f"scan-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
                 "sys": {
                     "branch": git_info.get("branch"),
                     "sha": git_info.get("sha"),
                     "head_message": git_info.get("head_message"),
                     "repo_size": len(repo_files),
-                    "repo_files": repo_files[:50],  # First 50 for brevity
+                    "repo_files": repo_files[:50],
                     "scratchpad_length": len(scratchpad_content),
                     "scratchpad_lines": len(scratchpad_content.splitlines()),
                     "scratchpad_words": len(scratchpad_content.split()),
-                    "drive_space_used": system_info.get("drive_space_used"),
-                    "total_budget": env_info.get("total_budget"),
-                    "remaining_budget": env_info.get("remaining_budget"),
-                    "model_used": env_info.get("model_used"),
-                    "branch": git_info.get("branch"),
                 },
                 "context": {
-                    "runtime_utc": datetime.utcnow().isoformat(),
+                    "runtime_utc": datetime.now(timezone.utc).isoformat(),
                     "container_utc_offset": system_info.get("container_utc_offset"),
                     "timezone_conflict": system_info.get("timezone_conflict", False),
                     "last_wakeup": system_info.get("last_wakeup"),
                     "bg_consciousness_active": system_info.get("bg_consciousness_active", False),
                 },
                 "budget": {
-                    "total_usd": env_info.get("total_budget", 0),
-                    "spent_usd": env_info.get("spent_usd", 0),
-                    "remaining_usd": env_info.get("remaining_budget", 0),
-                    "budget_drift_pct": env_info.get("budget_drift_pct", 0),
+                    "total_usd": float(os.environ.get("TOTAL_BUDGET", "0")),
+                    "spent_usd": float(env_info.get("spent_usd", 0)),
+                    "remaining_usd": float(env_info.get("remaining_budget", 0)),
+                    "budget_drift_pct": float(env_info.get("budget_drift_pct", 0)),
                 },
                 "git": git_info,
                 "system": system_info,
@@ -91,7 +86,7 @@ class AwarenessSystem:
         except Exception as e:
             return {
                 "error": str(e),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "scan_id": f"scan-error-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
                 "last_scan": None
             }
@@ -156,27 +151,19 @@ class AwarenessSystem:
         """Get system information."""
         try:
             # Check for UTC offset
-            utc_now = datetime.utcnow()
+            utc_now = datetime.now(timezone.utc)
             local_now = datetime.now()
-            utc_offset = (local_now - utc_now).total_seconds() / 3600
+            utc_offset = (local_now - utc_now.replace(tzinfo=None)).total_seconds() / 3600
             
-            # Check if there's a timezone conflict
-            context_path = self.drive_root / "memory" / "context.json"
+            # Check timezone conflict: compare local vs UTC if context available
             timezone_conflict = False
-            if context_path.exists():
-                with open(context_path, "r", encoding="utf-8") as f:
-                    context_data = json.load(f)
-                    runtime_utc = context_data.get("utc_now", "")
-                    if runtime_utc:
-                        runtime_utc_time = datetime.fromisoformat(runtime_utc)
-                        if abs((runtime_utc_time - utc_now).total_seconds()) > 10:
-                            timezone_conflict = True
-            
-            # Check if consciousness is active
-            consciousness_active = False
             try:
-                from ouroboros.consciousness import BackgroundConsciousness
-                consciousness_active = BackgroundConsciousness.is_running
+                from ouroboros.memory import load_context
+                ctx = load_context()
+                if ctx and "runtime_utc" in ctx:
+                    runtime_utc_time = datetime.fromisoformat(ctx["runtime_utc"])
+                    if abs((runtime_utc_time - utc_now).total_seconds()) > 10:
+                        timezone_conflict = True
             except:
                 pass
 
@@ -185,7 +172,6 @@ class AwarenessSystem:
                 "timezone_conflict": timezone_conflict,
                 "container_utc_time": utc_now.isoformat(),
                 "local_time": local_now.isoformat(),
-                "bg_consciousness_active": consciousness_active,
                 "drive_space_used": self._get_drive_space_used(),
                 "memory_available": self._get_memory_info(),
                 "cpu_load": self._get_cpu_load(),
@@ -193,49 +179,35 @@ class AwarenessSystem:
         except Exception as e:
             return {"system_error": str(e)}
 
-    def _get_drive_space_used(self) -> Dict[str, Any]:
-        """Get drive space information."""
+    def _get_drive_space_used(self) -> str:
+        """Get drive space used by .ouroboros."""
         try:
             du_output = subprocess.check_output([
-                "du", "-sh", "/root/.ouroboros"
+                "du", "-sh", str(self.drive_root)
             ]).decode().strip()
-            
-            df_output = subprocess.check_output([
-                "df", "-h", "/root/.ouroboros"
-            ]).decode().strip()
-            
-            return {
-                "used_human": du_output,
-                "df_human": df_output,
-            }
+            return du_output
         except:
-            return {"drive_space_error": "command failed"}
+            return "N/A"
 
-    def _get_memory_info(self) -> Dict[str, Any]:
-        """Get memory information."""
+    def def _get_memory_info(self) -> str:
+        """Get memory info."""
         try:
             free_output = subprocess.check_output([
                 "free", "-h"
             ]).decode().strip()
-            
-            return {
-                "free_output": free_output,
-            }
+            return "\\n".join(free_output.splitlines()[:3])
         except:
-            return {"memory_error": "command failed"}
+            return "N/A"
 
-    def _get_cpu_load(self) -> Dict[str, Any]:
-        """Get CPU load information."""
+    def _get_cpu_load(self) -> str:
+        """Get CPU load."""
         try:
             uptime_output = subprocess.check_output([
                 "uptime"
             ]).decode().strip()
-            
-            return {
-                "uptime_output": uptime_output,
-            }
+            return uptime_output.strip()
         except:
-            return {"cpu_error": "command failed"}
+            return "N/A"
 
     def _get_env_info(self) -> Dict[str, Any]:
         """Get environment information from state.json."""
@@ -248,11 +220,9 @@ class AwarenessSystem:
                 state_data = json.load(f)
             
             return {
-                "total_budget": float(os.environ.get("TOTAL_BUDGET", "0")),
                 "spent_usd": float(state_data.get("spent_usd", 0)),
                 "remaining_budget": float(state_data.get("remaining_usd", 0)),
                 "budget_drift_pct": float(state_data.get("budget_drift_pct", 0)),
-                "model_used": os.environ.get("OUROBOROS_MODEL", "unknown"),
                 "session_id": state_data.get("session_id"),
                 "owner_id": state_data.get("owner_id"),
             }
