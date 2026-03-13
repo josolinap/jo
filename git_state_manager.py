@@ -51,7 +51,9 @@ class GitStateManager:
             subprocess.run(
                 ["git", "checkout", branch],
                 cwd=self.repo_dir,
-                check=True
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
             
             # Pull with rebase
@@ -60,7 +62,8 @@ class GitStateManager:
                 cwd=self.repo_dir,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                timeout=30
             )
             
             log.info(f"Successfully pulled changes")
@@ -75,6 +78,9 @@ class GitStateManager:
                 return self.handle_rebase_conflict()
             
             return False, error_msg
+        except subprocess.TimeoutExpired:
+            log.error("Pull timed out")
+            return False, "Timeout"
     
     def handle_rebase_conflict(self) -> Tuple[bool, str]:
         """Handle rebase conflict automatically."""
