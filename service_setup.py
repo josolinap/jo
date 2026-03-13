@@ -19,7 +19,7 @@ Wants=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/jo-project
-ExecStart=/usr/bin/python3 /root/jo-project/start_ouroboros.py
+ExecStart=/usr/bin/python3 /root/jo-project/full_startup.py
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
