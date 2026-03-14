@@ -785,59 +785,52 @@ def run_llm_loop(
 
             # Fallback to another model if primary model returns empty responses
             if msg is None:
-                # Configurable fallback priority list
+                # Try fallback models from the list
                 fallback_list_raw = os.environ.get(
                     "OUROBOROS_MODEL_FALLBACK_LIST",
                     "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free",
                 )
                 fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
-                fallback_model = None
-                for candidate in fallback_candidates:
-                    if candidate != active_model:
-                        fallback_model = candidate
-                        break
-                if fallback_model is None:
-                    return (
-                        (
-                            f"Failed to get a response from model {active_model} after {max_retries} attempts. "
-                            f"All fallback models match the active one. Try rephrasing your request."
-                        ),
+                
+                success = False
+                for fallback_model in fallback_candidates:
+                    if fallback_model == active_model:
+                        continue
+                        
+                    # Emit progress message so user sees fallback happening
+                    emit_progress(f"Fallback: {active_model} -> {fallback_model} after empty response")
+                    
+                    # Try fallback model
+                    msg, fallback_cost = _call_llm_with_retry(
+                        llm,
+                        messages,
+                        fallback_model,
+                        tool_schemas,
+                        active_effort,
+                        max_retries,
+                        drive_logs,
+                        task_id,
+                        round_idx,
+                        event_queue,
                         accumulated_usage,
-                        llm_trace,
+                        task_type,
                     )
+                    
+                    if msg is not None:
+                        success = True
+                        break # Found a working model
+                    
+                    log.warning(f"Fallback model {fallback_model} also returned no response")
 
-                # Emit progress message so user sees fallback happening
-                fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
-                emit_progress(fallback_progress)
-
-                # Try fallback model (don't increment round_idx — this is still same logical round)
-                msg, fallback_cost = _call_llm_with_retry(
-                    llm,
-                    messages,
-                    fallback_model,
-                    tool_schemas,
-                    active_effort,
-                    max_retries,
-                    drive_logs,
-                    task_id,
-                    round_idx,
-                    event_queue,
-                    accumulated_usage,
-                    task_type,
-                )
-
-                # If fallback also fails, give up
-                if msg is None:
+                if not success:
                     return (
                         (
                             f"Failed to get a response from the model after {max_retries} attempts. "
-                            f"Fallback model ({fallback_model}) also returned no response."
+                            f"All fallback models also returned no response."
                         ),
                         accumulated_usage,
                         llm_trace,
                     )
-
-                # Fallback succeeded — continue processing with this msg
 
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
@@ -1002,7 +995,7 @@ def _call_llm_with_retry(
                         "model": model,
                         "raw_content": repr(content)[:500] if content else None,
                         "raw_tool_calls": repr(tool_calls)[:500] if tool_calls else None,
-                        "finish_reason": msg.get("finish_reason") or msg.get("stop_reason"),
+                        "finish_reason": msg.get("finish_reason") or msg.get("stop_reason") or "unknown",
                     },
                 )
 

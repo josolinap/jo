@@ -6,7 +6,7 @@ on:
   # Trigger on push to main (so it starts after every code push)
   push:
     branches:
-      - main
+      - stable
   # Fallback safety net: re-trigger every 6 hours in case self-restart fails
   schedule:
     - cron: "0 */6 * * *"
