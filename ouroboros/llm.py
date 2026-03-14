@@ -229,8 +229,13 @@ class HuggingFaceLLMClient:
         choices = resp_dict.get("choices") or [{}]
         msg = (choices[0] if choices else {}).get("message") or {}
 
-        # HF Inference API is effectively 'free' for small usage - set cost to 0
         usage["cost"] = 0.0
+
+        # Detect empty response (no content and no tool calls)
+        tool_calls = msg.get("tool_calls") or []
+        content = msg.get("content")
+        if not tool_calls and (not content or not content.strip()):
+            raise ValueError("Hugging Face returned an empty response")
 
         return msg, usage
 
@@ -343,10 +348,18 @@ class LLMClient:
 
         # OpenRouter only mode
         try:
-            return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+            msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+            
+            # Detect empty response (no content and no tool calls)
+            tool_calls = msg.get("tool_calls") or []
+            content = msg.get("content")
+            if not tool_calls and (not content or not content.strip()):
+                raise ValueError("OpenRouter returned an empty response")
+                
+            return msg, usage
         except Exception as e:
             if self._hf_key and not self._is_local:
-                log.warning(f"OpenRouter failed, falling back to Hugging Face: {e}")
+                log.warning(f"OpenRouter failed or empty, falling back to Hugging Face: {e}")
                 fallback_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
                 return self._hf_fallback.chat(
                     messages=messages,
