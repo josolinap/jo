@@ -177,6 +177,64 @@ class LocalLLMClient:
         return msg, usage
 
 
+
+class HuggingFaceLLMClient:
+    """Hugging Face Serverless Inference API wrapper."""
+
+    def __init__(self):
+        self._base_url = "https://router.huggingface.co/v1/"
+        self._api_key = os.environ.get("HUGGINGFACE_API_KEY", "")
+        self._model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from openai import OpenAI
+
+            self._client = OpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key,
+            )
+        return self._client
+
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Single LLM call to Hugging Face. Returns: (response_message_dict, usage_dict)."""
+        client = self._get_client()
+
+        # Hugging Face serverless API doesn't support complex reasoning parameters or tools the same way sometimes,
+        # but the standard Chat Completion bits work.
+        kwargs: Dict[str, Any] = {
+            "model": model or self._model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+        }
+
+        # HF Inference API support for tools depends on the specific model
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = tool_choice
+
+        resp = client.chat.completions.create(**kwargs)
+        resp_dict = resp.model_dump()
+
+        usage = resp_dict.get("usage") or {}
+        choices = resp_dict.get("choices") or [{}]
+        msg = (choices[0] if choices else {}).get("message") or {}
+
+        # HF Inference API is effectively 'free' for small usage - set cost to 0
+        usage["cost"] = 0.0
+
+        return msg, usage
+
+
 class LLMClient:
     """LLM client with provider support (OpenRouter or local vLLM)."""
 
@@ -199,6 +257,10 @@ class LLMClient:
             self._base_url = base_url
             self._client = None
             self._is_local = False
+
+        # Initialize Hugging Face fallback
+        self._hf_fallback = HuggingFaceLLMClient()
+        self._hf_key = os.environ.get("HUGGINGFACE_API_KEY", "")
 
     def _get_client(self):
         if self._client is None:
@@ -280,7 +342,21 @@ class LLMClient:
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter only mode
-        return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+        try:
+            return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+        except Exception as e:
+            if self._hf_key and not self._is_local:
+                log.warning(f"OpenRouter failed, falling back to Hugging Face: {e}")
+                fallback_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
+                return self._hf_fallback.chat(
+                    messages=messages,
+                    model=fallback_model,
+                    tools=tools,
+                    reasoning_effort=reasoning_effort,
+                    max_tokens=max_tokens,
+                    tool_choice=tool_choice,
+                )
+            raise
 
     def _chat_openrouter(
         self,
