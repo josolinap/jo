@@ -450,6 +450,11 @@ def spawn_workers(n: int = 0) -> None:
     except Exception:
         events_offset = 0
 
+    # --- Snapshot SHA *before* spawning (fixes race condition) ---
+    # Reading SHA here guarantees workers always get the SHA that matches
+    # the code on disk at spawn time, not a potentially-stale Drive value.
+    spawn_sha = git_ops.get_current_sha(REPO_DIR)
+
     count = n or MAX_WORKERS
     append_jsonl(
         DRIVE_ROOT / "logs" / "supervisor.jsonl",
@@ -458,12 +463,26 @@ def spawn_workers(n: int = 0) -> None:
             "type": "worker_spawn_start",
             "start_method": _WORKER_START_METHOD,
             "count": count,
+            "spawn_sha": spawn_sha or "unknown",
         },
     )
     WORKERS.clear()
     for i in range(count):
         in_q = _CTX.Queue()
-        proc = _CTX.Process(target=worker_main, args=(i, in_q, _EVENT_Q, str(REPO_DIR), str(DRIVE_ROOT)))
+        # Inject expected SHA into worker environment so the worker can
+        # self-verify on boot without needing to call back to Drive state.
+        worker_env = dict(os.environ)
+        if spawn_sha:
+            worker_env["OUROBOROS_EXPECTED_SHA"] = spawn_sha
+        proc = _CTX.Process(
+            target=worker_main,
+            args=(i, in_q, _EVENT_Q, str(REPO_DIR), str(DRIVE_ROOT)),
+        )
+        # mp.Process doesn't support env kwarg directly; set on the object
+        # before start() via Process._popen on some platforms.  The portable
+        # approach used here is to relay via os.environ inside worker_main.
+        if spawn_sha:
+            os.environ["OUROBOROS_EXPECTED_SHA"] = spawn_sha
         proc.daemon = True
         proc.start()
         WORKERS[i] = Worker(wid=i, proc=proc, in_q=in_q, busy_task_id=None)
@@ -501,6 +520,11 @@ def respawn_worker(wid: int) -> None:
     global _LAST_SPAWN_TIME
     ctx = _get_ctx()
     in_q = ctx.Queue()
+    # Snapshot SHA before respawn too so the replacement worker gets a
+    # consistent expected SHA (same fix as spawn_workers).
+    respawn_sha = git_ops.get_current_sha(REPO_DIR)
+    if respawn_sha:
+        os.environ["OUROBOROS_EXPECTED_SHA"] = respawn_sha
     proc = ctx.Process(target=worker_main, args=(wid, in_q, get_event_q(), str(REPO_DIR), str(DRIVE_ROOT)))
     proc.daemon = True
     proc.start()

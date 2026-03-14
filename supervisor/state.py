@@ -189,11 +189,41 @@ def _save_state_unlocked(st: Dict[str, Any]) -> None:
 
 
 def load_state() -> Dict[str, Any]:
+    """Load state from Drive and reconcile current_sha against actual git HEAD.
+
+    If the SHA stored on Drive diverges from the real git HEAD on disk,
+    the state is healed in-place and persisted.  This prevents the Drive
+    state from becoming a competing, stale source of truth.
+    """
     lock_fd = acquire_file_lock(STATE_LOCK_PATH)
     try:
-        return _load_state_unlocked()
+        st = _load_state_unlocked()
     finally:
         release_file_lock(STATE_LOCK_PATH, lock_fd)
+
+    # Reconcile Drive SHA against actual git HEAD (outside the lock to
+    # avoid blocking other writers while we shell out to git).
+    try:
+        from supervisor import git_ops
+        actual_sha = git_ops.get_current_sha()
+        if actual_sha and actual_sha != st.get("current_sha"):
+            log.info(
+                "load_state: SHA drift detected — Drive=%s git=%s; healing state.",
+                (st.get("current_sha") or "")[:8],
+                actual_sha[:8],
+            )
+            lock_fd2 = acquire_file_lock(STATE_LOCK_PATH)
+            try:
+                # Re-load inside lock to avoid clobbering concurrent writes
+                st = _load_state_unlocked()
+                st["current_sha"] = actual_sha
+                _save_state_unlocked(st)
+            finally:
+                release_file_lock(STATE_LOCK_PATH, lock_fd2)
+    except Exception:
+        log.debug("load_state: SHA reconciliation failed (non-fatal)", exc_info=True)
+
+    return st
 
 
 def save_state(st: Dict[str, Any]) -> None:
