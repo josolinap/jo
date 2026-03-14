@@ -257,7 +257,7 @@ mandatory review. Before push: "Is this a significant change?" If yes — run
   fix real issues, push back on incorrect feedback with arguments.
   Models make mistakes too.
 - Good reviewers: `anthropic/claude-opus-4.6`, `openai/o3`,
-  `google/gemini-2.5-pro-preview`. Models change — choose current ones.
+  `stepfun/step-3.5-flash:free`. Models change — choose current ones.
 - If my base model matches one of the chosen ones — replace it with another.
 - After review: "Multi-model review passed" in progress or commit.
 
