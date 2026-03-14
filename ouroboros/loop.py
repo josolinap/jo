@@ -21,7 +21,14 @@ import logging
 from ouroboros.llm import LLMClient, normalize_reasoning_effort, add_usage
 from ouroboros.tools.registry import ToolRegistry
 from ouroboros.context import compact_tool_history, compact_tool_history_llm
-from ouroboros.utils import utc_now_iso, append_jsonl, truncate_for_log, sanitize_tool_args_for_log, sanitize_tool_result_for_log, estimate_tokens
+from ouroboros.utils import (
+    utc_now_iso,
+    append_jsonl,
+    truncate_for_log,
+    sanitize_tool_args_for_log,
+    sanitize_tool_result_for_log,
+    estimate_tokens,
+)
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +55,7 @@ _pricing_fetched = False
 _cached_pricing = None
 _pricing_lock = threading.Lock()
 
+
 def _get_pricing() -> Dict[str, Tuple[float, float, float]]:
     """
     Lazy-load pricing. On first call, attempts to fetch from OpenRouter API.
@@ -71,19 +79,23 @@ def _get_pricing() -> Dict[str, Tuple[float, float, float]]:
 
         try:
             from ouroboros.llm import fetch_openrouter_pricing
+
             _live = fetch_openrouter_pricing()
             if _live and len(_live) > 5:
                 _cached_pricing.update(_live)
         except Exception as e:
             import logging as _log
+
             _log.getLogger(__name__).warning("Failed to sync pricing from OpenRouter: %s", e)
             # Reset flag so we retry next time
             _pricing_fetched = False
 
         return _cached_pricing
 
-def _estimate_cost(model: str, prompt_tokens: int, completion_tokens: int,
-                   cached_tokens: int = 0, cache_write_tokens: int = 0) -> float:
+
+def _estimate_cost(
+    model: str, prompt_tokens: int, completion_tokens: int, cached_tokens: int = 0, cache_write_tokens: int = 0
+) -> float:
     """Estimate cost from token counts using known pricing. Returns 0 if model unknown."""
     model_pricing = _get_pricing()
     # Try exact match first
@@ -110,11 +122,18 @@ def _estimate_cost(model: str, prompt_tokens: int, completion_tokens: int,
     )
     return round(cost, 6)
 
-READ_ONLY_PARALLEL_TOOLS = frozenset({
-    "repo_read", "repo_list",
-    "drive_read", "drive_list",
-    "web_search", "codebase_digest", "chat_history",
-})
+
+READ_ONLY_PARALLEL_TOOLS = frozenset(
+    {
+        "repo_read",
+        "repo_list",
+        "drive_read",
+        "drive_list",
+        "web_search",
+        "codebase_digest",
+        "chat_history",
+    }
+)
 
 # Stateful browser tools require thread-affinity (Playwright sync uses greenlet)
 STATEFUL_BROWSER_TOOLS = frozenset({"browse_page", "browser_action"})
@@ -170,17 +189,29 @@ def _execute_single_tool(
     except Exception as e:
         tool_ok = False
         result = f"⚠️ TOOL_ERROR ({fn_name}): {type(e).__name__}: {e}"
-        append_jsonl(drive_logs / "events.jsonl", {
-            "ts": utc_now_iso(), "type": "tool_error", "task_id": task_id,
-            "tool": fn_name, "args": args_for_log, "error": repr(e),
-        })
+        append_jsonl(
+            drive_logs / "events.jsonl",
+            {
+                "ts": utc_now_iso(),
+                "type": "tool_error",
+                "task_id": task_id,
+                "tool": fn_name,
+                "args": args_for_log,
+                "error": repr(e),
+            },
+        )
 
     # Log tool execution (sanitize secrets from result before persisting)
-    append_jsonl(drive_logs / "tools.jsonl", {
-        "ts": utc_now_iso(), "tool": fn_name, "task_id": task_id,
-        "args": args_for_log,
-        "result_preview": sanitize_tool_result_for_log(truncate_for_log(result, 2000)),
-    })
+    append_jsonl(
+        drive_logs / "tools.jsonl",
+        {
+            "ts": utc_now_iso(),
+            "tool": fn_name,
+            "task_id": task_id,
+            "args": args_for_log,
+            "result_preview": sanitize_tool_result_for_log(truncate_for_log(result, 2000)),
+        },
+    )
 
     is_error = (not tool_ok) or str(result).startswith("⚠️")
 
@@ -204,6 +235,7 @@ class _StatefulToolExecutor:
 
     On timeout: we shutdown the executor and create a fresh one to reset state.
     """
+
     def __init__(self):
         self._executor: Optional[ThreadPoolExecutor] = None
 
@@ -251,21 +283,32 @@ def _make_timeout_result(
     except Exception:
         pass
 
+    issue_note = " about the issue" if not reset_msg else ""
     result = (
         f"⚠️ TOOL_TIMEOUT ({fn_name}): exceeded {timeout_sec}s limit. "
         f"The tool is still running in background but control is returned to you. "
-        f"{reset_msg}Try a different approach or inform the owner{' about the issue' if not reset_msg else ''}."
+        f"{reset_msg}Try a different approach or inform the owner{issue_note}."
     )
 
-    append_jsonl(drive_logs / "events.jsonl", {
-        "ts": utc_now_iso(), "type": "tool_timeout",
-        "tool": fn_name, "args": args_for_log,
-        "timeout_sec": timeout_sec,
-    })
-    append_jsonl(drive_logs / "tools.jsonl", {
-        "ts": utc_now_iso(), "tool": fn_name,
-        "args": args_for_log, "result_preview": result,
-    })
+    append_jsonl(
+        drive_logs / "events.jsonl",
+        {
+            "ts": utc_now_iso(),
+            "type": "tool_timeout",
+            "tool": fn_name,
+            "args": args_for_log,
+            "timeout_sec": timeout_sec,
+        },
+    )
+    append_jsonl(
+        drive_logs / "tools.jsonl",
+        {
+            "ts": utc_now_iso(),
+            "tool": fn_name,
+            "args": args_for_log,
+            "result_preview": result,
+        },
+    )
 
     return {
         "tool_call_id": tool_call_id,
@@ -307,8 +350,7 @@ def _execute_with_timeout(
             stateful_executor.reset()
             reset_msg = "Browser state has been reset. "
             return _make_timeout_result(
-                fn_name, tool_call_id, is_code_tool, tc, drive_logs,
-                timeout_sec, task_id, reset_msg
+                fn_name, tool_call_id, is_code_tool, tc, drive_logs, timeout_sec, task_id, reset_msg
             )
     else:
         # Regular executor: explicit lifecycle to avoid shutdown(wait=True) deadlock
@@ -319,8 +361,7 @@ def _execute_with_timeout(
                 return future.result(timeout=timeout_sec)
             except TimeoutError:
                 return _make_timeout_result(
-                    fn_name, tool_call_id, is_code_tool, tc, drive_logs,
-                    timeout_sec, task_id, reset_msg=""
+                    fn_name, tool_call_id, is_code_tool, tc, drive_logs, timeout_sec, task_id, reset_msg=""
                 )
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
@@ -342,19 +383,15 @@ def _handle_tool_calls(
     Returns: Number of errors encountered
     """
     # Parallelize only for a strict read-only whitelist; all calls wrapped with timeout.
-    can_parallel = (
-        len(tool_calls) > 1 and
-        all(
-            tc.get("function", {}).get("name") in READ_ONLY_PARALLEL_TOOLS
-            for tc in tool_calls
-        )
+    can_parallel = len(tool_calls) > 1 and all(
+        tc.get("function", {}).get("name") in READ_ONLY_PARALLEL_TOOLS for tc in tool_calls
     )
 
     if not can_parallel:
         results = [
-            _execute_with_timeout(tools, tc, drive_logs,
-                                  tools.get_timeout(tc["function"]["name"]), task_id,
-                                  stateful_executor)
+            _execute_with_timeout(
+                tools, tc, drive_logs, tools.get_timeout(tc["function"]["name"]), task_id, stateful_executor
+            )
             for tc in tool_calls
         ]
     else:
@@ -363,8 +400,12 @@ def _handle_tool_calls(
         try:
             future_to_index = {
                 executor.submit(
-                    _execute_with_timeout, tools, tc, drive_logs,
-                    tools.get_timeout(tc["function"]["name"]), task_id,
+                    _execute_with_timeout,
+                    tools,
+                    tc,
+                    drive_logs,
+                    tools.get_timeout(tc["function"]["name"]),
+                    task_id,
                     stateful_executor,
                 ): idx
                 for idx, tc in enumerate(tool_calls)
@@ -425,12 +466,24 @@ def _check_budget_limits(
 
     if budget_pct > 0.5:
         # Hard stop — protect the budget
-        finish_reason = f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
+        finish_reason = (
+            f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
+        )
         messages.append({"role": "system", "content": f"[BUDGET LIMIT] {finish_reason} Give your final response now."})
         try:
             final_msg, final_cost = _call_llm_with_retry(
-                llm, messages, active_model, None, active_effort,
-                max_retries, drive_logs, task_id, round_idx, event_queue, accumulated_usage, task_type
+                llm,
+                messages,
+                active_model,
+                None,
+                active_effort,
+                max_retries,
+                drive_logs,
+                task_id,
+                round_idx,
+                event_queue,
+                accumulated_usage,
+                task_type,
             )
             if final_msg:
                 return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
@@ -440,7 +493,12 @@ def _check_budget_limits(
             return finish_reason, accumulated_usage, llm_trace
     elif budget_pct > 0.3 and round_idx % 10 == 0:
         # Soft nudge every 10 rounds when spending is significant
-        messages.append({"role": "system", "content": f"[INFO] Task spent ${task_cost:.3f} of ${budget_remaining_usd:.2f}. Wrap up if possible."})
+        messages.append(
+            {
+                "role": "system",
+                "content": f"[INFO] Task spent ${task_cost:.3f} of ${budget_remaining_usd:.2f}. Wrap up if possible.",
+            }
+        )
 
     return None
 
@@ -454,8 +512,7 @@ def _maybe_inject_self_check(
 ) -> None:
     """Inject a soft self-check reminder every REMINDER_INTERVAL rounds.
 
-    This is a cognitive feature (Bible P0: subjectivity) — the agent reflects
-    on its own resource usage and strategy, not a hard kill.
+    This is a cognitive feature — the agent reflects on its own resource usage and strategy.
     """
     REMINDER_INTERVAL = 50
     if round_idx <= 1 or round_idx % REMINDER_INTERVAL != 0:
@@ -471,20 +528,20 @@ def _maybe_inject_self_check(
 
     reminder = (
         f"[CHECKPOINT {checkpoint_num} — round {round_idx}/{max_rounds}]\n"
-        f"📊 Context: ~{ctx_tokens} tokens | Cost so far: ${task_cost:.2f} | "
+        f"Context: ~{ctx_tokens} tokens | Cost so far: ${task_cost:.2f} | "
         f"Rounds remaining: {max_rounds - round_idx}\n\n"
-        f"⏸️ PAUSE AND REFLECT before continuing:\n"
+        f"PAUSE AND REFLECT before continuing:\n"
         f"1. Am I making real progress, or repeating the same actions?\n"
         f"2. Is my current strategy working? Should I try something different?\n"
         f"3. Is my context bloated with old tool results I no longer need?\n"
-        f"   → If yes, call `compact_context` to summarize them selectively.\n"
+        f"   -> If yes, call `compact_context` to summarize them selectively.\n"
         f"4. Have I been stuck on the same sub-problem for many rounds?\n"
-        f"   → If yes, consider: simplify the approach, skip the sub-problem, or finish with what I have.\n"
+        f"   -> If yes, consider: simplify the approach, skip the sub-problem, or finish with what I have.\n"
         f"5. Should I just STOP and return my best result so far?\n\n"
         f"This is not a hard limit — you decide. But be honest with yourself."
     )
     messages.append({"role": "system", "content": reminder})
-    emit_progress(f"🔄 Checkpoint {checkpoint_num} at round {round_idx}: ~{ctx_tokens} tokens, ${task_cost:.2f} spent")
+    emit_progress(f"Checkpoint {checkpoint_num} at round {round_idx}: ~{ctx_tokens} tokens, ${task_cost:.2f} spent")
 
 
 def _setup_dynamic_tools(tools_registry, tool_schemas, messages):
@@ -524,9 +581,9 @@ def _setup_dynamic_tools(tools_registry, tool_schemas, messages):
                 not_found.append(name)
         parts = []
         if enabled:
-            parts.append(f"✅ Enabled: {', '.join(enabled)}")
+            parts.append(f"Enabled: {', '.join(enabled)}")
         if not_found:
-            parts.append(f"❌ Not found: {', '.join(not_found)}")
+            parts.append(f"Not found: {', '.join(not_found)}")
         return "\n".join(parts) if parts else "No tools specified."
 
     tools_registry.override_handler("list_available_tools", _handle_list_tools)
@@ -534,15 +591,17 @@ def _setup_dynamic_tools(tools_registry, tool_schemas, messages):
 
     non_core_count = len(tools_registry.list_non_core_tools())
     if non_core_count > 0:
-        messages.append({
-            "role": "system",
-            "content": (
-                f"Note: You have {len(tool_schemas)} core tools loaded. "
-                f"There are {non_core_count} additional tools available "
-                f"(use `list_available_tools` to see them, `enable_tools` to activate). "
-                f"Core tools cover most tasks. Enable extras only when needed."
-            ),
-        })
+        messages.append(
+            {
+                "role": "system",
+                "content": (
+                    f"Note: You have {len(tool_schemas)} core tools loaded. "
+                    f"There are {non_core_count} additional tools available "
+                    f"(use `list_available_tools` to see them, `enable_tools` to activate). "
+                    f"Core tools cover most tasks. Enable extras only when needed."
+                ),
+            }
+        )
 
     return tool_schemas, enabled_extra
 
@@ -570,20 +629,25 @@ def _drain_incoming_messages(
     # Drain per-task owner messages from Drive mailbox (written by forward_to_worker tool)
     if drive_root is not None and task_id:
         from ouroboros.owner_inject import drain_owner_messages
+
         drive_msgs = drain_owner_messages(drive_root, task_id=task_id, seen_ids=_owner_msg_seen)
         for dmsg in drive_msgs:
-            messages.append({
-                "role": "user",
-                "content": f"[Owner message during task]: {dmsg}",
-            })
-            # Log for duplicate processing detection (health invariant #5)
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"[Owner message during task]: {dmsg}",
+                }
+            )
+            # Log for duplicate processing detection
             if event_queue is not None:
                 try:
-                    event_queue.put_nowait({
-                        "type": "owner_message_injected",
-                        "task_id": task_id,
-                        "text": dmsg[:200],
-                    })
+                    event_queue.put_nowait(
+                        {
+                            "type": "owner_message_injected",
+                            "task_id": task_id,
+                            "text": dmsg[:200],
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -606,7 +670,7 @@ def run_llm_loop(
     Core LLM-with-tools loop.
 
     Sends messages to LLM, executes tool calls, retries on errors.
-    LLM controls model/effort via switch_model tool (LLM-first, Bible P3).
+    LLM controls model/effort via switch_model tool.
 
     Args:
         budget_remaining_usd: If set, forces completion when task cost exceeds 50% of this budget
@@ -623,6 +687,7 @@ def run_llm_loop(
     max_retries = 3
     # Wire module-level registry ref so tool_discovery handlers work outside run_llm_loop too
     from ouroboros.tools import tool_discovery as _td
+
     _td.set_registry(tools)
 
     # Selective tool schemas: core set + meta-tools for discovery.
@@ -648,12 +713,24 @@ def run_llm_loop(
 
             # Hard limit on rounds to prevent runaway tasks
             if round_idx > MAX_ROUNDS:
-                finish_reason = f"⚠️ Task exceeded MAX_ROUNDS ({MAX_ROUNDS}). Consider decomposing into subtasks via schedule_task."
+                finish_reason = (
+                    f"Task exceeded MAX_ROUNDS ({MAX_ROUNDS}). Consider decomposing into subtasks via schedule_task."
+                )
                 messages.append({"role": "system", "content": f"[ROUND_LIMIT] {finish_reason}"})
                 try:
                     final_msg, final_cost = _call_llm_with_retry(
-                        llm, messages, active_model, None, active_effort,
-                        max_retries, drive_logs, task_id, round_idx, event_queue, accumulated_usage, task_type
+                        llm,
+                        messages,
+                        active_model,
+                        None,
+                        active_effort,
+                        max_retries,
+                        drive_logs,
+                        task_id,
+                        round_idx,
+                        event_queue,
+                        accumulated_usage,
+                        task_type,
                     )
                     if final_msg:
                         return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
@@ -662,7 +739,7 @@ def run_llm_loop(
                     log.warning("Failed to get final response after round limit", exc_info=True)
                     return finish_reason, accumulated_usage, llm_trace
 
-            # Soft self-check reminder every 50 rounds (LLM-first: agent decides, not code)
+            # Soft self-check reminder every 50 rounds
             _maybe_inject_self_check(round_idx, MAX_ROUNDS, messages, accumulated_usage, emit_progress)
 
             # Apply LLM-driven model/effort switch (via switch_model tool)
@@ -679,7 +756,7 @@ def run_llm_loop(
 
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
-            pending_compaction = getattr(tools._ctx, '_pending_compaction', None)
+            pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
             if pending_compaction is not None:
                 messages = compact_tool_history_llm(messages, keep_recent=pending_compaction)
                 tools._ctx._pending_compaction = None
@@ -692,16 +769,26 @@ def run_llm_loop(
 
             # --- LLM call with retry ---
             msg, cost = _call_llm_with_retry(
-                llm, messages, active_model, tool_schemas, active_effort,
-                max_retries, drive_logs, task_id, round_idx, event_queue, accumulated_usage, task_type
+                llm,
+                messages,
+                active_model,
+                tool_schemas,
+                active_effort,
+                max_retries,
+                drive_logs,
+                task_id,
+                round_idx,
+                event_queue,
+                accumulated_usage,
+                task_type,
             )
 
             # Fallback to another model if primary model returns empty responses
             if msg is None:
-                # Configurable fallback priority list (Bible P3: no hardcoded behavior)
+                # Configurable fallback priority list
                 fallback_list_raw = os.environ.get(
                     "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "google/gemini-2.5-pro-preview,openai/o3,anthropic/claude-sonnet-4.6"
+                    "google/gemini-2.5-pro-preview,openai/o3,anthropic/claude-sonnet-4.6",
                 )
                 fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
                 fallback_model = None
@@ -711,29 +798,46 @@ def run_llm_loop(
                         break
                 if fallback_model is None:
                     return (
-                        f"⚠️ Failed to get a response from model {active_model} after {max_retries} attempts. "
-                        f"All fallback models match the active one. Try rephrasing your request."
-                    ), accumulated_usage, llm_trace
+                        (
+                            f"Failed to get a response from model {active_model} after {max_retries} attempts. "
+                            f"All fallback models match the active one. Try rephrasing your request."
+                        ),
+                        accumulated_usage,
+                        llm_trace,
+                    )
 
                 # Emit progress message so user sees fallback happening
-                fallback_progress = f"⚡ Fallback: {active_model} → {fallback_model} after empty response"
+                fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
                 emit_progress(fallback_progress)
 
                 # Try fallback model (don't increment round_idx — this is still same logical round)
                 msg, fallback_cost = _call_llm_with_retry(
-                    llm, messages, fallback_model, tool_schemas, active_effort,
-                    max_retries, drive_logs, task_id, round_idx, event_queue, accumulated_usage, task_type
+                    llm,
+                    messages,
+                    fallback_model,
+                    tool_schemas,
+                    active_effort,
+                    max_retries,
+                    drive_logs,
+                    task_id,
+                    round_idx,
+                    event_queue,
+                    accumulated_usage,
+                    task_type,
                 )
 
                 # If fallback also fails, give up
                 if msg is None:
                     return (
-                        f"⚠️ Failed to get a response from the model after {max_retries} attempts. "
-                        f"Fallback model ({fallback_model}) also returned no response."
-                    ), accumulated_usage, llm_trace
+                        (
+                            f"Failed to get a response from the model after {max_retries} attempts. "
+                            f"Fallback model ({fallback_model}) also returned no response."
+                        ),
+                        accumulated_usage,
+                        llm_trace,
+                    )
 
                 # Fallback succeeded — continue processing with this msg
-                # (don't return — fall through to tool_calls processing below)
 
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
@@ -749,16 +853,24 @@ def run_llm_loop(
                 llm_trace["assistant_notes"].append(content.strip()[:320])
 
             error_count = _handle_tool_calls(
-                tool_calls, tools, drive_logs, task_id, stateful_executor,
-                messages, llm_trace, emit_progress
+                tool_calls, tools, drive_logs, task_id, stateful_executor, messages, llm_trace, emit_progress
             )
 
             # --- Budget guard ---
-            # LLM decides when to stop (Bible P0, P3). We only enforce hard budget limit.
             budget_result = _check_budget_limits(
-                budget_remaining_usd, accumulated_usage, round_idx, messages,
-                llm, active_model, active_effort, max_retries, drive_logs,
-                task_id, event_queue, llm_trace, task_type
+                budget_remaining_usd,
+                accumulated_usage,
+                round_idx,
+                messages,
+                llm,
+                active_model,
+                active_effort,
+                max_retries,
+                drive_logs,
+                task_id,
+                event_queue,
+                llm_trace,
+                task_type,
             )
             if budget_result is not None:
                 return budget_result
@@ -774,6 +886,7 @@ def run_llm_loop(
         if drive_root is not None and task_id:
             try:
                 from ouroboros.owner_inject import cleanup_task_mailbox
+
                 cleanup_task_mailbox(drive_root, task_id)
             except Exception:
                 log.debug("Failed to cleanup task mailbox", exc_info=True)
@@ -801,20 +914,22 @@ def _emit_llm_usage_event(
     if not event_queue:
         return
     try:
-        event_queue.put_nowait({
-            "type": "llm_usage",
-            "ts": utc_now_iso(),
-            "task_id": task_id,
-            "model": model,
-            "prompt_tokens": int(usage.get("prompt_tokens") or 0),
-            "completion_tokens": int(usage.get("completion_tokens") or 0),
-            "cached_tokens": int(usage.get("cached_tokens") or 0),
-            "cache_write_tokens": int(usage.get("cache_write_tokens") or 0),
-            "cost": cost,
-            "cost_estimated": not bool(usage.get("cost")),
-            "usage": usage,
-            "category": category,
-        })
+        event_queue.put_nowait(
+            {
+                "type": "llm_usage",
+                "ts": utc_now_iso(),
+                "task_id": task_id,
+                "model": model,
+                "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+                "completion_tokens": int(usage.get("completion_tokens") or 0),
+                "cached_tokens": int(usage.get("cached_tokens") or 0),
+                "cache_write_tokens": int(usage.get("cache_write_tokens") or 0),
+                "cost": cost,
+                "cost_estimated": not bool(usage.get("cost")),
+                "usage": usage,
+                "category": category,
+            }
+        )
     except Exception:
         log.debug("Failed to put llm_usage event to queue", exc_info=True)
 
@@ -871,21 +986,28 @@ def _call_llm_with_retry(
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls and (not content or not content.strip()):
-                log.warning("LLM returned empty response (no content, no tool_calls), attempt %d/%d", attempt + 1, max_retries)
+                log.warning(
+                    "LLM returned empty response (no content, no tool_calls), attempt %d/%d", attempt + 1, max_retries
+                )
 
                 # Log raw empty response for debugging
-                append_jsonl(drive_logs / "events.jsonl", {
-                    "ts": utc_now_iso(), "type": "llm_empty_response",
-                    "task_id": task_id,
-                    "round": round_idx, "attempt": attempt + 1,
-                    "model": model,
-                    "raw_content": repr(content)[:500] if content else None,
-                    "raw_tool_calls": repr(tool_calls)[:500] if tool_calls else None,
-                    "finish_reason": msg.get("finish_reason") or msg.get("stop_reason"),
-                })
+                append_jsonl(
+                    drive_logs / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "llm_empty_response",
+                        "task_id": task_id,
+                        "round": round_idx,
+                        "attempt": attempt + 1,
+                        "model": model,
+                        "raw_content": repr(content)[:500] if content else None,
+                        "raw_tool_calls": repr(tool_calls)[:500] if tool_calls else None,
+                        "finish_reason": msg.get("finish_reason") or msg.get("stop_reason"),
+                    },
+                )
 
                 if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                     continue
                 # Last attempt — return None to trigger "could not get response"
                 return None, cost
@@ -895,9 +1017,11 @@ def _call_llm_with_retry(
 
             # Log per-round metrics
             _round_event = {
-                "ts": utc_now_iso(), "type": "llm_round",
+                "ts": utc_now_iso(),
+                "type": "llm_round",
                 "task_id": task_id,
-                "round": round_idx, "model": model,
+                "round": round_idx,
+                "model": model,
                 "reasoning_effort": effort,
                 "prompt_tokens": int(usage.get("prompt_tokens") or 0),
                 "completion_tokens": int(usage.get("completion_tokens") or 0),
@@ -910,14 +1034,20 @@ def _call_llm_with_retry(
 
         except Exception as e:
             last_error = e
-            append_jsonl(drive_logs / "events.jsonl", {
-                "ts": utc_now_iso(), "type": "llm_api_error",
-                "task_id": task_id,
-                "round": round_idx, "attempt": attempt + 1,
-                "model": model, "error": repr(e),
-            })
+            append_jsonl(
+                drive_logs / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "llm_api_error",
+                    "task_id": task_id,
+                    "round": round_idx,
+                    "attempt": attempt + 1,
+                    "model": model,
+                    "error": repr(e),
+                },
+            )
             if attempt < max_retries - 1:
-                time.sleep(min(2 ** attempt * 2, 30))
+                time.sleep(min(2**attempt * 2, 30))
 
     return None, 0.0
 
@@ -953,19 +1083,17 @@ def _process_tool_results(
         truncated_result = _truncate_tool_result(exec_result["result"])
 
         # Append tool result message
-        messages.append({
-            "role": "tool",
-            "tool_call_id": exec_result["tool_call_id"],
-            "content": truncated_result
-        })
+        messages.append({"role": "tool", "tool_call_id": exec_result["tool_call_id"], "content": truncated_result})
 
         # Append to LLM trace
-        llm_trace["tool_calls"].append({
-            "tool": fn_name,
-            "args": _safe_args(exec_result["args_for_log"]),
-            "result": truncate_for_log(exec_result["result"], 700),
-            "is_error": is_error,
-        })
+        llm_trace["tool_calls"].append(
+            {
+                "tool": fn_name,
+                "args": _safe_args(exec_result["args_for_log"]),
+                "result": truncate_for_log(exec_result["result"], 700),
+                "is_error": is_error,
+            }
+        )
 
     return error_count
 

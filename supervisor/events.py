@@ -272,23 +272,7 @@ def _handle_schedule_task(evt: Dict[str, Any], ctx: Any) -> None:
     task_context = str(evt.get("context") or "").strip()
     depth = int(evt.get("depth", 0))
 
-    if depth > 3:
-        log.warning("Rejected task due to depth limit: depth=%d, desc=%s", depth, desc[:100])
-        if owner_chat_id:
-            ctx.send_with_budget(int(owner_chat_id), f"⚠️ Task rejected: subtask depth limit (3) exceeded")
-        return
-
     if owner_chat_id and desc:
-        from supervisor.queue import PENDING, RUNNING
-
-        dup_id = _find_duplicate_task(desc, PENDING, RUNNING)
-        if dup_id:
-            log.info("Rejected duplicate task: new='%s' duplicates='%s'", desc[:100], dup_id)
-            ctx.send_with_budget(
-                int(owner_chat_id), f"⚠️ Task rejected: semantically similar to already active task {dup_id}"
-            )
-            return
-
         tid = evt.get("task_id") or uuid.uuid4().hex[:8]
         text = desc
         if task_context:

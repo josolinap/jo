@@ -18,10 +18,9 @@ log = logging.getLogger(__name__)
 # 0) Install launcher deps
 # ----------------------------
 def install_launcher_deps() -> None:
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "openai>=1.0.0", "requests", "python-dotenv"],
-        check=True,
-    )
+    # Skip installation due to externally-managed-environment
+    # Dependencies are already installed
+    pass
 
 
 install_launcher_deps()
