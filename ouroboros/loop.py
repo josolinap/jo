@@ -788,7 +788,7 @@ def run_llm_loop(
                 # Configurable fallback priority list
                 fallback_list_raw = os.environ.get(
                     "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "google/gemini-2.5-pro-preview,openai/o3,anthropic/claude-sonnet-4.6",
+                    "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free",
                 )
                 fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
                 fallback_model = None
