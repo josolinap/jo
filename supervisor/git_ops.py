@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import pathlib
+
+log = logging.getLogger(__name__)
 
 REPO_DIR = Path(os.environ.get("OUROBOROS_REPO_DIR", "/content/ouroboros_repo"))
 
@@ -75,6 +78,86 @@ def sync_runtime_dependencies() -> None:
 
 def safe_restart() -> None:
     pass
+
+
+def get_current_sha(repo_dir: Optional[pathlib.Path] = None) -> str:
+    """Return the actual git HEAD SHA from disk — no Drive state involved.
+
+    Returns empty string on any error so callers can treat it as "unknown".
+    """
+    cwd = str(repo_dir or REPO_DIR)
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        log.debug("get_current_sha failed: %s", result.stderr.strip())
+        return ""
+    except Exception as e:
+        log.debug("get_current_sha exception: %s", e)
+        return ""
+
+
+def safe_pull(branch: str = "dev", repo_dir: Optional[pathlib.Path] = None) -> bool:
+    """Pull latest changes from remote with rebase; hard-reset on conflict.
+
+    Strategy:
+      1. Try ``git pull --rebase origin <branch>``.
+      2. If rebase fails (merge conflict), abort and hard-reset to the remote
+         branch.  Agent code is generated, so hard-reset is almost always
+         the correct conflict-resolution policy.
+
+    Returns True if the repo is clean/updated after the call, False on
+    unrecoverable errors.
+    """
+    cwd = str(repo_dir or REPO_DIR)
+    try:
+        result = subprocess.run(
+            ["git", "pull", "--rebase", "origin", branch],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode == 0:
+            log.info("safe_pull: rebase succeeded for branch '%s'", branch)
+            return True
+
+        # Rebase failed — abort and fall through to hard reset
+        log.warning(
+            "safe_pull: rebase failed (branch '%s'), aborting.  stderr=%s",
+            branch, result.stderr.strip()[:400],
+        )
+        subprocess.run(
+            ["git", "rebase", "--abort"],
+            cwd=cwd, capture_output=True, timeout=30,
+        )
+    except Exception as e:
+        log.warning("safe_pull: pull/rebase raised exception: %s", e)
+
+    # Hard-reset to remote — last resort
+    try:
+        subprocess.run(
+            ["git", "fetch", "origin"],
+            cwd=cwd, capture_output=True, timeout=60, check=True,
+        )
+        subprocess.run(
+            ["git", "reset", "--hard", f"origin/{branch}"],
+            cwd=cwd, capture_output=True, timeout=30, check=True,
+        )
+        log.warning(
+            "safe_pull: hard-reset to origin/%s — local changes lost (regenerated code).",
+            branch,
+        )
+        return True
+    except Exception as e:
+        log.error("safe_pull: hard-reset also failed: %s", e)
+        return False
 
 
 # Import GitHub API functions from separate module
