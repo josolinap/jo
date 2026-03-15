@@ -1,15 +1,16 @@
-# AGENTS.md - Ouroboros Development Guide
+# AGENTS.md - Development Guide for AI Agents
 
-> Guidelines for AI agents working on the Ouroboros codebase.
+> Guidelines for external AI agents (Cursor, Copilot, etc.) working on this codebase.
+> This file is for AI assistants, NOT for Jo itself.
 
 ---
 
 ## Project Overview
 
-Ouroboros is a self-modifying AI agent that writes and evolves its own code. Python 3.10+ project with autonomous operation and code quality focus.
+Jo is a self-modifying AI agent that writes and evolves its own code. Python 3.10+ project with autonomous operation and code quality focus.
 
 - **Repository**: `ouroboros/` (agent core), `supervisor/` (process management), `tools/` (plugin registry)
-- **Python**: 3.10+ | **Package**: `ouroboros` | **Config**: `pyproject.toml`
+- **Python**: 3.10+ | **Package**: `jo` | **Config**: `pyproject.toml`
 
 ---
 
@@ -43,8 +44,8 @@ import logging
 import pathlib
 from typing import Any, Dict, List, Optional, Tuple
 import requests
-from ouroboros.llm import LLMClient
-from ouroboros.tools.registry import ToolRegistry
+from jo.llm import LLMClient
+from jo.tools.registry import ToolRegistry
 ```
 
 ### Line Length
@@ -112,7 +113,7 @@ import pytest
 
 @pytest.fixture
 def registry():
-    from ouroboros.tools.registry import ToolRegistry
+    from jo.tools.registry import ToolRegistry
     tmp = pathlib.Path(tempfile.mkdtemp())
     return ToolRegistry(repo_dir=tmp, drive_root=tmp)
 
