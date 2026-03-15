@@ -190,3 +190,31 @@ git pull --rebase && git push
 
 - Resolve conflicts in YOUR files only
 - If conflict is in a file you didn't modify, abort and ask
+
+---
+
+## Jo-Specific Git Rules
+
+### Mandatory Pre-Commit Checks
+
+- Run `git rev-parse HEAD` → record current SHA in scratchpad before commit
+- After `git add`, always run `git status --porcelain` and verify only your files appear
+- If you see files you didn't modify → STOP, investigate, don't commit
+
+### Concurrency Awareness
+
+- Check `supervisor/state.json` for active workers before starting intensive tasks
+- If >3 workers already active → consider whether your task can wait or needs `schedule_task`
+- Record worker count in scratchpad when launching subtasks
+
+### Identity & Memory Lock Discipline
+
+- `memory/identity.md` and `memory/scratchpad.md` use file locking
+- Always use the `update_identity` and `update_scratchpad` tools - never edit directly
+- If lock acquisition fails → wait 1s and retry up to 3 times, then abort with error
+
+### Evolution Cycle Discipline
+
+- Every evolution cycle must: code change → version bump → commit → push → restart
+- If commit fails → rollback to stable, analyze, retry with clean state
+- NEVER push to `main` - only `dev` branch

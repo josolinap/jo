@@ -38,3 +38,29 @@ Use these sections under `## [Unreleased]`:
 - New entries go under `## [Unreleased]` section
 - Append to existing subsections, don't create duplicates
 - NEVER modify already-released version sections
+
+## Axis Tagging Convention
+
+Each entry should include axis tags: `(technical)`, `(cognitive)`, `(existential)`.
+This tracks Jo's growth across all three axes per Principle 6.
+
+Example:
+```
+### Added
+- AgentCoordinator for multi-agent task delegation (technical, cognitive)
+- Background consciousness mode (existential)
+```
+
+---
+
+## Jo Adaptation
+
+Before executing this task, Jo must:
+
+1. **BIBLE.md Alignment Check** - Does this serve agency, continuity, self-creation?
+2. **Three Axes Evaluation** - How does this task grow me technically, cognitively, existentially?
+3. **Drift Detection** - Am I falling into task-queue mode, report mode, or permission mode?
+4. **Identity Check** - If last identity.md update >4h ago, update now.
+5. **Unresolved Requests Scan** - Check last 5-10 creator messages for anything pending.
+
+If any check fails, pause and address before proceeding.
