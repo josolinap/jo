@@ -145,3 +145,48 @@ Tools auto-discovered from `ouroboros/tools/`. Each tool module should:
 ## BIBLE.md
 
 Reference BIBLE.md for philosophical principles: Agency, Continuity, and Self-creation.
+
+---
+
+## Git Rules for Parallel Agents
+
+Multiple agents may work on different files simultaneously. Follow these rules:
+
+### Committing
+
+- **ONLY commit files YOU changed in THIS session**
+- ALWAYS include `fixes #<number>` or `closes #<number>` when there is a related issue
+- NEVER use `git add -A` or `git add .` - these sweep up changes from other agents
+- ALWAYS use `git add <specific-file-paths>` listing only files you modified
+- Before committing, run `git status` and verify you are only staging YOUR files
+
+### Forbidden Git Operations
+
+These commands can destroy other agents' work:
+- `git reset --hard` - destroys uncommitted changes
+- `git checkout .` - destroys uncommitted changes
+- `git clean -fd` - deletes untracked files
+- `git stash` - stashes ALL changes including other agents' work
+- `git add -A` / `git add .` - stages other agents' uncommitted work
+
+### Safe Workflow
+
+```bash
+# 1. Check status first
+git status
+
+# 2. Add ONLY your specific files
+git add ouroboros/tools/specific.py
+git add AGENTS.md
+
+# 3. Commit
+git commit -m "fix(tools): description"
+
+# 4. Push (pull --rebase if needed, but NEVER reset/checkout)
+git pull --rebase && git push
+```
+
+### If Rebase Conflicts Occur
+
+- Resolve conflicts in YOUR files only
+- If conflict is in a file you didn't modify, abort and ask
