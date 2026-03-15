@@ -5,6 +5,10 @@ concurrency:
   group: jo-bot
   cancel-in-progress: true
 
+# Opt into Node.js 24 (Node.js 20 deprecated)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   # Trigger on push to dev (Jo's working branch)
   push:
