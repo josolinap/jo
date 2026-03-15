@@ -128,20 +128,130 @@ def _delete_file(ctx: ToolContext, path: str, recursive: bool = False) -> str:
     target = ctx.repo_path(path)
 
     if not target.exists():
-        return f"⚠️ Path does not exist: {path}"
+        return f"Path does not exist: {path}"
 
     try:
         if target.is_dir():
             if recursive:
                 shutil.rmtree(target)
-                return f"✅ Deleted directory: {path}"
+                return f"Deleted directory: {path}"
             else:
-                return f"⚠️ Use recursive=true to delete directory: {path}"
+                return f"Use recursive=true to delete directory: {path}"
         else:
             target.unlink()
-            return f"✅ Deleted file: {path}"
+            return f"Deleted file: {path}"
     except Exception as e:
-        return f"⚠️ Delete failed: {e}"
+        return f"Delete failed: {e}"
+
+
+def _repo_tree(ctx: ToolContext, path: Optional[str] = None, max_depth: int = 3) -> str:
+    """Display directory tree structure."""
+    import os
+
+    base = ctx.repo_path(path) if path else ctx.repo_dir
+    result = [f"{base.relative_to(ctx.repo_dir)}/"]
+
+    def walk_dir(current: pathlib.Path, prefix: str, depth: int):
+        if depth > max_depth:
+            return
+
+        try:
+            entries = sorted(current.iterdir(), key=lambda x: (not x.is_dir(), x.name))
+        except PermissionError:
+            return
+
+        dirs = []
+        files = []
+
+        for entry in entries:
+            if entry.name.startswith("."):
+                continue
+            if entry.is_dir():
+                dirs.append(entry)
+            else:
+                files.append(entry)
+
+        for d in dirs:
+            result.append(f"{prefix}📁 {d.name}/")
+            walk_dir(d, prefix + "  ", depth + 1)
+
+        for f in files[:5]:  # Limit files shown
+            result.append(f"{prefix}📄 {f.name}")
+
+        if len(files) > 5:
+            result.append(f"{prefix}  ... and {len(files) - 5} more files")
+
+    walk_dir(base, "", 0)
+    return "\n".join(result[:50])
+
+
+def _git_graph(ctx: ToolContext, max_commits: int = 20) -> str:
+    """Display git history as ASCII graph."""
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--max-count={max_commits}", "--graph", "--oneline", "--all", "--decorate"],
+            cwd=str(ctx.repo_dir),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.stdout if result.stdout else "No git history."
+    except Exception as e:
+        return f"Git error: {e}"
+
+
+def _code_quality(ctx: ToolContext, path: Optional[str] = None) -> str:
+    """Basic code quality metrics without external tools."""
+    import ast
+
+    base = ctx.repo_path(path) if path else ctx.repo_dir
+
+    total_files = 0
+    total_lines = 0
+    total_functions = 0
+    total_classes = 0
+    issues = []
+
+    for py_file in base.rglob("*.py"):
+        if "/.venv/" in str(py_file) or "/venv/" in str(py_file):
+            continue
+
+        try:
+            content = py_file.read_text(encoding="utf-8", errors="ignore")
+            total_files += 1
+            total_lines += len(content.splitlines())
+
+            try:
+                tree = ast.parse(content)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef):
+                        total_functions += 1
+                    elif isinstance(node, ast.ClassDef):
+                        total_classes += 1
+            except SyntaxError:
+                issues.append(f"{py_file.relative_to(base)}: Syntax error")
+
+        except Exception:
+            continue
+
+    return (
+        f"""Code Quality Report for {base.relative_to(ctx.repo_dir)}
+
+Files: {total_files}
+Lines: {total_lines:,}
+Functions: {total_functions}
+Classes: {total_classes}
+
+Functions per file: {total_functions / max(total_files, 1):.1f}
+
+Issues: {len(issues)}
+"""
+        + "\n".join(issues[:5])
+        if issues
+        else "No issues found."
+    )
 
 
 def get_tools() -> List[ToolEntry]:
@@ -250,5 +360,48 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _delete_file,
+        ),
+        ToolEntry(
+            "repo_tree",
+            {
+                "name": "repo_tree",
+                "description": "Display directory tree structure. Useful for understanding project layout.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Directory to display (default: repo root)"},
+                        "max_depth": {"type": "integer", "default": 3, "description": "Maximum depth to display"},
+                    },
+                },
+            },
+            _repo_tree,
+        ),
+        ToolEntry(
+            "git_graph",
+            {
+                "name": "git_graph",
+                "description": "Display git history as ASCII graph. Shows branches, commits, and tags.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "max_commits": {"type": "integer", "default": 20, "description": "Maximum commits to show"},
+                    },
+                },
+            },
+            _git_graph,
+        ),
+        ToolEntry(
+            "code_quality",
+            {
+                "name": "code_quality",
+                "description": "Get basic code quality metrics (files, lines, functions, classes) without external tools.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "Directory to analyze (default: repo root)"},
+                    },
+                },
+            },
+            _code_quality,
         ),
     ]
