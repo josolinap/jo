@@ -1,19 +1,19 @@
-name: Run Ouroboros Bot
+name: Run Jo Bot
 
 on:
   # Trigger manually from the Actions tab
   workflow_dispatch:
-  # Trigger on push to main (so it starts after every code push)
+  # Trigger on push to dev (Jo's working branch)
   push:
     branches:
-      - main
+      - dev
   # Fallback safety net: re-trigger every 6 hours in case self-restart fails
   schedule:
     - cron: "0 */6 * * *"
 
 jobs:
   run-bot:
-    name: Ouroboros Telegram Bot
+    name: Jo Telegram Bot
     runs-on: ubuntu-latest
     timeout-minutes: 360  # GitHub's hard 6-hour cap — never exceed this
 
@@ -58,7 +58,7 @@ jobs:
       # 5. Run the bot for up to 5.5 hours (330 minutes)
       #    After that, the self-restart step fires and kicks off a fresh run.
       # -----------------------------------------------------------------------
-      - name: Run Ouroboros bot (max 5.5 hours)
+      - name: Run Jo bot (max 5.5 hours)
         env:
           # --- Required secrets ---
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -78,7 +78,7 @@ jobs:
           # Skip git-sync: the runner already has the code checked out
           OUROBOROS_NO_GIT_SYNC: "1"
           # Keep logs/state in a temp dir (ephemeral — resets each run)
-          DATA_ROOT: /tmp/ouroboros_data
+          DATA_ROOT: /tmp/jo_data
           REPO_DIR: ${{ github.workspace }}
 
           # Playwright in headless server environment
