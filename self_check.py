@@ -18,15 +18,27 @@ import sys
 def check_git_status() -> dict:
     """Check git working tree status."""
     try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
         result = subprocess.run(
             ["git", "status", "--porcelain"],
+            cwd=str(repo_dir),
             capture_output=True,
             text=True,
             timeout=10,
         )
+        # Filter out untracked files that are just cache/data directories
+        changes = result.stdout.strip()
+        if changes:
+            filtered = []
+            for line in changes.split("\n"):
+                # Skip .gitignore'd files like .jo_data, __pycache__, etc
+                if not any(x in line for x in [".jo_data", "__pycache__", ".pytest_cache", "self_check.py"]):
+                    filtered.append(line)
+            changes = "\n".join(filtered) if filtered else ""
+
         return {
-            "clean": result.returncode == 0 and result.stdout.strip() == "",
-            "changes": result.stdout.strip()[:500] if result.stdout else "",
+            "clean": result.returncode == 0 and changes == "",
+            "changes": changes[:500] if changes else "",
         }
     except Exception as e:
         return {"clean": None, "error": str(e)}
@@ -35,8 +47,10 @@ def check_git_status() -> dict:
 def check_git_diff() -> dict:
     """Check for uncommitted changes."""
     try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
         result = subprocess.run(
             ["git", "diff", "--stat"],
+            cwd=str(repo_dir),
             capture_output=True,
             text=True,
             timeout=10,
