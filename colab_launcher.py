@@ -245,6 +245,22 @@ telegram_init(
     tg_client=TG,
 )
 
+# Auto-register owner from environment variable if not already set
+OWNER_CHAT_ID_ENV = os.environ.get("TELEGRAM_OWNER_CHAT_ID")
+if OWNER_CHAT_ID_ENV:
+    try:
+        st = load_state()
+        if st.get("owner_id") is None:
+            owner_chat_id = int(OWNER_CHAT_ID_ENV)
+            st["owner_id"] = owner_chat_id
+            st["owner_chat_id"] = owner_chat_id
+            save_state(st)
+            print(f"[auto-register] Owner auto-registered from TELEGRAM_OWNER_CHAT_ID: {owner_chat_id}")
+            # Send startup confirmation
+            TG.send_message(owner_chat_id, "✅ Jo online and ready. What would you like me to do?")
+    except Exception as e:
+        print(f"[auto-register] Failed to auto-register owner: {e}")
+
 from supervisor.git_ops import (
     init as git_ops_init,
     ensure_repo_present,
@@ -605,7 +621,9 @@ def main() -> None:
                             image_data = (b64, mime, caption)
 
             st = load_state()
-            if st.get("owner_id") is None:
+            is_first_message = st.get("owner_id") is None
+
+            if is_first_message:
                 st["owner_id"] = user_id
                 st["owner_chat_id"] = chat_id
                 st["last_owner_message_at"] = now_iso
@@ -615,6 +633,11 @@ def main() -> None:
                 continue
 
             if user_id != int(st.get("owner_id")):
+                continue
+
+            # Owner already registered - check if this is a startup message
+            if text.strip() == "🔄 Jo restarted":
+                send_with_budget(chat_id, "✅ Jo online and ready. What would you like me to do?")
                 continue
 
             log_chat("in", chat_id, user_id, text)
