@@ -317,7 +317,12 @@ def get_tools() -> List[ToolEntry]:
             "simulate_outcome",
             {
                 "name": "simulate_outcome",
-                "description": "Simulate a scenario and predict outcomes before making changes. Helps model potential consequences.",
+                "description": (
+                    "Simulate a scenario and predict outcomes BEFORE making changes. "
+                    "Runs SYNCHRONOUSLY - returns results immediately. "
+                    "Does NOT create a background task - do NOT use wait_for_task or get_task_result on this. "
+                    "Use sim_result later to record actual outcomes."
+                ),
                 "parameters": {
                     "type": "object",
                     "properties": {

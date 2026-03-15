@@ -36,7 +36,12 @@ def _list_dir(root: pathlib.Path, rel: str, max_entries: int = 500) -> List[str]
 
 
 def _repo_read(ctx: ToolContext, path: str) -> str:
-    return read_text(ctx.repo_path(path))
+    try:
+        return read_text(ctx.repo_path(path))
+    except FileNotFoundError:
+        return f"⚠️ File not found: {path}"
+    except Exception as e:
+        return f"⚠️ Error reading {path}: {e}"
 
 
 def _repo_list(ctx: ToolContext, dir: str = ".", max_entries: int = 500) -> str:
@@ -44,7 +49,12 @@ def _repo_list(ctx: ToolContext, dir: str = ".", max_entries: int = 500) -> str:
 
 
 def _drive_read(ctx: ToolContext, path: str) -> str:
-    return read_text(ctx.drive_path(path))
+    try:
+        return read_text(ctx.drive_path(path))
+    except FileNotFoundError:
+        return f"⚠️ File not found: {path}"
+    except Exception as e:
+        return f"⚠️ Error reading {path}: {e}"
 
 
 def _drive_list(ctx: ToolContext, dir: str = ".", max_entries: int = 500) -> str:
