@@ -101,8 +101,10 @@ def check_requirements() -> dict:
 
 def check_data_dir() -> dict:
     """Check Jo's data directory."""
+    import os
+
     home = pathlib.Path.home()
-    data_root = home / ".ouroboros"
+    data_root = pathlib.Path(os.environ.get("DATA_ROOT", home / ".jo_data"))
 
     if not data_root.exists():
         return {"exists": False}

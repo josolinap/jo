@@ -405,6 +405,12 @@ class BackgroundConsciousness:
             # GitHub Issues
             "list_github_issues",
             "get_github_issue",
+            # Self-monitoring (for autonomous mode)
+            "git_status",
+            "git_diff",
+            "code_quality",
+            # Shell for running self_check.py
+            "run_shell",
         }
     )
 
