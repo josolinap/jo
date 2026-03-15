@@ -14,9 +14,14 @@ on:
   push:
     branches:
       - dev
-  # Fallback safety net: re-trigger every 6 hours in case self-restart fails
+  # Run every 2 hours as safety net (replaces 6h for faster recovery)
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */2 * * *"
+  # Manual trigger from GitHub UI
+  workflow_dispatch: {}
+  # API trigger (can be called from external services like Telegram)
+  repository_dispatch:
+    types: [restart]
 
 jobs:
   run-bot:
@@ -111,17 +116,18 @@ jobs:
       # -----------------------------------------------------------------------
       # 6. Self-restart: trigger a fresh workflow run so the bot stays alive.
       #    Uses PAT_TOKEN (needs 'workflow' scope) stored as a secret.
-      #    If PAT_TOKEN is not set, this step is skipped gracefully.
+      #    If PAT_TOKEN is not set, the scheduled cron will restart within 2 hours.
       # -----------------------------------------------------------------------
       - name: Self-restart — trigger next run
         if: always()
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           REPO: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
+          # Use dev branch for all triggers (push, schedule, manual, API)
+          BRANCH: dev
         run: |
           if [ -z "$PAT_TOKEN" ]; then
-            echo "⚠️ PAT_TOKEN secret not set — skipping self-restart. The scheduled cron will restart the bot within 6 hours."
+            echo "⚠️ PAT_TOKEN secret not set — skipping self-restart. The scheduled cron will restart the bot within 2 hours."
             exit 0
           fi
 
