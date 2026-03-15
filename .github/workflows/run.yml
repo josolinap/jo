@@ -1,8 +1,11 @@
 name: Run Jo Bot
 
+# Prevent multiple instances - cancel in-progress runs
+concurrency:
+  group: jo-bot
+  cancel-in-progress: true
+
 on:
-  # Trigger manually from the Actions tab
-  workflow_dispatch:
   # Trigger on push to dev (Jo's working branch)
   push:
     branches:
