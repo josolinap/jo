@@ -100,6 +100,8 @@ jobs:
           # --- Behavior flags ---
           # Skip git-sync: the runner already has the code checked out
           OUROBOROS_NO_GIT_SYNC: "1"
+          # Disable pre-push tests in CI (pytest runs separately)
+          OUROBOROS_PRE_PUSH_TESTS: "0"
           # Persist data across runs via GitHub Actions cache
           DATA_ROOT: ~/.jo_data
           REPO_DIR: ${{ github.workspace }}
