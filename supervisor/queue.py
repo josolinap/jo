@@ -473,7 +473,7 @@ def enqueue_evolution_task_if_needed() -> None:
 # Health Check Scheduler
 # -----------------------------------------------------------------------------
 
-HEALTH_CHECK_INTERVAL_SEC = 3600  # Run health check every hour
+HEALTH_CHECK_INTERVAL_SEC = 7200  # Run health check every 2 hours (not too frequent)
 
 
 def enqueue_health_check_if_needed() -> None:
@@ -508,7 +508,7 @@ def enqueue_health_check_if_needed() -> None:
             "id": tid,
             "type": "health_check",
             "chat_id": int(owner_chat_id),
-            "text": "Run autonomous health check: execute python self_check.py and report results. If issues found, fix them.",
+            "text": "Run health check: execute 'python self_check.py' and report results. Only run this task - do NOT create additional subtasks.",
         }
     )
     st["last_health_check_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
