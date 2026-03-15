@@ -256,7 +256,12 @@ def get_tools() -> List[ToolEntry]:
             "schedule_task",
             {
                 "name": "schedule_task",
-                "description": "Schedule a background task. Returns task_id for later retrieval. For complex tasks, decompose into focused subtasks with clear scope.",
+                "description": (
+                    "Schedule a BACKGROUND TASK. Returns task_id for later retrieval. "
+                    "Use for: complex multi-step tasks, code changes, research that takes time. "
+                    "DO NOT use for: tools that return immediate results (like simulate_outcome, repo_read, glob_files, db_query, etc). "
+                    "Call those tools DIRECTLY - they run synchronously."
+                ),
                 "parameters": {
                     "type": "object",
                     "properties": {
