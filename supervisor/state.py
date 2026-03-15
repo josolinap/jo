@@ -1,7 +1,7 @@
 """
 Supervisor — State management.
 
-Persistent state on Google Drive: load, save, atomic writes, file locks.
+Persistent state on local filesystem: load, save, atomic writes, file locks.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level config (set via init())
 # ---------------------------------------------------------------------------
-DRIVE_ROOT: pathlib.Path = pathlib.Path("/content/drive/MyDrive/Ouroboros")
+DRIVE_ROOT: pathlib.Path = pathlib.Path.home() / ".ouroboros"
 STATE_PATH: pathlib.Path = DRIVE_ROOT / "state" / "state.json"
 STATE_LAST_GOOD_PATH: pathlib.Path = DRIVE_ROOT / "state" / "state.last_good.json"
 STATE_LOCK_PATH: pathlib.Path = DRIVE_ROOT / "locks" / "state.lock"
@@ -41,6 +41,7 @@ def init(drive_root: pathlib.Path, total_budget_limit: float = 0.0) -> None:
 # ---------------------------------------------------------------------------
 # Atomic file operations
 # ---------------------------------------------------------------------------
+
 
 def atomic_write_text(path: pathlib.Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,15 +71,20 @@ def json_load_file(path: pathlib.Path) -> Optional[Dict[str, Any]]:
 # File locks
 # ---------------------------------------------------------------------------
 
-def acquire_file_lock(lock_path: pathlib.Path, timeout_sec: float = 4.0,
-                      stale_sec: float = 90.0) -> Optional[int]:
+
+def acquire_file_lock(lock_path: pathlib.Path, timeout_sec: float = 4.0, stale_sec: float = 90.0) -> Optional[int]:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.time()
     while (time.time() - started) < timeout_sec:
         try:
             fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
             try:
-                os.write(fd, f"pid={os.getpid()} ts={datetime.datetime.now(datetime.timezone.utc).isoformat()}\n".encode("utf-8"))
+                os.write(
+                    fd,
+                    f"pid={os.getpid()} ts={datetime.datetime.now(datetime.timezone.utc).isoformat()}\n".encode(
+                        "utf-8"
+                    ),
+                )
             except Exception:
                 log.debug(f"Failed to write lock metadata to {lock_path}", exc_info=True)
                 pass
@@ -123,6 +129,7 @@ from ouroboros.utils import append_jsonl  # noqa: F401
 # State schema
 # ---------------------------------------------------------------------------
 
+
 def ensure_state_defaults(st: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("created_at", datetime.datetime.now(datetime.timezone.utc).isoformat())
     st.setdefault("owner_id", None)
@@ -146,8 +153,15 @@ def ensure_state_defaults(st: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("budget_drift_pct", None)
     st.setdefault("budget_drift_alert", False)
     st.setdefault("evolution_consecutive_failures", 0)
-    for legacy_key in ("approvals", "idle_cursor", "idle_stats", "last_idle_task_at",
-                        "last_auto_review_at", "last_review_task_id", "session_daily_snapshot"):
+    for legacy_key in (
+        "approvals",
+        "idle_cursor",
+        "idle_stats",
+        "last_idle_task_at",
+        "last_auto_review_at",
+        "last_review_task_id",
+        "session_daily_snapshot",
+    ):
         st.pop(legacy_key, None)
     return st
 
@@ -160,6 +174,7 @@ def default_state_dict() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Load / Save
 # ---------------------------------------------------------------------------
+
 
 def _load_state_unlocked() -> Dict[str, Any]:
     """Load state without acquiring lock. Caller must hold STATE_LOCK."""
@@ -205,6 +220,7 @@ def load_state() -> Dict[str, Any]:
     # avoid blocking other writers while we shell out to git).
     try:
         from supervisor import git_ops
+
         actual_sha = git_ops.get_current_sha()
         if actual_sha and actual_sha != st.get("current_sha"):
             log.info(
@@ -287,7 +303,7 @@ def budget_remaining(st: Dict[str, Any]) -> float:
     spent = float(st.get("spent_usd") or 0.0)
     total = float(TOTAL_BUDGET_LIMIT or 0.0)
     if total <= 0:
-        return float('inf')  # No limit set
+        return float("inf")  # No limit set
     return max(0.0, total - spent)
 
 
@@ -299,6 +315,7 @@ def check_openrouter_ground_truth() -> Optional[Dict[str, float]]:
     """
     try:
         import urllib.request
+
         api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             return None
@@ -337,6 +354,7 @@ def update_budget_from_usage(usage: Dict[str, Any]) -> None:
 
     Every 50 calls, fetches OpenRouter ground truth for comparison.
     """
+
     def _to_float(v: Any, default: float = 0.0) -> float:
         try:
             return float(v)
@@ -362,12 +380,15 @@ def update_budget_from_usage(usage: Dict[str, Any]) -> None:
         rounds = _to_int(usage.get("rounds") if isinstance(usage, dict) else 0, default=1)
         st["spent_calls"] = int(st.get("spent_calls") or 0) + rounds
         st["spent_tokens_prompt"] = _to_int(st.get("spent_tokens_prompt") or 0) + _to_int(
-            usage.get("prompt_tokens") if isinstance(usage, dict) else 0)
+            usage.get("prompt_tokens") if isinstance(usage, dict) else 0
+        )
         st["spent_tokens_completion"] = _to_int(st.get("spent_tokens_completion") or 0) + _to_int(
-            usage.get("completion_tokens") if isinstance(usage, dict) else 0)
+            usage.get("completion_tokens") if isinstance(usage, dict) else 0
+        )
         st["spent_tokens_cached"] = _to_int(st.get("spent_tokens_cached") or 0) + _to_int(
-            usage.get("cached_tokens") if isinstance(usage, dict) else 0)
-        should_check_ground_truth = (st["spent_calls"] % 50 == 0)
+            usage.get("cached_tokens") if isinstance(usage, dict) else 0
+        )
+        should_check_ground_truth = st["spent_calls"] % 50 == 0
         _save_state_unlocked(st)
     finally:
         release_file_lock(STATE_LOCK_PATH, lock_fd)
@@ -409,7 +430,7 @@ def update_budget_from_usage(usage: Dict[str, Any]) -> None:
                                     "abs_diff": round(abs_diff, 4),
                                     "spent_calls": st["spent_calls"],
                                     "note": "High drift expected if OR key is shared or tracking had early bugs",
-                                }
+                                },
                             )
                         else:
                             st["budget_drift_alert"] = False
@@ -425,6 +446,7 @@ def update_budget_from_usage(usage: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 # Budget breakdown by category
 # ---------------------------------------------------------------------------
+
 
 def budget_breakdown(st: Dict[str, Any]) -> Dict[str, float]:
     """
@@ -513,7 +535,13 @@ def model_breakdown(st: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
                     cached_tokens = int(event.get("cached_tokens", 0) or 0)
 
                     if model not in breakdown:
-                        breakdown[model] = {"cost": 0.0, "calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "cached_tokens": 0}
+                        breakdown[model] = {
+                            "cost": 0.0,
+                            "calls": 0,
+                            "prompt_tokens": 0,
+                            "completion_tokens": 0,
+                            "cached_tokens": 0,
+                        }
 
                     breakdown[model]["cost"] += cost
                     breakdown[model]["calls"] += 1
@@ -576,8 +604,14 @@ def per_task_cost_summary(max_tasks: int = 10, tail_bytes: int = 512_000) -> Lis
 # Status text (moved from workers.py)
 # ---------------------------------------------------------------------------
 
-def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: Dict[str, Dict[str, Any]],
-                soft_timeout_sec: int, hard_timeout_sec: int) -> str:
+
+def status_text(
+    workers_dict: Dict[int, Any],
+    pending_list: list,
+    running_dict: Dict[str, Dict[str, Any]],
+    soft_timeout_sec: int,
+    hard_timeout_sec: int,
+) -> str:
     """Build status text from worker and queue state."""
     st = load_state()
     now = time.time()
@@ -585,20 +619,22 @@ def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: 
     lines.append(f"owner_id: {st.get('owner_id')}")
     lines.append(f"session_id: {st.get('session_id')}")
     lines.append(f"version: {st.get('current_branch')}@{(st.get('current_sha') or '')[:8]}")
-    busy_count = sum(1 for w in workers_dict.values() if getattr(w, 'busy_task_id', None) is not None)
+    busy_count = sum(1 for w in workers_dict.values() if getattr(w, "busy_task_id", None) is not None)
     lines.append(f"workers: {len(workers_dict)} (busy: {busy_count})")
     lines.append(f"pending: {len(pending_list)}")
     lines.append(f"running: {len(running_dict)}")
     if pending_list:
         preview = []
         for t in pending_list[:10]:
-            preview.append(
-                f"{t.get('id')}:{t.get('type')}:pr{t.get('priority')}:a{int(t.get('_attempt') or 1)}")
+            preview.append(f"{t.get('id')}:{t.get('type')}:pr{t.get('priority')}:a{int(t.get('_attempt') or 1)}")
         lines.append("pending_queue: " + ", ".join(preview))
     if running_dict:
         lines.append("running_ids: " + ", ".join(list(running_dict.keys())[:10]))
-    busy = [f"{getattr(w, 'wid', '?')}:{getattr(w, 'busy_task_id', '?')}"
-            for w in workers_dict.values() if getattr(w, 'busy_task_id', None)]
+    busy = [
+        f"{getattr(w, 'wid', '?')}:{getattr(w, 'busy_task_id', '?')}"
+        for w in workers_dict.values()
+        if getattr(w, "busy_task_id", None)
+    ]
     if busy:
         lines.append("busy: " + ", ".join(busy))
     if running_dict:
@@ -611,7 +647,8 @@ def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: 
             hb_lag_sec = int(max(0.0, now - hb)) if hb > 0 else -1
             details.append(
                 f"{task_id}:type={task.get('type')} pr={task.get('priority')} "
-                f"attempt={meta.get('attempt')} runtime={runtime_sec}s hb_lag={hb_lag_sec}s")
+                f"attempt={meta.get('attempt')} runtime={runtime_sec}s hb_lag={hb_lag_sec}s"
+            )
         if details:
             lines.append("running_details:")
             lines.extend([f"  - {d}" for d in details])
@@ -627,7 +664,9 @@ def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: 
     else:
         lines.append(f"spent_usd: ${spent:.2f}")
     lines.append(f"spent_calls: {st.get('spent_calls')}")
-    lines.append(f"prompt_tokens: {st.get('spent_tokens_prompt')}, completion_tokens: {st.get('spent_tokens_completion')}, cached_tokens: {st.get('spent_tokens_cached')}")
+    lines.append(
+        f"prompt_tokens: {st.get('spent_tokens_prompt')}, completion_tokens: {st.get('spent_tokens_completion')}, cached_tokens: {st.get('spent_tokens_cached')}"
+    )
 
     # Add budget breakdown by category
     breakdown = budget_breakdown(st)
@@ -651,8 +690,7 @@ def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: 
 
             drift_icon = " ⚠️" if st.get("budget_drift_alert") else ""
             lines.append(
-                f"budget_drift: {drift_pct:.1f}%{drift_icon} "
-                f"(tracked: ${our_delta:.2f} vs OpenRouter: ${or_delta:.2f})"
+                f"budget_drift: {drift_pct:.1f}%{drift_icon} (tracked: ${our_delta:.2f} vs OpenRouter: ${or_delta:.2f})"
             )
 
     # Model breakdown
@@ -671,7 +709,8 @@ def status_text(workers_dict: Dict[int, Any], pending_list: list, running_dict: 
     lines.append(
         "evolution: "
         + f"enabled={int(bool(st.get('evolution_mode_enabled')))}, "
-        + f"cycle={int(st.get('evolution_cycle') or 0)}")
+        + f"cycle={int(st.get('evolution_cycle') or 0)}"
+    )
     lines.append(f"last_owner_message_at: {st.get('last_owner_message_at') or '-'}")
     lines.append(f"timeouts: soft={soft_timeout_sec}s, hard={hard_timeout_sec}s")
     return "\n".join(lines)

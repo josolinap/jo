@@ -16,7 +16,7 @@ def _codebase_health(ctx: ToolContext) -> str:
         from ouroboros.review import collect_sections, compute_complexity_metrics
 
         repo_dir = pathlib.Path(ctx.repo_dir)
-        drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", "/content/drive/MyDrive/Ouroboros"))
+        drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", pathlib.Path.home() / ".ouroboros"))
 
         sections, stats = collect_sections(repo_dir, drive_root)
         metrics = compute_complexity_metrics(sections)
@@ -71,9 +71,13 @@ def _codebase_health(ctx: ToolContext) -> str:
 
 def get_tools():
     return [
-        ToolEntry("codebase_health", {
-            "name": "codebase_health",
-            "description": "Get codebase complexity metrics: file sizes, longest functions, modules exceeding limits. Useful for self-assessment per Bible Principle 5 (Minimalism).",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        }, _codebase_health),
+        ToolEntry(
+            "codebase_health",
+            {
+                "name": "codebase_health",
+                "description": "Get codebase complexity metrics: file sizes, longest functions, modules exceeding limits. Useful for self-assessment per Bible Principle 5 (Minimalism).",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _codebase_health,
+        ),
     ]

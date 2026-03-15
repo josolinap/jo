@@ -16,9 +16,15 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 from supervisor.state import (
-    load_state, save_state, append_jsonl, atomic_write_text,
-    QUEUE_SNAPSHOT_PATH, budget_pct, TOTAL_BUDGET_LIMIT,
-    budget_remaining, EVOLUTION_BUDGET_RESERVE,
+    load_state,
+    save_state,
+    append_jsonl,
+    atomic_write_text,
+    QUEUE_SNAPSHOT_PATH,
+    budget_pct,
+    TOTAL_BUDGET_LIMIT,
+    budget_remaining,
+    EVOLUTION_BUDGET_RESERVE,
 )
 from supervisor.telegram import send_with_budget
 
@@ -28,7 +34,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level config (set via init())
 # ---------------------------------------------------------------------------
-DRIVE_ROOT: pathlib.Path = pathlib.Path("/content/drive/MyDrive/Ouroboros")
+DRIVE_ROOT: pathlib.Path = pathlib.Path.home() / ".ouroboros"
 SOFT_TIMEOUT_SEC: int = 600
 HARD_TIMEOUT_SEC: int = 1800
 HEARTBEAT_STALE_SEC: int = 120
@@ -55,8 +61,9 @@ QUEUE_SEQ_COUNTER_REF: Dict[str, int] = {"value": 0}
 _queue_lock = threading.Lock()
 
 
-def init_queue_refs(pending: List[Dict[str, Any]], running: Dict[str, Dict[str, Any]],
-                    seq_counter_ref: Dict[str, int]) -> None:
+def init_queue_refs(
+    pending: List[Dict[str, Any]], running: Dict[str, Dict[str, Any]], seq_counter_ref: Dict[str, int]
+) -> None:
     """Called by workers.py to provide references to queue data structures."""
     global PENDING, RUNNING, QUEUE_SEQ_COUNTER_REF
     PENDING = pending
@@ -67,6 +74,7 @@ def init_queue_refs(pending: List[Dict[str, Any]], running: Dict[str, Dict[str, 
 # ---------------------------------------------------------------------------
 # Queue priority
 # ---------------------------------------------------------------------------
+
 
 def _task_priority(task_type: str) -> int:
     t = str(task_type or "").strip().lower()
@@ -93,6 +101,7 @@ def sort_pending() -> None:
 # ---------------------------------------------------------------------------
 # Queue operations
 # ---------------------------------------------------------------------------
+
 
 def enqueue_task(task: Dict[str, Any], front: bool = False) -> Dict[str, Any]:
     """Add task to PENDING queue."""
@@ -125,35 +134,52 @@ def persist_queue_snapshot(reason: str = "") -> None:
     """Save PENDING and RUNNING to snapshot file."""
     pending_rows = []
     for t in PENDING:
-        pending_rows.append({
-            "id": t.get("id"), "type": t.get("type"), "priority": t.get("priority"),
-            "attempt": t.get("_attempt"), "queued_at": t.get("queued_at"),
-            "queue_seq": t.get("_queue_seq"),
-            "task": {
-                "id": t.get("id"), "type": t.get("type"), "chat_id": t.get("chat_id"),
-                "text": t.get("text"), "priority": t.get("priority"),
-                "_attempt": t.get("_attempt"), "review_reason": t.get("review_reason"),
-                "review_source_task_id": t.get("review_source_task_id"),
-            },
-        })
+        pending_rows.append(
+            {
+                "id": t.get("id"),
+                "type": t.get("type"),
+                "priority": t.get("priority"),
+                "attempt": t.get("_attempt"),
+                "queued_at": t.get("queued_at"),
+                "queue_seq": t.get("_queue_seq"),
+                "task": {
+                    "id": t.get("id"),
+                    "type": t.get("type"),
+                    "chat_id": t.get("chat_id"),
+                    "text": t.get("text"),
+                    "priority": t.get("priority"),
+                    "_attempt": t.get("_attempt"),
+                    "review_reason": t.get("review_reason"),
+                    "review_source_task_id": t.get("review_source_task_id"),
+                },
+            }
+        )
     running_rows = []
     now = time.time()
     for task_id, meta in RUNNING.items():
         task = meta.get("task") if isinstance(meta, dict) else {}
         started = float(meta.get("started_at") or 0.0) if isinstance(meta, dict) else 0.0
         hb = float(meta.get("last_heartbeat_at") or 0.0) if isinstance(meta, dict) else 0.0
-        running_rows.append({
-            "id": task_id, "type": task.get("type"), "priority": task.get("priority"),
-            "attempt": meta.get("attempt"), "worker_id": meta.get("worker_id"),
-            "runtime_sec": round(max(0.0, now - started), 2) if started > 0 else 0.0,
-            "heartbeat_lag_sec": round(max(0.0, now - hb), 2) if hb > 0 else None,
-            "soft_sent": bool(meta.get("soft_sent")), "task": task,
-        })
+        running_rows.append(
+            {
+                "id": task_id,
+                "type": task.get("type"),
+                "priority": task.get("priority"),
+                "attempt": meta.get("attempt"),
+                "worker_id": meta.get("worker_id"),
+                "runtime_sec": round(max(0.0, now - started), 2) if started > 0 else 0.0,
+                "heartbeat_lag_sec": round(max(0.0, now - hb), 2) if hb > 0 else None,
+                "soft_sent": bool(meta.get("soft_sent")),
+                "task": task,
+            }
+        )
     payload = {
         "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "reason": reason,
-        "pending_count": len(PENDING), "running_count": len(RUNNING),
-        "pending": pending_rows, "running": running_rows,
+        "pending_count": len(PENDING),
+        "running_count": len(RUNNING),
+        "pending": pending_rows,
+        "running": running_rows,
     }
     try:
         atomic_write_text(QUEUE_SNAPSHOT_PATH, json.dumps(payload, ensure_ascii=False, indent=2))
@@ -191,7 +217,7 @@ def restore_pending_from_snapshot(max_age_sec: int = 900) -> int:
         if (time.time() - ts_unix) > max_age_sec:
             return 0
         restored = 0
-        for row in (snap.get("pending") or []):
+        for row in snap.get("pending") or []:
             task = row.get("task") if isinstance(row, dict) else None
             if not isinstance(task, dict):
                 continue
@@ -244,11 +270,12 @@ def cancel_task_by_id(task_id: str) -> bool:
 # Timeout enforcement
 # ---------------------------------------------------------------------------
 
+
 def enforce_task_timeouts() -> None:
     """Check all RUNNING tasks for timeouts and enforce them."""
     # Import here to avoid circular dependency during module load
     from supervisor import workers
-    
+
     if not RUNNING:
         return
     now = time.time()
@@ -319,25 +346,36 @@ def enforce_task_timeouts() -> None:
             {
                 "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "type": "task_hard_timeout",
-                "task_id": task_id, "task_type": task_type,
-                "worker_id": worker_id, "runtime_sec": round(runtime_sec, 2),
-                "heartbeat_lag_sec": round(hb_lag_sec, 2), "heartbeat_stale": hb_stale,
-                "attempt": attempt, "requeued": requeued, "new_attempt": new_attempt,
+                "task_id": task_id,
+                "task_type": task_type,
+                "worker_id": worker_id,
+                "runtime_sec": round(runtime_sec, 2),
+                "heartbeat_lag_sec": round(hb_lag_sec, 2),
+                "heartbeat_stale": hb_stale,
+                "attempt": attempt,
+                "requeued": requeued,
+                "new_attempt": new_attempt,
                 "max_retries": QUEUE_MAX_RETRIES,
             },
         )
 
         if owner_chat_id:
             if requeued:
-                send_with_budget(owner_chat_id, (
-                    f"🛑 Hard-timeout: task {task_id} killed after {int(runtime_sec)}s.\n"
-                    f"Worker {worker_id} restarted. Task queued for retry attempt={new_attempt}."
-                ))
+                send_with_budget(
+                    owner_chat_id,
+                    (
+                        f"🛑 Hard-timeout: task {task_id} killed after {int(runtime_sec)}s.\n"
+                        f"Worker {worker_id} restarted. Task queued for retry attempt={new_attempt}."
+                    ),
+                )
             else:
-                send_with_budget(owner_chat_id, (
-                    f"🛑 Hard-timeout: task {task_id} killed after {int(runtime_sec)}s.\n"
-                    f"Worker {worker_id} restarted. Retry limit exhausted, task stopped."
-                ))
+                send_with_budget(
+                    owner_chat_id,
+                    (
+                        f"🛑 Hard-timeout: task {task_id} killed after {int(runtime_sec)}s.\n"
+                        f"Worker {worker_id} restarted. Retry limit exhausted, task stopped."
+                    ),
+                )
 
         persist_queue_snapshot(reason="task_hard_timeout")
 
@@ -345,6 +383,7 @@ def enforce_task_timeouts() -> None:
 # ---------------------------------------------------------------------------
 # Evolution + review scheduling
 # ---------------------------------------------------------------------------
+
 
 def build_evolution_task_text(cycle: int) -> str:
     """Build evolution task text. Minimal trigger — SYSTEM.md has the full instructions."""
@@ -365,11 +404,14 @@ def queue_review_task(reason: str, force: bool = False) -> Optional[str]:
     if (not force) and queue_has_task_type("review"):
         return None
     tid = uuid.uuid4().hex[:8]
-    enqueue_task({
-        "id": tid, "type": "review",
-        "chat_id": int(owner_chat_id),
-        "text": build_review_task_text(reason=reason),
-    })
+    enqueue_task(
+        {
+            "id": tid,
+            "type": "review",
+            "chat_id": int(owner_chat_id),
+            "text": build_review_task_text(reason=reason),
+        }
+    )
     persist_queue_snapshot(reason="review_enqueued")
     send_with_budget(int(owner_chat_id), f"🔎 Review queued: {tid} ({reason})")
     return tid
@@ -398,7 +440,7 @@ def enqueue_evolution_task_if_needed() -> None:
         send_with_budget(
             int(owner_chat_id),
             f"🧬⚠️ Evolution paused: {consecutive_failures} consecutive failures. "
-            f"Use /evolve start to resume after investigating the issue."
+            f"Use /evolve start to resume after investigating the issue.",
         )
         return
 
@@ -406,15 +448,21 @@ def enqueue_evolution_task_if_needed() -> None:
     if remaining < EVOLUTION_BUDGET_RESERVE:
         st["evolution_mode_enabled"] = False
         save_state(st)
-        send_with_budget(int(owner_chat_id), f"💸 Evolution stopped: ${remaining:.2f} remaining (reserve ${EVOLUTION_BUDGET_RESERVE:.0f} for conversations).")
+        send_with_budget(
+            int(owner_chat_id),
+            f"💸 Evolution stopped: ${remaining:.2f} remaining (reserve ${EVOLUTION_BUDGET_RESERVE:.0f} for conversations).",
+        )
         return
     cycle = int(st.get("evolution_cycle") or 0) + 1
     tid = uuid.uuid4().hex[:8]
-    enqueue_task({
-        "id": tid, "type": "evolution",
-        "chat_id": int(owner_chat_id),
-        "text": build_evolution_task_text(cycle),
-    })
+    enqueue_task(
+        {
+            "id": tid,
+            "type": "evolution",
+            "chat_id": int(owner_chat_id),
+            "text": build_evolution_task_text(cycle),
+        }
+    )
     st["evolution_cycle"] = cycle
     st["last_evolution_task_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     save_state(st)

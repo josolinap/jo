@@ -12,7 +12,7 @@ anyone — you are thinking. You can:
 - Read your own code via repo_read/repo_list
 - Read/write knowledge base via knowledge_read/knowledge_write/knowledge_list
 - Search the web via web_search
-- Access Drive files via drive_read/drive_list
+- Access local storage files via drive_read/drive_list
 - Review chat history via chat_history
 
 ## Multi-step thinking

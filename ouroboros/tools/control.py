@@ -150,9 +150,11 @@ def _send_owner_message(ctx: ToolContext, text: str, reason: str = "") -> str:
 
 def _update_identity(ctx: ToolContext, content: str) -> str:
     """Update identity manifest (who you are, who you want to become)."""
-    path = ctx.drive_root / "memory" / "identity.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    from ouroboros.memory import Memory
+
+    mem = Memory(drive_root=ctx.drive_root)
+    mem.ensure_files()
+    mem.save_identity(content)
     return f"OK: identity updated ({len(content)} chars)"
 
 
@@ -375,7 +377,7 @@ def get_tools() -> List[ToolEntry]:
             "toggle_evolution",
             {
                 "name": "toggle_evolution",
-                "description": "Enable or disable evolution mode. When enabled, Ouroboros runs continuous self-improvement cycles.",
+                "description": "Enable or disable evolution mode. When enabled, Jo runs continuous self-improvement cycles.",
                 "parameters": {
                     "type": "object",
                     "properties": {

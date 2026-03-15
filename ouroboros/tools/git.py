@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 # --- Git lock ---
 
+
 def _acquire_git_lock(ctx: ToolContext, timeout_sec: int = 120) -> pathlib.Path:
     lock_dir = ctx.drive_path("locks")
     lock_dir.mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,7 @@ def _release_git_lock(lock_path: pathlib.Path) -> None:
 
 MAX_TEST_OUTPUT = 8000
 
+
 def _run_pre_push_tests(ctx: ToolContext) -> Optional[str]:
     """Run pre-push tests if enabled. Returns None if tests pass, error string if they fail."""
     # Guard against ctx=None
@@ -75,7 +77,7 @@ def _run_pre_push_tests(ctx: ToolContext) -> Optional[str]:
             cwd=ctx.repo_dir,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
         if result.returncode == 0:
             return None
@@ -120,6 +122,7 @@ def _git_push_with_tests(ctx: ToolContext) -> Optional[str]:
 
 
 # --- Tool implementations ---
+
 
 def _repo_write_commit(ctx: ToolContext, path: str, content: str, commit_message: str) -> str:
     ctx.last_push_succeeded = False
@@ -224,33 +227,73 @@ def _git_diff(ctx: ToolContext, staged: bool = False) -> str:
 
 def get_tools() -> List[ToolEntry]:
     return [
-        ToolEntry("repo_write_commit", {
-            "name": "repo_write_commit",
-            "description": "Write one file + commit + push to ouroboros branch. For small deterministic edits.",
-            "parameters": {"type": "object", "properties": {
-                "path": {"type": "string"},
-                "content": {"type": "string"},
-                "commit_message": {"type": "string"},
-            }, "required": ["path", "content", "commit_message"]},
-        }, _repo_write_commit, is_code_tool=True),
-        ToolEntry("repo_commit_push", {
-            "name": "repo_commit_push",
-            "description": "Commit + push already-changed files. Does pull --rebase before push.",
-            "parameters": {"type": "object", "properties": {
-                "commit_message": {"type": "string"},
-                "paths": {"type": "array", "items": {"type": "string"}, "description": "Files to add (empty = git add -A)"},
-            }, "required": ["commit_message"]},
-        }, _repo_commit_push, is_code_tool=True),
-        ToolEntry("git_status", {
-            "name": "git_status",
-            "description": "git status --porcelain",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        }, _git_status, is_code_tool=True),
-        ToolEntry("git_diff", {
-            "name": "git_diff",
-            "description": "git diff (use staged=true to see staged changes after git add)",
-            "parameters": {"type": "object", "properties": {
-                "staged": {"type": "boolean", "default": False, "description": "If true, show staged changes (--staged)"},
-            }, "required": []},
-        }, _git_diff, is_code_tool=True),
+        ToolEntry(
+            "repo_write_commit",
+            {
+                "name": "repo_write_commit",
+                "description": "Write one file + commit + push to dev branch. For small deterministic edits.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {"type": "string"},
+                        "commit_message": {"type": "string"},
+                    },
+                    "required": ["path", "content", "commit_message"],
+                },
+            },
+            _repo_write_commit,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "repo_commit_push",
+            {
+                "name": "repo_commit_push",
+                "description": "Commit + push already-changed files. Does pull --rebase before push.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "commit_message": {"type": "string"},
+                        "paths": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Files to add (empty = git add -A)",
+                        },
+                    },
+                    "required": ["commit_message"],
+                },
+            },
+            _repo_commit_push,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "git_status",
+            {
+                "name": "git_status",
+                "description": "git status --porcelain",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _git_status,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "git_diff",
+            {
+                "name": "git_diff",
+                "description": "git diff (use staged=true to see staged changes after git add)",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "staged": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "If true, show staged changes (--staged)",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            _git_diff,
+            is_code_tool=True,
+        ),
     ]

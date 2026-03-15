@@ -1,7 +1,7 @@
-"""Knowledge base tools: persistent structured memory on Google Drive.
+"""Knowledge base tools: persistent structured memory on local storage.
 
 Provides read/write/list operations for topic-based knowledge files
-stored in memory/knowledge/ on Drive. Auto-maintains an index file.
+stored in memory/knowledge/ on local storage. Auto-maintains an index file.
 """
 
 import logging
@@ -18,7 +18,7 @@ INDEX_FILE = "_index.md"
 
 # --- Sanitization ---
 
-_VALID_TOPIC = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,98}[a-zA-Z0-9]$|^[a-zA-Z0-9]$')
+_VALID_TOPIC = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,98}[a-zA-Z0-9]$|^[a-zA-Z0-9]$")
 _RESERVED = frozenset({"_index", "con", "prn", "aux", "nul"})
 
 
@@ -31,7 +31,7 @@ def _sanitize_topic(topic: str) -> str:
     topic = topic.strip()
 
     # Reject path separators and traversal
-    if '/' in topic or '\\' in topic or '..' in topic:
+    if "/" in topic or "\\" in topic or ".." in topic:
         raise ValueError(f"Invalid characters in topic: {topic}")
 
     # Check against pattern
@@ -70,6 +70,7 @@ def _safe_path(ctx: ToolContext, topic: str) -> tuple[Path, str]:
 
 # --- Helpers ---
 
+
 def _ensure_dir(ctx: ToolContext):
     """Create knowledge directory if it doesn't exist."""
     ctx.drive_path(KNOWLEDGE_DIR).mkdir(parents=True, exist_ok=True)
@@ -96,7 +97,7 @@ def _extract_summary(text: str, max_chars: int = 150) -> str:
 
     summary = " | ".join(snippets)
     if len(summary) > max_chars:
-        summary = summary[:max_chars - 1] + "…"
+        summary = summary[: max_chars - 1] + "…"
     return summary
 
 
@@ -194,6 +195,7 @@ def _update_index_entry(ctx: ToolContext, topic: str):
 
 # --- Tool handlers ---
 
+
 def _knowledge_read(ctx: ToolContext, topic: str) -> str:
     """Read a knowledge file by topic name."""
     try:
@@ -259,52 +261,55 @@ def _knowledge_list(ctx: ToolContext) -> str:
 
 # --- Tool registration ---
 
+
 def get_tools() -> List[ToolEntry]:
     return [
-        ToolEntry("knowledge_read", {
-            "name": "knowledge_read",
-            "description": "Read a topic from the persistent knowledge base on Drive.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "description": "Topic name (alphanumeric, hyphens, underscores). E.g. 'browser-automation', 'joi_gotchas'"
-                    }
-                },
-                "required": ["topic"]
-            },
-        }, _knowledge_read),
-        ToolEntry("knowledge_write", {
-            "name": "knowledge_write",
-            "description": "Write or append to a knowledge topic. Use for recipes, gotchas, patterns learned from experience.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "description": "Topic name (alphanumeric, hyphens, underscores)"
+        ToolEntry(
+            "knowledge_read",
+            {
+                "name": "knowledge_read",
+                "description": "Read a topic from the persistent knowledge base on Drive.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "topic": {
+                            "type": "string",
+                            "description": "Topic name (alphanumeric, hyphens, underscores). E.g. 'browser-automation', 'joi_gotchas'",
+                        }
                     },
-                    "content": {
-                        "type": "string",
-                        "description": "Content to write (markdown)"
-                    },
-                    "mode": {
-                        "type": "string",
-                        "enum": ["overwrite", "append"],
-                        "description": "Write mode: 'overwrite' (default) or 'append'"
-                    }
+                    "required": ["topic"],
                 },
-                "required": ["topic", "content"]
             },
-        }, _knowledge_write),
-        ToolEntry("knowledge_list", {
-            "name": "knowledge_list",
-            "description": "List all topics in the knowledge base with summaries.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": []
+            _knowledge_read,
+        ),
+        ToolEntry(
+            "knowledge_write",
+            {
+                "name": "knowledge_write",
+                "description": "Write or append to a knowledge topic. Use for recipes, gotchas, patterns learned from experience.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "topic": {"type": "string", "description": "Topic name (alphanumeric, hyphens, underscores)"},
+                        "content": {"type": "string", "description": "Content to write (markdown)"},
+                        "mode": {
+                            "type": "string",
+                            "enum": ["overwrite", "append"],
+                            "description": "Write mode: 'overwrite' (default) or 'append'",
+                        },
+                    },
+                    "required": ["topic", "content"],
+                },
             },
-        }, _knowledge_list),
+            _knowledge_write,
+        ),
+        ToolEntry(
+            "knowledge_list",
+            {
+                "name": "knowledge_list",
+                "description": "List all topics in the knowledge base with summaries.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _knowledge_list,
+        ),
     ]

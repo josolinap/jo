@@ -28,8 +28,13 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional
 
 from ouroboros.utils import (
-    utc_now_iso, read_text, append_jsonl, clip_text,
-    truncate_for_log, sanitize_tool_result_for_log, sanitize_tool_args_for_log,
+    utc_now_iso,
+    read_text,
+    append_jsonl,
+    clip_text,
+    truncate_for_log,
+    sanitize_tool_result_for_log,
+    sanitize_tool_args_for_log,
 )
 from ouroboros.llm import LLMClient, DEFAULT_LIGHT_MODEL
 
@@ -66,9 +71,7 @@ class BackgroundConsciousness:
 
         # Budget tracking
         self._bg_spent_usd: float = 0.0
-        self._bg_budget_pct: float = float(
-            os.environ.get("OUROBOROS_BG_BUDGET_PCT", "10")
-        )
+        self._bg_budget_pct: float = float(os.environ.get("OUROBOROS_BG_BUDGET_PCT", "10"))
 
     # -------------------------------------------------------------------
     # Lifecycle
@@ -146,15 +149,16 @@ class BackgroundConsciousness:
             try:
                 self._think()
             except Exception as e:
-                append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                    "ts": utc_now_iso(),
-                    "type": "consciousness_error",
-                    "error": repr(e),
-                    "traceback": traceback.format_exc()[:1500],
-                })
-                self._next_wakeup_sec = min(
-                    self._next_wakeup_sec * 2, 1800
+                append_jsonl(
+                    self._drive_root / "logs" / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "consciousness_error",
+                        "error": repr(e),
+                        "traceback": traceback.format_exc()[:1500],
+                    },
                 )
+                self._next_wakeup_sec = min(self._next_wakeup_sec * 2, 1800)
 
     def _check_budget(self) -> bool:
         """Check if background consciousness is within its budget allocation."""
@@ -206,34 +210,43 @@ class BackgroundConsciousness:
                 # Write BG spending to global state so it's visible in budget tracking
                 try:
                     from supervisor.state import update_budget_from_usage
-                    update_budget_from_usage({
-                        "cost": cost, "rounds": 1,
-                        "prompt_tokens": usage.get("prompt_tokens", 0),
-                        "completion_tokens": usage.get("completion_tokens", 0),
-                        "cached_tokens": usage.get("cached_tokens", 0),
-                    })
+
+                    update_budget_from_usage(
+                        {
+                            "cost": cost,
+                            "rounds": 1,
+                            "prompt_tokens": usage.get("prompt_tokens", 0),
+                            "completion_tokens": usage.get("completion_tokens", 0),
+                            "cached_tokens": usage.get("cached_tokens", 0),
+                        }
+                    )
                 except Exception:
                     log.debug("Failed to update global budget from BG consciousness", exc_info=True)
 
                 # Budget check between rounds
                 if not self._check_budget():
-                    append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                        "ts": utc_now_iso(),
-                        "type": "bg_budget_exceeded_mid_cycle",
-                        "round": round_idx,
-                    })
+                    append_jsonl(
+                        self._drive_root / "logs" / "events.jsonl",
+                        {
+                            "ts": utc_now_iso(),
+                            "type": "bg_budget_exceeded_mid_cycle",
+                            "round": round_idx,
+                        },
+                    )
                     break
 
                 # Report usage to supervisor
                 if self._event_queue is not None:
-                    self._event_queue.put({
-                        "type": "llm_usage",
-                        "provider": "openrouter",
-                        "usage": usage,
-                        "source": "consciousness",
-                        "ts": utc_now_iso(),
-                        "category": "consciousness",
-                    })
+                    self._event_queue.put(
+                        {
+                            "type": "llm_usage",
+                            "provider": "openrouter",
+                            "usage": usage,
+                            "source": "consciousness",
+                            "ts": utc_now_iso(),
+                            "category": "consciousness",
+                        }
+                    )
 
                 content = msg.get("content") or ""
                 tool_calls = msg.get("tool_calls") or []
@@ -251,11 +264,13 @@ class BackgroundConsciousness:
                     messages.append(msg)
                     for tc in tool_calls:
                         result = self._execute_tool(tc, all_pending_events)
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tc.get("id", ""),
-                            "content": result,
-                        })
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc.get("id", ""),
+                                "content": result,
+                            }
+                        )
                     continue
 
                 # If neither content nor tool_calls, stop
@@ -270,21 +285,27 @@ class BackgroundConsciousness:
                         self._event_queue.put(evt)
 
             # Log the thought with round count
-            append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                "ts": utc_now_iso(),
-                "type": "consciousness_thought",
-                "thought_preview": (final_content or "")[:300],
-                "cost_usd": total_cost,
-                "rounds": round_idx,
-                "model": model,
-            })
+            append_jsonl(
+                self._drive_root / "logs" / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "consciousness_thought",
+                    "thought_preview": (final_content or "")[:300],
+                    "cost_usd": total_cost,
+                    "rounds": round_idx,
+                    "model": model,
+                },
+            )
 
         except Exception as e:
-            append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                "ts": utc_now_iso(),
-                "type": "consciousness_llm_error",
-                "error": repr(e),
-            })
+            append_jsonl(
+                self._drive_root / "logs" / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "consciousness_llm_error",
+                    "error": repr(e),
+                },
+            )
 
     # -------------------------------------------------------------------
     # Context building (lightweight)
@@ -295,7 +316,7 @@ class BackgroundConsciousness:
         prompt_path = self._repo_dir / "prompts" / "CONSCIOUSNESS.md"
         if prompt_path.exists():
             return read_text(prompt_path)
-        return "You are Ouroboros in background consciousness mode. Think."
+        return "You are Jo in background consciousness mode. Think."
 
     def _build_context(self) -> str:
         parts = [self._load_bg_prompt()]
@@ -309,14 +330,12 @@ class BackgroundConsciousness:
         # Identity
         identity_path = self._drive_root / "memory" / "identity.md"
         if identity_path.exists():
-            parts.append("## Identity\n\n" + clip_text(
-                read_text(identity_path), 6000))
+            parts.append("## Identity\n\n" + clip_text(read_text(identity_path), 6000))
 
         # Scratchpad
         scratchpad_path = self._drive_root / "memory" / "scratchpad.md"
         if scratchpad_path.exists():
-            parts.append("## Scratchpad\n\n" + clip_text(
-                read_text(scratchpad_path), 8000))
+            parts.append("## Scratchpad\n\n" + clip_text(read_text(scratchpad_path), 8000))
 
         # Dialogue summary for continuity
         summary_path = self._drive_root / "memory" / "dialogue_summary.md"
@@ -333,8 +352,7 @@ class BackgroundConsciousness:
             except queue.Empty:
                 break
         if observations:
-            parts.append("## Recent observations\n\n" + "\n".join(
-                f"- {o}" for o in observations[-10:]))
+            parts.append("## Recent observations\n\n" + "\n".join(f"- {o}" for o in observations[-10:]))
 
         # Runtime info + state
         runtime_lines = [f"UTC: {utc_now_iso()}"]
@@ -365,18 +383,30 @@ class BackgroundConsciousness:
     # Tool registry (separate instance for consciousness, not shared with agent)
     # -------------------------------------------------------------------
 
-    _BG_TOOL_WHITELIST = frozenset({
-        # Memory & identity
-        "send_owner_message", "schedule_task", "update_scratchpad",
-        "update_identity", "set_next_wakeup",
-        # Knowledge base
-        "knowledge_read", "knowledge_write", "knowledge_list",
-        # Read-only tools for awareness
-        "web_search", "repo_read", "repo_list", "drive_read", "drive_list",
-        "chat_history",
-        # GitHub Issues
-        "list_github_issues", "get_github_issue",
-    })
+    _BG_TOOL_WHITELIST = frozenset(
+        {
+            # Memory & identity
+            "send_owner_message",
+            "schedule_task",
+            "update_scratchpad",
+            "update_identity",
+            "set_next_wakeup",
+            # Knowledge base
+            "knowledge_read",
+            "knowledge_write",
+            "knowledge_list",
+            # Read-only tools for awareness
+            "web_search",
+            "repo_read",
+            "repo_list",
+            "drive_read",
+            "drive_list",
+            "chat_history",
+            # GitHub Issues
+            "list_github_issues",
+            "get_github_issue",
+        }
+    )
 
     def _build_registry(self) -> "ToolRegistry":
         """Create a ToolRegistry scoped to consciousness-allowed tools."""
@@ -389,24 +419,29 @@ class BackgroundConsciousness:
             self._next_wakeup_sec = max(60, min(3600, int(seconds)))
             return f"OK: next wakeup in {self._next_wakeup_sec}s"
 
-        registry.register(ToolEntry("set_next_wakeup", {
-            "name": "set_next_wakeup",
-            "description": "Set how many seconds until your next thinking cycle. "
-                           "Default 300. Range: 60-3600.",
-            "parameters": {"type": "object", "properties": {
-                "seconds": {"type": "integer",
-                            "description": "Seconds until next wakeup (60-3600)"},
-            }, "required": ["seconds"]},
-        }, _set_next_wakeup))
+        registry.register(
+            ToolEntry(
+                "set_next_wakeup",
+                {
+                    "name": "set_next_wakeup",
+                    "description": "Set how many seconds until your next thinking cycle. Default 300. Range: 60-3600.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "seconds": {"type": "integer", "description": "Seconds until next wakeup (60-3600)"},
+                        },
+                        "required": ["seconds"],
+                    },
+                },
+                _set_next_wakeup,
+            )
+        )
 
         return registry
 
     def _tool_schemas(self) -> List[Dict[str, Any]]:
         """Return tool schemas filtered to the consciousness whitelist."""
-        return [
-            s for s in self._registry.schemas()
-            if s.get("function", {}).get("name") in self._BG_TOOL_WHITELIST
-        ]
+        return [s for s in self._registry.schemas() if s.get("function", {}).get("name") in self._BG_TOOL_WHITELIST]
 
     def _execute_tool(self, tc: Dict[str, Any], all_pending_events: List[Dict[str, Any]]) -> str:
         """Execute a consciousness tool call with timeout. Returns result string."""
@@ -441,21 +476,27 @@ class BackgroundConsciousness:
                 future.result(timeout=timeout_sec)
             except concurrent.futures.TimeoutError:
                 result = f"[TIMEOUT after {timeout_sec}s]"
-                append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                    "ts": utc_now_iso(),
-                    "type": "consciousness_tool_timeout",
-                    "tool": fn_name,
-                    "timeout_sec": timeout_sec,
-                })
+                append_jsonl(
+                    self._drive_root / "logs" / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "consciousness_tool_timeout",
+                        "tool": fn_name,
+                        "timeout_sec": timeout_sec,
+                    },
+                )
 
         # Handle errors
         if error is not None:
-            append_jsonl(self._drive_root / "logs" / "events.jsonl", {
-                "ts": utc_now_iso(),
-                "type": "consciousness_tool_error",
-                "tool": fn_name,
-                "error": repr(error),
-            })
+            append_jsonl(
+                self._drive_root / "logs" / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "consciousness_tool_error",
+                    "tool": fn_name,
+                    "error": repr(error),
+                },
+            )
             result = f"Error: {repr(error)}"
 
         # Accumulate pending events to the shared list
@@ -467,12 +508,15 @@ class BackgroundConsciousness:
 
         # Log to tools.jsonl (same format as loop.py)
         args_for_log = sanitize_tool_args_for_log(fn_name, args)
-        append_jsonl(self._drive_root / "logs" / "tools.jsonl", {
-            "ts": utc_now_iso(),
-            "tool": fn_name,
-            "source": "consciousness",
-            "args": args_for_log,
-            "result_preview": sanitize_tool_result_for_log(truncate_for_log(result_str, 2000)),
-        })
+        append_jsonl(
+            self._drive_root / "logs" / "tools.jsonl",
+            {
+                "ts": utc_now_iso(),
+                "tool": fn_name,
+                "source": "consciousness",
+                "args": args_for_log,
+                "result_preview": sanitize_tool_result_for_log(truncate_for_log(result_str, 2000)),
+            },
+        )
 
         return result_str

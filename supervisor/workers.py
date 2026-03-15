@@ -30,8 +30,8 @@ from supervisor.telegram import send_with_budget
 # ---------------------------------------------------------------------------
 # Module-level config (set via init())
 # ---------------------------------------------------------------------------
-REPO_DIR: pathlib.Path = pathlib.Path("/content/ouroboros_repo")
-DRIVE_ROOT: pathlib.Path = pathlib.Path("/content/drive/MyDrive/Ouroboros")
+REPO_DIR: pathlib.Path = pathlib.Path.cwd()
+DRIVE_ROOT: pathlib.Path = pathlib.Path.home() / ".ouroboros"
 MAX_WORKERS: int = 5
 SOFT_TIMEOUT_SEC: int = 600
 HARD_TIMEOUT_SEC: int = 1800

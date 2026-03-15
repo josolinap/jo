@@ -15,7 +15,11 @@ import pathlib
 from typing import Any, Dict, List, Optional, Tuple
 
 from ouroboros.utils import (
-    utc_now_iso, read_text, clip_text, estimate_tokens, get_git_info,
+    utc_now_iso,
+    read_text,
+    clip_text,
+    estimate_tokens,
+    get_git_info,
 )
 from ouroboros.memory import Memory
 
@@ -49,10 +53,7 @@ def _build_user_content(task: Dict[str, Any]) -> Any:
         combined_text = "Analyze the screenshot"
 
     parts.append({"type": "text", "text": combined_text})
-    parts.append({
-        "type": "image_url",
-        "image_url": {"url": f"data:{image_mime};base64,{image_b64}"}
-    })
+    parts.append({"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_b64}"}})
     return parts
 
 
@@ -117,8 +118,7 @@ def _build_recent_sections(memory: Memory, env: Any, task_id: str = "") -> List[
     """Build recent chat, recent progress, recent tools, recent events sections."""
     sections = []
 
-    chat_summary = memory.summarize_chat(
-        memory.read_jsonl_tail("chat.jsonl", 200))
+    chat_summary = memory.summarize_chat(memory.read_jsonl_tail("chat.jsonl", 200))
     if chat_summary:
         sections.append("## Recent chat\n\n" + chat_summary)
 
@@ -143,8 +143,7 @@ def _build_recent_sections(memory: Memory, env: Any, task_id: str = "") -> List[
     if events_summary:
         sections.append("## Recent events\n\n" + events_summary)
 
-    supervisor_summary = memory.summarize_supervisor(
-        memory.read_jsonl_tail("supervisor.jsonl", 200))
+    supervisor_summary = memory.summarize_supervisor(memory.read_jsonl_tail("supervisor.jsonl", 200))
     if supervisor_summary:
         sections.append("## Supervisor\n\n" + supervisor_summary)
 
@@ -192,11 +191,11 @@ def _build_health_invariants(env: Any) -> str:
     # 3. Per-task cost anomalies
     try:
         from supervisor.state import per_task_cost_summary
+
         costly = [t for t in per_task_cost_summary(5) if t["cost"] > 5.0]
         for t in costly:
             checks.append(
-                f"WARNING: HIGH-COST TASK — task_id={t['task_id']} "
-                f"cost=${t['cost']:.2f} rounds={t['rounds']}"
+                f"WARNING: HIGH-COST TASK — task_id={t['task_id']} cost=${t['cost']:.2f} rounds={t['rounds']}"
             )
         if not costly:
             checks.append("OK: no high-cost tasks (>$5)")
@@ -206,6 +205,7 @@ def _build_health_invariants(env: Any) -> str:
     # 4. Stale identity.md
     try:
         import time as _time
+
         identity_path = env.drive_path("memory/identity.md")
         if identity_path.exists():
             age_hours = (_time.time() - identity_path.stat().st_mtime) / 3600
@@ -219,6 +219,7 @@ def _build_health_invariants(env: Any) -> str:
     # 5. Duplicate processing detection: same owner message text appearing in multiple tasks
     try:
         import hashlib
+
         msg_hash_to_tasks: Dict[str, set] = {}
         tail_bytes = 256_000
 
@@ -302,8 +303,7 @@ def build_llm_messages(
 
     # --- Read base prompts and state ---
     base_prompt = _safe_read(
-        env.repo_path("prompts/SYSTEM.md"),
-        fallback="You are Ouroboros. Your base prompt could not be loaded."
+        env.repo_path("prompts/SYSTEM.md"), fallback="You are Jo. Your base prompt could not be loaded."
     )
     bible_md = _safe_read(env.repo_path("BIBLE.md"))
     readme_md = _safe_read(env.repo_path("README.md"))
@@ -320,10 +320,7 @@ def build_llm_messages(
     # BIBLE.md always included (Constitution requires it for every decision)
     # README.md only for evolution/review (architecture context)
     needs_full_context = task_type in ("evolution", "review", "scheduled")
-    static_text = (
-        base_prompt + "\n\n"
-        + "## BIBLE.md\n\n" + clip_text(bible_md, 180000)
-    )
+    static_text = base_prompt + "\n\n" + "## BIBLE.md\n\n" + clip_text(bible_md, 180000)
     if needs_full_context:
         static_text += "\n\n## README.md\n\n" + clip_text(readme_md, 180000)
 
@@ -403,6 +400,7 @@ def apply_message_token_soft_cap(
 
     Returns (pruned_messages, cap_info_dict).
     """
+
     def _estimate_message_tokens(msg: Dict[str, Any]) -> int:
         """Estimate tokens for a message, handling multipart content."""
         content = msg.get("content", "")
@@ -439,9 +437,7 @@ def apply_message_token_soft_cap(
             if isinstance(content, list) and msg.get("role") == "system":
                 # Find the dynamic text block (the block without cache_control)
                 for j, block in enumerate(content):
-                    if (isinstance(block, dict) and
-                        block.get("type") == "text" and
-                        "cache_control" not in block):
+                    if isinstance(block, dict) and block.get("type") == "text" and "cache_control" not in block:
                         text = block.get("text", "")
                         if prefix in text:
                             # Remove this section from the dynamic text
@@ -491,7 +487,7 @@ def _compact_tool_result(msg: dict, content: str) -> dict:
         summary = content[:200]  # Keep error details
     else:
         # Keep first line or first 80 chars
-        first_line = content.split('\n')[0][:80]
+        first_line = content.split("\n")[0][:80]
         char_count = len(content)
         summary = f"{first_line}... ({char_count} chars)" if char_count > 80 else content[:200]
 
@@ -528,9 +524,7 @@ def _compact_assistant_msg(msg: dict) -> dict:
                 args_str = func.get("arguments", "")
 
                 if args_str:
-                    compacted_tc["function"] = _compact_tool_call_arguments(
-                        func["name"], args_str
-                    )
+                    compacted_tc["function"] = _compact_tool_call_arguments(func["name"], args_str)
                 else:
                     compacted_tc["function"] = func
 
@@ -635,9 +629,7 @@ def compact_tool_history_llm(messages: list, keep_recent: int = 6) -> list:
     if not old_results:
         return compact_tool_history(messages, keep_recent=keep_recent)
 
-    batch_text = "\n---\n".join(
-        f"[{r['tool_call_id']}]\n{r['content']}" for r in old_results[:20]
-    )
+    batch_text = "\n---\n".join(f"[{r['tool_call_id']}]\n{r['content']}" for r in old_results[:20])
     prompt = (
         "Summarize each tool result below into 1-2 lines of key facts. "
         "Preserve errors, file paths, and important values. "
@@ -646,6 +638,7 @@ def compact_tool_history_llm(messages: list, keep_recent: int = 6) -> list:
 
     try:
         from ouroboros.llm import LLMClient, DEFAULT_LIGHT_MODEL
+
         light_model = os.environ.get("OUROBOROS_MODEL_LIGHT") or DEFAULT_LIGHT_MODEL
         client = LLMClient()
         resp_msg, _usage = client.chat(
@@ -672,7 +665,7 @@ def compact_tool_history_llm(messages: list, keep_recent: int = 6) -> list:
                 summary_map[current_id] = " ".join(current_lines).strip()
             bracket_end = stripped.index("]")
             current_id = stripped[1:bracket_end]
-            rest = stripped[bracket_end + 1:].strip()
+            rest = stripped[bracket_end + 1 :].strip()
             current_lines = [rest] if rest else []
         elif current_id is not None:
             current_lines.append(stripped)

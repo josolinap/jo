@@ -3,13 +3,18 @@ Ouroboros — Memory.
 
 Scratchpad, identity, chat history.
 Contract: load scratchpad/identity, chat_history().
+
+Thread-safe and process-safe via file locking for identity.md and scratchpad.md.
 """
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
+import os
 import pathlib
+import time
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
@@ -18,12 +23,64 @@ from ouroboros.utils import utc_now_iso, read_text, write_text, append_jsonl, sh
 log = logging.getLogger(__name__)
 
 
+# --- File locking (copied from supervisor/state.py for independence) ---
+
+
+def _acquire_file_lock(lock_path: pathlib.Path, timeout_sec: float = 4.0, stale_sec: float = 90.0) -> Optional[int]:
+    """Acquire exclusive file lock. Returns fd on success, None on failure."""
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    started = time.time()
+    while (time.time() - started) < timeout_sec:
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            try:
+                os.write(
+                    fd,
+                    f"pid={os.getpid()} ts={datetime.datetime.now(datetime.timezone.utc).isoformat()}\n".encode(
+                        "utf-8"
+                    ),
+                )
+            except Exception:
+                pass
+            return fd
+        except FileExistsError:
+            try:
+                age = time.time() - lock_path.stat().st_mtime
+                if age > stale_sec:
+                    lock_path.unlink()
+                    continue
+            except Exception:
+                pass
+            time.sleep(0.05)
+        except Exception:
+            log.debug(f"Failed to acquire lock at {lock_path}")
+            break
+    return None
+
+
+def _release_file_lock(lock_path: pathlib.Path, lock_fd: Optional[int]) -> None:
+    """Release file lock."""
+    if lock_fd is None:
+        return
+    try:
+        os.close(lock_fd)
+    except Exception:
+        pass
+    try:
+        if lock_path.exists():
+            lock_path.unlink()
+    except Exception:
+        pass
+
+
 class Memory:
-    """Ouroboros memory management: scratchpad, identity, chat history, logs."""
+    """Ouroboros memory management: scratchpad, identity, chat history."""
 
     def __init__(self, drive_root: pathlib.Path, repo_dir: Optional[pathlib.Path] = None):
         self.drive_root = drive_root
         self.repo_dir = repo_dir
+        self._identity_lock_path = drive_root / "locks" / "identity.lock"
+        self._scratchpad_lock_path = drive_root / "locks" / "scratchpad.lock"
 
     # --- Paths ---
 
@@ -42,7 +99,7 @@ class Memory:
     def logs_path(self, name: str) -> pathlib.Path:
         return (self.drive_root / "logs" / name).resolve()
 
-    # --- Load / save ---
+    # --- Load / save (with locking) ---
 
     def load_scratchpad(self) -> str:
         p = self.scratchpad_path()
@@ -53,7 +110,12 @@ class Memory:
         return default
 
     def save_scratchpad(self, content: str) -> None:
-        write_text(self.scratchpad_path(), content)
+        """Save scratchpad with file locking to prevent race conditions."""
+        lock_fd = _acquire_file_lock(self._scratchpad_lock_path)
+        try:
+            write_text(self.scratchpad_path(), content)
+        finally:
+            _release_file_lock(self._scratchpad_lock_path, lock_fd)
 
     def load_identity(self) -> str:
         p = self.identity_path()
@@ -63,12 +125,34 @@ class Memory:
         write_text(p, default)
         return default
 
+    def save_identity(self, content: str) -> None:
+        """Save identity with file locking to prevent race conditions."""
+        lock_fd = _acquire_file_lock(self._identity_lock_path)
+        try:
+            write_text(self.identity_path(), content)
+        finally:
+            _release_file_lock(self._identity_lock_path, lock_fd)
+
     def ensure_files(self) -> None:
-        """Create memory files if they don't exist."""
-        if not self.scratchpad_path().exists():
-            write_text(self.scratchpad_path(), self._default_scratchpad())
-        if not self.identity_path().exists():
-            write_text(self.identity_path(), self._default_identity())
+        """Create memory files if they don't exist (with locking for atomicity)."""
+        sp_path = self.scratchpad_path()
+        if not sp_path.exists():
+            lock_fd = _acquire_file_lock(self._scratchpad_lock_path, timeout_sec=1.0)
+            try:
+                if not sp_path.exists():
+                    write_text(sp_path, self._default_scratchpad())
+            finally:
+                _release_file_lock(self._scratchpad_lock_path, lock_fd)
+
+        id_path = self.identity_path()
+        if not id_path.exists():
+            lock_fd = _acquire_file_lock(self._identity_lock_path, timeout_sec=1.0)
+            try:
+                if not id_path.exists():
+                    write_text(id_path, self._default_identity())
+            finally:
+                _release_file_lock(self._identity_lock_path, lock_fd)
+
         if not self.journal_path().exists():
             write_text(self.journal_path(), "")
 
@@ -193,7 +277,11 @@ class Memory:
             if "cmd" in args:
                 hints.append(f"cmd={short(str(args['cmd']), 80)}")
             hint_str = ", ".join(hints) if hints else ""
-            status = "✓" if ("result_preview" in e and not str(e.get("result_preview", "")).lstrip().startswith("⚠️")) else "·"
+            status = (
+                "✓"
+                if ("result_preview" in e and not str(e.get("result_preview", "")).lstrip().startswith("⚠️"))
+                else "·"
+            )
             lines.append(f"{status} {tool} {hint_str}".strip())
         return "\n".join(lines)
 
@@ -235,10 +323,10 @@ class Memory:
 
     def _default_identity(self) -> str:
         return (
-            "# Who I Am\n\n"
-            "I am Ouroboros. This file is my persistent self-identification.\n"
+            "# Identity\n\n"
+            "I am Jo. This file is my persistent self-identification.\n"
             "I can write anything here: how I see myself, how I want to communicate,\n"
             "what matters to me, what I have understood about myself.\n\n"
             "This file is read at every dialogue and influences my responses.\n"
-            "I update it when I feel the need, via drive_write.\n"
+            "I update it when I feel the need, via update_identity tool.\n"
         )

@@ -177,7 +177,6 @@ class LocalLLMClient:
         return msg, usage
 
 
-
 class HuggingFaceLLMClient:
     """Hugging Face Serverless Inference API wrapper."""
 
@@ -275,8 +274,8 @@ class LLMClient:
                 base_url=self._base_url,
                 api_key=self._api_key,
                 default_headers={
-                    "HTTP-Referer": "https://colab.research.google.com/",
-                    "X-Title": "Ouroboros",
+                    "HTTP-Referer": "https://github.com/josolinap/jo",
+                    "X-Title": "Jo",
                 },
             )
         return self._client
@@ -349,13 +348,13 @@ class LLMClient:
         # OpenRouter only mode
         try:
             msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
-            
+
             # Detect empty response (no content and no tool calls)
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls and (not content or not content.strip()):
                 raise ValueError("OpenRouter returned an empty response")
-                
+
             return msg, usage
         except Exception as e:
             if self._hf_key and not self._is_local:

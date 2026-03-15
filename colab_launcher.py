@@ -178,16 +178,9 @@ if str(ANTHROPIC_API_KEY or "").strip():
 # ----------------------------
 # 2) Setup storage paths
 # ----------------------------
-if _IN_COLAB:
-    # Google Colab: use Drive
-    if not pathlib.Path("/content/drive/MyDrive").exists():
-        drive.mount("/content/drive")
-    DRIVE_ROOT = pathlib.Path("/content/drive/MyDrive/Ouroboros").resolve()
-    REPO_DIR = pathlib.Path("/content/ouroboros_repo").resolve()
-else:
-    # Local: use DATA_ROOT env var or default ~/.ouroboros
-    DRIVE_ROOT = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros")).resolve()
-    REPO_DIR = pathlib.Path(os.environ.get("REPO_DIR", pathlib.Path.cwd())).resolve()
+# Local/GitHub Actions: use DATA_ROOT env var or default ~/.ouroboros
+DRIVE_ROOT = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros")).resolve()
+REPO_DIR = pathlib.Path(os.environ.get("REPO_DIR", pathlib.Path.cwd())).resolve()
 
 for sub in ["state", "logs", "memory", "index", "locks", "archive"]:
     (DRIVE_ROOT / sub).mkdir(parents=True, exist_ok=True)
@@ -616,7 +609,7 @@ def main() -> None:
                 st["last_owner_message_at"] = now_iso
                 save_state(st)
                 log_chat("in", chat_id, user_id, text)
-                send_with_budget(chat_id, "✅ Owner registered. Ouroboros online.")
+                send_with_budget(chat_id, "✅ Owner registered. Jo online.")
                 continue
 
             if user_id != int(st.get("owner_id")):
