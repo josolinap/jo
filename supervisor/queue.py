@@ -467,3 +467,50 @@ def enqueue_evolution_task_if_needed() -> None:
     st["last_evolution_task_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     save_state(st)
     send_with_budget(int(owner_chat_id), f"🧬 Evolution #{cycle}: {tid}")
+
+
+# -----------------------------------------------------------------------------
+# Health Check Scheduler
+# -----------------------------------------------------------------------------
+
+HEALTH_CHECK_INTERVAL_SEC = 3600  # Run health check every hour
+
+
+def enqueue_health_check_if_needed() -> None:
+    """Enqueue health check task periodically when queue is idle.
+
+    Runs self_check.py and reports findings to owner.
+    Only runs when no other tasks are pending/running.
+    """
+    if PENDING or RUNNING:
+        return
+
+    st = load_state()
+    owner_chat_id = st.get("owner_chat_id")
+    if not owner_chat_id:
+        return
+
+    # Check last health check time
+    last_check = st.get("last_health_check_at")
+    if last_check:
+        try:
+            last_check_time = datetime.datetime.fromisoformat(last_check)
+            elapsed = (datetime.datetime.now(datetime.timezone.utc) - last_check_time).total_seconds()
+            if elapsed < HEALTH_CHECK_INTERVAL_SEC:
+                return
+        except Exception:
+            pass
+
+    # Enqueue health check
+    tid = uuid.uuid4().hex[:8]
+    enqueue_task(
+        {
+            "id": tid,
+            "type": "health_check",
+            "chat_id": int(owner_chat_id),
+            "text": "Run autonomous health check: execute python self_check.py and report results. If issues found, fix them.",
+        }
+    )
+    st["last_health_check_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    save_state(st)
+    log.info(f"Health check enqueued: {tid}")

@@ -266,6 +266,7 @@ from supervisor.queue import (
     enqueue_task,
     enforce_task_timeouts,
     enqueue_evolution_task_if_needed,
+    enqueue_health_check_if_needed,
     persist_queue_snapshot,
     restore_pending_from_snapshot,
     cancel_task_by_id,
@@ -550,6 +551,7 @@ def main() -> None:
 
         enforce_task_timeouts()
         enqueue_evolution_task_if_needed()
+        enqueue_health_check_if_needed()
         assign_tasks()
         persist_queue_snapshot(reason="main_loop")
 
