@@ -67,7 +67,18 @@ jobs:
           EOF
 
       # -----------------------------------------------------------------------
-      # 5. Run the bot for up to 5.5 hours (330 minutes)
+      # 5. Restore Jo data from cache (state, logs, memory)
+      # -----------------------------------------------------------------------
+      - name: Restore Jo data
+        uses: actions/cache@v4
+        with:
+          path: ~/.jo_data
+          key: jo-data-dev-${{ github.run_id }}
+          restore-keys: |
+            jo-data-dev-
+
+      # -----------------------------------------------------------------------
+      # 6. Run the bot for up to 5.5 hours (330 minutes)
       #    After that, the self-restart step fires and kicks off a fresh run.
       # -----------------------------------------------------------------------
       - name: Run Jo bot (max 5.5 hours)
@@ -89,8 +100,8 @@ jobs:
           # --- Behavior flags ---
           # Skip git-sync: the runner already has the code checked out
           OUROBOROS_NO_GIT_SYNC: "1"
-          # Keep logs/state in a temp dir (ephemeral — resets each run)
-          DATA_ROOT: /tmp/jo_data
+          # Persist data across runs via GitHub Actions cache
+          DATA_ROOT: ~/.jo_data
           REPO_DIR: ${{ github.workspace }}
 
           # Playwright in headless server environment
@@ -105,16 +116,26 @@ jobs:
           timeout 330m python colab_launcher.py || EXIT_CODE=$?
           EXIT_CODE=${EXIT_CODE:-0}
 
-          if [ "$EXIT_CODE" -eq 124 ]; then
-            echo "✅ Bot ran for 5.5 hours — time limit reached, self-restart will fire."
-          elif [ "$EXIT_CODE" -eq 0 ]; then
-            echo "ℹ️ Bot exited cleanly (code 0)."
-          else
-            echo "⚠️ Bot exited with code $EXIT_CODE."
-          fi
+           if [ "$EXIT_CODE" -eq 124 ]; then
+             echo "✅ Bot ran for 5.5 hours — time limit reached, self-restart will fire."
+           elif [ "$EXIT_CODE" -eq 0 ]; then
+             echo "ℹ️ Bot exited cleanly (code 0)."
+           else
+             echo "⚠️ Bot exited with code $EXIT_CODE."
+           fi
 
       # -----------------------------------------------------------------------
-      # 6. Self-restart: trigger a fresh workflow run so the bot stays alive.
+      # 6. Save Jo data to cache (state, logs, memory)
+      # -----------------------------------------------------------------------
+      - name: Save Jo data
+        uses: actions/cache@v4
+        with:
+          path: ~/.jo_data
+          key: jo-data-dev-${{ github.run_id }}
+          save-always: true
+
+      # -----------------------------------------------------------------------
+      # 7. Self-restart: trigger a fresh workflow run so the bot stays alive.
       #    Uses PAT_TOKEN (needs 'workflow' scope) stored as a secret.
       #    If PAT_TOKEN is not set, the scheduled cron will restart within 2 hours.
       # -----------------------------------------------------------------------
