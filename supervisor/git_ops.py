@@ -9,7 +9,7 @@ import pathlib
 
 log = logging.getLogger(__name__)
 
-REPO_DIR = Path(os.environ.get("OUROBOROS_REPO_DIR", "/content/ouroboros_repo"))
+REPO_DIR = Path(os.environ.get("REPO_DIR", "."))
 
 
 def import_test() -> Dict[str, Any]:
@@ -131,11 +131,14 @@ def safe_pull(branch: str = "dev", repo_dir: Optional[pathlib.Path] = None) -> b
         # Rebase failed — abort and fall through to hard reset
         log.warning(
             "safe_pull: rebase failed (branch '%s'), aborting.  stderr=%s",
-            branch, result.stderr.strip()[:400],
+            branch,
+            result.stderr.strip()[:400],
         )
         subprocess.run(
             ["git", "rebase", "--abort"],
-            cwd=cwd, capture_output=True, timeout=30,
+            cwd=cwd,
+            capture_output=True,
+            timeout=30,
         )
     except Exception as e:
         log.warning("safe_pull: pull/rebase raised exception: %s", e)
@@ -144,11 +147,17 @@ def safe_pull(branch: str = "dev", repo_dir: Optional[pathlib.Path] = None) -> b
     try:
         subprocess.run(
             ["git", "fetch", "origin"],
-            cwd=cwd, capture_output=True, timeout=60, check=True,
+            cwd=cwd,
+            capture_output=True,
+            timeout=60,
+            check=True,
         )
         subprocess.run(
             ["git", "reset", "--hard", f"origin/{branch}"],
-            cwd=cwd, capture_output=True, timeout=30, check=True,
+            cwd=cwd,
+            capture_output=True,
+            timeout=30,
+            check=True,
         )
         log.warning(
             "safe_pull: hard-reset to origin/%s — local changes lost (regenerated code).",

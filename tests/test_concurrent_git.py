@@ -23,7 +23,7 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-REPO_DIR = Path(os.environ.get("OUROBOROS_REPO_DIR", "/content/ouroboros_repo"))
+REPO_DIR = Path(os.environ.get("REPO_DIR", "."))
 
 
 def run_git(args: List[str], cwd: Path = REPO_DIR, timeout: int = 30) -> Tuple[int, str, str]:
@@ -76,11 +76,7 @@ Random: {os.urandom(4).hex()}
 
 
 def worker_simulation(
-    worker_id: int,
-    edits: List[Tuple[str, str]],
-    results: List[Dict],
-    lock: threading.Lock,
-    branch: str = "dev"
+    worker_id: int, edits: List[Tuple[str, str]], results: List[Dict], lock: threading.Lock, branch: str = "dev"
 ) -> None:
     """Simulate a worker machine performing a series of edits and pushes."""
     worker_results = []
@@ -94,14 +90,16 @@ def worker_simulation(
         pull_time = time.time() - pull_start
 
         if code != 0:
-            worker_results.append({
-                "iteration": i,
-                "file": filepath,
-                "phase": "pull",
-                "success": False,
-                "error": stderr,
-                "pull_time": pull_time,
-            })
+            worker_results.append(
+                {
+                    "iteration": i,
+                    "file": filepath,
+                    "phase": "pull",
+                    "success": False,
+                    "error": stderr,
+                    "pull_time": pull_time,
+                }
+            )
             continue
 
         # 2. Write file
@@ -112,14 +110,16 @@ def worker_simulation(
             full_path.write_text(content, encoding="utf-8")
             write_time = time.time() - write_start
         except Exception as e:
-            worker_results.append({
-                "iteration": i,
-                "file": filepath,
-                "phase": "write",
-                "success": False,
-                "error": str(e),
-                "write_time": time.time() - write_start,
-            })
+            worker_results.append(
+                {
+                    "iteration": i,
+                    "file": filepath,
+                    "phase": "write",
+                    "success": False,
+                    "error": str(e),
+                    "write_time": time.time() - write_start,
+                }
+            )
             continue
 
         # 3. Add to git
@@ -127,14 +127,16 @@ def worker_simulation(
         code, stdout, stderr = run_git(["add", filepath])
         add_time = time.time() - add_start
         if code != 0:
-            worker_results.append({
-                "iteration": i,
-                "file": filepath,
-                "phase": "add",
-                "success": False,
-                "error": stderr,
-                "add_time": add_time,
-            })
+            worker_results.append(
+                {
+                    "iteration": i,
+                    "file": filepath,
+                    "phase": "add",
+                    "success": False,
+                    "error": stderr,
+                    "add_time": add_time,
+                }
+            )
             continue
 
         # 4. Commit
@@ -143,14 +145,16 @@ def worker_simulation(
         code, stdout, stderr = run_git(["commit", "-m", commit_msg])
         commit_time = time.time() - commit_start
         if code != 0:
-            worker_results.append({
-                "iteration": i,
-                "file": filepath,
-                "phase": "commit",
-                "success": False,
-                "error": stderr,
-                "commit_time": commit_time,
-            })
+            worker_results.append(
+                {
+                    "iteration": i,
+                    "file": filepath,
+                    "phase": "commit",
+                    "success": False,
+                    "error": stderr,
+                    "commit_time": commit_time,
+                }
+            )
             continue
 
         # 5. Push
@@ -159,29 +163,27 @@ def worker_simulation(
         push_time = time.time() - push_start
         total_time = time.time() - iteration_start
 
-        worker_results.append({
-            "iteration": i,
-            "file": filepath,
-            "success": code == 0,
-            "phase": "push" if code != 0 else "complete",
-            "pull_time": round(pull_time, 4),
-            "write_time": round(write_time, 4),
-            "add_time": round(add_time, 4),
-            "commit_time": round(commit_time, 4),
-            "push_time": round(push_time, 4),
-            "total_time": round(total_time, 4),
-            "error": stderr if code != 0 else None,
-        })
+        worker_results.append(
+            {
+                "iteration": i,
+                "file": filepath,
+                "success": code == 0,
+                "phase": "push" if code != 0 else "complete",
+                "pull_time": round(pull_time, 4),
+                "write_time": round(write_time, 4),
+                "add_time": round(add_time, 4),
+                "commit_time": round(commit_time, 4),
+                "push_time": round(push_time, 4),
+                "total_time": round(total_time, 4),
+                "error": stderr if code != 0 else None,
+            }
+        )
 
     with lock:
         results.extend(worker_results)
 
 
-def run_concurrent_test(
-    num_workers: int = 2,
-    edits_per_worker: int = 3,
-    conflict_file: Optional[str] = None
-) -> Dict:
+def run_concurrent_test(num_workers: int = 2, edits_per_worker: int = 3, conflict_file: Optional[str] = None) -> Dict:
     """Run concurrent edit test with specified parameters."""
     print(f"\n=== Starting Concurrent Git Test ===")
     print(f"Workers: {num_workers}, Edits per worker: {edits_per_worker}")
@@ -210,6 +212,7 @@ def run_concurrent_test(
         for i in range(edits_per_worker):
             if conflict_file and w < 2:  # Only first two workers edit conflict file
                 filepath = conflict_file
+                content = f"Worker {w} iteration {i} conflict edit at {time.time()}\n"
             else:
                 filepath, content = create_test_file(w, i)
             edits.append((filepath, content))
@@ -223,10 +226,7 @@ def run_concurrent_test(
     threads = []
     start_time = time.time()
     for w in range(num_workers):
-        t = threading.Thread(
-            target=worker_simulation,
-            args=(w, worker_plans[w], results, lock, branch)
-        )
+        t = threading.Thread(target=worker_simulation, args=(w, worker_plans[w], results, lock, branch))
         threads.append(t)
         t.start()
 
@@ -285,38 +285,30 @@ def run_concurrent_test(
     return summary
 
 
-def main():
+def main() -> int:
     """Run comprehensive multi-machine test suite."""
     all_summaries = []
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("MULTI-MACHINE CONCURRENT EDITING TEST SUITE")
-    print("="*60)
+    print("=" * 60)
 
     # Test 1: Two workers, different files (no conflict expected)
     print("\n\n*** TEST 1: Different Files (No Conflict Expected) ***")
-    summary1 = run_concurrent_test(
-        num_workers=2,
-        edits_per_worker=3,
-        conflict_file=None
-    )
+    summary1 = run_concurrent_test(num_workers=2, edits_per_worker=3, conflict_file=None)
     all_summaries.append(("Different Files", summary1))
 
     # Test 2: Two workers, same file (conflict expected)
     print("\n\n*** TEST 2: Same File (Conflict Expected) ***")
     summary2 = run_concurrent_test(
-        num_workers=2,
-        edits_per_worker=2,
-        conflict_file="tests/concurrent_conflict_test.txt"
+        num_workers=2, edits_per_worker=2, conflict_file="tests/concurrent_conflict_test.txt"
     )
     all_summaries.append(("Same File Conflict", summary2))
 
     # Test 3: Three workers, mixed scenario
     print("\n\n*** TEST 3: Three Workers, Mixed ***")
     summary3 = run_concurrent_test(
-        num_workers=3,
-        edits_per_worker=2,
-        conflict_file="tests/concurrent_conflict_test2.txt"
+        num_workers=3, edits_per_worker=2, conflict_file="tests/concurrent_conflict_test2.txt"
     )
     all_summaries.append(("Three Workers Mixed", summary3))
 
@@ -325,15 +317,13 @@ def main():
     report = {
         "generated_at": time.time(),
         "test_suite": "multi_machine_concurrent_git",
-        "summaries": [
-            {"name": name, "data": s} for name, s in all_summaries
-        ]
+        "summaries": [{"name": name, "data": s} for name, s in all_summaries],
     }
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    print("\n\n" + "="*60)
+    print("\n\n" + "=" * 60)
     print("TEST SUITE COMPLETE")
-    print("="*60)
+    print("=" * 60)
     print(f"Report saved to: {report_path}")
     for name, s in all_summaries:
         print(f"\n{name}:")
@@ -343,7 +333,7 @@ def main():
         print(f"  Conflicts: {s.get('conflicts_detected')}")
         print(f"  Avg total time: {s.get('averages_sec', {}).get('total', 0):.4f}s")
 
-    return report
+    return 0
 
 
 if __name__ == "__main__":
