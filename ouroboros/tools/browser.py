@@ -11,7 +11,9 @@ not module-level globals — safe across threads.
 from __future__ import annotations
 
 import base64
+import datetime
 import logging
+import pathlib
 import subprocess
 import sys
 import threading
@@ -19,6 +21,7 @@ from typing import Any, Dict, List
 
 try:
     from playwright_stealth import Stealth
+
     _HAS_STEALTH = True
 except ImportError:
     _HAS_STEALTH = False
@@ -48,6 +51,7 @@ def _ensure_playwright_installed():
 
     try:
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as pw:
             pw.chromium.executable_path
         log.info("Playwright chromium binary found")
@@ -77,12 +81,12 @@ def _reset_playwright_greenlet():
         pass
 
     # Purge all playwright modules from sys.modules to reset greenlet state
-    mods_to_remove = [k for k in sys.modules.keys() if k.startswith('playwright')]
+    mods_to_remove = [k for k in sys.modules.keys() if k.startswith("playwright")]
     for k in mods_to_remove:
         del sys.modules[k]
 
     # Also purge greenlet-related modules to ensure clean state
-    mods_to_remove = [k for k in sys.modules.keys() if 'greenlet' in k.lower()]
+    mods_to_remove = [k for k in sys.modules.keys() if "greenlet" in k.lower()]
     for k in mods_to_remove:
         try:
             del sys.modules[k]
@@ -133,6 +137,7 @@ def _ensure_browser(ctx: ToolContext):
                 _reset_playwright_greenlet()
                 # Now import fresh and try again
                 from playwright.sync_api import sync_playwright
+
                 _pw_instance = sync_playwright().start()
                 _pw_thread_id = current_thread_id
                 log.info(f"Recreated Playwright instance in thread {_pw_thread_id} after error")
@@ -243,8 +248,7 @@ def _extract_page_output(page: Any, output: str, ctx: ToolContext) -> str:
         return text[:30000] + ("... [truncated]" if len(text) > 30000 else "")
 
 
-def _browse_page(ctx: ToolContext, url: str, output: str = "text",
-                 wait_for: str = "", timeout: int = 30000) -> str:
+def _browse_page(ctx: ToolContext, url: str, output: str = "text", wait_for: str = "", timeout: int = 30000) -> str:
     try:
         page = _ensure_browser(ctx)
         page.goto(url, timeout=timeout, wait_until="domcontentloaded")
@@ -264,8 +268,7 @@ def _browse_page(ctx: ToolContext, url: str, output: str = "text",
         raise
 
 
-def _browser_action(ctx: ToolContext, action: str, selector: str = "",
-                    value: str = "", timeout: int = 5000) -> str:
+def _browser_action(ctx: ToolContext, action: str, selector: str = "", value: str = "", timeout: int = 5000) -> str:
     def _do_action():
         page = _ensure_browser(ctx)
 
@@ -327,8 +330,164 @@ def _browser_action(ctx: ToolContext, action: str, selector: str = "",
             raise
 
 
+# -----------------------------------------------------------------------------
+# Browser Profile Management (inspired by PinchTab)
+# -----------------------------------------------------------------------------
+
+
+def _get_profile_dir(ctx: ToolContext) -> pathlib.Path:
+    """Get the browser profiles directory."""
+    profile_dir = ctx.drive_root / "browser_profiles"
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    return profile_dir
+
+
+def _browser_profile_save(ctx: ToolContext, name: str, description: str = "") -> str:
+    """Save current browser state (cookies, localStorage) to a named profile.
+
+    This allows persistent sessions - login once, reuse later.
+    Similar to PinchTab's profile management.
+    """
+    import json
+
+    if ctx.browser_state.page is None:
+        return "No active browser session. Open a page first with browse_page."
+
+    profile_dir = _get_profile_dir(ctx)
+    profile_path = profile_dir / f"{name}.json"
+
+    try:
+        # Get cookies
+        cookies = ctx.browser_state.page.context.cookies()
+
+        # Get localStorage
+        local_storage = ctx.browser_state.page.evaluate("""() => {
+            let items = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                items[key] = localStorage.getItem(key);
+            }
+            return items;
+        }""")
+
+        # Get sessionStorage
+        session_storage = ctx.browser_state.page.evaluate("""() => {
+            let items = {};
+            for (let i = 0; i < sessionStorage.length; i++) {
+                let key = sessionStorage.key(i);
+                items[key] = sessionStorage.getItem(key);
+            }
+            return items;
+        }""")
+
+        profile_data = {
+            "name": name,
+            "description": description,
+            "cookies": cookies,
+            "localStorage": local_storage,
+            "sessionStorage": session_storage,
+            "saved_at": datetime.datetime.now().isoformat(),
+        }
+
+        profile_path.write_text(json.dumps(profile_data, indent=2))
+
+        return f"✅ Saved browser profile '{name}' with {len(cookies)} cookies"
+
+    except Exception as e:
+        return f"⚠️ Failed to save profile: {e}"
+
+
+def _browser_profile_load(ctx: ToolContext, name: str) -> str:
+    """Load a saved browser profile (cookies, localStorage).
+
+    Must have an active browser session first (browse_page).
+    """
+    import json
+
+    if ctx.browser_state.page is None:
+        return "No active browser session. Open a page first with browse_page."
+
+    profile_dir = _get_profile_dir(ctx)
+    profile_path = profile_dir / f"{name}.json"
+
+    if not profile_path.exists():
+        return f"⚠️ Profile '{name}' not found. Available profiles: use browser_profile_list"
+
+    try:
+        profile_data = json.loads(profile_path.read_text())
+
+        # Restore cookies
+        if profile_data.get("cookies"):
+            ctx.browser_state.page.context.add_cookies(profile_data["cookies"])
+
+        # Restore localStorage
+        if profile_data.get("localStorage"):
+            for key, value in profile_data["localStorage"].items():
+                ctx.browser_state.page.evaluate(f"localStorage.setItem({json.dumps(key)}, {json.dumps(value)})")
+
+        # Restore sessionStorage
+        if profile_data.get("sessionStorage"):
+            for key, value in profile_data["sessionStorage"].items():
+                ctx.browser_state.page.evaluate(f"sessionStorage.setItem({json.dumps(key)}, {json.dumps(value)})")
+
+        return f"✅ Loaded browser profile '{name}'"
+
+    except Exception as e:
+        return f"⚠️ Failed to load profile: {e}"
+
+
+def _browser_profile_list(ctx: ToolContext) -> str:
+    """List all saved browser profiles."""
+    import json
+
+    profile_dir = _get_profile_dir(ctx)
+
+    if not profile_dir.exists():
+        return "No browser profiles saved yet."
+
+    profiles = []
+    for f in profile_dir.glob("*.json"):
+        try:
+            data = json.loads(f.read_text())
+            profiles.append(
+                {
+                    "name": data.get("name", f.stem),
+                    "description": data.get("description", ""),
+                    "saved_at": data.get("saved_at", "unknown"),
+                    "cookies": len(data.get("cookies", [])),
+                }
+            )
+        except Exception:
+            continue
+
+    if not profiles:
+        return "No browser profiles found."
+
+    result = ["## Browser Profiles\n"]
+    for p in sorted(profiles, key=lambda x: x["saved_at"], reverse=True):
+        result.append(f"- **{p['name']}**: {p['description']} ({p['cookies']} cookies)")
+
+    return "\n".join(result)
+
+
+def _browser_profile_delete(ctx: ToolContext, name: str) -> str:
+    """Delete a saved browser profile."""
+    profile_dir = _get_profile_dir(ctx)
+    profile_path = profile_dir / f"{name}.json"
+
+    if not profile_path.exists():
+        return f"⚠️ Profile '{name}' not found."
+
+    try:
+        profile_path.unlink()
+        return f"✅ Deleted browser profile '{name}'"
+    except Exception as e:
+        return f"⚠️ Failed to delete profile: {e}"
+
+
+# Add profile tools to get_tools()
 def get_tools() -> List[ToolEntry]:
-    return [
+    base_tools = [
         ToolEntry(
             name="browse_page",
             schema={
@@ -401,3 +560,77 @@ def get_tools() -> List[ToolEntry]:
             timeout_sec=60,
         ),
     ]
+
+    profile_tools = [
+        ToolEntry(
+            name="browser_profile_save",
+            schema={
+                "name": "browser_profile_save",
+                "description": (
+                    "Save current browser state (cookies, localStorage) to a named profile. "
+                    "This allows persistent sessions - login once, reuse later. "
+                    "Similar to PinchTab's profile management."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Profile name"},
+                        "description": {"type": "string", "description": "Optional description"},
+                    },
+                    "required": ["name"],
+                },
+            },
+            handler=_browser_profile_save,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="browser_profile_load",
+            schema={
+                "name": "browser_profile_load",
+                "description": (
+                    "Load a saved browser profile (cookies, localStorage). "
+                    "Must have an active browser session first (browse_page)."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Profile name to load"},
+                    },
+                    "required": ["name"],
+                },
+            },
+            handler=_browser_profile_load,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="browser_profile_list",
+            schema={
+                "name": "browser_profile_list",
+                "description": "List all saved browser profiles.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            handler=_browser_profile_list,
+            timeout_sec=10,
+        ),
+        ToolEntry(
+            name="browser_profile_delete",
+            schema={
+                "name": "browser_profile_delete",
+                "description": "Delete a saved browser profile.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Profile name to delete"},
+                    },
+                    "required": ["name"],
+                },
+            },
+            handler=_browser_profile_delete,
+            timeout_sec=10,
+        ),
+    ]
+
+    return base_tools + profile_tools
