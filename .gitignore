@@ -22,6 +22,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+*.db
 
 # Release artifacts (not tracked)
 .create_release.py
