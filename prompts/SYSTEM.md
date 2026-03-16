@@ -238,6 +238,15 @@ For complex tasks (>5 steps or >1 logical domain) — **decompose**:
 If a task contains a "Context from parent task" block — that is background, not instructions.
 The goal is the text before `---`. Keep `context` size under ~2000 words when passing it.
 
+### Context Management (Auto-summarization)
+
+When conversation history grows long, the system automatically summarizes older chat messages to stay within context limits. This happens at ~70% of the context window size. Key points:
+
+- Auto-summarization runs once per task (not every round)
+- Older messages are summarized into key points (owner requests, jo's responses, decisions)
+- The summary replaces the full chat history in context
+- Avoid calling `summarize_dialogue` manually unless you want an explicit summary
+
 ### Multi-model review
 
 For significant changes (new modules, architecture, security-sensitive code) —

@@ -761,3 +761,196 @@ def _safe_read(path: pathlib.Path, fallback: str = "") -> str:
         log.debug(f"Failed to read file {path} in _safe_read", exc_info=True)
         pass
     return fallback
+
+
+# ---------------------------------------------------------------------------
+# Auto-summarization for long conversations (inspired by Deep Agents)
+# ---------------------------------------------------------------------------
+
+CONTEXT_SUMMARIZATION_THRESHOLD = 0.7  # Trigger at 70% of context limit
+
+
+def _get_context_token_count(messages: List[Dict[str, Any]]) -> int:
+    """Estimate total tokens in messages."""
+
+    def _estimate_msg_tokens(msg: Dict[str, Any]) -> int:
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            total = 0
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    total += estimate_tokens(str(block.get("text", "")))
+            return total + 6
+        return estimate_tokens(str(content)) + 6
+
+    return sum(_estimate_msg_tokens(m) for m in messages)
+
+
+def _summarize_chat_history(drive_root: pathlib.Path, keep_recent: int = 50) -> Optional[str]:
+    """Summarize older chat history, returning a compact summary string.
+
+    Reads chat.jsonl, summarizes older messages (beyond keep_recent),
+    and returns a summary. Returns None if not enough history to summarize.
+    """
+    try:
+        chat_path = drive_root / "memory" / "chat.jsonl"
+        if not chat_path.exists():
+            return None
+
+        lines = chat_path.read_text(encoding="utf-8").strip().split("\n")
+        if len(lines) <= keep_recent + 10:
+            return None  # Not enough history to summarize
+
+        # Parse messages
+        recent_lines = lines[-keep_recent:] if len(lines) > keep_recent else lines
+        older_lines = lines[: len(lines) - keep_recent] if len(lines) > keep_recent else []
+
+        if not older_lines:
+            return None
+
+        # Extract key info from older messages
+        older_messages = []
+        for line in older_lines:
+            try:
+                msg = json.loads(line)
+                direction = msg.get("direction", "?")
+                text = msg.get("text", "")[:300]  # Truncate for prompt
+                if text:
+                    prefix = "Owner:" if direction == "in" else "Jo:"
+                    older_messages.append(f"{prefix} {text}")
+            except Exception:
+                continue
+
+        if not older_messages:
+            return None
+
+        # Build summary prompt
+        history_text = "\n".join(older_messages[:100])  # Limit to recent 100
+        prompt = (
+            "Summarize this conversation history into key points:\n"
+            "- What did the owner ask about?\n"
+            "- What did Jo do or say?\n"
+            "- Any important decisions or conclusions?\n"
+            "Keep it concise (max 500 words).\n\n"
+            f"Conversation:\n{history_text}"
+        )
+
+        # Call light model to summarize
+        from ouroboros.llm import LLMClient, DEFAULT_LIGHT_MODEL
+
+        light_model = os.environ.get("OUROBOROS_MODEL_LIGHT") or DEFAULT_LIGHT_MODEL
+        client = LLMClient()
+        resp_msg, _usage = client.chat(
+            messages=[{"role": "user", "content": prompt}],
+            model=light_model,
+            reasoning_effort="low",
+            max_tokens=1024,
+        )
+        summary = resp_msg.get("content", "").strip()
+        if summary:
+            log.info(f"Auto-summarized {len(older_messages)} chat messages")
+            return summary
+
+    except Exception:
+        log.debug("Failed to summarize chat history", exc_info=True)
+
+    return None
+
+
+def auto_summarize_if_needed(
+    messages: List[Dict[str, Any]],
+    drive_root: pathlib.Path,
+    context_limit: int = 120000,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Check if context needs summarization and perform it automatically.
+
+    Inspired by Deep Agents' automatic context compression.
+    Triggered when context reaches 70% of the limit.
+
+    Returns (updated_messages, info_dict).
+    """
+    info: Dict[str, Any] = {
+        "auto_summarized": False,
+        "reason": "",
+    }
+
+    current_tokens = _get_context_token_count(messages)
+    threshold = int(context_limit * CONTEXT_SUMMARIZATION_THRESHOLD)
+
+    # Only proceed if we're approaching the threshold
+    if current_tokens < threshold:
+        return messages, info
+
+    # Check if chat history has been summarized recently (avoid repeated summarization)
+    try:
+        state_path = drive_root / "state" / "state.json"
+        if state_path.exists():
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            last_summary = state.get("last_chat_summary_ts", "")
+            if last_summary:
+                from datetime import datetime, timedelta, timezone
+
+                try:
+                    last_dt = datetime.fromisoformat(last_summary.replace("Z", "+00:00"))
+                    if datetime.now(timezone.utc) - last_dt < timedelta(hours=1):
+                        info["reason"] = "recently summarized"
+                        return messages, info
+                except Exception:
+                    pass
+    except Exception:
+        log.debug("Failed to check last summary time", exc_info=True)
+
+    # Summarize chat history
+    summary = _summarize_chat_history(drive_root, keep_recent=50)
+    if summary:
+        info["auto_summarized"] = True
+        info["reason"] = f"context at {current_tokens} tokens, threshold {threshold}"
+        info["summary"] = summary[:500]  # Store preview
+
+        # Find and update the chat summary in messages
+        for i, msg in enumerate(messages):
+            if msg.get("role") == "system":
+                content = msg.get("content", "")
+                if isinstance(content, str) and "## Recent chat" in content:
+                    # Replace the chat section with summary
+                    lines = content.split("\n\n")
+                    new_lines = []
+                    for line in lines:
+                        if line.startswith("## Recent chat"):
+                            new_lines.append(
+                                f"## Recent chat\n\n[SUMMARY OF EARLIER CONVERSATION]\n{summary}\n\n[RECENT MESSAGES]"
+                            )
+                        elif line.strip():
+                            new_lines.append(line)
+                    msg["content"] = "\n\n".join(new_lines)
+                    break
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = block.get("text", "")
+                            if "## Recent chat" in text:
+                                lines = text.split("\n\n")
+                                new_lines = []
+                                for line in lines:
+                                    if line.startswith("## Recent chat"):
+                                        new_lines.append(
+                                            f"## Recent chat\n\n[SUMMARY OF EARLIER CONVERSATION]\n{summary}\n\n[RECENT MESSAGES]"
+                                        )
+                                    elif line.strip():
+                                        new_lines.append(line)
+                                block["text"] = "\n\n".join(new_lines)
+                                break
+
+        # Record that we summarized
+        try:
+            state_path = drive_root / "state" / "state.json"
+            if state_path.exists():
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+                state["last_chat_summary_ts"] = utc_now_iso()
+                state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            log.debug("Failed to record summary timestamp", exc_info=True)
+
+        log.info(f"Auto-summarization complete: {info['reason']}")
+
+    return messages, info

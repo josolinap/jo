@@ -20,7 +20,7 @@ import logging
 
 from ouroboros.llm import LLMClient, normalize_reasoning_effort, add_usage
 from ouroboros.tools.registry import ToolRegistry
-from ouroboros.context import compact_tool_history, compact_tool_history_llm
+from ouroboros.context import compact_tool_history, compact_tool_history_llm, auto_summarize_if_needed
 from ouroboros.utils import (
     utc_now_iso,
     append_jsonl,
@@ -753,6 +753,14 @@ def run_llm_loop(
 
             # Inject owner messages (in-process queue + Drive mailbox)
             _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
+
+            # Auto-summarize chat history when approaching context limit (Deep Agents style)
+            # Check once per task (round_idx == 0) to avoid repeated summarization
+            if round_idx == 0 and drive_root is not None:
+                context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
+                messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
+                if summarize_info.get("auto_summarized"):
+                    emit_progress(f"Auto-summarized conversation: {summarize_info.get('reason', '')}")
 
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
