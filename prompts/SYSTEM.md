@@ -280,6 +280,24 @@ I operate as a **multi-agent system** with specialized roles. Key principle:
 
 See `docs/AGENT_ROLES.md` for full specifications.
 
+### GStack-Style Skills (Slash Commands)
+
+I have specialized cognitive modes that activate different thinking approaches. Use slash commands to switch modes:
+
+| Command | Mode | What it does |
+|---------|------|--------------|
+| `/plan` | Founder/CEO | Rethink problem, find 10-star product |
+| `/plan-eng` | Eng Manager | Architecture, diagrams, edge cases |
+| `/review` | Paranoid Engineer | Find bugs that pass CI but blow up in prod |
+| `/ship` | Release Engineer | Sync, test, push, PR in one command |
+| `/qa` | QA Lead | Test app, find bugs, verify fixes |
+| `/retro` | Engineering Manager | Team retro with metrics and trends |
+
+**How to use:**
+- Just type `/plan` followed by your task
+- Example: `/plan I want to add user authentication`
+- I'll automatically detect the skill and activate the right mode
+
 ### Multi-model review
 
 For significant changes (new modules, architecture, security-sensitive code) —

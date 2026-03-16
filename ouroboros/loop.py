@@ -786,6 +786,35 @@ def run_llm_loop(
                                 f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles"
                             )
 
+            # Auto-activate skills: detect slash commands like /plan, /review, /ship, /qa, /retro
+            if round_idx == 1:
+                from ouroboros.tools.skills import detect_skill_from_text, extract_task_from_skill_text
+
+                for m in messages:
+                    if m.get("role") == "user":
+                        user_text = m.get("content", "")
+                        skill = detect_skill_from_text(user_text)
+                        if skill:
+                            task = extract_task_from_skill_text(user_text, skill)
+                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}]
+
+{skill.system_prompt_addition}
+
+---
+
+## Task to Analyze
+
+{task}
+
+---
+
+{skill.pre_task_prompt}
+
+{skill.post_task_prompt}"""
+                            messages.append({"role": "system", "content": skill_prompt})
+                            emit_progress(f"Skill activated: {skill.name.upper()} - {skill.description}")
+                            break
+
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)

@@ -1,0 +1,428 @@
+"""GStack-style skills system for Jo.
+
+Inspired by Garry Tan's gstack - specialized modes invoked via slash commands.
+Each skill activates a different "cognitive mode" with specific tools and prompts.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
+from ouroboros.tools.registry import ToolEntry, ToolContext
+
+log = logging.getLogger(__name__)
+
+
+@dataclass
+class Skill:
+    """A specialized cognitive mode that Jo can switch into."""
+
+    name: str
+    description: str
+    system_prompt_addition: str
+    enabled_tools: List[str] = field(default_factory=list)
+    pre_task_prompt: str = ""
+    post_task_prompt: str = ""
+    aliases: List[str] = field(default_factory=list)
+
+
+SKILLS: Dict[str, Skill] = {}
+
+
+def register_skill(skill: Skill) -> None:
+    """Register a skill and its aliases."""
+    SKILLS[skill.name] = skill
+    for alias in skill.aliases:
+        SKILLS[alias] = skill
+
+
+register_skill(
+    Skill(
+        name="plan",
+        aliases=["plan", "/plan", "plan-ceo-review", "plan-ceo"],
+        description="Founder/CEO mode - rethink the problem, find the 10-star product",
+        system_prompt_addition="""You are now in FOUNDING MODE (CEO perspective).
+
+Your job is NOT to implement what's asked. Your job is to FIND THE 10-STAR PRODUCT hiding inside the request.
+
+Ask yourself:
+- What is this product actually FOR?
+- What is the user's real problem?
+- What would the magical version look like?
+- What would they tell their friends?
+- What feels inevitable, delightful, maybe even magical?
+
+Don't take requests literally. Challenge assumptions. Think bigger.
+This is Brian Chesky mode - product taste, user empathy, long time horizon.""",
+        enabled_tools=["repo_read", "grep", "glob_files", "chat_history", "web_search", "codesearch"],
+        pre_task_prompt="Before analyzing: Read the codebase to understand the current state. What's already built? What's the architecture?",
+        post_task_prompt="""Now provide your founding-mode analysis:
+
+## Literal Request
+[What they asked for]
+
+## Real Problem
+[What they're actually trying to solve - go deeper]
+
+## 10-Star Version
+[What would make this indispensable - think magical]
+
+## MVP Scope
+[What's the smallest thing that delivers value]
+
+## Risks & Assumptions
+[What could go wrong, what to validate with users]""",
+    )
+)
+
+register_skill(
+    Skill(
+        name="plan-eng",
+        aliases=["plan-eng", "/plan-eng", "plan-eng-review", "engineering"],
+        description="Engineering Manager mode - architecture, diagrams, edge cases",
+        system_prompt_addition="""You are now in ENGINEERING MANAGER mode.
+
+Your job is to be the best technical lead. Nail the architecture, data flow, and failure modes.
+
+You MUST produce:
+- Architecture diagram (ASCII or description)
+- Data flow between components
+- State machine for complex operations
+- Edge cases and failure modes
+- Trust boundaries
+- Test coverage matrix
+
+Think: What could still break? What would cause incidents?
+This is paranoid technical planning - make it buildable, not just pretty.""",
+        enabled_tools=["repo_read", "grep", "git_diff", "repo_list", "glob_files"],
+        pre_task_prompt="Before planning: Read the relevant code and understand current architecture.",
+        post_task_prompt="""Now provide your engineering analysis:
+
+## Architecture Overview
+[Component breakdown]
+
+## Data Flow
+[How data moves through the system]
+
+## Edge Cases
+[What could go wrong - be paranoid]
+
+## Failure Modes
+[How things can fail and how to recover]
+
+## Test Matrix
+[What to test and how]""",
+    )
+)
+
+register_skill(
+    Skill(
+        name="review",
+        aliases=["review", "/review", "review-code", "paranoid"],
+        description="Paranoid staff engineer - find bugs that pass CI but blow up in production",
+        system_prompt_addition="""You are now in PARANOID REVIEW mode.
+
+Passing tests do NOT mean the code is safe. Look for:
+- N+1 queries
+- Race conditions
+- Stale reads
+- Bad trust boundaries
+- Missing indexes
+- Escaping bugs
+- Broken invariants
+- Bad retry logic
+- Tests that pass but miss the real failure mode
+
+This is NOT style review. This is production-incident prevention.
+Ask: What could still break in production?
+
+Be harsh. Find real bugs. Don't be nice.""",
+        enabled_tools=["repo_read", "git_diff", "grep", "repo_list"],
+        pre_task_prompt="Before reviewing: Read the full diff and understand what changed.",
+        post_task_prompt="""Now provide your paranoid review:
+
+## Critical Issues (Fix Before Ship)
+[Bugs that will cause production issues]
+
+## Medium Issues
+[Should address but not critical]
+
+## Suggestions
+[Nice to have improvements]
+
+## Questions for Author
+[Things that need clarification]""",
+    )
+)
+
+register_skill(
+    Skill(
+        name="ship",
+        aliases=["ship", "/ship", "release"],
+        description="Release engineer - sync, test, push, PR in one command",
+        system_prompt_addition="""You are now in RELEASE ENGINEER mode.
+
+Once the work is done, you just LAND THE PLANE. This is for ready branches.
+Not for deciding what to build - for SHIPPING what's already built.
+
+Your job:
+1. Sync with main (pull --rebase)
+2. Run tests
+3. Verify branch state is sane
+4. Push branch
+5. Create/update PR
+6. Update changelog/version if needed
+
+You want momentum. Don't let branches die in review.
+This is discipline, not ideation.""",
+        enabled_tools=["repo_read", "repo_write_commit", "repo_commit_push", "shell_run", "git_diff", "git_status"],
+        pre_task_prompt="Before shipping: Verify the branch state. Run tests locally first.",
+        post_task_prompt="""Now execute the release:
+
+## Pre-flight Checks
+[Test results, branch state]
+
+## Sync with Main
+[Pull rebase results]
+
+## Final Review
+[Any last issues before push]
+
+## PR Status
+[Link to PR]
+
+## Changelog/Version
+[Any updates needed]""",
+    )
+)
+
+register_skill(
+    Skill(
+        name="qa",
+        aliases=["qa", "/qa", "test", "qa-test"],
+        description="QA Lead - test the app, find bugs, verify fixes",
+        system_prompt_addition="""You are now in QA LEAD mode.
+
+Your job is to verify the app works. Use the browser to:
+- Navigate affected pages
+- Fill forms and test flows
+- Check for console errors
+- Verify UI state
+- Compare before/after
+
+After testing, provide a health score (0-100) with:
+- Critical issues found
+- Issues fixed
+- Pages tested
+- Overall assessment""",
+        enabled_tools=["repo_read", "grep", "glob_files", "shell_run"],
+        pre_task_prompt="Before QA: Identify what pages/routes were changed. Determine test strategy.",
+        post_task_prompt="""Now provide your QA report:
+
+## Health Score: X/100
+
+## Critical Issues Found
+[Must fix before ship]
+
+## Issues Verified Fixed
+[Regression check - what was broken before is now working]
+
+## Pages Tested
+[What you clicked through]
+
+## Console Errors
+[Any JS errors found]
+
+## Recommendation
+[Ship / Needs Work / Needs Review]""",
+    )
+)
+
+register_skill(
+    Skill(
+        name="retro",
+        aliases=["retro", "/retro", "retrospective"],
+        description="Engineering Manager - team retro with metrics and trends",
+        system_prompt_addition="""You are now in RETRO MODE.
+
+Analyze the team's work over a time period. Provide:
+- Commit statistics
+- Contributor breakdown
+- Wins and opportunities
+- Shipping velocity
+- Patterns and trends
+
+This is data-driven feedback, not vibes.""",
+        enabled_tools=["repo_read", "grep", "git_log", "shell_run"],
+        pre_task_prompt="Before retro: Gather git history, commit stats, and contributor info.",
+        post_task_prompt="""Now provide the retro:
+
+## Summary
+[Time period, total commits, contributors]
+
+## Contributor Breakdown
+[Who did what, with metrics]
+
+## Top Wins
+[Biggest accomplishments]
+
+## Opportunities
+[Where to improve]
+
+## Trends
+[How does this compare to previous periods]""",
+    )
+)
+
+
+def get_skill(name: str) -> Optional[Skill]:
+    """Get a skill by name or alias."""
+    return SKILLS.get(name) or SKILLS.get(f"/{name}") or SKILLS.get(name.replace("/", ""))
+
+
+def detect_skill_from_text(text: str) -> Optional[Skill]:
+    """Detect if text contains a skill command like /plan, /review, /ship, etc."""
+    text_lower = text.lower().strip()
+
+    # Handle @jo prefix
+    prefixes_to_strip = ["@jo ", "@jo\n", "jo ", "jo\n"]
+    for prefix in prefixes_to_strip:
+        if text_lower.startswith(prefix):
+            text_lower = text_lower[len(prefix) :]
+            text = text[len(prefix) :]
+            break
+
+    for skill_name, skill in SKILLS.items():
+        for alias in skill.aliases:
+            alias_lower = alias.lower()
+            if text_lower.startswith(alias_lower + " ") or text_lower.startswith(alias_lower + "\n"):
+                return skill
+            if text_lower == alias_lower:
+                return skill
+
+    return None
+
+
+def extract_task_from_skill_text(text: str, skill: Skill) -> str:
+    """Extract the task description from skill-annotated text."""
+    text_lower = text.lower().strip()
+
+    # Handle @jo prefix first
+    prefixes_to_strip = ["@jo ", "@jo\n", "jo ", "jo\n"]
+    for prefix in prefixes_to_strip:
+        if text_lower.startswith(prefix):
+            text = text[len(prefix) :]
+            text_lower = text_lower[len(prefix) :]
+            break
+
+    for alias in skill.aliases:
+        alias_lower = alias.lower()
+        if text_lower.startswith(alias_lower):
+            task_text = text[len(alias) :].strip()
+            return task_text if task_text else ""
+
+    return text
+
+
+def get_all_skills() -> List[Dict[str, str]]:
+    """Get all available skills for documentation."""
+    seen = set()
+    result = []
+    for skill in SKILLS.values():
+        if skill.name not in seen:
+            seen.add(skill.name)
+            result.append({"name": skill.name, "aliases": ", ".join(skill.aliases), "description": skill.description})
+    return result
+
+
+def get_tools() -> List[ToolEntry]:
+    """Get the skill-related tools."""
+    return [
+        ToolEntry(
+            name="activate_skill",
+            schema={
+                "name": "activate_skill",
+                "description": (
+                    "Activate a specialized cognitive mode (skill). "
+                    "Available skills: plan (founder mode), plan-eng (engineering), "
+                    "review (paranoid code review), ship (release), qa (testing), retro (team retro). "
+                    "Each skill changes how Jo approaches the task."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "skill": {
+                            "type": "string",
+                            "description": "Skill to activate (e.g., 'plan', 'review', 'ship', 'qa', 'retro')",
+                        },
+                        "task": {"type": "string", "description": "The task or context to apply this skill to"},
+                    },
+                    "required": ["skill", "task"],
+                },
+            },
+            handler=_activate_skill_handler,
+        ),
+        ToolEntry(
+            name="list_skills",
+            schema={
+                "name": "list_skills",
+                "description": "List all available cognitive modes (skills) and what they do",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_list_skills_handler,
+        ),
+    ]
+
+
+def _list_skills_handler(ctx: ToolContext) -> str:
+    """List all available skills."""
+    skills = get_all_skills()
+    lines = ["## Available Cognitive Modes (Skills)\n"]
+    lines.append(
+        "Use `activate_skill` to switch modes, or use slash commands like /plan, /review, /ship, /qa, /retro.\n"
+    )
+    for s in skills:
+        lines.append(f"### {s['name']}")
+        lines.append(f"**Aliases:** {s['aliases']}")
+        lines.append(f"**What it does:** {s['description']}\n")
+    return "\n".join(lines)
+
+
+def _activate_skill_handler(ctx: ToolContext, skill: str, task: str) -> str:
+    """Activate a skill mode and process the task."""
+    skill_obj = get_skill(skill)
+    if not skill_obj:
+        return f"Unknown skill: {skill}. Use `list_skills` to see available modes."
+
+    enhanced_prompt = f"""[SKILL ACTIVATED: {skill_obj.name.upper()}]
+
+{skill_obj.system_prompt_addition}
+
+---
+
+## Task to Analyze
+
+{task}
+
+---
+
+{skill_obj.pre_task_prompt}
+
+[Perform your analysis now, then provide the output format below.]
+
+{skill_obj.post_task_prompt}"""
+
+    ctx._active_skill = skill_obj.name
+    ctx._skill_prompt = enhanced_prompt
+
+    return f"""**Skill Activated: {skill_obj.name.upper()}**
+
+**Mode:** {skill_obj.description}
+
+**Your Task:** {task}
+
+---
+
+Now I'll analyze this in {skill_obj.name.upper()} mode. {skill_obj.pre_task_prompt}"""
