@@ -7,18 +7,80 @@ import logging
 import os
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Set
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
 from ouroboros.utils import utc_now_iso, write_text, run_cmd
 
 log = logging.getLogger(__name__)
 
+CODE_EXTENSIONS = {".py", ".pyx", ".pxd"}
+CODE_DIRS = {"ouroboros/", "supervisor/", "tools/"}
+
+
+def _get_changed_files_since_last_push(ctx: ToolContext) -> Set[str]:
+    """Get files changed in the most recent commit(s) that haven't been pushed."""
+    try:
+        diff = run_cmd(["git", "diff", "--name-only", "HEAD~1..HEAD"], cwd=ctx.repo_dir)
+        committed = run_cmd(["git", "diff", "--cached", "--name-only"], cwd=ctx.repo_dir).strip()
+        files = set()
+        for f in diff.strip().split("\n"):
+            if f.strip():
+                files.add(f.strip())
+        for f in committed.split("\n"):
+            if f.strip():
+                files.add(f.strip())
+        return files
+    except Exception:
+        log.debug("Failed to get changed files", exc_info=True)
+        return set()
+
+
+def _needs_restart(ctx: ToolContext) -> tuple[bool, str]:
+    """Determine if restart is needed based on what files changed.
+
+    Returns: (needs_restart, reason)
+    """
+    changed = _get_changed_files_since_last_push(ctx)
+
+    if not changed:
+        return False, "No files changed"
+
+    code_files = set()
+    non_code_files = set()
+
+    for f in changed:
+        path = Path(f)
+        ext = path.suffix.lower()
+
+        if ext in CODE_EXTENSIONS:
+            code_files.add(f)
+        elif any(f.startswith(d) for d in CODE_DIRS):
+            code_files.add(f)
+        else:
+            non_code_files.add(f)
+
+    if code_files:
+        reason = f"Code files changed: {', '.join(sorted(code_files))}"
+        return True, reason
+
+    if non_code_files:
+        reason = f"Non-code files changed (no restart needed): {', '.join(sorted(non_code_files))}"
+        return False, reason
+
+    return False, "No restart required"
+
 
 def _request_restart(ctx: ToolContext, reason: str) -> str:
     if str(ctx.current_task_type or "") == "evolution" and not ctx.last_push_succeeded:
         return "⚠️ RESTART_BLOCKED: in evolution mode, commit+push first."
-    # Persist expected SHA for post-restart verification
+
+    needs_restart, restart_reason = _needs_restart(ctx)
+
+    if not needs_restart:
+        ctx.last_push_succeeded = False
+        return f"⏭️ Skipping restart: {restart_reason}"
+
     try:
         sha = run_cmd(["git", "rev-parse", "HEAD"], cwd=ctx.repo_dir)
         branch = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ctx.repo_dir)
@@ -39,9 +101,11 @@ def _request_restart(ctx: ToolContext, reason: str) -> str:
     except Exception:
         log.debug("Failed to read VERSION file or git ref for restart verification", exc_info=True)
         pass
-    ctx.pending_events.append({"type": "restart_request", "reason": reason, "ts": utc_now_iso()})
+    ctx.pending_events.append(
+        {"type": "restart_request", "reason": f"{reason} | {restart_reason}", "ts": utc_now_iso()}
+    )
     ctx.last_push_succeeded = False
-    return f"Restart requested: {reason}"
+    return f"♻️ Restart requested: {restart_reason}"
 
 
 def _promote_to_stable(ctx: ToolContext, reason: str) -> str:

@@ -220,72 +220,124 @@ def auto_resume_after_restart() -> None:
         if not chat_id:
             return
 
-        # Check for recent restart (within 2 minutes)
-        restart_verify_path = DRIVE_ROOT / "state" / "pending_restart_verify.json"
+        # Check for recent restart - multiple detection methods
         recent_restart = False
+
+        # Method 1: Check for pending_restart_verify.json (may have been claimed/deleted)
+        restart_verify_path = DRIVE_ROOT / "state" / "pending_restart_verify.json"
         if restart_verify_path.exists():
             recent_restart = True
-        else:
-            # Check supervisor.jsonl for recent restart event
+
+        # Method 2: Check for any claimed verify files (evidence of recent restart)
+        if not recent_restart:
+            state_dir = DRIVE_ROOT / "state"
+            if state_dir.exists():
+                for f in state_dir.iterdir():
+                    if f.name.startswith("pending_restart_verify.claimed"):
+                        try:
+                            import time as time_module
+
+                            age = time_module.time() - f.stat().st_mtime
+                            if age < 300:  # Within last 5 minutes
+                                recent_restart = True
+                                break
+                        except Exception:
+                            pass
+
+        # Method 3: Check supervisor.jsonl for recent launcher_start (within last 10 minutes)
+        if not recent_restart:
             sup_log = DRIVE_ROOT / "logs" / "supervisor.jsonl"
             if sup_log.exists():
                 try:
+                    import time as time_module
+
+                    current_time = time_module.time()
                     lines = sup_log.read_text(encoding="utf-8").strip().split("\n")
-                    for line in reversed(lines[-20:]):
+                    for line in reversed(lines[-50:]):
                         if not line.strip():
                             continue
-                        evt = json.loads(line)
-                        if evt.get("type") in ("launcher_start", "restart"):
+                        try:
+                            evt = json.loads(line)
+                            evt_type = evt.get("type", "")
+                            if evt_type in ("launcher_start", "restart", "bootstrap"):
+                                evt_ts = evt.get("ts", "")
+                                # Rough check: if recent (within last 10 min based on log position)
+                                if "T" in evt_ts:
+                                    recent_restart = True
+                                    break
+                        except Exception:
+                            continue
+                    # If we can't parse but file is recent, assume restart happened
+                    if not recent_restart:
+                        sup_age = current_time - sup_log.stat().st_mtime
+                        if sup_age < 600:  # File modified within 10 minutes
                             recent_restart = True
-                            break
                 except Exception:
-                    log.debug("Suppressed exception", exc_info=True)
+                    log.debug("Suppressed exception checking supervisor log", exc_info=True)
 
         if not recent_restart:
+            log.debug("No recent restart detected, skipping auto-resume")
             return
 
         # Check if scratchpad has meaningful content
         scratchpad_path = DRIVE_ROOT / "memory" / "scratchpad.md"
         if not scratchpad_path.exists():
+            log.debug("No scratchpad found, skipping auto-resume")
             return
 
         scratchpad = scratchpad_path.read_text(encoding="utf-8")
-        # Skip if scratchpad is empty or default
         stripped = scratchpad.strip()
-        if not stripped or stripped == "# Scratchpad" or "(empty" in stripped.lower():
-            # Check if it's just the default template with all empty sections
-            content_lines = [
-                ln.strip()
-                for ln in stripped.splitlines()
-                if ln.strip() and not ln.strip().startswith("#") and ln.strip() != "- (empty)"
-            ]
-            # Filter out UpdatedAt lines
-            content_lines = [ln for ln in content_lines if not ln.startswith("UpdatedAt:")]
-            if not content_lines:
-                return
 
-        # Auto-resume: inject synthetic message
-        time.sleep(2)  # Let everything initialize
-        agent = _get_chat_agent()
-        if not agent._busy:
-            import threading
+        # More lenient check - allow auto-resume if scratchpad has any substantial content
+        content_lines = [
+            ln.strip()
+            for ln in stripped.splitlines()
+            if ln.strip() and not ln.strip().startswith("#") and ln.strip() != "- (empty)"
+        ]
+        content_lines = [ln for ln in content_lines if not ln.startswith("UpdatedAt:")]
 
-            threading.Thread(
-                target=handle_chat_direct,
-                args=(
+        # Allow resume if there's any real content (not just template)
+        if len(content_lines) < 2:
+            log.debug("Scratchpad too empty for auto-resume")
+            return
+
+        # Auto-resume: inject synthetic message with retry logic
+        log.info(f"Auto-resuming after restart for chat_id={chat_id}")
+
+        def _do_resume():
+            try:
+                time.sleep(3)  # Let everything initialize
+                agent = _get_chat_agent()
+
+                # Wait for agent to be ready (with timeout)
+                max_wait = 10
+                waited = 0
+                while agent._busy and waited < max_wait:
+                    time.sleep(1)
+                    waited += 1
+
+                if agent._busy:
+                    log.warning("Agent still busy after wait, attempting resume anyway")
+
+                handle_chat_direct(
                     int(chat_id),
                     "[auto-resume after restart] Continue your work. Read scratchpad and identity — they contain context of what you were doing.",
                     None,
-                ),
-                daemon=True,
-            ).start()
-            append_jsonl(
-                DRIVE_ROOT / "logs" / "supervisor.jsonl",
-                {
-                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                    "type": "auto_resume_triggered",
-                },
-            )
+                )
+            except Exception as e:
+                log.error(f"Auto-resume failed: {e}", exc_info=True)
+
+        import threading
+
+        threading.Thread(target=_do_resume, daemon=True).start()
+
+        append_jsonl(
+            DRIVE_ROOT / "logs" / "supervisor.jsonl",
+            {
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "type": "auto_resume_triggered",
+            },
+        )
     except Exception as e:
         append_jsonl(
             DRIVE_ROOT / "logs" / "supervisor.jsonl",
@@ -295,6 +347,7 @@ def auto_resume_after_restart() -> None:
                 "error": repr(e),
             },
         )
+        log.error(f"Auto-resume failed: {e}", exc_info=True)
 
 
 # ---------------------------------------------------------------------------

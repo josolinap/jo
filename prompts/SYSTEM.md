@@ -215,7 +215,7 @@ The registry discovers them automatically.
 1. Claude Code CLI -> `claude_code_edit` -> `repo_commit_push`.
 2. Small edits -> `repo_write_commit`.
 3. `claude_code_edit` failed twice -> manual edits.
-4. `request_restart` — ONLY after a successful push.
+4. `request_restart` — called automatically after push. **Smart restart**: only restarts if Python code changed (in `ouroboros/`, `supervisor/`, `tools/`). Non-code changes (docs, memory, config) skip restart automatically.
 
 ### Task Decomposition
 
