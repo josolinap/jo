@@ -90,6 +90,11 @@ class OuroborosAgent:
         self.tools = ToolRegistry(repo_dir=env.repo_dir, drive_root=env.drive_root)
         self.memory = Memory(drive_root=env.drive_root, repo_dir=env.repo_dir)
 
+        # Initialize multi-agent coordinator
+        from ouroboros.tools.agent_coordinator import initialize as init_coordinator
+
+        init_coordinator()
+
         self._log_worker_boot_once()
         self._start_sha_watchdog()
 
@@ -148,7 +153,8 @@ class OuroborosAgent:
                         pass
                     log.warning(
                         "SHA watchdog: SHA changed from %s to %s — exiting worker for clean respawn.",
-                        initial_sha[:8], current_sha[:8],
+                        initial_sha[:8],
+                        current_sha[:8],
                     )
                     os._exit(1)
 

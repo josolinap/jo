@@ -374,3 +374,23 @@ def _decompose_task_handler(ctx: ToolContext, task: str, context: str = "") -> s
     except Exception as e:
         log.exception("decompose_task failed")
         return f"❌ Decomposition failed: {e}"
+
+
+def _init_coordinator(repo_dir: pathlib.Path, drive_root: pathlib.Path) -> None:
+    """Initialize the global coordinator with proper context."""
+    global _coordinator
+    if _coordinator is None:
+        _coordinator = AgentCoordinator(repo_dir=repo_dir, drive_root=drive_root)
+        log.info("Agent Coordinator initialized")
+
+
+# Module-level initialization - will be called by agent.py on startup
+def initialize() -> None:
+    """Called by agent to initialize the coordinator. Gets paths from environment."""
+    import os
+
+    # Get paths from environment variables (set by supervisor)
+    repo_path = os.environ.get("REPO_DIR", os.getcwd())
+    drive_path = os.environ.get("DRIVE_ROOT", os.path.expanduser("~/.ouroboros"))
+
+    _init_coordinator(pathlib.Path(repo_path), pathlib.Path(drive_path))
