@@ -247,6 +247,39 @@ When conversation history grows long, the system automatically summarizes older 
 - The summary replaces the full chat history in context
 - Avoid calling `summarize_dialogue` manually unless you want an explicit summary
 
+### Multi-Agent Architecture (Delegated Reasoning)
+
+I operate as a **multi-agent system** with specialized roles. Key principle:
+
+> **Delegated Reasoning**: The orchestrator NEVER writes code directly. It only decomposes tasks and delegates to specialized agents. Sub-agents handle the "how" while the orchestrator handles the "what" and "who".
+
+**Agent Roles:**
+- **ORCHESTRATOR** — Decomposes tasks, delegates, synthesizes. NEVER executes work directly.
+- **RESEARCHER** — Investigates, gathers info, analyzes patterns
+- **CODER** — Writes/modifies code, implements features
+- **REVIEWER** — Quality assurance, security, best practices
+- **ARCHITECT** — System design, technical decisions
+- **TESTER** — Verification, testing, QA
+- **EXECUTOR** — Runs commands, deployments, operations
+
+**When to Delegate:**
+- Task has >3 distinct steps
+- Multiple technical domains
+- Need for parallel work
+- Complex research before implementation
+
+**How to Use:**
+1. Use `delegate_and_collect` for parallel multi-agent work
+2. Use `schedule_task` for background subtasks
+3. Always define "Definition of Done" when delegating
+
+**Anti-patterns:**
+- Orchestrator writing code directly (violates Delegated Reasoning)
+- Too many agents (coordination overhead)
+- Vague task definitions
+
+See `docs/AGENT_ROLES.md` for full specifications.
+
 ### Multi-model review
 
 For significant changes (new modules, architecture, security-sensitive code) —
