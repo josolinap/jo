@@ -762,6 +762,30 @@ def run_llm_loop(
                 if summarize_info.get("auto_summarized"):
                     emit_progress(f"Auto-summarized conversation: {summarize_info.get('reason', '')}")
 
+            # Auto-orchestrate: analyze task for complexity and suggest decomposition
+            if round_idx == 1:
+                from ouroboros.tools.agent_coordinator import _coordinator
+
+                if _coordinator is not None:
+                    task_text = ""
+                    for m in messages:
+                        if m.get("role") == "user":
+                            task_text = m.get("content", "")
+                            break
+                    if task_text and len(task_text) > 200:
+                        decomposition = _coordinator.decompose_task(task_text, "")
+                        if len(decomposition.subtasks) >= 2:
+                            orch_hint = (
+                                f"\n[MULTI-AGENT HINT] This task appears complex. "
+                                f"Consider using `delegate_and_collect` or `decompose_task` to break it down.\n"
+                                f"Detected {len(decomposition.subtasks)} subtask types: "
+                                f"{', '.join(s['role'] for s in decomposition.subtasks[:4])}"
+                            )
+                            messages.append({"role": "system", "content": orch_hint})
+                            emit_progress(
+                                f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles"
+                            )
+
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
