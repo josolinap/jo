@@ -27,6 +27,7 @@ class Skill:
     post_task_prompt: str = ""
     aliases: List[str] = field(default_factory=list)
     triggers: List[str] = field(default_factory=list)
+    version: str = "1.0.0"
 
 
 SKILLS: Dict[str, Skill] = {}
@@ -570,6 +571,15 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
 
     Also detects keywords that should trigger specific skills (intelligent routing).
     """
+    skill, _ = detect_skill_with_triggers(text)
+    return skill
+
+
+def detect_skill_with_triggers(text: str) -> tuple[Optional[Skill], List[str]]:
+    """Detect skill with transparency - returns (skill, matched_triggers).
+
+    Provides observability into why a skill was selected.
+    """
     text_lower = text.lower().strip()
 
     # Handle @jo prefix
@@ -585,20 +595,23 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
         for alias in skill.aliases:
             alias_lower = alias.lower()
             if text_lower.startswith(alias_lower + " ") or text_lower.startswith(alias_lower + "\n"):
-                return skill
+                return skill, [alias]
             if text_lower == alias_lower:
-                return skill
+                return skill, [alias]
 
     # Second, check for keyword triggers (intelligent routing)
     # This enables auto-detection like antigravity-kit
     skill_scores: Dict[str, int] = {}
+    matched_triggers_map: Dict[str, List[str]] = {}
 
     for skill in SKILLS.values():
         if skill.triggers:
             score = 0
+            matched_triggers = []
             for trigger in skill.triggers:
                 trigger_lower = trigger.lower()
                 if trigger_lower in text_lower:
+                    matched_triggers.append(trigger)
                     # More specific matches score higher
                     # Whole word match = 10, partial = 1
                     if any(word.startswith(trigger_lower) for word in text_lower.split()):
@@ -607,15 +620,17 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
                         score += 1
             if score > 0:
                 skill_scores[skill.name] = score
+                matched_triggers_map[skill.name] = matched_triggers
 
-    # Return the skill with highest trigger score
+    # Return the skill with highest trigger score + matched triggers
     if skill_scores:
         best_skill_name = max(skill_scores.items(), key=lambda x: x[1])[0]
         best_skill = SKILLS.get(best_skill_name)
-        log.info(f"Auto-detected skill '{best_skill_name}' from keywords (score: {skill_scores[best_skill_name]})")
-        return best_skill
+        triggers = matched_triggers_map.get(best_skill_name, [])
+        log.info(f"Auto-detected skill '{best_skill_name}' from keywords (matched: {triggers})")
+        return best_skill, triggers
 
-    return None
+    return None, []
 
 
 def extract_task_from_skill_text(text: str, skill: Skill) -> str:

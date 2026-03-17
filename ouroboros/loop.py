@@ -788,15 +788,23 @@ def run_llm_loop(
 
             # Auto-activate skills: detect slash commands like /plan, /review, /ship, /qa, /retro
             if round_idx == 1:
-                from ouroboros.tools.skills import detect_skill_from_text, extract_task_from_skill_text
+                from ouroboros.tools.skills import detect_skill_with_triggers, extract_task_from_skill_text
 
                 for m in messages:
                     if m.get("role") == "user":
                         user_text = m.get("content", "")
-                        skill = detect_skill_from_text(user_text)
+                        skill, matched_triggers = detect_skill_with_triggers(user_text)
                         if skill:
                             task = extract_task_from_skill_text(user_text, skill)
-                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}]
+
+                            # Build transparency message
+                            trigger_info = ""
+                            if matched_triggers:
+                                trigger_info = f"\n**[Auto-detected from keywords: {', '.join(matched_triggers)}]**"
+
+                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}{trigger_info}]
+
+Version: {skill.version}
 
 {skill.system_prompt_addition}
 
@@ -812,7 +820,9 @@ def run_llm_loop(
 
 {skill.post_task_prompt}"""
                             messages.append({"role": "system", "content": skill_prompt})
-                            emit_progress(f"Skill activated: {skill.name.upper()} - {skill.description}")
+                            emit_progress(
+                                f"Skill activated: {skill.name.upper()} - {skill.description} (triggers: {matched_triggers})"
+                            )
                             break
 
             # Compact old tool history when needed
