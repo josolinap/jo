@@ -236,6 +236,10 @@ class OuroborosAgent:
                 check=True,
             )
             dirty_files = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
+            # Filter out noise: tilde files, backup files, temp files
+            dirty_files = [
+                f for f in dirty_files if not (f.startswith("?? ~") or f.startswith("?? .") or "~" in f or ".tmp" in f)
+            ]
             if dirty_files:
                 # Auto-rescue: commit and push
                 auto_committed = False
