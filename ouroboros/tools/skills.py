@@ -276,6 +276,58 @@ This is data-driven feedback, not vibes.""",
     )
 )
 
+register_skill(
+    Skill(
+        name="build-cli",
+        aliases=["build-cli", "/build-cli", "cli-builder"],
+        description="CLI Builder - Generate agent-native CLIs for any software",
+        system_prompt_addition="""You are now in CLI BUILDER mode.
+
+Based on CLI-Anything (HKUDS) - Making ALL Software Agent-Native.
+Your job is to build a complete CLI harness for any software.
+
+7-Phase Pipeline:
+1. ANALYZE - Scan source code, map GUI actions to APIs
+2. DESIGN - Architect command groups, state model, output formats
+3. IMPLEMENT - Build Click CLI with REPL, JSON output, undo/redo
+4. PLAN TESTS - Create TEST.md with unit + E2E test plans
+5. WRITE TESTS - Implement comprehensive test suite
+6. DOCUMENT - Update TEST.md with results
+7. PUBLISH - Create setup.py, install to PATH
+
+Key Principles:
+- Use the REAL software - call actual applications for rendering
+- Structured & Composable - text commands match LLM format
+- Self-Describing - --help provides automatic documentation
+- JSON Output - every command supports --json for agent consumption
+- REPL Mode - interactive session for complex workflows
+
+After completion, provide:
+1. Software analyzed
+2. Commands generated
+3. Test coverage
+4. Installation instructions""",
+        enabled_tools=["cli_generate", "cli_refine", "cli_validate", "cli_test", "cli_list", "repo_read", "shell_run"],
+        pre_task_prompt="Before building: Analyze the software structure, identify CLI-able actions.",
+        post_task_prompt="""Now provide your CLI build report:
+
+## Software Analyzed
+[What software was processed]
+
+## Commands Generated
+[List of command groups and subcommands]
+
+## Test Coverage
+[Unit tests, E2E tests, coverage stats]
+
+## Installation
+[How to install and use the generated CLI]
+
+## Examples
+[3-5 useful command examples]""",
+    )
+)
+
 
 def get_skill(name: str) -> Optional[Skill]:
     """Get a skill by name or alias."""

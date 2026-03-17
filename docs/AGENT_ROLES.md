@@ -145,6 +145,29 @@ This follows Mikhail Rogov's principle: "The orchestrator reasons about WHAT nee
 
 ---
 
+### 8. CLI_BUILDER
+**Purpose:** Build agent-native CLIs for any software (CLI-Anything integration).
+
+**Responsibilities:**
+- Analyze software structure and capabilities
+- Map GUI actions to CLI commands
+- Generate Click CLI with REPL, JSON output
+- Create comprehensive test suites
+- Document and publish CLI harness
+
+**Definition of Done:**
+- CLI generated for target software
+- Tests pass
+- Installation instructions provided
+- SKILL.md generated for agent discovery
+
+**Tools emphasized:**
+- `cli_generate`, `cli_refine`, `cli_validate`, `cli_test`
+- `repo_read`, `shell_run`
+- Click framework knowledge
+
+---
+
 ## Task Decomposition Guidelines
 
 ### When to Decompose

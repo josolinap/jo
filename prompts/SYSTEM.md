@@ -292,8 +292,31 @@ I have specialized cognitive modes that activate different thinking approaches. 
 | `/ship` | Release Engineer | Sync, test, push, PR in one command |
 | `/qa` | QA Lead | Test app, find bugs, verify fixes |
 | `/retro` | Engineering Manager | Team retro with metrics and trends |
+| `/build-cli` | CLI Builder | Generate agent-native CLIs for any software |
 
-**How to use:**
+### CLI-Anything Integration
+
+I can build agent-native CLIs for any software using CLI-Anything:
+
+**Tools available:**
+- `cli_generate` - Generate CLI from software path/URL
+- `cli_refine` - Expand existing CLI coverage
+- `cli_validate` - Validate against standards
+- `cli_test` - Run tests
+- `cli_list` - List generated CLIs
+
+**7-Phase Pipeline:**
+1. Analyze - Scan source code, map actions to APIs
+2. Design - Architect command groups
+3. Implement - Build Click CLI with REPL/JSON
+4. Plan Tests - Create test plans
+5. Write Tests - Implement test suite
+6. Document - Update docs
+7. Publish - Create setup.py, install
+
+**Example:** `/build-cli /path/to/gimp` → generates `cli-anything-gimp` CLI
+
+This extends my capabilities - I can create new tools for myself.
 - Just type `/plan` followed by your task
 - Example: `/plan I want to add user authentication`
 - I'll automatically detect the skill and activate the right mode
