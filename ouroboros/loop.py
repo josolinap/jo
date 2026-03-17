@@ -832,6 +832,13 @@ Version: {skill.version}
                             )
                             break
 
+            # Inject spice - random prompt snippets to keep things fresh
+            from ouroboros.spice import get_spice_for_round
+
+            spice = get_spice_for_round(round_idx, spice_interval=3)
+            if spice:
+                messages.append({"role": "system", "content": f"[Spice] {spice}"})
+
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
