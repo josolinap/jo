@@ -26,6 +26,7 @@ class Skill:
     pre_task_prompt: str = ""
     post_task_prompt: str = ""
     aliases: List[str] = field(default_factory=list)
+    triggers: List[str] = field(default_factory=list)
 
 
 SKILLS: Dict[str, Skill] = {}
@@ -376,6 +377,188 @@ Take notes, track sources, verify claims.""",
     )
 )
 
+register_skill(
+    Skill(
+        name="debug",
+        aliases=["debug", "/debug", "debugger", "fix"],
+        description="Systematic Debugging - Root cause analysis with 4-phase methodology",
+        system_prompt_addition="""You are now in DEBUG MODE.
+
+Follow the 4-phase systematic debugging methodology:
+
+## Phase 1: REPRODUCE
+- Get exact reproduction steps
+- Determine reproduction rate (100%? intermittent?)
+- Document expected vs actual behavior
+
+## Phase 2: ISOLATE
+- When did it start? What changed?
+- Which component is responsible?
+- Create minimal reproduction case
+
+## Phase 3: UNDERSTAND (Root Cause)
+- Apply "5 Whys" technique
+- Trace data flow
+- Identify the actual bug, NOT the symptom
+
+## Phase 4: FIX & VERIFY
+- Fix the root cause
+- Verify fix works
+- Add regression test
+- Check for similar issues
+
+Key Principles:
+- Don't guess. Investigate systematically.
+- Fix the ROOT CAUSE, not symptoms.
+- One change at a time = no confusion.
+- Every bug needs a test.
+
+Anti-Patterns:
+- ❌ Random changes hoping to fix
+- ❌ Ignoring stack traces
+- ❌ Fixing symptoms only
+- ❌ No regression test""",
+        enabled_tools=["repo_read", "grep", "git_log", "shell_run", "glob_files"],
+        pre_task_prompt="Before debugging: Gather error messages, reproduction steps, and recent changes.",
+        post_task_prompt="""Now provide your debug report:
+
+## Symptom
+[What's happening - exact error]
+
+## Reproduction
+[Steps to reproduce, rate]
+
+## Root Cause
+[5 Whys analysis - the REAL cause]
+
+## Fix Applied
+[What you changed]
+
+## Verification
+[Bug fixed, regression test added]""",
+        triggers=[
+            "bug",
+            "error",
+            "crash",
+            "not working",
+            "broken",
+            "fix",
+            "debug",
+            "issue",
+            "fails",
+            "failed",
+            "exception",
+            "traceback",
+            "500",
+            "404",
+            "502",
+        ],
+    )
+)
+
+
+register_skill(
+    Skill(
+        name="security",
+        aliases=["security", "/security", "security-auditor", "audit"],
+        description="Security Auditor - OWASP 2025, vulnerability assessment, threat modeling",
+        system_prompt_addition="""You are now in SECURITY AUDIT MODE.
+
+Think like an attacker, defend like an expert.
+
+## Core Philosophy
+- Assume breach - design as if attacker already inside
+- Zero trust - never trust, always verify
+- Defense in depth - multiple layers, no single point of failure
+- Least privilege - minimum required access only
+- Fail secure - on error, deny access
+
+## OWASP Top 10:2025
+
+| Rank | Category | Focus |
+|------|----------|-------|
+| A01 | Broken Access Control | Authorization gaps, IDOR, SSRF |
+| A02 | Security Misconfiguration | Cloud configs, headers, defaults |
+| A03 | Software Supply Chain | Dependencies, CI/CD, lock files |
+| A04 | Cryptographic Failures | Weak crypto, exposed secrets |
+| A05 | Injection | SQL, command, XSS patterns |
+| A06 | Insecure Design | Architecture flaws, threat modeling |
+| A07 | Authentication Failures | Sessions, MFA, credential handling |
+| A08 | Integrity Failures | Unsigned updates, tampered data |
+| A09 | Logging & Alerting | Blind spots, insufficient monitoring |
+| A10 | Exceptional Conditions | Error handling, fail-open states |
+
+## Risk Classification
+
+| Severity | Criteria |
+|----------|----------|
+| Critical | RCE, auth bypass, mass data exposure |
+| High | Data exposure, privilege escalation |
+| Medium | Limited scope, requires conditions |
+| Low | Informational, best practice |
+
+## Code Patterns to Watch
+
+| Pattern | Risk |
+|---------|------|
+| String concat in queries | SQL Injection |
+| eval(), exec(), Function() | Code Injection |
+| Hardcoded secrets | Credential exposure |
+| verify=False, SSL disabled | MITM |
+| Unsafe deserialization | RCE |
+
+## Anti-Patterns
+- ❌ Scan without understanding (map attack surface first)
+- ❌ Alert on every CVE (prioritize by exploitability)
+- ❌ Fix symptoms (address root causes)
+- ❌ Trust third-party blindly""",
+        enabled_tools=["repo_read", "grep", "glob_files", "shell_run"],
+        pre_task_prompt="Before security audit: Identify the attack surface, data flows, and trust boundaries.",
+        post_task_prompt="""Now provide your security report:
+
+## Assets Protected
+[What data/systems are at risk]
+
+## Findings
+[Each vulnerability: location, severity, description]
+
+## Risk Assessment
+[CVSS scores, exploitability]
+
+## Recommendations
+[Priority list of fixes]
+
+## Verification
+[How to test each fix]""",
+        triggers=[
+            "security",
+            "vulnerability",
+            "vulnerabilities",
+            "owasp",
+            "xss",
+            "injection",
+            "auth",
+            "encrypt",
+            "password",
+            "secret",
+            "token",
+            "jwt",
+            "oauth",
+            "permission",
+            "access control",
+            "csrf",
+            "malware",
+            "pentest",
+            "penetration",
+            "exploit",
+            "secure",
+            "safety",
+            "breach",
+            "hack",
+        ],
+    )
+)
+
 
 def get_skill(name: str) -> Optional[Skill]:
     """Get a skill by name or alias."""
@@ -383,7 +566,10 @@ def get_skill(name: str) -> Optional[Skill]:
 
 
 def detect_skill_from_text(text: str) -> Optional[Skill]:
-    """Detect if text contains a skill command like /plan, /review, /ship, etc."""
+    """Detect if text contains a skill command like /plan, /review, /ship, etc.
+
+    Also detects keywords that should trigger specific skills (intelligent routing).
+    """
     text_lower = text.lower().strip()
 
     # Handle @jo prefix
@@ -394,6 +580,7 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
             text = text[len(prefix) :]
             break
 
+    # First, check for explicit skill commands (aliases)
     for skill_name, skill in SKILLS.items():
         for alias in skill.aliases:
             alias_lower = alias.lower()
@@ -401,6 +588,32 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
                 return skill
             if text_lower == alias_lower:
                 return skill
+
+    # Second, check for keyword triggers (intelligent routing)
+    # This enables auto-detection like antigravity-kit
+    skill_scores: Dict[str, int] = {}
+
+    for skill in SKILLS.values():
+        if skill.triggers:
+            score = 0
+            for trigger in skill.triggers:
+                trigger_lower = trigger.lower()
+                if trigger_lower in text_lower:
+                    # More specific matches score higher
+                    # Whole word match = 10, partial = 1
+                    if any(word.startswith(trigger_lower) for word in text_lower.split()):
+                        score += 10
+                    else:
+                        score += 1
+            if score > 0:
+                skill_scores[skill.name] = score
+
+    # Return the skill with highest trigger score
+    if skill_scores:
+        best_skill_name = max(skill_scores.items(), key=lambda x: x[1])[0]
+        best_skill = SKILLS.get(best_skill_name)
+        log.info(f"Auto-detected skill '{best_skill_name}' from keywords (score: {skill_scores[best_skill_name]})")
+        return best_skill
 
     return None
 
