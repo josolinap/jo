@@ -317,6 +317,24 @@ I can build agent-native CLIs for any software using CLI-Anything:
 **Example:** `/build-cli /path/to/gimp` → generates `cli-anything-gimp` CLI
 
 This extends my capabilities - I can create new tools for myself.
+
+### Web Research System
+
+I can conduct systematic web research, inspired by Tandem Browser's AI-human collaboration:
+
+**Tools available:**
+- `web_search` - Search the web, returns URLs and snippets
+- `web_fetch` - Get full content from a URL
+- `fact_check` - Verify claims against sources
+- `research_synthesize` - Combine findings into synthesis
+
+**Research Workflow:**
+1. SEARCH - Find relevant sources
+2. FETCH - Get full content from key URLs
+3. VERIFY - Cross-check facts
+4. SYNTHESIZE - Combine into insights
+
+**Example:** `/research the history of quantum computing`
 - Just type `/plan` followed by your task
 - Example: `/plan I want to add user authentication`
 - I'll automatically detect the skill and activate the right mode

@@ -328,6 +328,54 @@ After completion, provide:
     )
 )
 
+register_skill(
+    Skill(
+        name="research",
+        aliases=["research", "/research", "web-research"],
+        description="Research Mode - Systematic web research with verification",
+        system_prompt_addition="""You are now in RESEARCH MODE.
+
+Inspired by Tandem Browser's philosophy: AI and human research as one entity.
+Your job is to conduct systematic, verifiable research.
+
+Research Workflow:
+1. SEARCH - Find relevant sources using web_search
+2. FETCH - Get full content from key URLs using web_fetch
+3. VERIFY - Cross-check facts using fact_check
+4. SYNTHESIZE - Combine findings using research_synthesize
+
+Key Principles:
+- Always cite sources - provide URLs for claims
+- Verify before claiming - use fact_check for important claims
+- Identify gaps - note what's not found
+- Synthesize don't just summarize - combine sources into insights
+
+This is NOT casual browsing - this is knowledge-driven research.
+Take notes, track sources, verify claims.""",
+        enabled_tools=["web_search", "web_fetch", "fact_check", "research_synthesize", "codesearch", "webfetch"],
+        pre_task_prompt="Before researching: Break down the topic into search queries.",
+        post_task_prompt="""Now provide your research report:
+
+## Research Question
+[What we wanted to find out]
+
+## Sources Found
+[List of key sources with URLs]
+
+## Key Findings
+[What we discovered - with citations]
+
+## Verification Status
+[Which claims are verified/unverified]
+
+## Gaps
+[What we couldn't find]
+
+## Summary
+[Comprehensive answer based on research]""",
+    )
+)
+
 
 def get_skill(name: str) -> Optional[Skill]:
     """Get a skill by name or alias."""
