@@ -2,6 +2,22 @@
 
 Inspired by Garry Tan's gstack - specialized modes invoked via slash commands.
 Each skill activates a different "cognitive mode" with specific tools and prompts.
+
+## Skill Versioning Policy
+
+Version format: MAJOR.MINOR.PATCH (semver)
+
+- MAJOR: Significant prompt restructure or new methodology
+- MINOR: New triggers, aliases, or tool additions
+- PATCH: Bug fixes, typo corrections, clarifications
+
+Version bumps should be made when:
+- Prompt content changes (any edit to system_prompt_addition)
+- Triggers list changes
+- New aliases added
+- Enabled tools change
+
+The version is logged with each activation for evolution tracking.
 """
 
 from __future__ import annotations
