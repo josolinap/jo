@@ -788,7 +788,11 @@ def run_llm_loop(
 
             # Auto-activate skills: detect slash commands like /plan, /review, /ship, /qa, /retro
             if round_idx == 1:
-                from ouroboros.tools.skills import detect_skill_with_triggers, extract_task_from_skill_text
+                from ouroboros.tools.skills import (
+                    detect_skill_with_triggers,
+                    extract_task_from_skill_text,
+                    log_skill_activation,
+                )
 
                 for m in messages:
                     if m.get("role") == "user":
@@ -796,6 +800,9 @@ def run_llm_loop(
                         skill, matched_triggers = detect_skill_with_triggers(user_text)
                         if skill:
                             task = extract_task_from_skill_text(user_text, skill)
+
+                            # Log skill activation for analysis
+                            log_skill_activation(skill, matched_triggers, user_text)
 
                             # Build transparency message
                             trigger_info = ""

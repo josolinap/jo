@@ -6,13 +6,69 @@ Each skill activates a different "cognitive mode" with specific tools and prompt
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 
 log = logging.getLogger(__name__)
+
+# Skill activation log path (can be overridden by environment)
+SKILL_LOG_PATH = os.environ.get("SKILL_LOG_PATH", "~/.ouroboros/skills_log.json")
+
+
+def _get_skill_log_path() -> Path:
+    """Get the skill log file path, expanding ~ to home directory."""
+    return Path(SKILL_LOG_PATH).expanduser()
+
+
+def log_skill_activation(skill: Skill, matched_triggers: List[str], user_input: str = "") -> None:
+    """Log skill activation for analysis and evolution tracking.
+
+    Records:
+    - timestamp: When the skill was activated
+    - skill_name: Which skill activated
+    - skill_version: Version of the skill
+    - matched_triggers: Keywords that triggered activation
+    - user_input: Original user request
+    """
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "skill_name": skill.name,
+        "skill_version": skill.version,
+        "matched_triggers": matched_triggers,
+        "user_input": user_input[:500] if user_input else "",  # Truncate long inputs
+    }
+
+    try:
+        log_path = _get_skill_log_path()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read existing log
+        existing = []
+        if log_path.exists():
+            try:
+                existing = json.loads(log_path.read_text())
+            except json.JSONDecodeError:
+                existing = []
+
+        # Append new entry
+        existing.append(log_entry)
+
+        # Keep last 1000 entries
+        if len(existing) > 1000:
+            existing = existing[-1000:]
+
+        # Write back
+        log_path.write_text(json.dumps(existing, indent=2))
+        log.debug(f"Logged skill activation: {skill.name}")
+    except Exception as e:
+        log.warning(f"Failed to log skill activation: {e}")
 
 
 @dataclass
@@ -754,3 +810,36 @@ def _activate_skill_handler(ctx: ToolContext, skill: str, task: str) -> str:
 ---
 
 Now I'll analyze this in {skill_obj.name.upper()} mode. {skill_obj.pre_task_prompt}"""
+
+
+def get_skill_stats() -> Dict[str, Any]:
+    """Get skill activation statistics for analysis.
+
+    Returns:
+        Dict with activation counts, trigger frequency, recent activations
+    """
+    try:
+        log_path = _get_skill_log_path()
+        if not log_path.exists():
+            return {"total_activations": 0, "message": "No activations logged yet"}
+
+        activations = json.loads(log_path.read_text())
+
+        # Count by skill
+        skill_counts: Dict[str, int] = {}
+        trigger_counts: Dict[str, int] = {}
+
+        for entry in activations:
+            skill_counts[entry["skill_name"]] = skill_counts.get(entry["skill_name"], 0) + 1
+            for trigger in entry.get("matched_triggers", []):
+                trigger_counts[trigger] = trigger_counts.get(trigger, 0) + 1
+
+        return {
+            "total_activations": len(activations),
+            "by_skill": dict(sorted(skill_counts.items(), key=lambda x: -x[1])),
+            "top_triggers": dict(sorted(trigger_counts.items(), key=lambda x: -x[1])[:20]),
+            "recent": activations[-10:] if activations else [],
+        }
+    except Exception as e:
+        log.warning(f"Failed to get skill stats: {e}")
+        return {"error": str(e)}
