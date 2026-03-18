@@ -27,6 +27,7 @@ jobs:
   # Check if we should run (skip if Jo itself pushed the commit)
   should-run:
     name: Check if workflow should run
+    runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
