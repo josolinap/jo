@@ -33,6 +33,9 @@ from ouroboros.utils import (
 
 log = logging.getLogger(__name__)
 
+# Track quality feedback injection state (per-task, reset in run_llm_loop)
+_quality_feedback_injected: bool = False
+
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
     "anthropic/claude-opus-4.6": (5.0, 0.5, 25.0),
@@ -747,6 +750,8 @@ def run_llm_loop(
 
     # Reset response analyzer for new task
     get_analyzer().reset()
+    global _quality_feedback_injected
+    _quality_feedback_injected = False  # Reset feedback injection flag
 
     # Track previous round's analysis for targeted spice injection
     _previous_issues: List[Any] = []
@@ -1014,14 +1019,23 @@ Version: {skill.version}
                     repo_dir=repo_dir,
                 )
                 _current_issues = analysis.issues
-                if analysis.feedback_for_next_round:
-                    messages.append(
-                        {
-                            "role": "system",
-                            "content": analysis.feedback_for_next_round,
-                        }
-                    )
-                    emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
+
+                # Only inject feedback if score is below 85% (significant issues)
+                # AND only for HIGH/MEDIUM severity issues
+                high_severity_issues = [i for i in analysis.issues if i.severity in ("high", "medium")]
+                if analysis.quality_score < 0.85 and high_severity_issues:
+                    # Only inject once per task, not repeatedly
+                    global _quality_feedback_injected
+                    if not _quality_feedback_injected:
+                        if analysis.feedback_for_next_round:
+                            messages.append(
+                                {
+                                    "role": "system",
+                                    "content": analysis.feedback_for_next_round,
+                                }
+                            )
+                            emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
+                            _quality_feedback_injected = True
             except Exception:
                 pass  # Don't let analysis errors break the loop
             finally:
