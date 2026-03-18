@@ -202,7 +202,6 @@ class ToolRegistry:
         """Validate args against schema. Returns error message if invalid, None if valid."""
         params = schema.get("parameters", {})
         if not params:
-            # No parameters defined - check for unexpected args
             if args:
                 return f"Unexpected arguments: {list(args.keys())}"
             return None
@@ -210,15 +209,38 @@ class ToolRegistry:
         properties = params.get("properties", {})
         required = params.get("required", [])
 
-        # Check for unknown arguments
         unknown = set(args.keys()) - set(properties.keys())
         if unknown:
             return f"Unknown arguments: {', '.join(sorted(unknown))}. Valid: {', '.join(sorted(properties.keys()))}"
 
-        # Check missing required arguments
         missing = set(required) - set(args.keys())
         if missing:
             return f"Missing required arguments: {', '.join(sorted(missing))}"
+
+        for param_name, param_value in args.items():
+            param_schema = properties.get(param_name, {})
+            if not param_schema:
+                continue
+
+            if "enum" in param_schema:
+                if param_value not in param_schema["enum"]:
+                    valid = param_schema["enum"]
+                    return f"Invalid value for '{param_name}': '{param_value}'. Must be one of: {valid}"
+
+            expected_type = param_schema.get("type")
+            if expected_type and param_value is not None:
+                if expected_type == "string" and not isinstance(param_value, str):
+                    return f"Invalid type for '{param_name}': expected string, got {type(param_value).__name__}"
+                elif expected_type == "number" and not isinstance(param_value, (int, float)):
+                    return f"Invalid type for '{param_name}': expected number, got {type(param_value).__name__}"
+                elif expected_type == "integer" and not isinstance(param_value, int):
+                    return f"Invalid type for '{param_name}': expected integer, got {type(param_value).__name__}"
+                elif expected_type == "boolean" and not isinstance(param_value, bool):
+                    return f"Invalid type for '{param_name}': expected boolean, got {type(param_value).__name__}"
+                elif expected_type == "object" and not isinstance(param_value, dict):
+                    return f"Invalid type for '{param_name}': expected object, got {type(param_value).__name__}"
+                elif expected_type == "array" and not isinstance(param_value, list):
+                    return f"Invalid type for '{param_name}': expected array, got {type(param_value).__name__}"
 
         return None
 
