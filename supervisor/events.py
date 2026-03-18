@@ -180,6 +180,7 @@ def _handle_restart_request(evt: Dict[str, Any], ctx: Any) -> None:
     st2["tg_offset"] = int(st2.get("tg_offset") or st.get("tg_offset") or 0)
     ctx.save_state(st2)
     ctx.persist_queue_snapshot(reason="pre_restart_exit")
+    # Entry point - kept in root for backward compatibility with GitHub Actions
     launcher = os.path.join(os.getcwd(), "colab_launcher.py")
     os.execv(sys.executable, [sys.executable, launcher])
 

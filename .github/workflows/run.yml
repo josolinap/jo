@@ -24,10 +24,31 @@ on:
     types: [restart]
 
 jobs:
+  # Check if we should run (skip if Jo itself pushed the commit)
+  should-run:
+    name: Check if workflow should run
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check if we should run
+        id: check
+        run: |
+          # Skip only on push events from Jo (not on repository_dispatch self-restart)
+          # This prevents workflow from interrupting itself when Jo commits code
+          if [[ "${{ github.event_name }}" == "push" ]] && [[ "${{ github.actor }}" == "Ouroboros" ]]; then
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Skipping: Jo's own commit (push event), prevents workflow interrupting itself"
+          else
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "✅ Will run: event=${{ github.event_name }}, actor=${{ github.actor }}"
+          fi
+
   run-bot:
     name: Jo Telegram Bot
+    needs: should-run
+    if: needs.should-run.outputs.should_run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # GitHub's hard 6-hour cap — never exceed this
+    timeout-minutes: 360
 
     steps:
       # -----------------------------------------------------------------------
@@ -39,13 +60,24 @@ jobs:
           fetch-depth: 1
 
       # -----------------------------------------------------------------------
-      # 2. Set up Python
+      # 2. Set up Python with pip caching (public repo optimization)
       # -----------------------------------------------------------------------
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
+
+      # -----------------------------------------------------------------------
+      # 2.1 Cache Playwright browsers (public repo optimization)
+      # -----------------------------------------------------------------------
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/ms-playwright
+          key: playwright-${{ runner.os }}-v1
+          restore-keys: |
+            playwright-${{ runner.os }}-
 
       # -----------------------------------------------------------------------
       # 3. Install dependencies
