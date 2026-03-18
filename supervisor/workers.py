@@ -208,11 +208,11 @@ def handle_chat_direct(
 
 
 def auto_resume_after_restart() -> None:
-    """If recent restart left open work, auto-resume without waiting for owner message.
+    """If recent restart detected, notify owner and optionally auto-resume work.
 
-    Checks: scratchpad content, recent restart events, pending_restart_verify.
-    Background consciousness will subsume this eventually, but auto-resume is
-    needed immediately after a restart so the agent doesn't go silent.
+    Checks: owner registration, recent restart events, pending_restart_verify.
+    Always sends online notification if owner exists and restart detected.
+    Auto-resumes scratchpad-based work if scratchpad has substantial content.
     """
     try:
         st = load_state()
@@ -279,16 +279,29 @@ def auto_resume_after_restart() -> None:
             log.debug("No recent restart detected, skipping auto-resume")
             return
 
-        # Check if scratchpad has meaningful content
+        # Always notify owner that we're back online (separated from auto-resume)
+        log.info(f"Restart detected for chat_id={chat_id}, sending online notification")
+        try:
+            send_with_budget(int(chat_id), "✅ Owner registered. Jo online.")
+        except Exception as e:
+            log.warning(f"Failed to send online notification: {e}")
+
+        # Check if scratchpad has meaningful content for auto-resume
         scratchpad_path = DRIVE_ROOT / "memory" / "scratchpad.md"
         if not scratchpad_path.exists():
             log.debug("No scratchpad found, skipping auto-resume")
+            append_jsonl(
+                DRIVE_ROOT / "logs" / "supervisor.jsonl",
+                {
+                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "type": "restart_online_notified",
+                },
+            )
             return
 
         scratchpad = scratchpad_path.read_text(encoding="utf-8")
         stripped = scratchpad.strip()
 
-        # More lenient check - allow auto-resume if scratchpad has any substantial content
         content_lines = [
             ln.strip()
             for ln in stripped.splitlines()
@@ -296,9 +309,15 @@ def auto_resume_after_restart() -> None:
         ]
         content_lines = [ln for ln in content_lines if not ln.startswith("UpdatedAt:")]
 
-        # Allow resume if there's any real content (not just template)
         if len(content_lines) < 2:
             log.debug("Scratchpad too empty for auto-resume")
+            append_jsonl(
+                DRIVE_ROOT / "logs" / "supervisor.jsonl",
+                {
+                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "type": "restart_online_notified",
+                },
+            )
             return
 
         # Auto-resume: inject synthetic message with retry logic

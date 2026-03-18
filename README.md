@@ -256,7 +256,6 @@ See [AGENTS.md](AGENTS.md) for detailed AI agent guidelines.
 |---------|-------------|
 | `/panic` | Emergency stop |
 | `/restart` | Soft restart |
-| `/status` | Show workers, queue, budget |
 | `/evolve` | Start autonomous evolution |
 | `/evolve stop` | Stop evolution |
 | `/review` | Queue deep review task |

@@ -501,11 +501,6 @@ def main() -> None:
             kill_workers()
             os.execv(sys.executable, [sys.executable, __file__])
 
-        if lowered.startswith("/status"):
-            status = status_text(WORKERS, PENDING, RUNNING, SOFT_TIMEOUT_SEC, HARD_TIMEOUT_SEC)
-            send_with_budget(chat_id, status, force_budget=True)
-            return "[Supervisor handled /status — status text already sent to chat]\n"
-
         if lowered.startswith("/review"):
             queue_review_task(reason="owner:/review", force=True)
             return "[Supervisor handled /review — review task queued]\n"
