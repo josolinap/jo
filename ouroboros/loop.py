@@ -149,7 +149,7 @@ def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
     if len(result_str) <= max_chars:
         return result_str
 
-    original_len = len(result_chars := len(result_str))
+    original_len = len(result_str)
     # Keep first 60% + last 40% to preserve both context and conclusion
     begin_size = int(max_chars * 0.6)
     end_size = max_chars - begin_size
