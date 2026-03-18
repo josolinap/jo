@@ -185,12 +185,42 @@ class ToolRegistry:
         entry = self._entries.get(name)
         if entry is None:
             return f"⚠️ Unknown tool: {name}. Available: {', '.join(sorted(self._entries.keys()))}"
+
+        # Validate parameters against schema before execution
+        validation_error = self._validate_args(entry.schema, args)
+        if validation_error:
+            return f"⚠️ TOOL_ARG_ERROR ({name}): {validation_error}"
+
         try:
             return entry.handler(self._ctx, **args)
         except TypeError as e:
             return f"⚠️ TOOL_ARG_ERROR ({name}): {e}"
         except Exception as e:
             return f"⚠️ TOOL_ERROR ({name}): {e}"
+
+    def _validate_args(self, schema: Dict[str, Any], args: Dict[str, Any]) -> Optional[str]:
+        """Validate args against schema. Returns error message if invalid, None if valid."""
+        params = schema.get("parameters", {})
+        if not params:
+            # No parameters defined - check for unexpected args
+            if args:
+                return f"Unexpected arguments: {list(args.keys())}"
+            return None
+
+        properties = params.get("properties", {})
+        required = params.get("required", [])
+
+        # Check for unknown arguments
+        unknown = set(args.keys()) - set(properties.keys())
+        if unknown:
+            return f"Unknown arguments: {', '.join(sorted(unknown))}. Valid: {', '.join(sorted(properties.keys()))}"
+
+        # Check missing required arguments
+        missing = set(required) - set(args.keys())
+        if missing:
+            return f"Missing required arguments: {', '.join(sorted(missing))}"
+
+        return None
 
     def override_handler(self, name: str, handler) -> None:
         """Override the handler for a registered tool (used for closure injection)."""
