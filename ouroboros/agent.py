@@ -552,6 +552,11 @@ class OuroborosAgent:
 
             # Emit events for supervisor
             self._emit_task_results(task, text, usage, llm_trace, start_time, drive_logs)
+
+            # Auto-update scratchpad for evolution/review tasks
+            if task.get("type") in ("evolution", "review"):
+                self._auto_update_scratchpad_after_task(task, text, llm_trace)
+
             return list(self._pending_events)
 
         finally:
@@ -687,6 +692,60 @@ class OuroborosAgent:
             os.rename(tmp_file, result_file)
         except Exception as e:
             log.warning("Failed to store task result: %s", e)
+
+    # =====================================================================
+    # Auto-update scratchpad after evolution/review tasks
+    # =====================================================================
+
+    def _auto_update_scratchpad_after_task(
+        self,
+        task: Dict[str, Any],
+        response_text: str,
+        llm_trace: Dict[str, Any],
+    ) -> None:
+        """Auto-log evolution/review results to scratchpad for continuity across restarts."""
+        try:
+            from ouroboros.memory import Memory
+
+            mem = Memory(self.env.drive_root, self.env.repo_dir)
+            current = mem.load_scratchpad()
+
+            task_type = task.get("type", "unknown")
+            task_id = task.get("id", "")
+            commit_count = sum(
+                1
+                for tc in llm_trace.get("tool_calls", [])
+                if isinstance(tc, dict) and "commit" in tc.get("tool", "").lower()
+            )
+            cost = sum(float(tc.get("cost", 0)) for tc in llm_trace.get("tool_calls", []) if isinstance(tc, dict))
+
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+            # Extract summary from response (first 500 chars)
+            summary = response_text[:500].replace("#", "").replace("*", "").strip()
+            if len(response_text) > 500:
+                summary += "..."
+
+            new_section = f"""
+## {task_type.title()} #{task_id} ({timestamp})
+- Summary: {summary}
+- Tool calls: {len(llm_trace.get("tool_calls", []))}
+- Commits made: {commit_count}
+- Cost: ${cost:.4f}
+"""
+
+            # Append to scratchpad (keep last ~20 evolution entries)
+            updated = current + new_section
+            lines = updated.splitlines()
+            if len(lines) > 200:
+                lines = lines[-200:]
+                updated = "\n".join(lines)
+
+            mem.save_scratchpad(updated)
+            log.info(f"Auto-updated scratchpad after {task_type} task {task_id}")
+
+        except Exception as e:
+            log.warning("Failed to auto-update scratchpad: %s", e)
 
     # =====================================================================
     # Review context builder

@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import pathlib
+import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
 from ouroboros.utils import (
@@ -148,6 +149,39 @@ def _build_recent_sections(memory: Memory, env: Any, task_id: str = "") -> List[
         sections.append("## Supervisor\n\n" + supervisor_summary)
 
     return sections
+
+
+def _build_recent_commits_section(repo_dir: pathlib.Path, limit: int = 10) -> str:
+    """Build recent git commits section for restart continuity."""
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "-n", str(limit), "origin/dev..HEAD"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        unpushed = result.stdout.strip()
+        if unpushed:
+            return f"## Recent unpushed commits\n\n{unpushed}\n"
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "-n", str(limit), "HEAD"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        recent = result.stdout.strip()
+        if recent:
+            return f"## Recent commits\n\n{recent}\n"
+    except Exception:
+        pass
+
+    return ""
 
 
 def _build_health_invariants(env: Any) -> str:
@@ -347,6 +381,12 @@ def build_llm_messages(
     health_section = _build_health_invariants(env)
     if health_section:
         dynamic_parts.append(health_section)
+
+    # Recent git commits — helps agent understand recent changes on restart
+    if needs_full_context:
+        commits_section = _build_recent_commits_section(env.repo_dir, limit=5)
+        if commits_section:
+            dynamic_parts.append(commits_section)
 
     dynamic_parts.extend(_build_recent_sections(memory, env, task_id=task.get("id", "")))
 
