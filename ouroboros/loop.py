@@ -139,16 +139,25 @@ READ_ONLY_PARALLEL_TOOLS = frozenset(
 STATEFUL_BROWSER_TOOLS = frozenset({"browse_page", "browser_action"})
 
 
-def _truncate_tool_result(result: Any) -> str:
+def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
     """
-    Hard-cap tool result string to 15000 characters.
+    Smart-truncate tool result to max_chars characters.
+    Keeps beginning and end (summary style) rather than just cutting off the end.
     If truncated, append a note with the original length.
     """
     result_str = str(result)
-    if len(result_str) <= 15000:
+    if len(result_str) <= max_chars:
         return result_str
-    original_len = len(result_str)
-    return result_str[:15000] + f"\n... (truncated from {original_len} chars)"
+
+    original_len = len(result_chars := len(result_str))
+    # Keep first 60% + last 40% to preserve both context and conclusion
+    begin_size = int(max_chars * 0.6)
+    end_size = max_chars - begin_size
+
+    begin_part = result_str[:begin_size]
+    end_part = result_str[-end_size:] if end_size > 0 else ""
+
+    return begin_part + f"\n\n... ({original_len - max_chars} chars omitted) ...\n\n" + end_part
 
 
 def _execute_single_tool(

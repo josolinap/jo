@@ -46,16 +46,14 @@ def get_tools():
                         "prompt": {
                             "type": "string",
                             "description": (
-                                "Review instructions — what to check for. "
-                                "Fully specified by the LLM at call time."
+                                "Review instructions — what to check for. Fully specified by the LLM at call time."
                             ),
                         },
                         "models": {
                             "type": "array",
                             "items": {"type": "string"},
                             "description": (
-                                "OpenRouter model identifiers to query "
-                                "(e.g. 3 diverse models for good coverage)"
+                                "OpenRouter model identifiers to query (e.g. 3 diverse models for good coverage)"
                             ),
                         },
                     },
@@ -72,15 +70,16 @@ def _handle_multi_model_review(ctx: ToolContext, content: str = "", prompt: str 
     if models is None:
         models = []
     try:
-        try:
-            asyncio.get_running_loop()
-            # Already in async context — run in a separate thread
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                result = pool.submit(asyncio.run, _multi_model_review_async(content, prompt, models, ctx)).result()
-        except RuntimeError:
-            # No running loop — safe to use asyncio.run directly
-            result = asyncio.run(_multi_model_review_async(content, prompt, models, ctx))
+        # Use run_in_executor to avoid asyncio.run() anti-pattern
+        # This properly handles both sync and async contexts
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            result = pool.submit(
+                asyncio.get_event_loop().run_in_executor,
+                None,
+                lambda: asyncio.run(_multi_model_review_async(content, prompt, models, ctx)),
+            ).result()
         return json.dumps(result, ensure_ascii=False)
     except Exception as e:
         log.error("Multi-model review failed: %s", e, exc_info=True)
