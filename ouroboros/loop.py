@@ -1011,6 +1011,7 @@ Version: {skill.version}
             # Store issues for targeted spice injection on next round
             _current_issues: List[Any] = []
             try:
+                global _quality_feedback_injected
                 repo_dir = str(drive_root / "repo") if drive_root else ""
                 analysis = analyze_response(
                     response_text=content or "",
@@ -1025,7 +1026,6 @@ Version: {skill.version}
                 high_severity_issues = [i for i in analysis.issues if i.severity in ("high", "medium")]
                 if analysis.quality_score < 0.85 and high_severity_issues:
                     # Only inject once per task, not repeatedly
-                    global _quality_feedback_injected
                     if not _quality_feedback_injected:
                         if analysis.feedback_for_next_round:
                             messages.append(
