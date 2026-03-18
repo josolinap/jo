@@ -150,14 +150,24 @@ def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
         return result_str
 
     original_len = len(result_str)
-    # Keep first 60% + last 40% to preserve both context and conclusion
-    begin_size = int(max_chars * 0.6)
-    end_size = max_chars - begin_size
+
+    # Calculate separator length first to reserve space
+    separator = f"\n\n... ({original_len - max_chars} chars omitted) ...\n\n"
+    separator_len = len(separator)
+
+    # Reserve space for separator
+    available = max_chars - separator_len
+    if available <= 0:
+        return separator[:max_chars]
+
+    # Keep first 60% + last 40% of available content
+    begin_size = int(available * 0.6)
+    end_size = available - begin_size
 
     begin_part = result_str[:begin_size]
     end_part = result_str[-end_size:] if end_size > 0 else ""
 
-    return begin_part + f"\n\n... ({original_len - max_chars} chars omitted) ...\n\n" + end_part
+    return begin_part + separator + end_part
 
 
 def _execute_single_tool(
@@ -246,25 +256,42 @@ class _StatefulToolExecutor:
     """
 
     def __init__(self):
+        self._lock = threading.Lock()
         self._executor: Optional[ThreadPoolExecutor] = None
+        self._sticky_thread_id: Optional[int] = None
 
     def submit(self, fn, *args, **kwargs):
         """Submit work to the sticky thread. Creates executor on first call."""
-        if self._executor is None:
-            self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stateful_tool")
-        return self._executor.submit(fn, *args, **kwargs)
+        with self._lock:
+            current_tid = threading.get_ident()
+            if self._executor is None:
+                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stateful_tool")
+                self._sticky_thread_id = current_tid
+            elif current_tid != self._sticky_thread_id:
+                log.warning(
+                    f"Stateful tool thread mismatch! Expected thread {self._sticky_thread_id}, "
+                    f"got {current_tid}. Resetting executor."
+                )
+                self._executor.shutdown(wait=False, cancel_futures=True)
+                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stateful_tool")
+                self._sticky_thread_id = current_tid
+            return self._executor.submit(fn, *args, **kwargs)
 
     def reset(self):
         """Shutdown current executor and create a fresh one. Used after timeout/error."""
-        if self._executor is not None:
-            self._executor.shutdown(wait=False, cancel_futures=True)
-            self._executor = None
+        with self._lock:
+            if self._executor is not None:
+                self._executor.shutdown(wait=False, cancel_futures=True)
+                self._executor = None
+                self._sticky_thread_id = None
 
     def shutdown(self, wait=True, cancel_futures=False):
         """Final cleanup."""
-        if self._executor is not None:
-            self._executor.shutdown(wait=wait, cancel_futures=cancel_futures)
-            self._executor = None
+        with self._lock:
+            if self._executor is not None:
+                self._executor.shutdown(wait=wait, cancel_futures=cancel_futures)
+                self._executor = None
+                self._sticky_thread_id = None
 
 
 def _make_timeout_result(

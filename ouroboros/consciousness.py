@@ -512,13 +512,15 @@ class BackgroundConsciousness:
         # Truncate result to 15000 chars (same as agent limit) - smart truncation
         result_str = str(result)
         if len(result_str) > 15000:
-            begin_size = int(15000 * 0.6)
-            end_size = 15000 - begin_size
-            result_str = (
-                result_str[:begin_size]
-                + f"\n\n... ({len(result_str) - 15000} chars omitted) ...\n\n"
-                + result_str[-end_size:]
-            )
+            separator = f"\n\n... ({len(result_str) - 15000} chars omitted) ...\n\n"
+            separator_len = len(separator)
+            available = 15000 - separator_len
+            if available <= 0:
+                result_str = separator[:15000]
+            else:
+                begin_size = int(available * 0.6)
+                end_size = available - begin_size
+                result_str = result_str[:begin_size] + separator + result_str[-end_size:]
 
         # Log to tools.jsonl (same format as loop.py)
         args_for_log = sanitize_tool_args_for_log(fn_name, args)

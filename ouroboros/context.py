@@ -221,7 +221,7 @@ def _build_health_invariants(env: Any) -> str:
         import hashlib
 
         msg_hash_to_tasks: Dict[str, set] = {}
-        tail_bytes = 256_000
+        tail_bytes = 1_000_000  # 1MB to capture more history
 
         def _scan_file_for_injected(path, type_field="type", type_value="owner_message_injected"):
             if not path.exists():
