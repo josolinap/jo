@@ -972,8 +972,15 @@ def evaluate_skill_relevance(
         best_skill = None
         best_score = 0.0
 
-        for skill_name in SKILLS:
-            skill = SKILLS[skill_name]
+        # Get unique skills (avoid duplicates from aliases)
+        seen_skills: set = set()
+        unique_skills: list = []
+        for skill_name, skill in SKILLS.items():
+            if skill.name not in seen_skills:
+                seen_skills.add(skill.name)
+                unique_skills.append(skill)
+
+        for skill in unique_skills:
             score = score_skill_relevance(skill, context)
             if score > best_score:
                 best_score = score
@@ -1008,10 +1015,17 @@ def evaluate_skill_relevance(
     best_alternative = None
     best_alternative_score = 0.0
 
-    for skill_name in SKILLS:
-        if skill_name == current_skill.name:
+    # Get unique skills (avoid duplicates from aliases)
+    seen_skills: set = set()
+    unique_skills: list = []
+    for skill_name, skill in SKILLS.items():
+        if skill.name not in seen_skills:
+            seen_skills.add(skill.name)
+            unique_skills.append(skill)
+
+    for skill in unique_skills:
+        if skill.name == current_skill.name:
             continue
-        skill = SKILLS[skill_name]
         score = score_skill_relevance(skill, context)
         if score > best_alternative_score:
             best_alternative_score = score
