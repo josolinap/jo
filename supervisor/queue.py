@@ -386,8 +386,19 @@ def enforce_task_timeouts() -> None:
 
 
 def build_evolution_task_text(cycle: int) -> str:
-    """Build evolution task text. Minimal trigger — SYSTEM.md has the full instructions."""
-    return f"EVOLUTION #{cycle}"
+    """Build evolution task text with enough context to trigger auto-orchestration.
+
+    The task text must be >200 chars to trigger the auto-orchestration system in loop.py.
+    SYSTEM.md has the full evolution instructions.
+    """
+    return f"""EVOLUTION #{cycle}
+
+Review recent changes, code quality, bugs, system health, and performance.
+Analyze your own code patterns for improvement opportunities.
+Use schedule_task to delegate sub-tasks if complexity warrants multi-agent execution.
+Consider: technical growth, cognitive improvement, and existential refinement.
+
+This is autonomous evolution — you decide the scope and depth based on what's most important."""
 
 
 def build_review_task_text(reason: str) -> str:
