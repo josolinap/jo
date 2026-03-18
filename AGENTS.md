@@ -26,8 +26,22 @@ ruff check .             # Lint with ruff
 ruff check --fix .       # Auto-fix linting issues
 ruff format .            # Format code
 make health              # Code health check
+make verify              # Verify code compiles + tests pass (run before commit)
 make clean               # Clean cache
 ```
+
+---
+
+## Anti-Hallucination Guidelines
+
+Before making claims or taking actions, always verify:
+
+1. **Verify code exists** — Use `repo_read` to read files before claiming what's in them
+2. **Verify code works** — Run the code or tests to confirm behavior
+3. **Verify changes** — Use `git status` and `git diff` to see actual changes
+4. **Verify syntax** — Run `make verify` before committing
+
+**Never assert without verification.** If unsure, say "I think X but will verify" instead of claiming as fact.
 
 ---
 

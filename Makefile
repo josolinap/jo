@@ -1,7 +1,7 @@
 # Ouroboros — common development commands
 # Usage: make test, make lint, make health
 
-.PHONY: test lint health clean
+.PHONY: test lint health verify clean
 
 # Run smoke tests (fast, no external deps needed at runtime)
 test:
@@ -17,6 +17,16 @@ health:
 		import pathlib, json; \
 		m = compute_complexity_metrics(pathlib.Path('.')); \
 		print(json.dumps(m, indent=2, default=str))"
+
+# Verify code compiles and tests pass before commit
+verify:
+	@echo "Verifying code..."
+	@python3 -m py_compile ouroboros/*.py 2>/dev/null && echo "OK: All Ouroboros modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
+	@python3 -m py_compile supervisor/*.py 2>/dev/null && echo "OK: All Supervisor modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
+	@python3 -m py_compile ouroboros/tools/*.py 2>/dev/null && echo "OK: All Tools modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
+	@echo "Running tests..."
+	@python3 -m pytest tests/ -q --tb=short
+	@echo "Verification complete."
 
 # Clean Python cache files
 clean:
