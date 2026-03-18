@@ -153,6 +153,7 @@ def ensure_state_defaults(st: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("budget_drift_pct", None)
     st.setdefault("budget_drift_alert", False)
     st.setdefault("evolution_consecutive_failures", 0)
+    st.setdefault("evolution_history", [])  # List of {task_id, cycle, timestamp, commits, success, archived}
     for legacy_key in (
         "approvals",
         "idle_cursor",
