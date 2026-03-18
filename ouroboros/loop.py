@@ -718,6 +718,9 @@ def run_llm_loop(
 
     Returns: (final_text, accumulated_usage, llm_trace)
     """
+    # Declare globals at function start to avoid "assigned before global" errors
+    global _quality_feedback_injected
+
     # LLM-first: single default model, LLM switches via tool if needed
     active_model = llm.default_model()
     active_effort = initial_effort
@@ -750,7 +753,6 @@ def run_llm_loop(
 
     # Reset response analyzer for new task
     get_analyzer().reset()
-    global _quality_feedback_injected
     _quality_feedback_injected = False  # Reset feedback injection flag
 
     # Track previous round's analysis for targeted spice injection
@@ -1011,7 +1013,6 @@ Version: {skill.version}
             # Store issues for targeted spice injection on next round
             _current_issues: List[Any] = []
             try:
-                global _quality_feedback_injected
                 repo_dir = str(drive_root / "repo") if drive_root else ""
                 analysis = analyze_response(
                     response_text=content or "",
