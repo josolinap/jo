@@ -207,6 +207,37 @@ def handle_chat_direct(
 # ---------------------------------------------------------------------------
 
 
+def _validate_scratchpad(content: str) -> tuple[bool, str]:
+    """Validate scratchpad content before auto-resume.
+
+    Returns (is_valid, reason) tuple.
+    """
+    if not content:
+        return False, "empty content"
+
+    if len(content) > 1_000_000:
+        return False, "exceeds 1MB limit"
+
+    if "\x00" in content:
+        return False, "contains null bytes (binary corruption)"
+
+    stripped = content.strip()
+    if not stripped:
+        return False, "only whitespace"
+
+    lines = stripped.splitlines()
+    if len(lines) < 3:
+        return False, "too few lines"
+
+    has_header = any(ln.strip().startswith("#") for ln in lines)
+    has_meaningful_content = any(len(ln.strip()) > 10 for ln in lines if not ln.strip().startswith("#"))
+
+    if not has_header and not has_meaningful_content:
+        return False, "no structure or meaningful content"
+
+    return True, "valid"
+
+
 def auto_resume_after_restart() -> None:
     """If recent restart detected, notify owner and optionally auto-resume work.
 
@@ -286,7 +317,7 @@ def auto_resume_after_restart() -> None:
         except Exception as e:
             log.warning(f"Failed to send online notification: {e}")
 
-        # Check if scratchpad has meaningful content for auto-resume
+        # Check if scratchpad is valid for auto-resume
         scratchpad_path = DRIVE_ROOT / "memory" / "scratchpad.md"
         if not scratchpad_path.exists():
             log.debug("No scratchpad found, skipping auto-resume")
@@ -299,9 +330,33 @@ def auto_resume_after_restart() -> None:
             )
             return
 
-        scratchpad = scratchpad_path.read_text(encoding="utf-8")
-        stripped = scratchpad.strip()
+        try:
+            scratchpad = scratchpad_path.read_text(encoding="utf-8")
+        except Exception as e:
+            log.warning(f"Failed to read scratchpad: {e}, skipping auto-resume")
+            append_jsonl(
+                DRIVE_ROOT / "logs" / "supervisor.jsonl",
+                {
+                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "type": "restart_online_notified",
+                },
+            )
+            return
 
+        is_valid, reason = _validate_scratchpad(scratchpad)
+        if not is_valid:
+            log.debug(f"Scratchpad validation failed: {reason}, skipping auto-resume")
+            append_jsonl(
+                DRIVE_ROOT / "logs" / "supervisor.jsonl",
+                {
+                    "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "type": "restart_online_notified",
+                    "scratchpad_validation": reason,
+                },
+            )
+            return
+
+        stripped = scratchpad.strip()
         content_lines = [
             ln.strip()
             for ln in stripped.splitlines()
