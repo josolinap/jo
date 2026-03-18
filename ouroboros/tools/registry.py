@@ -199,7 +199,7 @@ class ToolRegistry:
             return f"⚠️ TOOL_ERROR ({name}): {e}"
 
     def _validate_args(self, schema: Dict[str, Any], args: Dict[str, Any]) -> Optional[str]:
-        """Validate args against schema. Returns error message if invalid, None if valid."""
+        """Validate tool arguments against JSON schema. Returns error string or None if valid."""
         params = schema.get("parameters", {})
         if not params:
             if args:
