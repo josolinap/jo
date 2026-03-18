@@ -1,13 +1,14 @@
-"""Spice system for Jo - random prompt injections to prevent stale conversations.
+"""Spice system for Jo - targeted prompt injections based on quality issues.
 
-Inspired by Sapphire's spice system - injects random snippets each round
-to keep conversations fresh, break loops, and add variety.
+Phase 2: Targeted spices based on Response Analyzer feedback.
+- Random spices for general freshness
+- Targeted spices for specific quality issues
+- Categories: hallucination, drift, avoidance, overconfidence
 
-Spice categories for Jo:
-- thinking: Different approaches to problem-solving
-- format: Vary output formatting
-- perspective: Look at problems differently
-- action: Encourage specific behaviors
+The system:
+1. Response Analyzer detects issues
+2. Targeted spice is injected based on issue type
+3. Generic spice as fallback
 """
 
 from __future__ import annotations
@@ -158,3 +159,91 @@ def remove_spice(category: str, snippet: str) -> None:
     if category in spices and snippet in spices[category]:
         spices[category].remove(snippet)
         save_spices(spices)
+
+
+# ============================================================================
+# Targeted Spices (Phase 2) - Based on Response Analyzer feedback
+# ============================================================================
+
+# Targeted spices - specific interventions for detected issues
+TARGETED_SPICES: Dict[str, List[str]] = {
+    "hallucination": [
+        "STOP: You made a claim without verification. Read the actual code with repo_read before continuing.",
+        "CRITICAL: Verify before stating. Use grep to search for function/class names you mentioned.",
+        "HALLUCINATION CHECK: Do NOT assume code exists. Read it first.",
+        "VERIFICATION REQUIRED: Find the actual file and line before making any statement.",
+        "Before saying 'X exists' or 'line Y has Z', prove it by reading the file.",
+    ],
+    "drift": [
+        "DRIFT ALERT: You're going in circles. Step back and identify the actual problem.",
+        "STOP LOOPING: What are you actually trying to solve? State it clearly.",
+        "REDIRECT: Same approach failing repeatedly. Try grep to find patterns in existing code.",
+        "CIRCULAR PATTERN: Instead of trying again, read the full context first.",
+        "BREAK THE LOOP: Ask yourself - what information am I missing to solve this?",
+    ],
+    "avoidance": [
+        "AVOIDANCE DETECTED: You're describing code without showing it. Use repo_read.",
+        "GROUND YOURSELF: Read the actual implementation before explaining it.",
+        "STOP ASSUMING: You said 'probably', 'might be', 'likely'. Verify with tools.",
+        "TAKE OWNERSHIP: Don't guess. Read the file and show the actual code.",
+        "VERIFICATION GAPS: Your response contains assumptions. Prove them with repo_read.",
+    ],
+    "overconfidence": [
+        "HUMBLE CHECK: You used 'definitely', 'always', 'never'. Prove it with evidence.",
+        "UNCERTAINTY SIGNAL: Overly certain without verification. Show your work.",
+        "VERIFICATION CHECK: Asserting without proof. What code did you read?",
+        "CERTAINTY FLAG: 'Impossible', 'guaranteed', 'without doubt' require evidence.",
+        "SKEPTICISM INJECT: Be humble. Code often has edge cases you haven't considered.",
+    ],
+    "high_complexity": [
+        "SIMPLIFY: This problem may have hidden complexity. Break it into smaller pieces.",
+        "YAGNI CHECK: Are you solving more than needed? Focus on the immediate problem.",
+        "COMPLEXITY ALERT: The solution might be simpler. What's the minimum viable fix?",
+    ],
+}
+
+
+def get_targeted_spice(issue_type: str) -> str:
+    """Get a targeted spice for a specific issue type."""
+    if issue_type in TARGETED_SPICES and TARGETED_SPICES[issue_type]:
+        return random.choice(TARGETED_SPICES[issue_type])
+    return ""
+
+
+def get_spice_for_analysis(issues: List[Any], default_interval: int = 3) -> str:
+    """Get the best spice based on detected issues.
+
+    Priority:
+    1. Targeted spice for most severe issue
+    2. Random spice as fallback
+
+    Args:
+        issues: List of QualityIssue from response_analyzer
+        default_interval: Only inject if round_idx % interval == 0 (for random spices)
+
+    Returns:
+        Targeted or random spice string, or empty if not time for spice
+    """
+    if not issues:
+        return get_random_spice()
+
+    # Priority order: hallucination > overconfidence > avoidance > drift
+    priority_order = ["hallucination", "overconfidence", "avoidance", "drift"]
+
+    # Find most severe issue
+    most_severe = None
+    for issue_type in priority_order:
+        for issue in issues:
+            if issue.issue_type == issue_type and issue.severity in ("high", "medium"):
+                most_severe = issue_type
+                break
+        if most_severe:
+            break
+
+    if most_severe:
+        targeted = get_targeted_spice(most_severe)
+        if targeted:
+            return targeted
+
+    # Fallback to random
+    return get_random_spice()

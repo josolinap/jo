@@ -748,6 +748,9 @@ def run_llm_loop(
     # Reset response analyzer for new task
     get_analyzer().reset()
 
+    # Track previous round's analysis for targeted spice injection
+    _previous_issues: List[Any] = []
+
     try:
         while True:
             round_idx += 1
@@ -873,12 +876,19 @@ Version: {skill.version}
                             )
                             break
 
-            # Inject spice - random prompt snippets to keep things fresh
-            from ouroboros.spice import get_spice_for_round
+            # Inject spice - targeted based on previous issues, or random for freshness
+            from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
 
-            spice = get_spice_for_round(round_idx, spice_interval=3)
-            if spice:
-                messages.append({"role": "system", "content": f"[Spice] {spice}"})
+            # Use targeted spice if issues were detected in previous round
+            if _previous_issues:
+                spice = get_spice_for_analysis(_previous_issues)
+                if spice:
+                    messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
+            else:
+                # Random spice for general freshness (every 3 rounds)
+                spice = get_spice_for_round(round_idx, spice_interval=3)
+                if spice:
+                    messages.append({"role": "system", "content": f"[Spice] {spice}"})
 
             # Compact old tool history when needed
             # Check for LLM-requested compaction first (via compact_context tool)
@@ -984,7 +994,8 @@ Version: {skill.version}
 
             # --- Response quality analysis ---
             # Analyze the response for hallucinations, drift, and avoidance
-            # Inject targeted feedback if issues detected
+            # Store issues for targeted spice injection on next round
+            _current_issues: List[Any] = []
             try:
                 repo_dir = str(drive_root / "repo") if drive_root else ""
                 analysis = analyze_response(
@@ -993,6 +1004,7 @@ Version: {skill.version}
                     messages=messages,
                     repo_dir=repo_dir,
                 )
+                _current_issues = analysis.issues
                 if analysis.feedback_for_next_round:
                     messages.append(
                         {
@@ -1003,6 +1015,9 @@ Version: {skill.version}
                     emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
             except Exception:
                 pass  # Don't let analysis errors break the loop
+            finally:
+                # Store issues for targeted spice on next round
+                _previous_issues = _current_issues
 
             # --- Budget guard ---
             budget_result = _check_budget_limits(
