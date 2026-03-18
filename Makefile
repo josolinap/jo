@@ -24,6 +24,8 @@ verify:
 	@python3 -m py_compile ouroboros/*.py 2>/dev/null && echo "OK: All Ouroboros modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
 	@python3 -m py_compile supervisor/*.py 2>/dev/null && echo "OK: All Supervisor modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
 	@python3 -m py_compile ouroboros/tools/*.py 2>/dev/null && echo "OK: All Tools modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
+	@echo "Verifying version sync..."
+	@python3 -c "from pathlib import Path; v=Path('VERSION').read().strip(); r=Path('README.md').read_text(); assert v in r, f'Version mismatch: VERSION={v} not in README'; assert v == Path('pyproject.toml').read_text().split('version = ')[1].split('\\n')[0].strip('\"'), f'Version mismatch: VERSION={v} != pyproject.toml'; print(f'OK: Version sync ({v})')"
 	@echo "Running tests..."
 	@python3 -m pytest tests/ -q --tb=short
 	@echo "Verification complete."
