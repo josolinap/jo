@@ -21,6 +21,7 @@ import logging
 from ouroboros.llm import LLMClient, normalize_reasoning_effort, add_usage
 from ouroboros.tools.registry import ToolRegistry
 from ouroboros.context import compact_tool_history, compact_tool_history_llm, auto_summarize_if_needed
+from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
     utc_now_iso,
     append_jsonl,
@@ -743,6 +744,10 @@ def run_llm_loop(
         MAX_ROUNDS = 200
         log.warning("Invalid OUROBOROS_MAX_ROUNDS, defaulting to 200")
     round_idx = 0
+
+    # Reset response analyzer for new task
+    get_analyzer().reset()
+
     try:
         while True:
             round_idx += 1
@@ -976,6 +981,28 @@ Version: {skill.version}
             error_count = _handle_tool_calls(
                 tool_calls, tools, drive_logs, task_id, stateful_executor, messages, llm_trace, emit_progress
             )
+
+            # --- Response quality analysis ---
+            # Analyze the response for hallucinations, drift, and avoidance
+            # Inject targeted feedback if issues detected
+            try:
+                repo_dir = str(drive_root / "repo") if drive_root else ""
+                analysis = analyze_response(
+                    response_text=content or "",
+                    tool_calls=tool_calls,
+                    messages=messages,
+                    repo_dir=repo_dir,
+                )
+                if analysis.feedback_for_next_round:
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": analysis.feedback_for_next_round,
+                        }
+                    )
+                    emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
+            except Exception:
+                pass  # Don't let analysis errors break the loop
 
             # --- Budget guard ---
             budget_result = _check_budget_limits(
