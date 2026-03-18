@@ -859,3 +859,206 @@ def get_skill_stats() -> Dict[str, Any]:
     except Exception as e:
         log.warning(f"Failed to get skill stats: {e}")
         return {"error": str(e)}
+
+
+# ============================================================================
+# Phase 3: Skill Re-evaluation System
+# ============================================================================
+
+
+@dataclass
+class SkillRelevance:
+    """How relevant is a skill to the current task state."""
+
+    skill: Optional[Skill]
+    score: float  # 0.0 to 1.0
+    reason: str
+    should_switch: bool
+
+
+# Keywords that suggest skill evolution
+SKILL_EVOLUTION_SIGNALS: Dict[str, List[str]] = {
+    "plan": ["architecture", "design", "rethink", "strategy", "product", "vision", "roadmap"],
+    "review": ["bug", "error", "fix", "issue", "problem", "security", "performance"],
+    "ship": ["ready", "deploy", "release", "push", "merge", "done", "complete"],
+    "qa": ["test", "click", "browse", "verify", "check", "ui", "interface"],
+    "retro": ["metrics", "velocity", "trend", "stats", "improve", "retrospective"],
+    "evolve": ["improve", "refactor", "enhance", "evolution", "grow", "learn"],
+}
+
+
+def score_skill_relevance(skill: Skill, context: Dict[str, Any]) -> float:
+    """Score how relevant a skill is to the current context.
+
+    Args:
+        skill: The skill to score
+        context: Current task context with:
+            - task_text: Original task description
+            - recent_tools: List of recent tool calls
+            - recent_responses: List of recent response summaries
+            - current_focus: What the task seems to be about now
+
+    Returns:
+        Relevance score from 0.0 to 1.0
+    """
+    score = 0.0
+    signals = SKILL_EVOLUTION_SIGNALS.get(skill.name, [])
+
+    if not signals:
+        return 0.5  # Unknown skill, neutral
+
+    # Check task text
+    task_text = context.get("task_text", "").lower()
+    response_text = context.get("recent_responses", [])
+    if isinstance(response_text, list):
+        response_text = " ".join(response_text).lower()
+    else:
+        response_text = str(response_text).lower()
+
+    combined = task_text + " " + response_text
+
+    # Count signal matches
+    signal_matches = sum(1 for signal in signals if signal in combined)
+    max_signals = len(signals)
+
+    score = signal_matches / max_signals if max_signals > 0 else 0.0
+
+    # Boost for strong keywords
+    strong_keywords = {
+        "plan": ["architecture", "design", "rethink"],
+        "review": ["bug", "error", "crash"],
+        "ship": ["ready", "deploy", "done"],
+        "qa": ["test", "verify", "click"],
+        "retro": ["metrics", "velocity", "stats"],
+        "evolve": ["refactor", "improve", "enhance"],
+    }
+
+    strong_matches = strong_keywords.get(skill.name, [])
+    if any(kw in combined for kw in strong_matches):
+        score = min(1.0, score + 0.2)
+
+    # Penalize for conflicting signals
+    conflicting_skills = {
+        "plan": ["fix", "bug", "error", "test", "deploy"],
+        "review": ["design", "architecture", "strategy"],
+        "ship": ["design", "architecture", "plan"],
+        "qa": ["architecture", "design", "strategy"],
+    }
+
+    conflicts = conflicting_skills.get(skill.name, [])
+    conflict_matches = sum(1 for c in conflicts if c in combined)
+    score -= conflict_matches * 0.1
+
+    return max(0.0, min(1.0, score))
+
+
+def evaluate_skill_relevance(
+    current_skill: Optional[Skill],
+    context: Dict[str, Any],
+    reevaluation_threshold: float = 0.3,
+) -> SkillRelevance:
+    """Evaluate if current skill is still relevant or if we should switch.
+
+    Args:
+        current_skill: The currently active skill (or None)
+        context: Current task context
+        reevaluation_threshold: Score below which to suggest switching
+
+    Returns:
+        SkillRelevance with recommendation
+    """
+    if current_skill is None:
+        # No skill active, check if we should activate one
+        best_skill = None
+        best_score = 0.0
+
+        for skill_name in SKILLS:
+            skill = SKILLS[skill_name]
+            score = score_skill_relevance(skill, context)
+            if score > best_score:
+                best_score = score
+                best_skill = skill
+
+        if best_skill and best_score > 0.4:
+            return SkillRelevance(
+                skill=best_skill,
+                score=best_score,
+                reason=f"Auto-detected skill '{best_skill.name}' (score: {best_score:.2f})",
+                should_switch=True,
+            )
+        return SkillRelevance(
+            skill=None,
+            score=0.0,
+            reason="No skill relevant",
+            should_switch=False,
+        )
+
+    # Score current skill
+    current_score = score_skill_relevance(current_skill, context)
+
+    if current_score >= 0.5:
+        return SkillRelevance(
+            skill=current_skill,
+            score=current_score,
+            reason=f"Current skill '{current_skill.name}' still relevant ({current_score:.2f})",
+            should_switch=False,
+        )
+
+    # Current skill losing relevance, check for better options
+    best_alternative = None
+    best_alternative_score = 0.0
+
+    for skill_name in SKILLS:
+        if skill_name == current_skill.name:
+            continue
+        skill = SKILLS[skill_name]
+        score = score_skill_relevance(skill, context)
+        if score > best_alternative_score:
+            best_alternative_score = score
+            best_alternative = skill
+
+    # Switch if alternative is significantly better
+    if best_alternative and (best_alternative_score - current_score) >= reevaluation_threshold:
+        return SkillRelevance(
+            skill=best_alternative,
+            score=best_alternative_score,
+            reason=f"Switch from '{current_skill.name}' ({current_score:.2f}) to '{best_alternative.name}' ({best_alternative_score:.2f})",
+            should_switch=True,
+        )
+
+    return SkillRelevance(
+        skill=current_skill,
+        score=current_score,
+        reason=f"Current skill '{current_skill.name}' declining ({current_score:.2f}) but no better alternative",
+        should_switch=False,
+    )
+
+
+def should_reevaluate(round_idx: int, tool_call_count: int, last_reevaluation: int) -> bool:
+    """Determine if we should re-evaluate the current skill.
+
+    Triggers:
+    - Every 5 rounds
+    - After every 10 tool calls
+    - When task focus seems to change
+    """
+    if round_idx - last_reevaluation >= 5:
+        return True
+    if tool_call_count % 10 == 0 and tool_call_count > 0:
+        return True
+    return False
+
+
+def get_skill_switch_hint(relevance: SkillRelevance) -> str:
+    """Generate a system message hint for skill switching."""
+    if not relevance.should_switch or relevance.skill is None:
+        return ""
+
+    return f"""[SKILL RE-EVALUATION] Task focus appears to have evolved.
+
+Current skill context no longer optimal.
+Suggested skill: {relevance.skill.name.upper()}
+
+Reason: {relevance.reason}
+
+To activate: Use this context with {relevance.skill.name} approach."""

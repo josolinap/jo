@@ -751,6 +751,12 @@ def run_llm_loop(
     # Track previous round's analysis for targeted spice injection
     _previous_issues: List[Any] = []
 
+    # Track current skill and re-evaluation state
+    _current_skill: Any = None
+    _last_reevaluation_round: int = 0
+    _tool_call_count: int = 0
+    _recent_responses: List[str] = []
+
     try:
         while True:
             round_idx += 1
@@ -874,6 +880,9 @@ Version: {skill.version}
                             emit_progress(
                                 f"Skill activated: {skill.name.upper()} - {skill.description} (triggers: {matched_triggers})"
                             )
+                            # Track active skill for re-evaluation
+                            _current_skill = skill
+                            _last_reevaluation_round = round_idx
                             break
 
             # Inject spice - targeted based on previous issues, or random for freshness
@@ -1018,6 +1027,52 @@ Version: {skill.version}
             finally:
                 # Store issues for targeted spice on next round
                 _previous_issues = _current_issues
+
+            # --- Skill Re-evaluation (Phase 3) ---
+            # Track responses and tool calls for skill relevance scoring
+            if content:
+                _recent_responses.append(content[:200])
+                if len(_recent_responses) > 5:
+                    _recent_responses = _recent_responses[-5:]
+            _tool_call_count += len(tool_calls)
+
+            # Check if we should re-evaluate the current skill
+            try:
+                from ouroboros.tools.skills import (
+                    evaluate_skill_relevance,
+                    should_reevaluate,
+                    get_skill_switch_hint,
+                )
+
+                if should_reevaluate(round_idx, _tool_call_count, _last_reevaluation_round):
+                    # Build context for skill scoring
+                    task_text = ""
+                    for m in messages:
+                        if m.get("role") == "user":
+                            task_text = m.get("content", "")
+                            break
+
+                    context = {
+                        "task_text": task_text,
+                        "recent_tools": [tc.get("tool", "") for tc in tool_calls],
+                        "recent_responses": _recent_responses,
+                    }
+
+                    relevance = evaluate_skill_relevance(_current_skill, context)
+
+                    if relevance.should_switch and relevance.skill:
+                        # Inject skill switch hint
+                        switch_hint = get_skill_switch_hint(relevance)
+                        if switch_hint:
+                            messages.append({"role": "system", "content": switch_hint})
+                            emit_progress(f"Skill re-evaluation: {relevance.reason}")
+
+                        # Update tracking
+                        _current_skill = relevance.skill
+                        _last_reevaluation_round = round_idx
+                        _tool_call_count = 0  # Reset counter after re-evaluation
+            except Exception:
+                pass  # Don't let re-evaluation errors break the loop
 
             # --- Budget guard ---
             budget_result = _check_budget_limits(
