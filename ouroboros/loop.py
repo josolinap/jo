@@ -900,6 +900,9 @@ Version: {skill.version}
                 spice = get_spice_for_analysis(_previous_issues)
                 if spice:
                     messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
+                    emit_progress(
+                        f"[Spice] Targeted: {_previous_issues[0].issue_type if _previous_issues else 'unknown'}"
+                    )
             else:
                 # Random spice for general freshness (every 3 rounds)
                 spice = get_spice_for_round(round_idx, spice_interval=3)
@@ -1020,6 +1023,13 @@ Version: {skill.version}
                     messages=messages,
                     repo_dir=repo_dir,
                 )
+                # Diagnostic logging for response analysis
+                if analysis.issues:
+                    issue_types = [f"{i.issue_type}({i.severity})" for i in analysis.issues]
+                    log.info(
+                        f"[DIAG] Response analysis R{round_idx}: score={analysis.quality_score:.2f}, issues={issue_types}"
+                    )
+
                 _current_issues = analysis.issues
 
                 # Only inject feedback if score is below 85% (significant issues)
@@ -1074,6 +1084,14 @@ Version: {skill.version}
                     }
 
                     relevance = evaluate_skill_relevance(_current_skill, context)
+
+                    # Diagnostic logging for skill re-evaluation
+                    log.info(
+                        f"[DIAG] Skill re-eval R{round_idx}: "
+                        f"current={_current_skill.name if _current_skill else 'None'}, "
+                        f"score={relevance.score:.2f}, "
+                        f"switch={relevance.should_switch}"
+                    )
 
                     if relevance.should_switch and relevance.skill:
                         # Inject skill switch hint
