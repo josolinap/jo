@@ -104,12 +104,18 @@ class Skill:
 
 SKILLS: Dict[str, Skill] = {}
 
+# Separate mapping from trigger/alias to skill name
+# This allows O(1) lookup by any trigger while keeping SKILLS unique
+TRIGGERS: Dict[str, str] = {}
+
 
 def register_skill(skill: Skill) -> None:
     """Register a skill and its aliases."""
     SKILLS[skill.name] = skill
     for alias in skill.aliases:
-        SKILLS[alias] = skill
+        TRIGGERS[alias] = skill.name
+    # Also register the skill name itself as a trigger
+    TRIGGERS[skill.name] = skill.name
 
 
 register_skill(
@@ -634,8 +640,11 @@ Think like an attacker, defend like an expert.
 
 
 def get_skill(name: str) -> Optional[Skill]:
-    """Get a skill by name or alias."""
-    return SKILLS.get(name) or SKILLS.get(f"/{name}") or SKILLS.get(name.replace("/", ""))
+    """Get a skill by name or alias using TRIGGERS lookup."""
+    skill_name = TRIGGERS.get(name) or TRIGGERS.get(f"/{name}") or TRIGGERS.get(name.replace("/", ""))
+    if skill_name:
+        return SKILLS.get(skill_name)
+    return None
 
 
 def detect_skill_from_text(text: str) -> Optional[Skill]:
@@ -650,7 +659,8 @@ def detect_skill_from_text(text: str) -> Optional[Skill]:
 def detect_skill_with_triggers(text: str) -> tuple[Optional[Skill], List[str]]:
     """Detect skill with transparency - returns (skill, matched_triggers).
 
-    Provides observability into why a skill was selected.
+    Uses TRIGGERS for O(1) lookup by trigger/alias.
+    Uses SKILLS.values() for keyword matching (already unique).
     """
     text_lower = text.lower().strip()
 
@@ -662,17 +672,20 @@ def detect_skill_with_triggers(text: str) -> tuple[Optional[Skill], List[str]]:
             text = text[len(prefix) :]
             break
 
-    # First, check for explicit skill commands (aliases)
-    for skill_name, skill in SKILLS.items():
-        for alias in skill.aliases:
-            alias_lower = alias.lower()
-            if text_lower.startswith(alias_lower + " ") or text_lower.startswith(alias_lower + "\n"):
-                return skill, [alias]
-            if text_lower == alias_lower:
-                return skill, [alias]
+    # First, check for explicit skill commands using TRIGGERS (O(1) lookup)
+    for trigger, skill_name in TRIGGERS.items():
+        trigger_lower = trigger.lower()
+        if text_lower.startswith(trigger_lower + " ") or text_lower.startswith(trigger_lower + "\n"):
+            skill = SKILLS.get(skill_name)
+            if skill:
+                return skill, [trigger]
+        if text_lower == trigger_lower:
+            skill = SKILLS.get(skill_name)
+            if skill:
+                return skill, [trigger]
 
     # Second, check for keyword triggers (intelligent routing)
-    # This enables auto-detection like antigravity-kit
+    # Iterates over SKILLS.values() which is naturally unique
     skill_scores: Dict[str, int] = {}
     matched_triggers_map: Dict[str, List[str]] = {}
 
@@ -972,15 +985,8 @@ def evaluate_skill_relevance(
         best_skill = None
         best_score = 0.0
 
-        # Get unique skills (avoid duplicates from aliases)
-        seen_skills: set = set()
-        unique_skills: list = []
-        for skill_name, skill in SKILLS.items():
-            if skill.name not in seen_skills:
-                seen_skills.add(skill.name)
-                unique_skills.append(skill)
-
-        for skill in unique_skills:
+        # Get unique skills directly (SKILLS is now unique by design)
+        for skill in SKILLS.values():
             score = score_skill_relevance(skill, context)
             if score > best_score:
                 best_score = score
@@ -1015,15 +1021,8 @@ def evaluate_skill_relevance(
     best_alternative = None
     best_alternative_score = 0.0
 
-    # Get unique skills (avoid duplicates from aliases)
-    seen_skills: set = set()
-    unique_skills: list = []
-    for skill_name, skill in SKILLS.items():
-        if skill.name not in seen_skills:
-            seen_skills.add(skill.name)
-            unique_skills.append(skill)
-
-    for skill in unique_skills:
+    # Iterate over SKILLS (now unique by design)
+    for skill in SKILLS.values():
         if skill.name == current_skill.name:
             continue
         score = score_skill_relevance(skill, context)
