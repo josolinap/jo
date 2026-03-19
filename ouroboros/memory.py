@@ -10,6 +10,7 @@ Thread-safe and process-safe via file locking for identity.md and scratchpad.md.
 from __future__ import annotations
 
 import datetime
+from datetime import timezone, timedelta
 import json
 import logging
 import os
@@ -357,6 +358,42 @@ class Memory:
             pass
 
         return lessons
+
+    def track_verification(self, claim: str, verification_method: str, result: str) -> None:
+        """Track when a claim is verified. Used for anti-hallucination enforcement."""
+        entry = {
+            "ts": utc_now_iso(),
+            "claim": claim[:200] if len(claim) > 200 else claim,
+            "method": verification_method,
+            "result": result[:100] + "..." if len(result) > 100 else result,
+        }
+        append_jsonl(self._memory_path("verification_log.jsonl"), entry)
+
+    def get_verification_stats(self) -> Dict[str, Any]:
+        """Get verification statistics for health reporting."""
+        log_path = self._memory_path("verification_log.jsonl")
+        if not log_path.exists():
+            return {"total_verifications": 0, "recent_verifications": 0}
+
+        try:
+            entries = []
+            with log_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            entries.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+
+            cutoff = (datetime.datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+
+            return {
+                "total_verifications": len(entries),
+                "recent_verifications": sum(1 for e in entries if e.get("ts", "") > cutoff),
+                "last_verification": entries[-1].get("ts", "never") if entries else "never",
+            }
+        except Exception:
+            return {"total_verifications": 0, "recent_verifications": 0, "error": True}
 
     # --- Defaults ---
 

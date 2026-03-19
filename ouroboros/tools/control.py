@@ -304,6 +304,26 @@ def _recall_lessons(ctx: ToolContext, topic: str = "", limit: int = 10) -> str:
     return "\n".join(lines)
 
 
+def _verify_claim(ctx: ToolContext, claim: str, method: str, outcome: str = "verified") -> str:
+    """Track verification of a claim for anti-hallucination enforcement.
+
+    Use this to log when you've verified a claim about the codebase:
+    - "repo_read shows function exists"
+    - "grep confirms no callers"
+    - "test run confirms behavior"
+
+    This creates an audit trail for health reporting.
+    """
+    from ouroboros.memory import Memory
+
+    mem = Memory(drive_root=ctx.drive_root)
+    mem.ensure_files()
+    mem.track_verification(claim=claim, verification_method=method, result=outcome)
+
+    stats = mem.get_verification_stats()
+    return f"OK: verification logged. Total: {stats['total_verifications']}, Last 24h: {stats['recent_verifications']}"
+
+
 def _switch_model(ctx: ToolContext, model: str = "", effort: str = "") -> str:
     """LLM-driven model/effort switch (Constitution P3: LLM-first).
 
@@ -545,6 +565,31 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _recall_lessons,
+        ),
+        ToolEntry(
+            "verify_claim",
+            {
+                "name": "verify_claim",
+                "description": "Track verification of a claim about the codebase. "
+                "Use after verifying something: read a file, ran a test, checked git status. "
+                "This creates an audit trail for anti-hallucination enforcement.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "claim": {
+                            "type": "string",
+                            "description": "What you verified (e.g., 'function exists at line 42')",
+                        },
+                        "method": {
+                            "type": "string",
+                            "description": "How you verified: 'repo_read', 'grep', 'test', 'git'",
+                        },
+                        "outcome": {"type": "string", "description": "Result: 'verified', 'not_found', 'error'"},
+                    },
+                    "required": ["claim", "method"],
+                },
+            },
+            _verify_claim,
         ),
         ToolEntry(
             "toggle_evolution",

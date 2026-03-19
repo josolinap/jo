@@ -222,6 +222,24 @@ def _build_health_invariants(env: Any) -> str:
     except Exception:
         pass
 
+    # 2.5. Verification tracking (anti-hallucination)
+    try:
+        from ouroboros.memory import Memory
+
+        mem = Memory(drive_root=env.drive_root)
+        stats = mem.get_verification_stats()
+        recent = stats.get("recent_verifications", 0)
+        total = stats.get("total_verifications", 0)
+        last = stats.get("last_verification", "never")
+        if recent == 0 and total > 0:
+            checks.append(f"⚠️ No verifications in last 24h (total: {total}, last: {last})")
+        elif recent > 0:
+            checks.append(f"OK: verifications tracked ({recent} in 24h, {total} total)")
+        else:
+            checks.append("INFO: verification tracking active (no entries yet)")
+    except Exception:
+        pass
+
     # 3. Per-task cost anomalies
     try:
         from supervisor.state import per_task_cost_summary
