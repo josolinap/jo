@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 # Time
 # ---------------------------------------------------------------------------
 
+
 def utc_now_iso() -> str:
     return _dt.datetime.now(tz=_dt.timezone.utc).isoformat()
 
@@ -32,6 +33,7 @@ def utc_now_iso() -> str:
 # Hashing
 # ---------------------------------------------------------------------------
 
+
 def sha256_text(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
@@ -39,6 +41,7 @@ def sha256_text(s: str) -> str:
 # ---------------------------------------------------------------------------
 # File I/O
 # ---------------------------------------------------------------------------
+
 
 def read_text(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -97,7 +100,7 @@ def append_jsonl(path: pathlib.Path, obj: Dict[str, Any]) -> None:
                 return
             except Exception:
                 if attempt < write_retries - 1:
-                    time.sleep(retry_sleep_base_sec * (2 ** attempt))
+                    time.sleep(retry_sleep_base_sec * (2**attempt))
 
         for attempt in range(write_retries):
             try:
@@ -106,7 +109,7 @@ def append_jsonl(path: pathlib.Path, obj: Dict[str, Any]) -> None:
                 return
             except Exception:
                 if attempt < write_retries - 1:
-                    time.sleep(retry_sleep_base_sec * (2 ** attempt))
+                    time.sleep(retry_sleep_base_sec * (2**attempt))
     except Exception:
         log.warning("append_jsonl: all write attempts failed for %s", path, exc_info=True)
     finally:
@@ -128,6 +131,7 @@ def append_jsonl(path: pathlib.Path, obj: Dict[str, Any]) -> None:
 # Path safety
 # ---------------------------------------------------------------------------
 
+
 def safe_relpath(p: str) -> str:
     p = p.replace("\\", "/").lstrip("/")
     if ".." in pathlib.PurePosixPath(p).parts:
@@ -139,10 +143,11 @@ def safe_relpath(p: str) -> str:
 # Text helpers
 # ---------------------------------------------------------------------------
 
+
 def truncate_for_log(s: str, max_chars: int = 4000) -> str:
     if len(s) <= max_chars:
         return s
-    return s[: max_chars // 2] + "\n...\n" + s[-max_chars // 2:]
+    return s[: max_chars // 2] + "\n...\n" + s[-max_chars // 2 :]
 
 
 def clip_text(text: str, max_chars: int) -> str:
@@ -166,18 +171,18 @@ def estimate_tokens(text: str) -> int:
 # Subprocess
 # ---------------------------------------------------------------------------
 
-def run_cmd(cmd: List[str], cwd: Optional[pathlib.Path] = None) -> str:
-    res = subprocess.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True, text=True)
+
+def run_cmd(cmd: List[str], cwd: Optional[pathlib.Path] = None, timeout: Optional[int] = None) -> str:
+    res = subprocess.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True, text=True, timeout=timeout)
     if res.returncode != 0:
-        raise RuntimeError(
-            f"Command failed: {' '.join(cmd)}\n\nSTDOUT:\n{res.stdout}\n\nSTDERR:\n{res.stderr}"
-        )
+        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n\nSTDOUT:\n{res.stdout}\n\nSTDERR:\n{res.stderr}")
     return res.stdout.strip()
 
 
 # ---------------------------------------------------------------------------
 # Git helpers
 # ---------------------------------------------------------------------------
+
 
 def get_git_info(repo_dir: pathlib.Path) -> tuple[str, str]:
     """Best-effort retrieval of (git_branch, git_sha)."""
@@ -186,7 +191,10 @@ def get_git_info(repo_dir: pathlib.Path) -> tuple[str, str]:
     try:
         r = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=str(repo_dir), capture_output=True, text=True, timeout=2,
+            cwd=str(repo_dir),
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         if r.returncode == 0:
             branch = r.stdout.strip()
@@ -196,7 +204,10 @@ def get_git_info(repo_dir: pathlib.Path) -> tuple[str, str]:
     try:
         r = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=str(repo_dir), capture_output=True, text=True, timeout=2,
+            cwd=str(repo_dir),
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         if r.returncode == 0:
             sha = r.stdout.strip()
@@ -210,8 +221,11 @@ def get_git_info(repo_dir: pathlib.Path) -> tuple[str, str]:
 # Sanitization helpers (for logging)
 # ---------------------------------------------------------------------------
 
+
 def sanitize_task_for_event(
-    task: Dict[str, Any], drive_logs: pathlib.Path, threshold: int = 4000,
+    task: Dict[str, Any],
+    drive_logs: pathlib.Path,
+    threshold: int = 4000,
 ) -> Dict[str, Any]:
     """Sanitize task dict for event logging: truncate large text, strip base64 images, persist full text."""
     try:
@@ -255,19 +269,29 @@ def sanitize_task_for_event(
         return task
 
 
-_SECRET_KEYS = frozenset([
-    "token", "api_key", "apikey", "authorization", "secret", "password", "passwd", "passphrase",
-])
+_SECRET_KEYS = frozenset(
+    [
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "secret",
+        "password",
+        "passwd",
+        "passphrase",
+    ]
+)
 
 # Patterns that indicate leaked secrets in tool output
 import re as _re
+
 _SECRET_PATTERNS = _re.compile(
-    r'ghp_[A-Za-z0-9]{30,}'       # GitHub personal access token
-    r'|sk-ant-[A-Za-z0-9\-]{30,}' # Anthropic API key
-    r'|sk-or-[A-Za-z0-9\-]{30,}'  # OpenRouter API key
-    r'|gsk_[A-Za-z0-9]{30,}'      # Groq API key
-    r'|sk-[A-Za-z0-9]{40,}'       # OpenAI API key
-    r'|\b[0-9]{8,}:[A-Za-z0-9_\-]{30,}\b'  # Telegram bot token (digits:alphanum)
+    r"ghp_[A-Za-z0-9]{30,}"  # GitHub personal access token
+    r"|sk-ant-[A-Za-z0-9\-]{30,}"  # Anthropic API key
+    r"|sk-or-[A-Za-z0-9\-]{30,}"  # OpenRouter API key
+    r"|gsk_[A-Za-z0-9]{30,}"  # Groq API key
+    r"|sk-[A-Za-z0-9]{40,}"  # OpenAI API key
+    r"|\b[0-9]{8,}:[A-Za-z0-9_\-]{30,}\b"  # Telegram bot token (digits:alphanum)
 )
 
 
@@ -279,7 +303,9 @@ def sanitize_tool_result_for_log(result: str) -> str:
 
 
 def sanitize_tool_args_for_log(
-    fn_name: str, args: Dict[str, Any], threshold: int = 3000,
+    fn_name: str,
+    args: Dict[str, Any],
+    threshold: int = 3000,
 ) -> Dict[str, Any]:
     """Sanitize tool arguments for logging: redact secrets, truncate large fields."""
 
