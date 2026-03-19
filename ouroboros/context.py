@@ -327,6 +327,25 @@ def _build_health_invariants(env: Any) -> str:
     except Exception:
         pass
 
+    # 6. CORRECTNESS INVARIANT (Bible P3: Everything is permitted, as long as correct)
+    try:
+        from ouroboros.memory import Memory
+
+        mem = Memory(drive_root=env.drive_root)
+        stats = mem.get_verification_stats()
+        recent = stats.get("recent_verifications", 0)
+        total = stats.get("total_verifications", 0)
+
+        if recent == 0 and total > 0:
+            checks.append(
+                "⚠️ CORRECTNESS: No file/code verifications in 24h. "
+                "When asserting facts about code, verify FIRST (repo_read) before claiming."
+            )
+        elif recent > 0 and total > 0:
+            checks.append(f"OK: correctness tracking active ({recent} verifications in 24h, {total} total)")
+    except Exception:
+        pass
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
