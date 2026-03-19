@@ -769,8 +769,6 @@ Version: {skill.version}
                 else:
                     _consecutive_drift_rounds = 0
 
-                _previous_issues = _current_issues
-
                 # Inject escalation if stuck in drift for too long
                 if _consecutive_drift_rounds >= 5:
                     messages.append(
@@ -780,7 +778,12 @@ Version: {skill.version}
                         }
                     )
                     emit_progress("[ESCALATION] Drift loop detected - forcing decision")
-                    _consecutive_drift_rounds = 0  # Reset after escalation
+                    # Clear issues to prevent further spice spam after escalation
+                    _previous_issues = []
+                    _current_issues = []
+                    _consecutive_drift_rounds = 0
+                else:
+                    _previous_issues = _current_issues
 
             if content:
                 _recent_responses.append(content[:200])
