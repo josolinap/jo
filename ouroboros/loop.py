@@ -3,6 +3,7 @@ Ouroboros — LLM tool loop.
 
 Core loop: send messages to LLM, execute tool calls, repeat until final response.
 Extracted from agent.py to keep the agent thin.
+Tool execution logic extracted to tool_executor.py.
 """
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ import pathlib
 import queue
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import logging
@@ -26,10 +26,9 @@ from ouroboros.utils import (
     utc_now_iso,
     append_jsonl,
     truncate_for_log,
-    sanitize_tool_args_for_log,
-    sanitize_tool_result_for_log,
     estimate_tokens,
 )
+from ouroboros.tool_executor import _StatefulToolExecutor, _handle_tool_calls
 
 log = logging.getLogger(__name__)
 
@@ -68,13 +67,10 @@ def _get_pricing() -> Dict[str, Tuple[float, float, float]]:
     """
     global _pricing_fetched, _cached_pricing
 
-    # Fast path: already fetched (read without lock for performance)
     if _pricing_fetched:
         return _cached_pricing or _MODEL_PRICING_STATIC
 
-    # Slow path: fetch pricing (lock required)
     with _pricing_lock:
-        # Double-check after acquiring lock (another thread may have fetched)
         if _pricing_fetched:
             return _cached_pricing or _MODEL_PRICING_STATIC
 
@@ -91,7 +87,6 @@ def _get_pricing() -> Dict[str, Tuple[float, float, float]]:
             import logging as _log
 
             _log.getLogger(__name__).warning("Failed to sync pricing from OpenRouter: %s", e)
-            # Reset flag so we retry next time
             _pricing_fetched = False
 
         return _cached_pricing
@@ -102,10 +97,8 @@ def _estimate_cost(
 ) -> float:
     """Estimate cost from token counts using known pricing. Returns 0 if model unknown."""
     model_pricing = _get_pricing()
-    # Try exact match first
     pricing = model_pricing.get(model)
     if not pricing:
-        # Try longest prefix match
         best_match = None
         best_length = 0
         for key, val in model_pricing.items():
@@ -117,7 +110,6 @@ def _estimate_cost(
     if not pricing:
         return 0.0
     input_price, cached_price, output_price = pricing
-    # Non-cached input tokens = prompt_tokens - cached_tokens
     regular_input = max(0, prompt_tokens - cached_tokens)
     cost = (
         regular_input * input_price / 1_000_000
@@ -127,350 +119,12 @@ def _estimate_cost(
     return round(cost, 6)
 
 
-READ_ONLY_PARALLEL_TOOLS = frozenset(
-    {
-        "repo_read",
-        "repo_list",
-        "drive_read",
-        "drive_list",
-        "web_search",
-        "codebase_digest",
-        "chat_history",
-    }
-)
-
-# Stateful browser tools require thread-affinity (Playwright sync uses greenlet)
-STATEFUL_BROWSER_TOOLS = frozenset({"browse_page", "browser_action"})
-
-
-def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
-    """
-    Smart-truncate tool result to max_chars characters.
-    Keeps beginning and end (summary style) rather than just cutting off the end.
-    If truncated, append a note with the original length.
-    """
-    result_str = str(result)
-    if len(result_str) <= max_chars:
-        return result_str
-
-    original_len = len(result_str)
-
-    # Calculate separator length first to reserve space
-    separator = f"\n\n... ({original_len - max_chars} chars omitted) ...\n\n"
-    separator_len = len(separator)
-
-    # Reserve space for separator
-    available = max_chars - separator_len
-    if available <= 0:
-        return separator[:max_chars]
-
-    # Keep first 60% + last 40% of available content
-    begin_size = int(available * 0.6)
-    end_size = available - begin_size
-
-    begin_part = result_str[:begin_size]
-    end_part = result_str[-end_size:] if end_size > 0 else ""
-
-    return begin_part + separator + end_part
-
-
-def _execute_single_tool(
-    tools: ToolRegistry,
-    tc: Dict[str, Any],
-    drive_logs: pathlib.Path,
-    task_id: str = "",
-) -> Dict[str, Any]:
-    """
-    Execute a single tool call and return all needed info.
-
-    Returns dict with: tool_call_id, fn_name, result, is_error, args_for_log, is_code_tool
-    """
-    fn_name = tc["function"]["name"]
-    tool_call_id = tc["id"]
-    is_code_tool = fn_name in tools.CODE_TOOLS
-
-    # Parse arguments
-    try:
-        args = json.loads(tc["function"]["arguments"] or "{}")
-    except (json.JSONDecodeError, ValueError) as e:
-        result = f"⚠️ TOOL_ARG_ERROR: Could not parse arguments for '{fn_name}': {e}"
-        return {
-            "tool_call_id": tool_call_id,
-            "fn_name": fn_name,
-            "result": result,
-            "is_error": True,
-            "args_for_log": {},
-            "is_code_tool": is_code_tool,
-        }
-
-    args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
-
-    # Execute tool
-    tool_ok = True
-    try:
-        result = tools.execute(fn_name, args)
-    except Exception as e:
-        tool_ok = False
-        result = f"⚠️ TOOL_ERROR ({fn_name}): {type(e).__name__}: {e}"
-        append_jsonl(
-            drive_logs / "events.jsonl",
-            {
-                "ts": utc_now_iso(),
-                "type": "tool_error",
-                "task_id": task_id,
-                "tool": fn_name,
-                "args": args_for_log,
-                "error": repr(e),
-            },
-        )
-
-    # Log tool execution (sanitize secrets from result before persisting)
-    append_jsonl(
-        drive_logs / "tools.jsonl",
-        {
-            "ts": utc_now_iso(),
-            "tool": fn_name,
-            "task_id": task_id,
-            "args": args_for_log,
-            "result_preview": sanitize_tool_result_for_log(truncate_for_log(result, 2000)),
-        },
-    )
-
-    is_error = (not tool_ok) or str(result).startswith("⚠️")
-
-    return {
-        "tool_call_id": tool_call_id,
-        "fn_name": fn_name,
-        "result": result,
-        "is_error": is_error,
-        "args_for_log": args_for_log,
-        "is_code_tool": is_code_tool,
-    }
-
-
-class _StatefulToolExecutor:
-    """
-    Thread-sticky executor for stateful tools (browser, etc).
-
-    Playwright sync API uses greenlet internally which has strict thread-affinity:
-    once a greenlet starts in a thread, all subsequent calls must happen in the same thread.
-    This executor ensures browse_page/browser_action always run in the same thread.
-
-    On timeout: we shutdown the executor and create a fresh one to reset state.
-    """
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._executor: Optional[ThreadPoolExecutor] = None
-        self._sticky_thread_id: Optional[int] = None
-
-    def submit(self, fn, *args, **kwargs):
-        """Submit work to the sticky thread. Creates executor on first call."""
-        with self._lock:
-            current_tid = threading.get_ident()
-            if self._executor is None:
-                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stateful_tool")
-                self._sticky_thread_id = current_tid
-            elif current_tid != self._sticky_thread_id:
-                log.warning(
-                    f"Stateful tool thread mismatch! Expected thread {self._sticky_thread_id}, "
-                    f"got {current_tid}. Resetting executor."
-                )
-                self._executor.shutdown(wait=False, cancel_futures=True)
-                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stateful_tool")
-                self._sticky_thread_id = current_tid
-            return self._executor.submit(fn, *args, **kwargs)
-
-    def reset(self):
-        """Shutdown current executor and create a fresh one. Used after timeout/error."""
-        with self._lock:
-            if self._executor is not None:
-                self._executor.shutdown(wait=False, cancel_futures=True)
-                self._executor = None
-                self._sticky_thread_id = None
-
-    def shutdown(self, wait=True, cancel_futures=False):
-        """Final cleanup."""
-        with self._lock:
-            if self._executor is not None:
-                self._executor.shutdown(wait=wait, cancel_futures=cancel_futures)
-                self._executor = None
-                self._sticky_thread_id = None
-
-
-def _make_timeout_result(
-    fn_name: str,
-    tool_call_id: str,
-    is_code_tool: bool,
-    tc: Dict[str, Any],
-    drive_logs: pathlib.Path,
-    timeout_sec: int,
-    task_id: str = "",
-    reset_msg: str = "",
-) -> Dict[str, Any]:
-    """
-    Create a timeout error result dictionary and log the timeout event.
-
-    Args:
-        reset_msg: Optional additional message (e.g., "Browser state has been reset. ")
-
-    Returns: Dict with tool_call_id, fn_name, result, is_error, args_for_log, is_code_tool
-    """
-    args_for_log = {}
-    try:
-        args = json.loads(tc["function"]["arguments"] or "{}")
-        args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
-    except Exception:
-        pass
-
-    issue_note = " about the issue" if not reset_msg else ""
-    result = (
-        f"⚠️ TOOL_TIMEOUT ({fn_name}): exceeded {timeout_sec}s limit. "
-        f"The tool is still running in background but control is returned to you. "
-        f"{reset_msg}Try a different approach or inform the owner{issue_note}."
-    )
-
-    append_jsonl(
-        drive_logs / "events.jsonl",
-        {
-            "ts": utc_now_iso(),
-            "type": "tool_timeout",
-            "tool": fn_name,
-            "args": args_for_log,
-            "timeout_sec": timeout_sec,
-        },
-    )
-    append_jsonl(
-        drive_logs / "tools.jsonl",
-        {
-            "ts": utc_now_iso(),
-            "tool": fn_name,
-            "args": args_for_log,
-            "result_preview": result,
-        },
-    )
-
-    return {
-        "tool_call_id": tool_call_id,
-        "fn_name": fn_name,
-        "result": result,
-        "is_error": True,
-        "args_for_log": args_for_log,
-        "is_code_tool": is_code_tool,
-    }
-
-
-def _execute_with_timeout(
-    tools: ToolRegistry,
-    tc: Dict[str, Any],
-    drive_logs: pathlib.Path,
-    timeout_sec: int,
-    task_id: str = "",
-    stateful_executor: Optional[_StatefulToolExecutor] = None,
-) -> Dict[str, Any]:
-    """
-    Execute a tool call with a hard timeout.
-
-    On timeout: returns TOOL_TIMEOUT error so the LLM regains control.
-    For stateful tools (browser): resets the sticky executor to recover state.
-    For regular tools: the hung worker thread leaks as daemon — watchdog handles recovery.
-    """
-    fn_name = tc["function"]["name"]
-    tool_call_id = tc["id"]
-    is_code_tool = fn_name in tools.CODE_TOOLS
-    use_stateful = stateful_executor and fn_name in STATEFUL_BROWSER_TOOLS
-
-    # Two distinct paths: stateful (thread-sticky) vs regular (per-call)
-    if use_stateful:
-        # Stateful executor: submit + wait, reset on timeout
-        future = stateful_executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id)
-        try:
-            return future.result(timeout=timeout_sec)
-        except TimeoutError:
-            stateful_executor.reset()
-            reset_msg = "Browser state has been reset. "
-            return _make_timeout_result(
-                fn_name, tool_call_id, is_code_tool, tc, drive_logs, timeout_sec, task_id, reset_msg
-            )
-    else:
-        # Regular executor: explicit lifecycle to avoid shutdown(wait=True) deadlock
-        executor = ThreadPoolExecutor(max_workers=1)
-        try:
-            future = executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id)
-            try:
-                return future.result(timeout=timeout_sec)
-            except TimeoutError:
-                return _make_timeout_result(
-                    fn_name, tool_call_id, is_code_tool, tc, drive_logs, timeout_sec, task_id, reset_msg=""
-                )
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
-
-
-def _handle_tool_calls(
-    tool_calls: List[Dict[str, Any]],
-    tools: ToolRegistry,
-    drive_logs: pathlib.Path,
-    task_id: str,
-    stateful_executor: _StatefulToolExecutor,
-    messages: List[Dict[str, Any]],
-    llm_trace: Dict[str, Any],
-    emit_progress: Callable[[str], None],
-) -> int:
-    """
-    Execute tool calls and append results to messages.
-
-    Returns: Number of errors encountered
-    """
-    # Parallelize only for a strict read-only whitelist; all calls wrapped with timeout.
-    can_parallel = len(tool_calls) > 1 and all(
-        tc.get("function", {}).get("name") in READ_ONLY_PARALLEL_TOOLS for tc in tool_calls
-    )
-
-    if not can_parallel:
-        results = [
-            _execute_with_timeout(
-                tools, tc, drive_logs, tools.get_timeout(tc["function"]["name"]), task_id, stateful_executor
-            )
-            for tc in tool_calls
-        ]
-    else:
-        max_workers = min(len(tool_calls), 8)
-        executor = ThreadPoolExecutor(max_workers=max_workers)
-        try:
-            future_to_index = {
-                executor.submit(
-                    _execute_with_timeout,
-                    tools,
-                    tc,
-                    drive_logs,
-                    tools.get_timeout(tc["function"]["name"]),
-                    task_id,
-                    stateful_executor,
-                ): idx
-                for idx, tc in enumerate(tool_calls)
-            }
-            results = [None] * len(tool_calls)
-            for future in as_completed(future_to_index):
-                idx = future_to_index[future]
-                results[idx] = future.result()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
-
-    # Process results in original order
-    return _process_tool_results(results, messages, llm_trace, emit_progress)
-
-
 def _handle_text_response(
     content: Optional[str],
     llm_trace: Dict[str, Any],
     accumulated_usage: Dict[str, Any],
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
-    """
-    Handle LLM response without tool calls (final response).
-
-    Returns: (final_text, accumulated_usage, llm_trace)
-    """
+    """Handle LLM response without tool calls (final response)."""
     if content and content.strip():
         llm_trace["assistant_notes"].append(content.strip()[:320])
     return (content or ""), accumulated_usage, llm_trace
@@ -491,13 +145,7 @@ def _check_budget_limits(
     llm_trace: Dict[str, Any],
     task_type: str = "task",
 ) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
-    """
-    Check budget limits and handle budget overrun.
-
-    Returns:
-        None if budget is OK (continue loop)
-        (final_text, accumulated_usage, llm_trace) if budget exceeded (stop loop)
-    """
+    """Check budget limits and handle budget overrun."""
     if budget_remaining_usd is None:
         return None
 
@@ -505,7 +153,6 @@ def _check_budget_limits(
     budget_pct = task_cost / budget_remaining_usd if budget_remaining_usd > 0 else 1.0
 
     if budget_pct > 0.5:
-        # Hard stop — protect the budget
         finish_reason = (
             f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
         )
@@ -532,7 +179,6 @@ def _check_budget_limits(
             log.warning("Failed to get final response after budget limit", exc_info=True)
             return finish_reason, accumulated_usage, llm_trace
     elif budget_pct > 0.3 and round_idx % 10 == 0:
-        # Soft nudge every 10 rounds when spending is significant
         messages.append(
             {
                 "role": "system",
@@ -550,10 +196,7 @@ def _maybe_inject_self_check(
     accumulated_usage: Dict[str, Any],
     emit_progress: Callable[[str], None],
 ) -> None:
-    """Inject a soft self-check reminder every REMINDER_INTERVAL rounds.
-
-    This is a cognitive feature — the agent reflects on its own resource usage and strategy.
-    """
+    """Inject a soft self-check reminder every REMINDER_INTERVAL rounds."""
     REMINDER_INTERVAL = 50
     if round_idx <= 1 or round_idx % REMINDER_INTERVAL != 0:
         return
@@ -585,16 +228,7 @@ def _maybe_inject_self_check(
 
 
 def _setup_dynamic_tools(tools_registry, tool_schemas, messages):
-    """
-    Wire tool-discovery handlers onto an existing tool_schemas list.
-
-    Creates closures for list_available_tools / enable_tools, registers them
-    as handler overrides, and injects a system message advertising non-core
-    tools.  Mutates tool_schemas in-place (via list.append) when tools are
-    enabled, so the caller's reference stays live.
-
-    Returns (tool_schemas, enabled_extra_set).
-    """
+    """Wire tool-discovery handlers onto an existing tool_schemas list."""
     enabled_extra: set = set()
 
     def _handle_list_tools(ctx=None, **kwargs):
@@ -654,11 +288,7 @@ def _drain_incoming_messages(
     event_queue: Optional[queue.Queue],
     _owner_msg_seen: set,
 ) -> None:
-    """
-    Inject owner messages received during task execution.
-    Drains both the in-process queue and the Drive mailbox.
-    """
-    # Inject owner messages received during task execution
+    """Inject owner messages received during task execution."""
     while not incoming_messages.empty():
         try:
             injected = incoming_messages.get_nowait()
@@ -666,19 +296,12 @@ def _drain_incoming_messages(
         except queue.Empty:
             break
 
-    # Drain per-task owner messages from Drive mailbox (written by forward_to_worker tool)
     if drive_root is not None and task_id:
         from ouroboros.owner_inject import drain_owner_messages
 
         drive_msgs = drain_owner_messages(drive_root, task_id=task_id, seen_ids=_owner_msg_seen)
         for dmsg in drive_msgs:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": f"[Owner message during task]: {dmsg}",
-                }
-            )
-            # Log for duplicate processing detection
+            messages.append({"role": "user", "content": f"[Owner message during task]: {dmsg}"})
             if event_queue is not None:
                 try:
                     event_queue.put_nowait(
@@ -692,457 +315,6 @@ def _drain_incoming_messages(
                     pass
 
 
-def run_llm_loop(
-    messages: List[Dict[str, Any]],
-    tools: ToolRegistry,
-    llm: LLMClient,
-    drive_logs: pathlib.Path,
-    emit_progress: Callable[[str], None],
-    incoming_messages: queue.Queue,
-    task_type: str = "",
-    task_id: str = "",
-    budget_remaining_usd: Optional[float] = None,
-    event_queue: Optional[queue.Queue] = None,
-    initial_effort: str = "medium",
-    drive_root: Optional[pathlib.Path] = None,
-) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
-    """
-    Core LLM-with-tools loop.
-
-    Sends messages to LLM, executes tool calls, retries on errors.
-    LLM controls model/effort via switch_model tool.
-
-    Args:
-        budget_remaining_usd: If set, forces completion when task cost exceeds 50% of this budget
-        initial_effort: Initial reasoning effort level (default "medium")
-
-    Returns: (final_text, accumulated_usage, llm_trace)
-    """
-    # Declare globals at function start to avoid "assigned before global" errors
-    global _quality_feedback_injected
-
-    # LLM-first: single default model, LLM switches via tool if needed
-    active_model = llm.default_model()
-    active_effort = initial_effort
-
-    llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
-    accumulated_usage: Dict[str, Any] = {}
-    max_retries = 3
-    # Wire module-level registry ref so tool_discovery handlers work outside run_llm_loop too
-    from ouroboros.tools import tool_discovery as _td
-
-    _td.set_registry(tools)
-
-    # Selective tool schemas: core set + meta-tools for discovery.
-    tool_schemas = tools.schemas(core_only=True)
-    tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, messages)
-
-    # Set budget tracking on tool context for real-time usage events
-    tools._ctx.event_queue = event_queue
-    tools._ctx.task_id = task_id
-    # Thread-sticky executor for browser tools (Playwright sync requires greenlet thread-affinity)
-    stateful_executor = _StatefulToolExecutor()
-    # Dedup set for per-task owner messages from Drive mailbox
-    _owner_msg_seen: set = set()
-    try:
-        MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
-    except (ValueError, TypeError):
-        MAX_ROUNDS = 200
-        log.warning("Invalid OUROBOROS_MAX_ROUNDS, defaulting to 200")
-    round_idx = 0
-
-    # Reset response analyzer for new task
-    get_analyzer().reset()
-    _quality_feedback_injected = False  # Reset feedback injection flag
-
-    # Track previous round's analysis for targeted spice injection
-    _previous_issues: List[Any] = []
-
-    # Track current skill and re-evaluation state
-    _current_skill: Any = None
-    _last_reevaluation_round: int = 0
-    _tool_call_count: int = 0
-    _recent_responses: List[str] = []
-
-    try:
-        while True:
-            round_idx += 1
-
-            # Hard limit on rounds to prevent runaway tasks
-            if round_idx > MAX_ROUNDS:
-                finish_reason = (
-                    f"Task exceeded MAX_ROUNDS ({MAX_ROUNDS}). Consider decomposing into subtasks via schedule_task."
-                )
-                messages.append({"role": "system", "content": f"[ROUND_LIMIT] {finish_reason}"})
-                try:
-                    final_msg, final_cost = _call_llm_with_retry(
-                        llm,
-                        messages,
-                        active_model,
-                        None,
-                        active_effort,
-                        max_retries,
-                        drive_logs,
-                        task_id,
-                        round_idx,
-                        event_queue,
-                        accumulated_usage,
-                        task_type,
-                    )
-                    if final_msg:
-                        return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
-                    return finish_reason, accumulated_usage, llm_trace
-                except Exception:
-                    log.warning("Failed to get final response after round limit", exc_info=True)
-                    return finish_reason, accumulated_usage, llm_trace
-
-            # Soft self-check reminder every 50 rounds
-            _maybe_inject_self_check(round_idx, MAX_ROUNDS, messages, accumulated_usage, emit_progress)
-
-            # Apply LLM-driven model/effort switch (via switch_model tool)
-            ctx = tools._ctx
-            if ctx.active_model_override:
-                active_model = ctx.active_model_override
-                ctx.active_model_override = None
-            if ctx.active_effort_override:
-                active_effort = normalize_reasoning_effort(ctx.active_effort_override, default=active_effort)
-                ctx.active_effort_override = None
-
-            # Inject owner messages (in-process queue + Drive mailbox)
-            _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
-
-            # Auto-summarize chat history when approaching context limit (Deep Agents style)
-            # Check once per task (round_idx == 0) to avoid repeated summarization
-            if round_idx == 0 and drive_root is not None:
-                context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
-                messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
-                if summarize_info.get("auto_summarized"):
-                    emit_progress(f"Auto-summarized conversation: {summarize_info.get('reason', '')}")
-
-            # Auto-orchestrate: analyze task for complexity and suggest decomposition
-            if round_idx == 1:
-                from ouroboros.tools.agent_coordinator import _coordinator
-
-                if _coordinator is not None:
-                    task_text = ""
-                    for m in messages:
-                        if m.get("role") == "user":
-                            task_text = m.get("content", "")
-                            break
-                    if task_text and len(task_text) > 200:
-                        decomposition = _coordinator.decompose_task(task_text, "")
-                        if len(decomposition.subtasks) >= 2:
-                            orch_hint = (
-                                f"\n[MULTI-AGENT HINT] This task appears complex. "
-                                f"Consider using `delegate_and_collect` or `decompose_task` to break it down.\n"
-                                f"Detected {len(decomposition.subtasks)} subtask types: "
-                                f"{', '.join(s['role'] for s in decomposition.subtasks[:4])}"
-                            )
-                            messages.append({"role": "system", "content": orch_hint})
-                            emit_progress(
-                                f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles"
-                            )
-
-            # Auto-activate skills: detect slash commands like /plan, /review, /ship, /qa, /retro
-            if round_idx == 1:
-                from ouroboros.tools.skills import (
-                    detect_skill_with_triggers,
-                    extract_task_from_skill_text,
-                    log_skill_activation,
-                )
-
-                for m in messages:
-                    if m.get("role") == "user":
-                        user_text = m.get("content", "")
-                        skill, matched_triggers = detect_skill_with_triggers(user_text)
-                        if skill:
-                            task = extract_task_from_skill_text(user_text, skill)
-
-                            # Log skill activation for analysis
-                            log_skill_activation(skill, matched_triggers, user_text)
-
-                            # Build transparency message
-                            trigger_info = ""
-                            if matched_triggers:
-                                trigger_info = f"\n**[Auto-detected from keywords: {', '.join(matched_triggers)}]**"
-
-                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}{trigger_info}]
-
-Version: {skill.version}
-
-{skill.system_prompt_addition}
-
----
-
-## Task to Analyze
-
-{task}
-
----
-
-{skill.pre_task_prompt}
-
-{skill.post_task_prompt}"""
-                            messages.append({"role": "system", "content": skill_prompt})
-                            emit_progress(
-                                f"Skill activated: {skill.name.upper()} - {skill.description} (triggers: {matched_triggers})"
-                            )
-                            # Track active skill for re-evaluation
-                            _current_skill = skill
-                            _last_reevaluation_round = round_idx
-                            break
-
-            # Inject spice - targeted based on previous issues, or random for freshness
-            from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
-
-            # Use targeted spice if issues were detected in previous round
-            if _previous_issues:
-                spice = get_spice_for_analysis(_previous_issues)
-                if spice:
-                    messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
-                    emit_progress(
-                        f"[Spice] Targeted: {_previous_issues[0].issue_type if _previous_issues else 'unknown'}"
-                    )
-            else:
-                # Random spice for general freshness (every 3 rounds)
-                spice = get_spice_for_round(round_idx, spice_interval=3)
-                if spice:
-                    messages.append({"role": "system", "content": f"[Spice] {spice}"})
-
-            # Compact old tool history when needed
-            # Check for LLM-requested compaction first (via compact_context tool)
-            pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
-            if pending_compaction is not None:
-                messages = compact_tool_history_llm(messages, keep_recent=pending_compaction)
-                tools._ctx._pending_compaction = None
-            elif round_idx > 8:
-                messages = compact_tool_history(messages, keep_recent=6)
-            elif round_idx > 3:
-                # Light compaction: only if messages list is very long (>60 items)
-                if len(messages) > 60:
-                    messages = compact_tool_history(messages, keep_recent=6)
-
-            # --- LLM call with retry ---
-            msg, cost = _call_llm_with_retry(
-                llm,
-                messages,
-                active_model,
-                tool_schemas,
-                active_effort,
-                max_retries,
-                drive_logs,
-                task_id,
-                round_idx,
-                event_queue,
-                accumulated_usage,
-                task_type,
-            )
-
-            # Fallback to another model if primary model returns empty responses
-            if msg is None:
-                # Configurable fallback priority list
-                fallback_list_raw = os.environ.get(
-                    "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free",
-                )
-                fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
-                fallback_model = None
-                for candidate in fallback_candidates:
-                    if candidate != active_model:
-                        fallback_model = candidate
-                        break
-                if fallback_model is None:
-                    return (
-                        (
-                            f"Failed to get a response from model {active_model} after {max_retries} attempts. "
-                            f"All fallback models match the active one. Try rephrasing your request."
-                        ),
-                        accumulated_usage,
-                        llm_trace,
-                    )
-
-                # Emit progress message so user sees fallback happening
-                fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
-                emit_progress(fallback_progress)
-
-                # Try fallback model (don't increment round_idx — this is still same logical round)
-                msg, fallback_cost = _call_llm_with_retry(
-                    llm,
-                    messages,
-                    fallback_model,
-                    tool_schemas,
-                    active_effort,
-                    max_retries,
-                    drive_logs,
-                    task_id,
-                    round_idx,
-                    event_queue,
-                    accumulated_usage,
-                    task_type,
-                )
-
-                # If fallback also fails, give up
-                if msg is None:
-                    return (
-                        (
-                            f"Failed to get a response from the model after {max_retries} attempts. "
-                            f"Fallback model ({fallback_model}) also returned no response."
-                        ),
-                        accumulated_usage,
-                        llm_trace,
-                    )
-
-                # Fallback succeeded — continue processing with this msg
-
-            tool_calls = msg.get("tool_calls") or []
-            content = msg.get("content")
-            # No tool calls — final response
-            if not tool_calls:
-                return _handle_text_response(content, llm_trace, accumulated_usage)
-
-            # Process tool calls
-            messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
-
-            if content and content.strip():
-                emit_progress(content.strip())
-                llm_trace["assistant_notes"].append(content.strip()[:320])
-
-            error_count = _handle_tool_calls(
-                tool_calls, tools, drive_logs, task_id, stateful_executor, messages, llm_trace, emit_progress
-            )
-
-            # --- Response quality analysis ---
-            # Analyze the response for hallucinations, drift, and avoidance
-            # Store issues for targeted spice injection on next round
-            _current_issues: List[Any] = []
-            try:
-                repo_dir = str(drive_root / "repo") if drive_root else ""
-                analysis = analyze_response(
-                    response_text=content or "",
-                    tool_calls=tool_calls,
-                    messages=messages,
-                    repo_dir=repo_dir,
-                )
-                # Diagnostic logging for response analysis
-                if analysis.issues:
-                    issue_types = [f"{i.issue_type}({i.severity})" for i in analysis.issues]
-                    log.info(
-                        f"[DIAG] Response analysis R{round_idx}: score={analysis.quality_score:.2f}, issues={issue_types}"
-                    )
-
-                _current_issues = analysis.issues
-
-                # Only inject feedback if score is below 85% (significant issues)
-                # AND only for HIGH/MEDIUM severity issues
-                high_severity_issues = [i for i in analysis.issues if i.severity in ("high", "medium")]
-                if analysis.quality_score < 0.85 and high_severity_issues:
-                    # Only inject once per task, not repeatedly
-                    if not _quality_feedback_injected:
-                        if analysis.feedback_for_next_round:
-                            messages.append(
-                                {
-                                    "role": "system",
-                                    "content": analysis.feedback_for_next_round,
-                                }
-                            )
-                            emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
-                            _quality_feedback_injected = True
-            except Exception:
-                pass  # Don't let analysis errors break the loop
-            finally:
-                # Store issues for targeted spice on next round
-                _previous_issues = _current_issues
-
-            # --- Skill Re-evaluation (Phase 3) ---
-            # Track responses and tool calls for skill relevance scoring
-            if content:
-                _recent_responses.append(content[:200])
-                if len(_recent_responses) > 5:
-                    _recent_responses = _recent_responses[-5:]
-            _tool_call_count += len(tool_calls)
-
-            # Check if we should re-evaluate the current skill
-            try:
-                from ouroboros.tools.skills import (
-                    evaluate_skill_relevance,
-                    should_reevaluate,
-                    get_skill_switch_hint,
-                )
-
-                if should_reevaluate(round_idx, _tool_call_count, _last_reevaluation_round):
-                    # Build context for skill scoring
-                    task_text = ""
-                    for m in messages:
-                        if m.get("role") == "user":
-                            task_text = m.get("content", "")
-                            break
-
-                    context = {
-                        "task_text": task_text,
-                        "recent_tools": [tc.get("tool", "") for tc in tool_calls],
-                        "recent_responses": _recent_responses,
-                    }
-
-                    relevance = evaluate_skill_relevance(_current_skill, context)
-
-                    # Diagnostic logging for skill re-evaluation
-                    log.info(
-                        f"[DIAG] Skill re-eval R{round_idx}: "
-                        f"current={_current_skill.name if _current_skill else 'None'}, "
-                        f"score={relevance.score:.2f}, "
-                        f"switch={relevance.should_switch}"
-                    )
-
-                    if relevance.should_switch and relevance.skill:
-                        # Inject skill switch hint
-                        switch_hint = get_skill_switch_hint(relevance)
-                        if switch_hint:
-                            messages.append({"role": "system", "content": switch_hint})
-                            emit_progress(f"Skill re-evaluation: {relevance.reason}")
-
-                        # Update tracking
-                        _current_skill = relevance.skill
-                        _last_reevaluation_round = round_idx
-                        _tool_call_count = 0  # Reset counter after re-evaluation
-            except Exception:
-                pass  # Don't let re-evaluation errors break the loop
-
-            # --- Budget guard ---
-            budget_result = _check_budget_limits(
-                budget_remaining_usd,
-                accumulated_usage,
-                round_idx,
-                messages,
-                llm,
-                active_model,
-                active_effort,
-                max_retries,
-                drive_logs,
-                task_id,
-                event_queue,
-                llm_trace,
-                task_type,
-            )
-            if budget_result is not None:
-                return budget_result
-
-    finally:
-        # Cleanup thread-sticky executor for stateful tools
-        if stateful_executor:
-            try:
-                stateful_executor.shutdown(wait=False, cancel_futures=True)
-            except Exception:
-                log.warning("Failed to shutdown stateful executor", exc_info=True)
-        # Cleanup per-task mailbox
-        if drive_root is not None and task_id:
-            try:
-                from ouroboros.owner_inject import cleanup_task_mailbox
-
-                cleanup_task_mailbox(drive_root, task_id)
-            except Exception:
-                log.debug("Failed to cleanup task mailbox", exc_info=True)
-
-
 def _emit_llm_usage_event(
     event_queue: Optional[queue.Queue],
     task_id: str,
@@ -1151,17 +323,7 @@ def _emit_llm_usage_event(
     cost: float,
     category: str = "task",
 ) -> None:
-    """
-    Emit llm_usage event to the event queue.
-
-    Args:
-        event_queue: Queue to emit events to (may be None)
-        task_id: Task ID for the event
-        model: Model name used for the LLM call
-        usage: Usage dict from LLM response
-        cost: Calculated cost for this call
-        category: Budget category (task, evolution, consciousness, review, summarize, other)
-    """
+    """Emit llm_usage event to the event queue."""
     if not event_queue:
         return
     try:
@@ -1199,13 +361,7 @@ def _call_llm_with_retry(
     accumulated_usage: Dict[str, Any],
     task_type: str = "",
 ) -> Tuple[Optional[Dict[str, Any]], float]:
-    """
-    Call LLM with retry logic, usage tracking, and event emission.
-
-    Returns:
-        (response_message, cost) on success
-        (None, 0.0) on failure after max_retries
-    """
+    """Call LLM with retry logic, usage tracking, and event emission."""
     msg = None
     last_error: Optional[Exception] = None
 
@@ -1218,7 +374,6 @@ def _call_llm_with_retry(
             msg = resp_msg
             add_usage(accumulated_usage, usage)
 
-            # Calculate cost and emit event for EVERY attempt (including retries)
             cost = float(usage.get("cost") or 0)
             if not cost:
                 cost = _estimate_cost(
@@ -1229,19 +384,15 @@ def _call_llm_with_retry(
                     int(usage.get("cache_write_tokens") or 0),
                 )
 
-            # Emit real-time usage event with category based on task_type
             category = task_type if task_type in ("evolution", "consciousness", "review", "summarize") else "task"
             _emit_llm_usage_event(event_queue, task_id, model, usage, cost, category)
 
-            # Empty response = retry-worthy (model sometimes returns empty content with no tool_calls)
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls and (not content or not content.strip()):
                 log.warning(
                     "LLM returned empty response (no content, no tool_calls), attempt %d/%d", attempt + 1, max_retries
                 )
-
-                # Log raw empty response for debugging
                 append_jsonl(
                     drive_logs / "events.jsonl",
                     {
@@ -1260,13 +411,10 @@ def _call_llm_with_retry(
                 if attempt < max_retries - 1:
                     time.sleep(2**attempt)
                     continue
-                # Last attempt — return None to trigger "could not get response"
                 return None, cost
 
-            # Count only successful rounds
             accumulated_usage["rounds"] = accumulated_usage.get("rounds", 0) + 1
 
-            # Log per-round metrics
             _round_event = {
                 "ts": utc_now_iso(),
                 "type": "llm_round",
@@ -1303,56 +451,391 @@ def _call_llm_with_retry(
     return None, 0.0
 
 
-def _process_tool_results(
-    results: List[Dict[str, Any]],
+def run_llm_loop(
     messages: List[Dict[str, Any]],
-    llm_trace: Dict[str, Any],
+    tools: ToolRegistry,
+    llm: LLMClient,
+    drive_logs: pathlib.Path,
     emit_progress: Callable[[str], None],
-) -> int:
+    incoming_messages: queue.Queue,
+    task_type: str = "",
+    task_id: str = "",
+    budget_remaining_usd: Optional[float] = None,
+    event_queue: Optional[queue.Queue] = None,
+    initial_effort: str = "medium",
+    drive_root: Optional[pathlib.Path] = None,
+) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """
-    Process tool execution results and append to messages/trace.
+    Core LLM-with-tools loop.
 
-    Args:
-        results: List of tool execution result dicts
-        messages: Message list to append tool results to
-        llm_trace: Trace dict to append tool call info to
-        emit_progress: Callback for progress updates
-
-    Returns:
-        Number of errors encountered
+    Sends messages to LLM, executes tool calls, retries on errors.
+    LLM controls model/effort via switch_model tool.
     """
-    error_count = 0
+    global _quality_feedback_injected
 
-    for exec_result in results:
-        fn_name = exec_result["fn_name"]
-        is_error = exec_result["is_error"]
+    active_model = llm.default_model()
+    active_effort = initial_effort
 
-        if is_error:
-            error_count += 1
+    llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
+    accumulated_usage: Dict[str, Any] = {}
+    max_retries = 3
 
-        # Truncate tool result before appending to messages
-        truncated_result = _truncate_tool_result(exec_result["result"])
+    from ouroboros.tools import tool_discovery as _td
 
-        # Append tool result message
-        messages.append({"role": "tool", "tool_call_id": exec_result["tool_call_id"], "content": truncated_result})
+    _td.set_registry(tools)
 
-        # Append to LLM trace
-        llm_trace["tool_calls"].append(
-            {
-                "tool": fn_name,
-                "args": _safe_args(exec_result["args_for_log"]),
-                "result": truncate_for_log(exec_result["result"], 700),
-                "is_error": is_error,
-            }
-        )
+    tool_schemas = tools.schemas(core_only=True)
+    tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, messages)
 
-    return error_count
+    tools._ctx.event_queue = event_queue
+    tools._ctx.task_id = task_id
+    stateful_executor = _StatefulToolExecutor()
+    _owner_msg_seen: set = set()
 
-
-def _safe_args(v: Any) -> Any:
-    """Ensure args are JSON-serializable for trace logging."""
     try:
-        return json.loads(json.dumps(v, ensure_ascii=False, default=str))
-    except Exception:
-        log.debug("Failed to serialize args for trace logging", exc_info=True)
-        return {"_repr": repr(v)}
+        MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
+    except (ValueError, TypeError):
+        MAX_ROUNDS = 200
+        log.warning("Invalid OUROBOROS_MAX_ROUNDS, defaulting to 200")
+
+    round_idx = 0
+    get_analyzer().reset()
+    _quality_feedback_injected = False
+
+    _previous_issues: List[Any] = []
+    _current_skill: Any = None
+    _last_reevaluation_round: int = 0
+    _tool_call_count: int = 0
+    _recent_responses: List[str] = []
+
+    try:
+        while True:
+            round_idx += 1
+
+            if round_idx > MAX_ROUNDS:
+                finish_reason = (
+                    f"Task exceeded MAX_ROUNDS ({MAX_ROUNDS}). Consider decomposing into subtasks via schedule_task."
+                )
+                messages.append({"role": "system", "content": f"[ROUND_LIMIT] {finish_reason}"})
+                try:
+                    final_msg, final_cost = _call_llm_with_retry(
+                        llm,
+                        messages,
+                        active_model,
+                        None,
+                        active_effort,
+                        max_retries,
+                        drive_logs,
+                        task_id,
+                        round_idx,
+                        event_queue,
+                        accumulated_usage,
+                        task_type,
+                    )
+                    if final_msg:
+                        return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
+                    return finish_reason, accumulated_usage, llm_trace
+                except Exception:
+                    log.warning("Failed to get final response after round limit", exc_info=True)
+                    return finish_reason, accumulated_usage, llm_trace
+
+            _maybe_inject_self_check(round_idx, MAX_ROUNDS, messages, accumulated_usage, emit_progress)
+
+            ctx = tools._ctx
+            if ctx.active_model_override:
+                active_model = ctx.active_model_override
+                ctx.active_model_override = None
+            if ctx.active_effort_override:
+                active_effort = normalize_reasoning_effort(ctx.active_effort_override, default=active_effort)
+                ctx.active_effort_override = None
+
+            _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
+
+            if round_idx == 0 and drive_root is not None:
+                context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
+                messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
+                if summarize_info.get("auto_summarized"):
+                    emit_progress(f"Auto-summarized conversation: {summarize_info.get('reason', '')}")
+
+            if round_idx == 1:
+                from ouroboros.tools.agent_coordinator import _coordinator
+
+                if _coordinator is not None:
+                    task_text = ""
+                    for m in messages:
+                        if m.get("role") == "user":
+                            task_text = m.get("content", "")
+                            break
+                    if task_text and len(task_text) > 200:
+                        decomposition = _coordinator.decompose_task(task_text, "")
+                        if len(decomposition.subtasks) >= 2:
+                            orch_hint = (
+                                f"\n[MULTI-AGENT HINT] This task appears complex. "
+                                f"Consider using `delegate_and_collect` or `decompose_task` to break it down.\n"
+                                f"Detected {len(decomposition.subtasks)} subtask types: "
+                                f"{', '.join(s['role'] for s in decomposition.subtasks[:4])}"
+                            )
+                            messages.append({"role": "system", "content": orch_hint})
+                            emit_progress(
+                                f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles"
+                            )
+
+            if round_idx == 1:
+                from ouroboros.tools.skills import (
+                    detect_skill_with_triggers,
+                    extract_task_from_skill_text,
+                    log_skill_activation,
+                )
+
+                for m in messages:
+                    if m.get("role") == "user":
+                        user_text = m.get("content", "")
+                        skill, matched_triggers = detect_skill_with_triggers(user_text)
+                        if skill:
+                            task = extract_task_from_skill_text(user_text, skill)
+                            log_skill_activation(skill, matched_triggers, user_text)
+
+                            trigger_info = ""
+                            if matched_triggers:
+                                trigger_info = f"\n**[Auto-detected from keywords: {', '.join(matched_triggers)}]**"
+
+                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}{trigger_info}]
+
+Version: {skill.version}
+
+{skill.system_prompt_addition}
+
+---
+
+## Task to Analyze
+
+{task}
+
+---
+
+{skill.pre_task_prompt}
+
+{skill.post_task_prompt}"""
+                            messages.append({"role": "system", "content": skill_prompt})
+                            emit_progress(
+                                f"Skill activated: {skill.name.upper()} - {skill.description} (triggers: {matched_triggers})"
+                            )
+                            _current_skill = skill
+                            _last_reevaluation_round = round_idx
+                            break
+
+            from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
+
+            if _previous_issues:
+                spice = get_spice_for_analysis(_previous_issues)
+                if spice:
+                    messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
+                    emit_progress(
+                        f"[Spice] Targeted: {_previous_issues[0].issue_type if _previous_issues else 'unknown'}"
+                    )
+            else:
+                spice = get_spice_for_round(round_idx, spice_interval=3)
+                if spice:
+                    messages.append({"role": "system", "content": f"[Spice] {spice}"})
+
+            pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
+            if pending_compaction is not None:
+                messages = compact_tool_history_llm(messages, keep_recent=pending_compaction)
+                tools._ctx._pending_compaction = None
+            elif round_idx > 8:
+                messages = compact_tool_history(messages, keep_recent=6)
+            elif round_idx > 3:
+                if len(messages) > 60:
+                    messages = compact_tool_history(messages, keep_recent=6)
+
+            msg, cost = _call_llm_with_retry(
+                llm,
+                messages,
+                active_model,
+                tool_schemas,
+                active_effort,
+                max_retries,
+                drive_logs,
+                task_id,
+                round_idx,
+                event_queue,
+                accumulated_usage,
+                task_type,
+            )
+
+            if msg is None:
+                fallback_list_raw = os.environ.get(
+                    "OUROBOROS_MODEL_FALLBACK_LIST",
+                    "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free",
+                )
+                fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
+                fallback_model = None
+                for candidate in fallback_candidates:
+                    if candidate != active_model:
+                        fallback_model = candidate
+                        break
+                if fallback_model is None:
+                    return (
+                        (
+                            f"Failed to get a response from model {active_model} after {max_retries} attempts. "
+                            f"All fallback models match the active one. Try rephrasing your request."
+                        ),
+                        accumulated_usage,
+                        llm_trace,
+                    )
+
+                fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
+                emit_progress(fallback_progress)
+
+                msg, fallback_cost = _call_llm_with_retry(
+                    llm,
+                    messages,
+                    fallback_model,
+                    tool_schemas,
+                    active_effort,
+                    max_retries,
+                    drive_logs,
+                    task_id,
+                    round_idx,
+                    event_queue,
+                    accumulated_usage,
+                    task_type,
+                )
+
+                if msg is None:
+                    return (
+                        (
+                            f"Failed to get a response from the model after {max_retries} attempts. "
+                            f"Fallback model ({fallback_model}) also returned no response."
+                        ),
+                        accumulated_usage,
+                        llm_trace,
+                    )
+
+            tool_calls = msg.get("tool_calls") or []
+            content = msg.get("content")
+            if not tool_calls:
+                return _handle_text_response(content, llm_trace, accumulated_usage)
+
+            messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
+
+            if content and content.strip():
+                emit_progress(content.strip())
+                llm_trace["assistant_notes"].append(content.strip()[:320])
+
+            error_count = _handle_tool_calls(
+                tool_calls, tools, drive_logs, task_id, stateful_executor, messages, llm_trace, emit_progress
+            )
+
+            _current_issues: List[Any] = []
+            try:
+                repo_dir = str(drive_root / "repo") if drive_root else ""
+                analysis = analyze_response(
+                    response_text=content or "",
+                    tool_calls=tool_calls,
+                    messages=messages,
+                    repo_dir=repo_dir,
+                )
+                if analysis.issues:
+                    issue_types = [f"{i.issue_type}({i.severity})" for i in analysis.issues]
+                    log.info(
+                        f"[DIAG] Response analysis R{round_idx}: score={analysis.quality_score:.2f}, issues={issue_types}"
+                    )
+
+                _current_issues = analysis.issues
+
+                high_severity_issues = [i for i in analysis.issues if i.severity in ("high", "medium")]
+                if analysis.quality_score < 0.85 and high_severity_issues:
+                    if not _quality_feedback_injected:
+                        if analysis.feedback_for_next_round:
+                            messages.append(
+                                {
+                                    "role": "system",
+                                    "content": analysis.feedback_for_next_round,
+                                }
+                            )
+                            emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
+                            _quality_feedback_injected = True
+            except Exception:
+                pass
+            finally:
+                _previous_issues = _current_issues
+
+            if content:
+                _recent_responses.append(content[:200])
+                if len(_recent_responses) > 5:
+                    _recent_responses = _recent_responses[-5:]
+            _tool_call_count += len(tool_calls)
+
+            try:
+                from ouroboros.tools.skills import (
+                    evaluate_skill_relevance,
+                    should_reevaluate,
+                    get_skill_switch_hint,
+                )
+
+                if should_reevaluate(round_idx, _tool_call_count, _last_reevaluation_round):
+                    task_text = ""
+                    for m in messages:
+                        if m.get("role") == "user":
+                            task_text = m.get("content", "")
+                            break
+
+                    context = {
+                        "task_text": task_text,
+                        "recent_tools": [tc.get("tool", "") for tc in tool_calls],
+                        "recent_responses": _recent_responses,
+                    }
+
+                    relevance = evaluate_skill_relevance(_current_skill, context)
+
+                    log.info(
+                        f"[DIAG] Skill re-eval R{round_idx}: "
+                        f"current={_current_skill.name if _current_skill else 'None'}, "
+                        f"score={relevance.score:.2f}, "
+                        f"switch={relevance.should_switch}"
+                    )
+
+                    if relevance.should_switch and relevance.skill:
+                        switch_hint = get_skill_switch_hint(relevance)
+                        if switch_hint:
+                            messages.append({"role": "system", "content": switch_hint})
+                            emit_progress(f"Skill re-evaluation: {relevance.reason}")
+
+                        _current_skill = relevance.skill
+                        _last_reevaluation_round = round_idx
+                        _tool_call_count = 0
+            except Exception:
+                pass
+
+            budget_result = _check_budget_limits(
+                budget_remaining_usd,
+                accumulated_usage,
+                round_idx,
+                messages,
+                llm,
+                active_model,
+                active_effort,
+                max_retries,
+                drive_logs,
+                task_id,
+                event_queue,
+                llm_trace,
+                task_type,
+            )
+            if budget_result is not None:
+                return budget_result
+
+    finally:
+        if stateful_executor:
+            try:
+                stateful_executor.shutdown(wait=False, cancel_futures=True)
+            except Exception:
+                log.warning("Failed to shutdown stateful executor", exc_info=True)
+        if drive_root is not None and task_id:
+            try:
+                from ouroboros.owner_inject import cleanup_task_mailbox
+
+                cleanup_task_mailbox(drive_root, task_id)
+            except Exception:
+                log.debug("Failed to cleanup task mailbox", exc_info=True)
