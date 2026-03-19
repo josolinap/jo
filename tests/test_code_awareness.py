@@ -14,25 +14,35 @@ def temp_repo(tmp_path):
     repo.mkdir()
 
     (repo / "main.py").write_text("""
-from utils import helper
+from utils import helper, _private_helper
 
 def foo():
     return helper()
 
 def bar():
     return foo()
+    return _private_helper()
+
+def _private_func():
+    return helper()
 
 class MyClass:
     def method(self):
         return foo()
+    def _private_method(self):
+        return _private_func()
 """)
 
     (repo / "utils.py").write_text("""
 def helper():
     return "hello"
 
+def _private_helper():
+    return "secret"
+
 def other():
     return helper()
+    return _private_helper()
 """)
 
     (repo / "unused.py").write_text("""
@@ -87,6 +97,18 @@ class TestFindCallers:
         result = registry.execute("find_callers", {"function_name": "bar"})
         assert "bar" in result
 
+    def test_find_callers_underscore_private(self, registry):
+        """Test finding callers of underscore-prefixed private functions."""
+        result = registry.execute("find_callers", {"function_name": "_private_helper"})
+        assert "_private_helper" in result
+        assert "utils.py" in result or "main.py" in result
+
+    def test_find_callers_auto_underscore(self, registry):
+        """Test that searching for 'func' also finds '_func'."""
+        result = registry.execute("find_callers", {"function_name": "private_helper"})
+        assert "private_helper" in result
+        assert "main.py" in result  # main.py imports _private_helper
+
 
 class TestFindDefinitions:
     """Tests for find_definitions tool."""
@@ -112,6 +134,23 @@ class TestFindDefinitions:
         """Test that single char names are rejected."""
         result = registry.execute("find_definitions", {"function_name": "x"})
         assert "at least 2 characters" in result
+
+    def test_find_underscore_private_function(self, registry):
+        """Test finding underscore-prefixed private function definitions."""
+        result = registry.execute("find_definitions", {"function_name": "_private_func"})
+        assert "_private_func" in result
+        assert "main.py" in result
+
+    def test_find_underscore_private_method(self, registry):
+        """Test finding underscore-prefixed private method definitions."""
+        result = registry.execute("find_definitions", {"function_name": "_private_method"})
+        assert "_private_method" in result
+        assert "main.py" in result
+
+    def test_find_definitions_auto_underscore(self, registry):
+        """Test that searching for 'Func' also finds '_Func'."""
+        result = registry.execute("find_definitions", {"function_name": "private_helper"})
+        assert "private_helper" in result
 
 
 class TestLearnFromMistake:
