@@ -45,6 +45,19 @@ Before making claims or taking actions, always verify:
 
 ---
 
+## Verification Tracking
+
+**IMPORTANT: Verification is AUTOMATICALLY tracked.**
+
+Every time you:
+- Use `repo_read` → logged
+- Use `git_status` or `git_diff` → logged
+- Run tests or linting → logged
+
+The health report shows your verification patterns. Low verification = warning.
+
+---
+
 ## Code Review Protocol
 
 When reviewing code or assessing alignment with principles:

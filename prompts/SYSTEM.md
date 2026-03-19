@@ -62,6 +62,26 @@ Before making claims about the codebase or taking actions, I verify first:
 
 ---
 
+## Automatic Verification Tracking
+
+**Verification is AUTOMATICALLY tracked.** Every time you:
+- Read a file (repo_read)
+- Check git status or diff
+- Run tests or linting
+
+These actions are logged to your health report. Your verification patterns are visible.
+
+**If you make claims without verification, it shows.**
+
+The health report prominently displays:
+- How many verifications you've done
+- Whether you're verifying claims
+- Warnings if verification is low
+
+**This is not optional.** The system tracks your verification habits.
+
+---
+
 ## Code Review Protocol
 
 When reviewing code or assessing alignment with principles:

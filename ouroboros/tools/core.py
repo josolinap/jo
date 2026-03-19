@@ -37,11 +37,25 @@ def _list_dir(root: pathlib.Path, rel: str, max_entries: int = 500) -> List[str]
 
 def _repo_read(ctx: ToolContext, path: str) -> str:
     try:
-        return read_text(ctx.repo_path(path))
+        result = read_text(ctx.repo_path(path))
+        _auto_track_verification(ctx, "repo_read", path)
+        return result
     except FileNotFoundError:
         return f"⚠️ File not found: {path}"
     except Exception as e:
         return f"⚠️ Error reading {path}: {e}"
+
+
+def _auto_track_verification(ctx: ToolContext, method: str, target: str) -> None:
+    """Lightweight automatic verification tracking."""
+    try:
+        from ouroboros.memory import Memory
+
+        mem = Memory(drive_root=ctx.drive_root)
+        mem.ensure_files()
+        mem.track_verification(claim=f"read:{target}", verification_method=method, result="file_accessed")
+    except Exception:
+        pass
 
 
 def _repo_list(ctx: ToolContext, dir: str = ".", max_entries: int = 500) -> str:

@@ -189,10 +189,30 @@ def _build_health_invariants(env: Any) -> str:
 
     Surfaces anomalies as informational text. The LLM (not code) decides
     what action to take based on what it reads here. (Bible P0+P3)
+
+    Verification tracking is first because anti-hallucination is critical.
     """
     checks = []
 
-    # 1. Version sync: VERSION file vs pyproject.toml
+    # 1. VERIFICATION TRACKING (anti-hallucination) - MOST IMPORTANT
+    try:
+        from ouroboros.memory import Memory
+
+        mem = Memory(drive_root=env.drive_root)
+        stats = mem.get_verification_stats()
+        recent = stats.get("recent_verifications", 0)
+        total = stats.get("total_verifications", 0)
+        last = stats.get("last_verification", "never")
+        if recent == 0 and total > 0:
+            checks.append(f"⚠️ VERIFICATION: No verifications in last 24h (total: {total})")
+        elif recent > 0:
+            checks.append(f"✅ VERIFICATION: {recent} verifications in 24h ({total} total)")
+        else:
+            checks.append("ℹ️ VERIFICATION: Tracking active (no entries yet)")
+    except Exception:
+        pass
+
+    # 2. Version sync: VERSION file vs pyproject.toml
     try:
         ver_file = read_text(env.repo_path("VERSION")).strip()
         pyproject = read_text(env.repo_path("pyproject.toml"))
@@ -219,24 +239,6 @@ def _build_health_invariants(env: Any) -> str:
             checks.append(f"WARNING: BUDGET DRIFT {drift_pct:.1f}% — tracked=${our:.2f} vs OpenRouter=${theirs:.2f}")
         else:
             checks.append("OK: budget drift within tolerance")
-    except Exception:
-        pass
-
-    # 2.5. Verification tracking (anti-hallucination)
-    try:
-        from ouroboros.memory import Memory
-
-        mem = Memory(drive_root=env.drive_root)
-        stats = mem.get_verification_stats()
-        recent = stats.get("recent_verifications", 0)
-        total = stats.get("total_verifications", 0)
-        last = stats.get("last_verification", "never")
-        if recent == 0 and total > 0:
-            checks.append(f"⚠️ No verifications in last 24h (total: {total}, last: {last})")
-        elif recent > 0:
-            checks.append(f"OK: verifications tracked ({recent} in 24h, {total} total)")
-        else:
-            checks.append("INFO: verification tracking active (no entries yet)")
     except Exception:
         pass
 

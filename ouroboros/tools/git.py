@@ -210,7 +210,9 @@ def _repo_commit_push(ctx: ToolContext, commit_message: str, paths: Optional[Lis
 
 def _git_status(ctx: ToolContext) -> str:
     try:
-        return run_cmd(["git", "status", "--porcelain"], cwd=ctx.repo_dir)
+        result = run_cmd(["git", "status", "--porcelain"], cwd=ctx.repo_dir)
+        _track_verification(ctx, "git_status", result[:100] if len(result) > 100 else result)
+        return result
     except Exception as e:
         return f"⚠️ GIT_ERROR: {e}"
 
@@ -220,9 +222,23 @@ def _git_diff(ctx: ToolContext, staged: bool = False) -> str:
         cmd = ["git", "diff"]
         if staged:
             cmd.append("--staged")
-        return run_cmd(cmd, cwd=ctx.repo_dir)
+        result = run_cmd(cmd, cwd=ctx.repo_dir)
+        _track_verification(ctx, "git_diff", f"staged={staged}")
+        return result
     except Exception as e:
         return f"⚠️ GIT_ERROR: {e}"
+
+
+def _track_verification(ctx: ToolContext, method: str, target: str) -> None:
+    """Lightweight automatic verification tracking."""
+    try:
+        from ouroboros.memory import Memory
+
+        mem = Memory(drive_root=ctx.drive_root)
+        mem.ensure_files()
+        mem.track_verification(claim=f"{method}:{target}", verification_method=method, result="executed")
+    except Exception:
+        pass
 
 
 def get_tools() -> List[ToolEntry]:
