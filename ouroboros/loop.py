@@ -507,6 +507,7 @@ def run_llm_loop(
     _last_reevaluation_round: int = 0
     _tool_call_count: int = 0
     _recent_responses: List[str] = []
+    _consecutive_drift_rounds: int = 0
 
     try:
         while True:
@@ -633,6 +634,8 @@ Version: {skill.version}
                     emit_progress(
                         f"[Spice] Targeted: {_previous_issues[0].issue_type if _previous_issues else 'unknown'}"
                     )
+                    # Clear after injection to prevent spam in next round
+                    _previous_issues = []
             else:
                 spice = get_spice_for_round(round_idx, spice_interval=3)
                 if spice:
@@ -759,7 +762,25 @@ Version: {skill.version}
             except Exception:
                 pass
             finally:
+                # Track consecutive drift rounds
+                drift_in_current = any(i.issue_type == "drift" for i in _current_issues)
+                if drift_in_current:
+                    _consecutive_drift_rounds += 1
+                else:
+                    _consecutive_drift_rounds = 0
+
                 _previous_issues = _current_issues
+
+                # Inject escalation if stuck in drift for too long
+                if _consecutive_drift_rounds >= 5:
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": "[ESCALATION] You've been drifting for 5+ rounds. STOP analyzing. Either: (1) Make a decision NOW, or (2) Say you cannot complete the task and explain why.",
+                        }
+                    )
+                    emit_progress("[ESCALATION] Drift loop detected - forcing decision")
+                    _consecutive_drift_rounds = 0  # Reset after escalation
 
             if content:
                 _recent_responses.append(content[:200])
