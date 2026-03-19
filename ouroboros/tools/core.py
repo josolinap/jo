@@ -486,4 +486,150 @@ def get_tools() -> List[ToolEntry]:
             },
             _forward_to_worker,
         ),
+        ToolEntry(
+            "find_callers",
+            {
+                "name": "find_callers",
+                "description": "Find all places in the codebase that call a specific function. "
+                "Use before editing a function to know what might break. "
+                "Returns file paths and line numbers.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "function_name": {"type": "string", "description": "Name of the function to search for"},
+                    },
+                    "required": ["function_name"],
+                },
+            },
+            _find_callers,
+        ),
+        ToolEntry(
+            "find_definitions",
+            {
+                "name": "find_definitions",
+                "description": "Find where a function or class is defined in the codebase. "
+                "Returns file path and line number of the definition.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "function_name": {"type": "string", "description": "Name of the function or class to find"},
+                    },
+                    "required": ["function_name"],
+                },
+            },
+            _find_definitions,
+        ),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Callers finder - find what calls a function
+# ---------------------------------------------------------------------------
+
+
+def _find_callers(ctx: ToolContext, function_name: str) -> str:
+    """Find all callers of a function in the codebase.
+
+    Uses AST parsing to find function calls matching the target name.
+    Returns list of files with line numbers where the function is called.
+    """
+    import ast
+
+    if not function_name or len(function_name) < 2:
+        return "⚠️ Function name must be at least 2 characters."
+
+    repo_dir = ctx.repo_dir
+    callers: List[dict] = []
+
+    for py_file in repo_dir.rglob("*.py"):
+        if any(skip in str(py_file) for skip in ["__pycache__", ".pytest_cache", "archive/"]):
+            continue
+
+        try:
+            code = py_file.read_text(encoding="utf-8")
+            tree = ast.parse(code, filename=str(py_file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name) and node.func.id == function_name:
+                    line_no = node.lineno
+                    callers.append(
+                        {
+                            "file": str(py_file.relative_to(repo_dir)),
+                            "line": line_no,
+                        }
+                    )
+                elif isinstance(node.func, ast.Attribute) and node.func.attr == function_name:
+                    line_no = node.lineno
+                    callers.append(
+                        {
+                            "file": str(py_file.relative_to(repo_dir)),
+                            "line": line_no,
+                        }
+                    )
+
+    if not callers:
+        return f"No callers found for '{function_name}' in codebase."
+
+    # Group by file
+    by_file: Dict[str, List[int]] = {}
+    for c in callers:
+        f = c["file"]
+        if f not in by_file:
+            by_file[f] = []
+        by_file[f].append(c["line"])
+
+    lines = [f"Found {len(callers)} call(s) of '{function_name}':\n"]
+    for file_path, line_nums in sorted(by_file.items()):
+        lines.append(f"  {file_path}:{', '.join(str(l) for l in sorted(line_nums))}")
+
+    return "\n".join(lines)
+
+
+def _find_definitions(ctx: ToolContext, function_name: str) -> str:
+    """Find where a function/class is defined in the codebase.
+
+    Uses AST parsing to find function or class definitions.
+    """
+    import ast
+
+    if not function_name or len(function_name) < 2:
+        return "⚠️ Function name must be at least 2 characters."
+
+    repo_dir = ctx.repo_dir
+    definitions: List[dict] = []
+
+    for py_file in repo_dir.rglob("*.py"):
+        if any(skip in str(py_file) for skip in ["__pycache__", ".pytest_cache", "archive/"]):
+            continue
+
+        try:
+            code = py_file.read_text(encoding="utf-8")
+            tree = ast.parse(code, filename=str(py_file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if node.name == function_name:
+                    definitions.append(
+                        {
+                            "file": str(py_file.relative_to(repo_dir)),
+                            "line": node.lineno,
+                            "type": type(node)
+                            .__name__.replace("AsyncFunctionDef", "async function")
+                            .replace("FunctionDef", "function")
+                            .replace("ClassDef", "class"),
+                        }
+                    )
+
+    if not definitions:
+        return f"No definitions found for '{function_name}' in codebase."
+
+    lines = [f"Found {len(definitions)} definition(s) of '{function_name}':\n"]
+    for d in definitions:
+        lines.append(f"  {d['type']} {d['file']}:{d['line']}")
+
+    return "\n".join(lines)

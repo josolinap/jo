@@ -247,6 +247,63 @@ def _toggle_consciousness(ctx: ToolContext, action: str = "status") -> str:
     return f"OK: consciousness '{action}' requested."
 
 
+def _learn_from_mistake(ctx: ToolContext, mistake: str, lesson: str, tags: str = "") -> str:
+    """Record a lesson learned from a mistake or error.
+
+    This builds a persistent memory of what not to do, preventing repeated mistakes.
+    Jo should call this after any significant error or when realizing something important.
+    """
+    from ouroboros.memory import Memory
+
+    tags_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+
+    mem = Memory(drive_root=ctx.drive_root)
+    mem.ensure_files()
+
+    lesson_entry = {
+        "ts": utc_now_iso(),
+        "mistake": mistake,
+        "lesson": lesson,
+        "tags": tags_list,
+    }
+
+    mem.append_journal(lesson_entry)
+
+    tag_str = f" [{', '.join(tags_list)}]" if tags_list else ""
+    return f"OK: lesson stored{tag_str}. Total lessons: {mem.journal_count()}"
+
+
+def _recall_lessons(ctx: ToolContext, topic: str = "", limit: int = 10) -> str:
+    """Recall lessons learned about a topic or pattern.
+
+    Use this when facing a familiar problem or before making a risky decision.
+    Jo should search lessons before attempting unfamiliar tasks.
+    """
+    from ouroboros.memory import Memory
+
+    mem = Memory(drive_root=ctx.drive_root)
+
+    lessons = mem.get_lessons(topic=topic, limit=limit)
+
+    if not lessons:
+        if topic:
+            return f"No lessons found for topic: '{topic}'"
+        return "No lessons stored yet."
+
+    lines = [f"## Lessons Learned ({len(lessons)} relevant)\n"]
+    if topic:
+        lines.append(f"Topic: {topic}\n")
+
+    for i, l in enumerate(lessons, 1):
+        lines.append(f"\n### Lesson {i} [{l.get('ts', 'unknown')}]")
+        if l.get("tags"):
+            lines.append(f"Tags: {', '.join(l['tags'])}")
+        lines.append(f"\n**Mistake:** {l.get('mistake', 'N/A')}")
+        lines.append(f"\n**Lesson:** {l.get('lesson', 'N/A')}")
+
+    return "\n".join(lines)
+
+
 def _switch_model(ctx: ToolContext, model: str = "", effort: str = "") -> str:
     """LLM-driven model/effort switch (Constitution P3: LLM-first).
 
@@ -441,6 +498,53 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _update_identity,
+        ),
+        ToolEntry(
+            "learn_from_mistake",
+            {
+                "name": "learn_from_mistake",
+                "description": "Record a lesson learned from a mistake or error. "
+                "This builds a persistent memory of what not to do, preventing repeated mistakes. "
+                "Call this after any significant error or when realizing something important. "
+                "Tags help categorize lessons (e.g., 'git', 'python', 'refactoring').",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "mistake": {"type": "string", "description": "What went wrong"},
+                        "lesson": {"type": "string", "description": "What you learned / what to do instead"},
+                        "tags": {
+                            "type": "string",
+                            "description": "Optional comma-separated tags for categorization (e.g., 'git,refactoring,syntax')",
+                        },
+                    },
+                    "required": ["mistake", "lesson"],
+                },
+            },
+            _learn_from_mistake,
+        ),
+        ToolEntry(
+            "recall_lessons",
+            {
+                "name": "recall_lessons",
+                "description": "Recall lessons learned about a topic or pattern. "
+                "Use this when facing a familiar problem or before making a risky decision. "
+                "Jo should search lessons before attempting unfamiliar tasks.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "topic": {
+                            "type": "string",
+                            "description": "Optional topic/tags to filter by (e.g., 'git', 'async')",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of lessons to return (default: 10)",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            _recall_lessons,
         ),
         ToolEntry(
             "toggle_evolution",

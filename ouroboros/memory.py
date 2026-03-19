@@ -316,6 +316,48 @@ class Memory:
     def append_journal(self, entry: Dict[str, Any]) -> None:
         append_jsonl(self.journal_path(), entry)
 
+    def journal_count(self) -> int:
+        """Return count of journal entries."""
+        p = self.journal_path()
+        if not p.exists():
+            return 0
+        with p.open("r", encoding="utf-8") as f:
+            return sum(1 for line in f if line.strip())
+
+    def get_lessons(self, topic: str = "", limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve lessons from journal, optionally filtered by topic tag."""
+        p = self.journal_path()
+        if not p.exists():
+            return []
+
+        lessons = []
+        topic_lower = topic.lower() if topic else ""
+
+        try:
+            with p.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        # Filter by topic if specified
+                        if topic_lower:
+                            tags = [t.lower() for t in entry.get("tags", [])]
+                            mistake = entry.get("mistake", "").lower()
+                            lesson = entry.get("lesson", "").lower()
+                            if topic_lower not in tags and topic_lower not in mistake and topic_lower not in lesson:
+                                continue
+                        lessons.append(entry)
+                        if len(lessons) >= limit:
+                            break
+                    except json.JSONDecodeError:
+                        continue
+        except Exception:
+            pass
+
+        return lessons
+
     # --- Defaults ---
 
     def _default_scratchpad(self) -> str:
