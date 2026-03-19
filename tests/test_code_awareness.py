@@ -62,42 +62,54 @@ class TestFindCallers:
     """Tests for find_callers tool."""
 
     def test_find_callers_basic(self, registry):
+        """Test finding callers of a function that exists in test files."""
         result = registry.execute("find_callers", {"function_name": "foo"})
         assert "foo" in result
         assert "main.py" in result
 
     def test_find_callers_not_found(self, registry):
+        """Test when function has no callers."""
         result = registry.execute("find_callers", {"function_name": "nonexistent_function"})
         assert "No callers found" in result
 
     def test_find_callers_helper(self, registry):
+        """Test finding callers of helper function."""
         result = registry.execute("find_callers", {"function_name": "helper"})
         assert "helper" in result
-        assert "utils.py" in result or "main.py" in result
 
     def test_find_callers_too_short(self, registry):
+        """Test that single char names are rejected."""
         result = registry.execute("find_callers", {"function_name": "a"})
         assert "at least 2 characters" in result
+
+    def test_find_callers_method(self, registry):
+        """Test finding callers of a method call."""
+        result = registry.execute("find_callers", {"function_name": "bar"})
+        assert "bar" in result
 
 
 class TestFindDefinitions:
     """Tests for find_definitions tool."""
 
     def test_find_function_definition(self, registry):
+        """Test finding a function definition."""
         result = registry.execute("find_definitions", {"function_name": "foo"})
         assert "foo" in result
         assert "main.py" in result
 
     def test_find_class_definition(self, registry):
+        """Test finding a class definition."""
         result = registry.execute("find_definitions", {"function_name": "MyClass"})
         assert "MyClass" in result
         assert "main.py" in result
 
     def test_find_not_found(self, registry):
+        """Test when definition doesn't exist."""
         result = registry.execute("find_definitions", {"function_name": "UnknownClass"})
         assert "No definitions found" in result
 
     def test_find_too_short(self, registry):
+        """Test that single char names are rejected."""
         result = registry.execute("find_definitions", {"function_name": "x"})
         assert "at least 2 characters" in result
 

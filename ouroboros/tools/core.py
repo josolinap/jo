@@ -527,11 +527,12 @@ def get_tools() -> List[ToolEntry]:
 # ---------------------------------------------------------------------------
 
 
-def _find_callers(ctx: ToolContext, function_name: str) -> str:
+def _find_callers(ctx: ToolContext, function_name: str, include_underscore: bool = True) -> str:
     """Find all callers of a function in the codebase.
 
     Uses AST parsing to find function calls matching the target name.
     Returns list of files with line numbers where the function is called.
+    Automatically searches both 'func' and '_func' variants.
     """
     import ast
 
@@ -540,6 +541,10 @@ def _find_callers(ctx: ToolContext, function_name: str) -> str:
 
     repo_dir = ctx.repo_dir
     callers: List[dict] = []
+
+    search_names = {function_name}
+    if include_underscore and not function_name.startswith("_"):
+        search_names.add(f"_{function_name}")
 
     for py_file in repo_dir.rglob("*.py"):
         if any(skip in str(py_file) for skip in ["__pycache__", ".pytest_cache", "archive/"]):
@@ -553,27 +558,23 @@ def _find_callers(ctx: ToolContext, function_name: str) -> str:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name) and node.func.id == function_name:
-                    line_no = node.lineno
+                match = False
+                if isinstance(node.func, ast.Name) and node.func.id in search_names:
+                    match = True
+                elif isinstance(node.func, ast.Attribute) and node.func.attr in search_names:
+                    match = True
+                if match:
                     callers.append(
                         {
                             "file": str(py_file.relative_to(repo_dir)),
-                            "line": line_no,
-                        }
-                    )
-                elif isinstance(node.func, ast.Attribute) and node.func.attr == function_name:
-                    line_no = node.lineno
-                    callers.append(
-                        {
-                            "file": str(py_file.relative_to(repo_dir)),
-                            "line": line_no,
+                            "line": node.lineno,
+                            "col": node.col_offset if hasattr(node, "col_offset") else 0,
                         }
                     )
 
     if not callers:
         return f"No callers found for '{function_name}' in codebase."
 
-    # Group by file
     by_file: Dict[str, List[int]] = {}
     for c in callers:
         f = c["file"]
@@ -583,15 +584,16 @@ def _find_callers(ctx: ToolContext, function_name: str) -> str:
 
     lines = [f"Found {len(callers)} call(s) of '{function_name}':\n"]
     for file_path, line_nums in sorted(by_file.items()):
-        lines.append(f"  {file_path}:{', '.join(str(l) for l in sorted(line_nums))}")
+        lines.append(f"  {file_path}: {', '.join(str(l) for l in sorted(line_nums))}")
 
     return "\n".join(lines)
 
 
-def _find_definitions(ctx: ToolContext, function_name: str) -> str:
+def _find_definitions(ctx: ToolContext, function_name: str, include_underscore: bool = True) -> str:
     """Find where a function/class is defined in the codebase.
 
     Uses AST parsing to find function or class definitions.
+    Automatically searches both 'Func' and '_Func' variants.
     """
     import ast
 
@@ -600,6 +602,10 @@ def _find_definitions(ctx: ToolContext, function_name: str) -> str:
 
     repo_dir = ctx.repo_dir
     definitions: List[dict] = []
+
+    search_names = {function_name}
+    if include_underscore and not function_name.startswith("_"):
+        search_names.add(f"_{function_name}")
 
     for py_file in repo_dir.rglob("*.py"):
         if any(skip in str(py_file) for skip in ["__pycache__", ".pytest_cache", "archive/"]):
@@ -613,7 +619,7 @@ def _find_definitions(ctx: ToolContext, function_name: str) -> str:
 
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if node.name == function_name:
+                if node.name in search_names:
                     definitions.append(
                         {
                             "file": str(py_file.relative_to(repo_dir)),
