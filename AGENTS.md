@@ -45,6 +45,37 @@ Before making claims or taking actions, always verify:
 
 ---
 
+## Code Review Protocol
+
+When reviewing code or assessing alignment with principles:
+
+1. **Search before assessing** — Never assess implementation status without searching:
+   ```
+   grep "relevant_keyword" ouroboros/*.py
+   ls ouroboros/
+   git log --oneline -10
+   ```
+
+2. **Read before claiming** — Never assert what code does without reading it:
+   - Use repo_read to check actual implementation
+   - Check file sizes with `wc -l`
+   - Verify function names with grep
+
+3. **Distinguish fact from opinion**:
+   - Fact: "consciousness.py exists and has 538 lines"
+   - Opinion: "The architecture seems synchronous"
+   
+4. **When assessing BIBLE.md alignment:**
+   - Read the principle
+   - Search for relevant implementation
+   - Compare what exists vs what principle requires
+   - Report verified findings only
+
+**Wrong:** "Background consciousness doesn't exist, creating a gap"
+**Right:** "Let me search for consciousness... Found consciousness.py with 538 lines"
+
+---
+
 ## Code Style Guidelines
 
 ### Imports
