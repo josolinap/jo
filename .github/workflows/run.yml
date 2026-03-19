@@ -9,6 +9,11 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Permissions for git push operations (Jo creates tags/commits)
+permissions:
+  contents: write
+  actions: read
+
 on:
   # Trigger on push to dev (Jo's working branch)
   push:
@@ -160,6 +165,10 @@ jobs:
         run: |
           # Install Playwright browsers (needed by some tools, skipped if unused)
           python -m playwright install chromium --with-deps 2>/dev/null || true
+
+          # Configure git identity for tag/commit operations
+          git config --global user.name "Jo"
+          git config --global user.email "jo@jo.ai"
 
           # Run the bot with a 330-minute (5.5-hour) timeout.
           # 'timeout' returns exit code 124 on timeout — that's expected and OK.
