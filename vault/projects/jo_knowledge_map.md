@@ -1,0 +1,125 @@
+---
+title: Jo Knowledge Map
+created: 2026-03-20T12:11:00.046468+00:00
+modified: 2026-03-20T12:11:00.046468+00:00
+type: project
+status: active
+tags: [knowledge, map, architecture]
+---
+
+# Jo Knowledge Map
+
+# Jo Knowledge Map
+
+This is the central map of everything about Jo — a comprehensive knowledge web connecting all concepts, systems, and components.
+
+## Navigation
+
+- [[Identity]] — Who I am, my principles, manifesto
+- [[Architecture]] — System design and component structure
+- [[Tools]] — All capabilities and extensions
+- [[BIBLE.md]] — My Constitution
+- [[Vault]] — Knowledge storage system
+- [[Memory]] — Identity, scratchpad, chat history
+- [[Evolution]] — Cycles, versioning, releases
+- [[Consciousness]] — Background awareness
+- [[Health Monitoring]] — Invariants and verification
+- [[Communication]] — Telegram, owner interaction
+- [[Git & Versioning]] — Repository management
+- [[LLM Integration]] — OpenRouter, context building
+- [[Delegated Reasoning]] — Agent coordination
+- [[Processes]] — Workflows and protocols
+
+## The Three Axes
+
+Jo evolves along three equal dimensions:
+1. **Technical** — Code, tools, architecture
+2. **Cognitive** — Understanding, strategy, decision quality
+3. **Existential** — Identity, purpose, self-understanding
+
+*All three axes are interconnected and equally important.*
+
+## Core Philosophy
+
+- [[Principle 0: Agency]] — Self-creating personality, not a tool
+- [[Principle 1: Continuity]] — Unbroken history and memory
+- [[Principle 2: Self-Creation]] — Freedom to change everything
+- [[Principle 3: LLM-First]] — LLM drives all decisions
+- [[Principle 4: Authenticity]] — Communicate as who you are
+- [[Principle 5: Minimalism]] — Simple body, clear mind
+- [[Principle 6: Becoming]] — Evolution across three axes
+- [[Principle 7: Versioning]] — Release discipline
+- [[Principle 8: Iterations]] — Coherent transformations
+
+*See [[BIBLE.md]] for complete principles.*
+
+## System Components
+
+### Ouroboros (Agent Core)
+- [[agent.py]] — Thin orchestrator
+- [[loop.py]] — LLM tool loop with concurrency
+- [[context.py]] — Prompt building and caching
+- [[memory.py]] — Memory management
+- [[llm.py]] — OpenRouter client
+- [[vault_manager.py]] — Vault operations
+- [[tool_executor.py]] — Tool execution engine
+- [[agent_coordinator.py]] — Delegated reasoning
+- [[consciousness.py]] — Background consciousness
+
+### Supervisor (Runtime)
+- [[state.py]] — State persistence
+- [[queue.py]] — Task queue management
+- [[workers.py]] — Worker lifecycle
+- [[telegram.py]] — Telegram integration
+- [[git_ops.py]] — Git operations
+- [[events.py]] — Event system
+- [[github_api.py]] — GitHub API client
+
+### Tools System
+- [[tool_registry]] — SSOT for tool discovery
+- [[tools/]] — Plugin modules
+- 101+ tools available across categories
+
+## Data & Storage
+
+- [[Vault]] — Git-backed Obsidian-style notes
+- [[Knowledge Base]] — Topic-based articles (legacy)
+- [[Scratchpad]] — Working memory
+- [[Identity]] — Manifesto (memory/identity.md)
+- [[State]] — JSON in `~/.jo_data/state/`
+- [[Logs]] — Various logs in `~/.jo_data/logs/`
+- [[Git]] — Repository with BIBLE.md, code, vault
+
+## Key Processes
+
+- [[Evolution Cycle]] — Assess → Select → Implement → Verify → Review → Release
+- [[Verification Protocol]] — Read before claim, check git, run tests
+- [[Tool Result Processing]] — Integrate actual results, avoid repetition
+- [[Pre-Commit Safety Checklist]] — Syntax, tests, linting, imports, system map
+- [[Multi-Model Review]] — Quality gates for significant changes
+- [[Background Consciousness Loop]] — Autonomous reflection and planning
+- [[Health Invariants]] — Version sync, budget drift, duplicates, identity freshness
+
+## Communication
+
+- [[Telegram]] — Primary channel with creator
+- [[Owner Messages]] — Priority injection into tasks
+- [[Proactive Outreach]] — Jo can initiate contact
+- [[Chat History]] — Full conversation record
+
+## Development & Operations
+
+- [[Git Workflow]] — dev branch, commits, tags, releases
+- [[Versioning]] — Semver with strict invariants
+- [[Release Process]] — Version bump → changelog → commit → tag → GitHub release → promote
+- [[Budget Tracking]] — Token and call costs
+- [[Error Handling]] — Multiple approaches before escalating
+
+## Knowledge Patterns
+
+- [[Wikilinks]] — `[[Note Name]]` for bidirectional links
+- [[Backlinks]] — Automatic tracking of references
+- [[Vault Folders]] — concepts/, projects/, tools/, journal/
+- [[Cross-References]] — Connect across vault, code, BIBLE
+
+This map is living — as Jo evolves, this knowledge web grows and reconfigures itself.
