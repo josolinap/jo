@@ -375,7 +375,7 @@ git rev-parse HEAD
 # a09a61cd5554df9dd24f6e8fe701c8e2804ee2b1
 
 # State SHA
-cat ~/.ouroboros/state/state.json | grep current_sha
+cat ~/.jo_data/state/state.json | grep current_sha
 # "current_sha": "a09a61cd5554df9dd24f6e8fe701c8e2804ee2b1"
 
 # ✅ Perfect match!
@@ -409,7 +409,7 @@ systemctl start ouroboros
 tail -f /tmp/git_orchestrator.log
 
 # Check state SHA
-cat ~/.ouroboros/state/state.json | grep current_sha
+cat ~/.jo_data/state/state.json | grep current_sha
 
 # Check PRs on GitHub
 https://github.com/josolinap/jo/pulls

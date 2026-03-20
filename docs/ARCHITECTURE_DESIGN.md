@@ -77,7 +77,7 @@ class InstanceManager:
     
     def register_with_coordinator(self):
         """Register this instance with the coordinator."""
-        # Store in ~/.ouroboros/instances.json
+        # Store in ~/.jo_data/instances.json
         # Each machine gets a unique entry
         pass
     
@@ -361,10 +361,10 @@ class OuroborosSystem:
         # Initialize components
         self.instance_manager = InstanceManager()
         self.model_router = ModelRouter()
-        self.task_queue = TaskQueue(Path.home() / ".ouroboros")
+        self.task_queue = TaskQueue(Path.home() / ".jo_data")
         self.git_sync = GitSyncManager(
             repo_dir=Path("/root/jo-project"),
-            drive_root=Path.home() / ".ouroboros",
+            drive_root=Path.home() / ".jo_data",
             instance_id=self.instance_manager.instance_id
         )
         
@@ -458,7 +458,7 @@ class ServiceManager:
     
     def __init__(self):
         self.service_file = Path("/etc/systemd/system/ouroboros.service")
-        self.pid_file = Path.home() / ".ouroboros" / "ouroboros.pid"
+        self.pid_file = Path.home() / ".jo_data" / "ouroboros.pid"
     
     def install_service(self):
         """Install as systemd service."""

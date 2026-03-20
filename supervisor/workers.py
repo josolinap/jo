@@ -312,8 +312,50 @@ def auto_resume_after_restart() -> None:
 
         # Always notify owner that we're back online (separated from auto-resume)
         log.info(f"Restart detected for chat_id={chat_id}, sending online notification")
+
+        # Build detailed restart message
+        restart_msg_parts = ["🔄 Jo has been restarted"]
+
+        # Get previous session info
+        last_run = st.get("last_run_at", "unknown")
+        restart_msg_parts.append(f"• Last run: {last_run}")
+
+        # Get pending tasks count
+        from supervisor.queue import PENDING, RUNNING
+
+        pending_count = len(PENDING) if "PENDING" in dir() else 0
+        running_count = len(RUNNING) if "RUNNING" in dir() else 0
+        if pending_count > 0 or running_count > 0:
+            restart_msg_parts.append(f"• Tasks: {running_count} running, {pending_count} pending")
+
+        # Get budget info
+        budget = st.get("total_spent_usd", 0)
+        budget_limit = st.get("budget_limit", 50)
+        if budget:
+            restart_msg_parts.append(f"• Budget: ${budget:.2f} / ${budget_limit:.2f}")
+
+        # Get current branch/sha
+        branch = st.get("current_branch", "dev")
+        sha = st.get("current_sha", "unknown")[:8]
+        restart_msg_parts.append(f"• Branch: {branch} ({sha})")
+
+        # Get scratchpad preview
+        scratchpad_path = DRIVE_ROOT / "memory" / "scratchpad.md"
+        if scratchpad_path.exists():
+            try:
+                scratchpad = scratchpad_path.read_text(encoding="utf-8")
+                lines = [l.strip() for l in scratchpad.split("\n") if l.strip() and not l.strip().startswith("#")]
+                if lines:
+                    preview = lines[0][:100] if lines else ""
+                    if preview:
+                        restart_msg_parts.append(f"• Last work: {preview}...")
+            except Exception:
+                pass
+
+        restart_msg = "\n".join(restart_msg_parts)
+
         try:
-            send_with_budget(int(chat_id), "✅ Owner registered. Jo online.")
+            send_with_budget(int(chat_id), restart_msg)
         except Exception as e:
             log.warning(f"Failed to send online notification: {e}")
 

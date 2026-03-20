@@ -757,7 +757,7 @@ class FullStartup:
         # Start Git Orchestrator
         git_orchestrator = GitOrchestrator(
             repo_dir=Path("/root/jo-project"),
-            drive_root=Path.home() / ".ouroboros"
+            drive_root=Path.home() / ".jo_data"
         )
         
         # Start continuous sync

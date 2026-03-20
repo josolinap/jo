@@ -22,7 +22,7 @@ Each machine gets a unique ID based on:
 - UUID generation
 
 ```python
-# Creates: ~/.ouroboros/instance_id.json
+# Creates: ~/.jo_data/instance_id.json
 {
   "instance_id": "abc123...",
   "hostname": "arch-linux-pc",
@@ -108,7 +108,7 @@ class OuroborosMonitor:
 #### D. `machine_sync.py` - Cross-Machine State Tracking
 ```python
 # Tracks which machine made which changes
-~/.ouroboros/sync/
+~/.jo_data/sync/
 ├── machine-a-xxx.json  # Changes from Windows machine
 ├── machine-b-yyy.json  # Changes from Arch Linux
 └── pending.json        # Changes awaiting sync
@@ -161,7 +161,7 @@ python3 monitor.py
 
 #### Machine-Specific Settings
 
-**File**: `~/.ouroboros/machine_config.json`
+**File**: `~/.jo_data/machine_config.json`
 ```json
 {
   "machine_id": "abc123...",
@@ -207,7 +207,7 @@ MACHINE_ID=$(python3 instance_id.py)
 1. Agent can read local files via `repo_read` tool
 2. Changes are tracked locally before pushing
 3. Dual-mode: Can work offline, sync when online
-4. Local state saved to `~/.ouroboros/local_state.json`
+4. Local state saved to `~/.jo_data/local_state.json`
 
 #### Scenario 3: Multiple Instances Running Simultaneously
 
@@ -223,8 +223,8 @@ MACHINE_ID=$(python3 instance_id.py)
 
 **Log Files:**
 - `/tmp/monitor.log` - Monitor activity
-- `~/.ouroboros/logs/git_sync.log` - Git operations
-- `~/.ouroboros/logs/conflicts.log` - Conflict resolution
+- `~/.jo_data/logs/git_sync.log` - Git operations
+- `~/.jo_data/logs/conflicts.log` - Conflict resolution
 
 **Status Dashboard:**
 ```bash

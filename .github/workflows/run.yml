@@ -117,7 +117,16 @@ jobs:
             jo-data-dev-
 
       # -----------------------------------------------------------------------
-      # 5.1 Auto-register owner on startup
+      # 5.1 Initialize vault structure if not exists
+      # -----------------------------------------------------------------------
+      - name: Initialize vault structure
+        run: |
+          mkdir -p ~/.jo_data/vault/{concepts,projects,tools,journal}
+          mkdir -p ~/.jo_data/vault/.vault
+          echo "Vault structure ready"
+
+      # -----------------------------------------------------------------------
+      # 5.2 Auto-register owner on startup
       # (Owner notification is handled by auto_resume_after_restart on launch)
       # -----------------------------------------------------------------------
       - name: Auto-register owner on startup

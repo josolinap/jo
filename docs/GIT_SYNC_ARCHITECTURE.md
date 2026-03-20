@@ -499,7 +499,7 @@ def handle_git_sync():
     from machine_sync import MachineSync
     
     repo_dir = pathlib.Path("/root/jo-project")
-    drive_root = pathlib.Path.home() / ".ouroboros"
+    drive_root = pathlib.Path.home() / ".jo_data"
     
     # Initialize managers
     git_manager = GitStateManager(repo_dir)
@@ -528,7 +528,7 @@ def handle_git_sync():
 #### Per-Machine Settings
 
 ```bash
-# ~/.ouroboros/machine_config.json
+# ~/.jo_data/machine_config.json
 {
   "machine_id": "abc123...",
   "hostname": "arch-linux-pc",

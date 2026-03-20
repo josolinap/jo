@@ -184,7 +184,7 @@ ENABLE_MODEL_ORCHESTRATION=1
 MAX_MODEL_FALLBACKS=5
 ```
 
-### Machine-Specific Config (`~/.ouroboros/machine_config.json`)
+### Machine-Specific Config (`~/.jo_data/machine_config.json`)
 
 ```json
 {

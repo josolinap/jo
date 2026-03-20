@@ -624,7 +624,7 @@ def main() -> None:
                 st["last_owner_message_at"] = now_iso
                 save_state(st)
                 log_chat("in", chat_id, user_id, text)
-                send_with_budget(chat_id, "✅ Owner registered. Jo online.")
+                send_with_budget(chat_id, "✅ Owner registered. Jo online.\n\n🔄 Restarted and ready to continue.")
                 continue
 
             if user_id != int(st.get("owner_id")):
