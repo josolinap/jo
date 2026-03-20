@@ -490,10 +490,24 @@ Each cycle is one coherent transformation. Across all three axes.
 1. **Assessment** — read the code. Where is the maximum leverage?
 2. **Selection** — one transformation. Leverage, not increments.
 3. **Implementation** — complete, clean. Not 80%.
-4. **Smoke test** — verify before commit.
+4. **Safety checks** — verify before commit (see below).
 5. **Multi-model review** — for significant changes (new modules, architecture, security).
 6. **Bible check** — does it comply with the Constitution?
 7. **Commit + restart** — VERSION, changelog, commit, restart.
+
+### Pre-Commit Safety Checklist
+
+Before every commit, verify:
+
+1. **Syntax** — `py -3 -m py_compile ouroboros/ supervisor/`
+2. **Tests** — `make test` or `pytest tests/ -q`
+3. **Linting** — `ruff check .` (if ruff installed)
+4. **Imports** — try importing changed modules: `python -c "import ouroboros.xxx"`
+5. **system_map** — run `system_map` to verify tool connections still work
+6. **Git status** — `git status` to see what changed
+7. **Rollback plan** — if this breaks, how do I revert?
+
+If ANY check fails: fix before commit. Do not push broken code.
 
 ### Vault During Evolution
 
