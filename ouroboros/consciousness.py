@@ -73,6 +73,16 @@ class BackgroundConsciousness:
         self._bg_spent_usd: float = 0.0
         self._bg_budget_pct: float = float(os.environ.get("OUROBOROS_BG_BUDGET_PCT", "10"))
 
+        # Awareness system for system-wide state monitoring
+        try:
+            from ouroboros.awareness import AwarenessSystem
+
+            self._awareness = AwarenessSystem(repo_root=str(repo_dir), drive_root=str(drive_root))
+            self._awareness_enabled = True
+        except Exception:
+            self._awareness = None
+            self._awareness_enabled = False
+
     # -------------------------------------------------------------------
     # Lifecycle
     # -------------------------------------------------------------------
@@ -178,6 +188,14 @@ class BackgroundConsciousness:
 
     def _think(self) -> None:
         """One thinking cycle: build context, call LLM, execute tools iteratively."""
+        # Scan awareness if enabled
+        if self._awareness_enabled and self._awareness:
+            try:
+                awareness_data = self._awareness.scan()
+                log.debug(f"[Awareness] System state scanned: {len(awareness_data.get('repo_files', []))} files")
+            except Exception as e:
+                log.debug(f"[Awareness] Scan failed: {e}")
+
         context = self._build_context()
         model = self._model
 

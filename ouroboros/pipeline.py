@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+from ouroboros.task_graph import TaskGraph, decompose_into_graph, set_active_graph
+
 log = logging.getLogger(__name__)
 
 
@@ -135,8 +137,14 @@ class PlanHandler(PhaseHandler):
         task_type = ctx.metadata.get("task_type", "general")
 
         sub_tasks = []
+        task_graph = None
+
         if complexity == "high":
-            sub_tasks = self._decompose_task(ctx.task)
+            task_graph = decompose_into_graph(ctx.task)
+            if task_graph:
+                sub_tasks = [{"description": t.description, "role": t.role} for t in task_graph.get_topo_order()]
+                set_active_graph(task_graph)
+                ctx.metadata["task_graph"] = task_graph
 
         ctx.metadata["sub_tasks"] = sub_tasks
         ctx.metadata["needs_orchestration"] = len(sub_tasks) > 1
@@ -149,6 +157,7 @@ class PlanHandler(PhaseHandler):
             output={
                 "sub_tasks": sub_tasks,
                 "needs_orchestration": len(sub_tasks) > 1,
+                "has_task_graph": task_graph is not None,
             },
             duration_ms=duration,
         )
