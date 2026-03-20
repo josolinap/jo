@@ -97,6 +97,32 @@ jobs:
           pip install -r requirements.txt
 
       # -----------------------------------------------------------------------
+      # 3.1 VALIDATE CODE BEFORE RUNNING BOT
+      # Fail fast if syntax errors or import failures exist
+      # -----------------------------------------------------------------------
+      - name: Validate Python syntax
+        run: |
+          echo "=== Syntax validation ==="
+          python -m py_compile ouroboros/*.py && echo "✓ ouroboros/*.py OK" || { echo "✗ Syntax errors in ouroboros/*.py"; exit 1; }
+          python -m py_compile ouroboros/tools/*.py && echo "✓ ouroboros/tools/*.py OK" || { echo "✗ Syntax errors in ouroboros/tools/*.py"; exit 1; }
+          python -m py_compile supervisor/*.py && echo "✓ supervisor/*.py OK" || { echo "✗ Syntax errors in supervisor/*.py"; exit 1; }
+          echo "=== All syntax checks passed ==="
+
+      - name: Validate critical imports
+        run: |
+          echo "=== Import validation ==="
+          python -c "from ouroboros.tools.registry import ToolRegistry; print('✓ ToolRegistry OK')" || { echo "✗ ToolRegistry import failed"; exit 1; }
+          python -c "from ouroboros.vault_manager import VaultManager; print('✓ VaultManager OK')" || { echo "✗ VaultManager import failed"; exit 1; }
+          python -c "from supervisor.state import init; print('✓ supervisor.state OK')" || { echo "✗ supervisor.state import failed"; exit 1; }
+          echo "=== All imports passed ==="
+
+      - name: Run smoke tests
+        run: |
+          echo "=== Running smoke tests ==="
+          python -m pytest tests/test_smoke.py -v --tb=short || { echo "✗ Smoke tests failed"; exit 1; }
+          echo "=== Smoke tests passed ==="
+
+      # -----------------------------------------------------------------------
       # 4. Write a minimal .env from secrets so the app can read them
       #    (load_dotenv() reads this, but env vars below take precedence)
       # -----------------------------------------------------------------------
