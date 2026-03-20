@@ -340,25 +340,14 @@ def auto_resume_after_restart() -> None:
 
         def _do_resume():
             try:
-                time.sleep(3)  # Let everything initialize
-                agent = _get_chat_agent()
+                time.sleep(5)  # Let everything initialize fully
 
-                # Wait for agent to be ready (with timeout)
-                max_wait = 10
-                waited = 0
-                while agent._busy and waited < max_wait:
-                    time.sleep(1)
-                    waited += 1
+                # Send auto-resume message via Telegram - this goes through normal message loop
+                # and properly triggers consciousness
+                auto_resume_text = "[AUTO-RESUME] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions."
+                send_with_budget(int(chat_id), auto_resume_text)
 
-                if agent._busy:
-                    log.warning("Agent still busy after wait, attempting resume anyway")
-
-                # Auto-resume message - check vault and continue work
-                handle_chat_direct(
-                    int(chat_id),
-                    "[auto-resume after restart] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions.",
-                    None,
-                )
+                log.info(f"Auto-resume Telegram message sent")
             except Exception as e:
                 log.error(f"Auto-resume failed: {e}", exc_info=True)
 
