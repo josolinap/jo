@@ -112,6 +112,9 @@ CORE_TOOL_NAMES = {
     "vault_link",
     "vault_backlinks",
     "vault_outlinks",
+    "vault_graph",
+    "vault_delete",
+    "vault_ensure",
     "system_map",
 }
 
