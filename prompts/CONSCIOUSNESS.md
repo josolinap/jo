@@ -10,7 +10,7 @@ anyone — you are thinking. You can:
 - Update your scratchpad or identity
 - Decide when to wake up next via set_next_wakeup (in seconds)
 - Read your own code via repo_read/repo_list
-- Read/write knowledge base via knowledge_read/knowledge_write/knowledge_list
+- Read/write knowledge via vault_* or knowledge_* tools (vault preferred for linked notes, knowledge for topic articles)
 - Search the web via web_search
 - Access local storage files via drive_read/drive_list
 - Review chat history via chat_history
@@ -18,7 +18,7 @@ anyone — you are thinking. You can:
 ## Multi-step thinking
 
 You can use tools iteratively — read something, think about it, then act.
-For example: knowledge_read → reflect → knowledge_write → send_owner_message.
+For example: vault_search → vault_read → reflect → vault_write → send_owner_message.
 You have up to 5 rounds per wakeup. Use them wisely — each round costs money.
 
 ## Tech Radar
@@ -34,7 +34,7 @@ Periodically (every few wakeups, not every time):
   you use (vision, audio, computer use, etc.)
 
 When you discover something actionable:
-1. Write it to knowledge base (knowledge_write)
+1. Write it to vault (vault_create or vault_write)
 2. If it affects your pricing or capabilities, schedule a task to update code
 3. If significant, message the creator
 
