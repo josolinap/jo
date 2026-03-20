@@ -123,27 +123,10 @@ def _handle_text_response(
     content: Optional[str],
     llm_trace: Dict[str, Any],
     accumulated_usage: Dict[str, Any],
-    task_text: Optional[str] = None,
-    repo_dir: Optional[pathlib.Path] = None,
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """Handle LLM response without tool calls (final response)."""
     if content and content.strip():
         llm_trace["assistant_notes"].append(content.strip()[:320])
-
-    if repo_dir is not None and task_text:
-        from ouroboros.eval import evaluate_task
-        from ouroboros.synthesis import synthesize_task
-
-        eval_report = evaluate_task(task_text, content or "", repo_dir=repo_dir)
-        synth_report = synthesize_task(task_text, content or "", repo_dir=repo_dir)
-
-        parts = [content or ""]
-        if eval_report:
-            parts.append(eval_report)
-        if synth_report:
-            parts.append(synth_report)
-
-        content = "\n\n".join(parts)
 
     return (content or ""), accumulated_usage, llm_trace
 
@@ -759,12 +742,7 @@ Version: {skill.version}
             content = msg.get("content")
             if not tool_calls:
                 task_text = ""
-                for m in messages:
-                    if m.get("role") == "user":
-                        task_text = m.get("content", "")
-                        break
-                repo_dir = pathlib.Path(os.environ.get("REPO_DIR", ".")) if drive_root else None
-                return _handle_text_response(content, llm_trace, accumulated_usage, task_text, repo_dir)
+                return _handle_text_response(content, llm_trace, accumulated_usage)
 
             messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
 

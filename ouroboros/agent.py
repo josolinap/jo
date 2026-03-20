@@ -510,12 +510,14 @@ class OuroborosAgent:
             ctx, messages, cap_info = self._prepare_task_context(task)
             budget_remaining = cap_info.get("budget_remaining")
 
-            # --- Pipeline: DIAGNOSE and PLAN phases ---
+            # --- Pipeline: DIAGNOSE and PLAN phases (only if enabled) ---
             pipeline = get_pipeline()
+            pipeline_ctx = None
             task_text = task.get("text", "") or str(task.get("content", ""))
-            pipeline_ctx = PipelineContext(task=task_text)
-            pipeline.run_diagnose(pipeline_ctx)
-            pipeline.run_plan(pipeline_ctx)
+            if pipeline.is_enabled():
+                pipeline_ctx = PipelineContext(task=task_text)
+                pipeline.run_diagnose(pipeline_ctx)
+                pipeline.run_plan(pipeline_ctx)
 
             # --- LLM loop (delegated to loop.py) ---
             usage: Dict[str, Any] = {}
@@ -561,35 +563,27 @@ class OuroborosAgent:
             if not isinstance(text, str) or not text.strip():
                 text = "⚠️ Model returned an empty response. Try rephrasing your request."
 
-            # --- Pipeline: Run synthesis and eval on final output ---
-            if pipeline_ctx:
-                pipeline_ctx.metadata["final_output"] = text
-                # Get changed files from git
-                try:
-                    branch, status = get_git_info(self.env.repo_dir)
-                    # Extract file names from status
-                    changed_files = []
-                    for line in status.split("\n"):
-                        if line.startswith("M ") or line.startswith("A "):
-                            changed_files.append(line[2:].strip())
-                    pipeline_ctx.metadata["files_changed"] = changed_files
-                except Exception:
-                    pipeline_ctx.metadata["files_changed"] = []
+            # --- Run synthesis and eval on final output ---
+            # Get changed files from git
+            changed_files = []
+            try:
+                branch, status = get_git_info(self.env.repo_dir)
+                for line in status.split("\n"):
+                    if line.startswith("M ") or line.startswith("A "):
+                        changed_files.append(line[2:].strip())
+            except Exception:
+                pass
 
-                synth_report = synthesize_task(
-                    task_text, text, pipeline_ctx.metadata.get("files_changed"), self.env.repo_dir
-                )
-                eval_report = evaluate_task(
-                    task_text, text, pipeline_ctx.metadata.get("files_changed"), self.env.repo_dir
-                )
+            synth_report = synthesize_task(task_text, text, changed_files, self.env.repo_dir)
+            eval_report = evaluate_task(task_text, text, changed_files, self.env.repo_dir)
 
-                if synth_report or eval_report:
-                    parts = [text]
-                    if eval_report:
-                        parts.append(eval_report)
-                    if synth_report:
-                        parts.append(synth_report)
-                    text = "\n\n".join(parts)
+            if synth_report or eval_report:
+                parts = [text]
+                if eval_report:
+                    parts.append(eval_report)
+                if synth_report:
+                    parts.append(synth_report)
+                text = "\n\n".join(parts)
 
             # Emit events for supervisor
             self._emit_task_results(task, text, usage, llm_trace, start_time, drive_logs)
