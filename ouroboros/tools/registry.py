@@ -112,6 +112,7 @@ CORE_TOOL_NAMES = {
     "vault_link",
     "vault_backlinks",
     "vault_outlinks",
+    "system_map",
 }
 
 
