@@ -1,16 +1,11 @@
-"""
-Ouroboros — Vault Manager.
-
-Manages Jo's Obsidian-style vault: notes, links, backlinks, and metadata.
-"""
-
 from __future__ import annotations
 
 import json
 import logging
 import pathlib
+import shutil
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ouroboros.utils import utc_now_iso
 
@@ -22,8 +17,9 @@ log = logging.getLogger(__name__)
 class VaultManager:
     """Manages Jo's Obsidian-style vault with wikilinks and backlinks."""
 
-    def __init__(self, vault_root: pathlib.Path):
+    def __init__(self, vault_root: pathlib.Path, repo_dir: Optional[pathlib.Path] = None):
         self.vault_root = vault_root
+        self.repo_dir = repo_dir
         self.parser = WikilinkParser()
         self._graph_cache: Optional[Dict[str, Any]] = None
         self._index: Dict[str, ParsedNote] = {}
@@ -35,6 +31,13 @@ class VaultManager:
     @property
     def backlinks_cache_path(self) -> pathlib.Path:
         return self.vault_root / ".vault" / "backlinks.json"
+
+    @property
+    def repo_vault_path(self) -> Optional[pathlib.Path]:
+        """Return the vault path within the repository if repo_dir is set."""
+        if self.repo_dir:
+            return self.repo_dir / "vault"
+        return None
 
     def ensure_vault_structure(self) -> None:
         """Create vault directory structure if it doesn't exist."""
@@ -353,11 +356,28 @@ class VaultManager:
         graph = self.get_graph_data()
         lines = ["digraph vault {"]
         for node in graph["nodes"]:
-            node_id = node["id"].replace('"', '\\"')
+            node_id = node["id"].replace('"', '\"')
             lines.append(f'    "{node_id}" [label="{node_id}"];')
         for link in graph["links"]:
-            source = link["source"].replace('"', '\\"')
-            target = link["target"].replace('"', '\\"')
+            source = link["source"].replace('"', '\"')
+            target = link["target"].replace('"', '\"')
             lines.append(f'    "{source}" -> "{target}";')
         lines.append("}")
         return "\n".join(lines)
+
+    def sync_to_repo(self) -> None:
+        """Copy vault files to repository vault directory if repo_dir is set."""
+        if self.repo_vault_path is None:
+            return
+        # Ensure target exists
+        self.repo_vault_path.mkdir(parents=True, exist_ok=True)
+        # Copy all files and directories from self.vault_root to self.repo_vault_path
+        # Use shutil.copytree with dirs_exist_ok=True
+        import shutil
+        shutil.copytree(self.vault_root, self.repo_vault_path, dirs_exist_ok=True)
+
+    def ensure_vault_structure(self) -> None:
+        """Create vault directory structure if it doesn't exist."""
+        (self.vault_root / ".vault").mkdir(parents=True, exist_ok=True)
+        for folder in ["concepts", "projects", "tools", "journal"]:
+            (self.vault_root / folder).mkdir(parents=True, exist_ok=True)
