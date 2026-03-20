@@ -153,6 +153,9 @@ jobs:
           GITHUB_REPO: ${{ github.event.repository.name }}
           TOTAL_BUDGET: ${{ secrets.TOTAL_BUDGET || '50' }}
 
+          # --- Owner ID (needed for auto-resume notifications) ---
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+
           # --- Optional model overrides ---
           OUROBOROS_MODEL: ${{ secrets.OUROBOROS_MODEL || 'openrouter/free' }}
           OUROBOROS_MODEL_CODE: ${{ secrets.OUROBOROS_MODEL_CODE || 'openrouter/free' }}
