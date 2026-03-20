@@ -31,8 +31,8 @@ def check_git_status() -> dict:
         if changes:
             filtered = []
             for line in changes.split("\n"):
-                # Skip .gitignore'd files like .jo_data, __pycache__, etc
-                if not any(x in line for x in [".jo_data", "__pycache__", ".pytest_cache", "self_check.py"]):
+                # Skip .gitignore'd files like memory/, __pycache__, etc
+                if not any(x in line for x in ["memory/", "__pycache__", ".pytest_cache", "self_check.py"]):
                     filtered.append(line)
             changes = "\n".join(filtered) if filtered else ""
 
@@ -118,7 +118,7 @@ def check_data_dir() -> dict:
     import os
 
     home = pathlib.Path.home()
-    data_root = pathlib.Path(os.environ.get("DATA_ROOT", home / ".jo_data"))
+    data_root = pathlib.Path(os.environ.get("DATA_ROOT", home / ".ouroboros"))
 
     if not data_root.exists():
         return {"exists": False}
