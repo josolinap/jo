@@ -245,15 +245,19 @@ def auto_resume_after_restart() -> None:
     Always enqueues an auto-resume task and assigns it to a worker.
     This runs on EVERY startup, not just detected restarts.
     """
+    print("[auto-resume] >>> auto_resume_after_restart() called")
     try:
         st = load_state()
         chat_id = st.get("owner_chat_id")
+        print(f"[auto-resume] owner_chat_id from state: {chat_id}")
         if not chat_id:
+            print("[auto-resume] No owner_chat_id - exiting early")
             log.info("No owner_chat_id yet, skipping auto-resume notification")
             return
 
         # Always attempt resume — no need to check for previous session data
         # We want Jo to be active on EVERY startup, not just detected restarts
+        print(f"[auto-resume] Proceeding with auto-resume for chat_id={chat_id}")
         log.info(f"Startup detected for chat_id={chat_id}, sending notification and enqueuing work")
 
         # Build detailed restart message
@@ -308,7 +312,9 @@ def auto_resume_after_restart() -> None:
 
         def _do_resume():
             try:
+                print("[auto-resume] _do_resume: Starting")
                 time.sleep(3)
+                print("[auto-resume] _do_resume: Creating task")
 
                 # Enqueue auto-resume as a proper task
                 auto_resume_text = "[AUTO-RESUME] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions."
@@ -322,15 +328,19 @@ def auto_resume_after_restart() -> None:
                     "_is_auto_resume": True,
                 }
                 enqueue_task(task)
+                print(f"[auto-resume] Task enqueued: {task['id']}")
                 log.info(f"Auto-resume task enqueued: {task['id']}")
 
                 # CRITICAL: Call assign_tasks() directly to immediately push the task to a worker.
                 # Without this, the task sits in PENDING forever because the main loop is blocked
                 # in get_updates() waiting for Telegram messages. We need to wake up workers NOW.
                 time.sleep(1)  # Brief pause to let workers initialize
+                print("[auto-resume] _do_resume: Calling assign_tasks()")
                 assign_tasks()
+                print("[auto-resume] _do_resume: assign_tasks() completed")
                 log.info(f"Auto-resume: assign_tasks() called, workers should now pick up task")
             except Exception as e:
+                print(f"[auto-resume] _do_resume FAILED: {e}")
                 log.error(f"Auto-resume failed: {e}", exc_info=True)
 
         import threading
