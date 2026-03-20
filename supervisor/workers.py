@@ -340,14 +340,14 @@ def auto_resume_after_restart() -> None:
 
         def _do_resume():
             try:
-                time.sleep(5)  # Let everything initialize fully
+                time.sleep(3)  # Let everything initialize
 
-                # Send auto-resume message via Telegram - this goes through normal message loop
-                # and properly triggers consciousness
+                # Directly trigger Jo's consciousness by calling handle_chat_direct
+                # This is what happens when a real Telegram message arrives
                 auto_resume_text = "[AUTO-RESUME] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions."
-                send_with_budget(int(chat_id), auto_resume_text)
+                handle_chat_direct(int(chat_id), auto_resume_text, None)
 
-                log.info(f"Auto-resume Telegram message sent")
+                log.info(f"Auto-resume completed")
             except Exception as e:
                 log.error(f"Auto-resume failed: {e}", exc_info=True)
 
