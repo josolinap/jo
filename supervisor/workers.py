@@ -340,14 +340,22 @@ def auto_resume_after_restart() -> None:
 
         def _do_resume():
             try:
-                time.sleep(3)  # Let everything initialize
+                time.sleep(2)
 
-                # Directly trigger Jo's consciousness by calling handle_chat_direct
-                # This is what happens when a real Telegram message arrives
+                # Enqueue auto-resume as a proper task
+                # This goes through normal worker assignment flow
                 auto_resume_text = "[AUTO-RESUME] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions."
-                handle_chat_direct(int(chat_id), auto_resume_text, None)
+                from supervisor.queue import enqueue_task
 
-                log.info(f"Auto-resume completed")
+                task = {
+                    "id": uuid.uuid4().hex[:8],
+                    "type": "task",
+                    "chat_id": int(chat_id),
+                    "text": auto_resume_text,
+                    "_is_auto_resume": True,
+                }
+                enqueue_task(task)
+                log.info(f"Auto-resume task enqueued: {task['id']}")
             except Exception as e:
                 log.error(f"Auto-resume failed: {e}", exc_info=True)
 
