@@ -247,6 +247,62 @@ def _vault_integrity_update(ctx: ToolContext) -> str:
     return "OK: Integrity checksums updated"
 
 
+def _vault_check_conventions(ctx: ToolContext) -> str:
+    """Check vault for organization issues."""
+    vault = _get_vault(ctx)
+    issues = []
+    suggestions = []
+
+    notes = vault.get_all_notes()
+
+    for note in notes:
+        path = pathlib.Path(note["path"])
+
+        if note.get("type") == "reference" and note.get("status") == "active":
+            issues.append(f"Note missing proper frontmatter: {path.name}")
+            suggestions.append(f"Add frontmatter (title, type, status, tags) to {path.name}")
+
+    duplicates = vault.detect_duplicates()
+    if duplicates:
+        for dup in duplicates:
+            if dup["base_name"] not in ["test", "backup", "copy"]:
+                issues.append(f"Potential duplicate: {dup['base_name']} ({dup['count']} files)")
+                suggestions.append(f"Consolidate or rename: {', '.join(dup['files'])}")
+
+    all_notes = {n["title"].lower() for n in notes}
+    for note in notes:
+        for link_target in note.get("outlinks", []):
+            target_lower = link_target.lower().replace(".md", "")
+            if target_lower not in all_notes:
+                issues.append(f"Orphaned wikilink: [[{link_target}]] in {note['title']}")
+
+    if len(notes) > 5:
+        folders = {}
+        for note in notes:
+            path = pathlib.Path(note["path"])
+            folder = path.parent.name if len(path.parts) > 1 else "root"
+            folders[folder] = folders.get(folder, 0) + 1
+
+        for folder, count in folders.items():
+            if count > 20:
+                issues.append(f"Folder '{folder}' has {count} notes - consider reorganizing")
+
+    lines = ["## Vault Conventions Check"]
+    if issues:
+        lines.append(f"\n**Issues found: {len(issues)}**\n")
+        for issue in issues:
+            lines.append(f"- {issue}")
+        lines.append("\n### Suggestions")
+        for sugg in suggestions[:5]:
+            lines.append(f"- {sugg}")
+    else:
+        lines.append("\n**Status: PASSING** - Vault is well-organized")
+
+    lines.append(f"\n_Notes analyzed: {len(notes)}_")
+
+    return "\n".join(lines)
+
+
 def get_tools() -> List[ToolEntry]:
     return [
         ToolEntry(
@@ -450,5 +506,14 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}, "required": []},
             },
             _vault_integrity_update,
+        ),
+        ToolEntry(
+            "vault_check_conventions",
+            {
+                "name": "vault_check_conventions",
+                "description": "Check vault for organization issues: missing frontmatter, identity duplication, orphaned links.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _vault_check_conventions,
         ),
     ]
