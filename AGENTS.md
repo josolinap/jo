@@ -251,6 +251,49 @@ git pull --rebase && git push
 
 ---
 
+## Push Safety Guardrails
+
+**CRITICAL: Never push code that could break the workflow.**
+
+### Before Every Push
+
+1. **Run syntax validation:**
+   ```bash
+   python -m py_compile ouroboros/*.py ouroboros/tools/*.py supervisor/*.py
+   ```
+
+2. **Run critical import checks:**
+   ```bash
+   python -c "from ouroboros.tools.registry import ToolRegistry"
+   python -c "from ouroboros.vault_manager import VaultManager"
+   python -c "from supervisor.state import init"
+   ```
+
+3. **Run smoke tests:**
+   ```bash
+   python -m pytest tests/test_smoke.py -v
+   ```
+
+4. **Or run full verification:**
+   ```bash
+   make verify
+   ```
+
+### Common Failure Modes
+
+- **Truncated files**: Git operations can produce incomplete files. Always verify file size after git operations.
+- **Missing imports**: New code must import `List`, `Dict`, `Any` from `typing`.
+- **Syntax errors**: Use `py -m py_compile` on every `.py` file you modify.
+
+### If Code Looks Suspicious
+
+If a file has unusually few lines (< 50 lines for a module that should be larger), DO NOT commit:
+1. Check `git show HEAD:<file>` for the previous version
+2. Compare line counts: `wc -l <file>`
+3. Restore if truncated: `git checkout HEAD -- <file>`
+
+---
+
 ## Jo-Specific Git Rules
 
 ### Mandatory Pre-Commit Checks

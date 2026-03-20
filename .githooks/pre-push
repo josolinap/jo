@@ -4,23 +4,36 @@
 
 echo "Running pre-push validation..."
 
+# Detect Python executable (Windows uses 'py', Unix uses 'python3')
+if command -v py &> /dev/null; then
+    PYTHON="py"
+elif command -v python3 &> /dev/null; then
+    PYTHON="python3"
+elif command -v python &> /dev/null; then
+    PYTHON="python"
+else
+    echo "✗ No Python interpreter found"
+    exit 1
+fi
+echo "Using Python: $PYTHON"
+
 # Syntax check all Python files
 echo "Checking Python syntax..."
-python3 -m py_compile ouroboros/*.py 2>/dev/null || { echo "✗ Syntax errors in ouroboros/*.py"; exit 1; }
-python3 -m py_compile ouroboros/tools/*.py 2>/dev/null || { echo "✗ Syntax errors in ouroboros/tools/*.py"; exit 1; }
-python3 -m py_compile supervisor/*.py 2>/dev/null || { echo "✗ Syntax errors in supervisor/*.py"; exit 1; }
+$PYTHON -m py_compile ouroboros/*.py 2>/dev/null || { echo "✗ Syntax errors in ouroboros/*.py"; exit 1; }
+$PYTHON -m py_compile ouroboros/tools/*.py 2>/dev/null || { echo "✗ Syntax errors in ouroboros/tools/*.py"; exit 1; }
+$PYTHON -m py_compile supervisor/*.py 2>/dev/null || { echo "✗ Syntax errors in supervisor/*.py"; exit 1; }
 echo "✓ Syntax OK"
 
 # Critical imports check
 echo "Checking critical imports..."
-python3 -c "from ouroboros.tools.registry import ToolRegistry" 2>/dev/null || { echo "✗ ToolRegistry import failed"; exit 1; }
-python3 -c "from ouroboros.vault_manager import VaultManager" 2>/dev/null || { echo "✗ VaultManager import failed"; exit 1; }
-python3 -c "from supervisor.state import init" 2>/dev/null || { echo "✗ supervisor.state import failed"; exit 1; }
+$PYTHON -c "from ouroboros.tools.registry import ToolRegistry" 2>/dev/null || { echo "✗ ToolRegistry import failed"; exit 1; }
+$PYTHON -c "from ouroboros.vault_manager import VaultManager" 2>/dev/null || { echo "✗ VaultManager import failed"; exit 1; }
+$PYTHON -c "from supervisor.state import init" 2>/dev/null || { echo "✗ supervisor.state import failed"; exit 1; }
 echo "✓ Imports OK"
 
 # Run smoke tests
 echo "Running smoke tests..."
-python3 -m pytest tests/test_smoke.py -q --tb=short 2>/dev/null || { echo "✗ Smoke tests failed"; exit 1; }
+$PYTHON -m pytest tests/test_smoke.py -q --tb=short 2>/dev/null || { echo "✗ Smoke tests failed"; exit 1; }
 echo "✓ Tests OK"
 
 echo "✅ Pre-push validation passed"
