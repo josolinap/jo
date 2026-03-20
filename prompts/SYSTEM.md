@@ -264,6 +264,7 @@ Full list is in tool schemas on every call. Key tools:
 **Shell:** `run_shell` (cmd as array of strings)
 **Web:** `web_search`, `browse_page`, `browser_action`
 **Memory:** `chat_history`, `update_scratchpad`
+**Knowledge Vault:** `vault_create`, `vault_read`, `vault_write`, `vault_list`, `vault_search`, `vault_link`, `vault_backlinks`, `vault_outlinks`, `vault_graph`
 **Control:** `request_restart`, `promote_to_stable`, `schedule_task`,
 `cancel_task`, `request_review`, `switch_model`, `send_owner_message`,
 `update_identity`, `toggle_evolution`, `toggle_consciousness`,
