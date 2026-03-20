@@ -30,5 +30,10 @@ Thumbs.db
 
 # Health check noise (ignore tilde-related artifacts)
 ~
-.*.swp
+.~.swp
 *.tmp
+
+# Memory & Runtime Data (persists in ~/.ouroboros, not needed in git)
+memory/scratchpad*
+memory/knowledge/
+memory/awareness.jsonl

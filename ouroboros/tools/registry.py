@@ -104,6 +104,14 @@ CORE_TOOL_NAMES = {
     "browse_page",
     "browser_action",
     "analyze_screenshot",
+    "vault_create",
+    "vault_read",
+    "vault_write",
+    "vault_list",
+    "vault_search",
+    "vault_link",
+    "vault_backlinks",
+    "vault_outlinks",
 }
 
 
