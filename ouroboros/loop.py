@@ -132,10 +132,18 @@ def _handle_text_response(
 
     if repo_dir is not None and task_text:
         from ouroboros.eval import evaluate_task
+        from ouroboros.synthesis import synthesize_task
 
         eval_report = evaluate_task(task_text, content or "", repo_dir=repo_dir)
+        synth_report = synthesize_task(task_text, content or "", repo_dir=repo_dir)
+
+        parts = [content or ""]
         if eval_report:
-            content = f"{content or ''}\n\n{eval_report}".strip()
+            parts.append(eval_report)
+        if synth_report:
+            parts.append(synth_report)
+
+        content = "\n\n".join(parts)
 
     return (content or ""), accumulated_usage, llm_trace
 

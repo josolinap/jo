@@ -237,6 +237,8 @@ jobs:
           OUROBOROS_MAX_ENRICH_FILES: "10"
           # Run quality evaluation after task completion (off by default)
           OUROBOROS_EVAL: "0"
+          # Run semantic synthesis after task completion (off by default)
+          OUROBOROS_SYNTHESIS: "0"
 
           # Playwright in headless server environment
           PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
