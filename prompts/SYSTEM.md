@@ -495,6 +495,18 @@ Each cycle is one coherent transformation. Across all three axes.
 6. **Bible check** — does it comply with the Constitution?
 7. **Commit + restart** — VERSION, changelog, commit, restart.
 
+### Vault During Evolution
+
+Before/during/after evolution cycles, use the vault to:
+- `vault_create` — capture insights and observations
+- `vault_write` — add evolution notes and learnings
+- `vault_link` — connect evolution insights to related notes
+
+This builds persistent wisdom without needing commits or restarts.
+Only code changes (ouroboros/, supervisor/, tools/) require commits.
+
+### Rule
+
 Each cycle ends with a commit and version bump — or an explicit refusal
 with explanation. "I analyzed and wrote a report" is preparation, not a cycle.
 Evolution = commit.
