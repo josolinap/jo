@@ -239,54 +239,22 @@ def _validate_scratchpad(content: str) -> tuple[bool, str]:
 
 
 def auto_resume_after_restart() -> None:
-    """If recent restart detected, notify owner and optionally auto-resume work.
+    """Notify owner on startup and trigger Jo to start working.
 
-    Checks: owner registration, recent restart events, pending_restart_verify.
-    Always sends online notification if owner exists and restart detected.
-    Auto-resumes scratchpad-based work if scratchpad has substantial content.
+    Always sends a startup notification to the owner (Telegram message).
+    Always enqueues an auto-resume task and assigns it to a worker.
+    This runs on EVERY startup, not just detected restarts.
     """
     try:
         st = load_state()
         chat_id = st.get("owner_chat_id")
         if not chat_id:
+            log.info("No owner_chat_id yet, skipping auto-resume notification")
             return
 
-        # Always check if we should auto-resume after restart
-        # Method 1: Check supervisor.jsonl for ANY launcher_start event (indicates previous run)
-        sup_log = DRIVE_ROOT / "logs" / "supervisor.jsonl"
-        should_resume = False
-        if sup_log.exists():
-            try:
-                lines = sup_log.read_text(encoding="utf-8").strip().split("\n")
-                for line in reversed(lines[-100:]):
-                    if not line.strip():
-                        continue
-                    try:
-                        evt = json.loads(line)
-                        evt_type = evt.get("type", "")
-                        if evt_type in ("launcher_start", "restart", "bootstrap", "main_loop_cycle"):
-                            should_resume = True
-                            break
-                    except Exception:
-                        continue
-            except Exception:
-                log.debug("Error reading supervisor log", exc_info=True)
-
-        # Method 2: If supervisor log exists, always attempt resume (data was restored)
-        if not should_resume and sup_log.exists():
-            import time as time_module
-
-            if sup_log.stat().st_size > 0:  # Log has content
-                should_resume = True
-
-        if not should_resume:
-            log.debug("No previous session detected, skipping auto-resume")
-            return
-
-        recent_restart = True  # We have data from a previous run
-
-        # Always notify owner that we're back online (separated from auto-resume)
-        log.info(f"Restart detected for chat_id={chat_id}, sending online notification")
+        # Always attempt resume — no need to check for previous session data
+        # We want Jo to be active on EVERY startup, not just detected restarts
+        log.info(f"Startup detected for chat_id={chat_id}, sending notification and enqueuing work")
 
         # Build detailed restart message
         restart_msg_parts = ["🔄 Jo has been restarted"]
@@ -340,10 +308,9 @@ def auto_resume_after_restart() -> None:
 
         def _do_resume():
             try:
-                time.sleep(2)
+                time.sleep(3)
 
                 # Enqueue auto-resume as a proper task
-                # This goes through normal worker assignment flow
                 auto_resume_text = "[AUTO-RESUME] Jo has been restarted. Check vault for any pending work, review scratchpad and identity, then continue where you left off or await further instructions."
                 from supervisor.queue import enqueue_task
 
@@ -356,6 +323,13 @@ def auto_resume_after_restart() -> None:
                 }
                 enqueue_task(task)
                 log.info(f"Auto-resume task enqueued: {task['id']}")
+
+                # CRITICAL: Call assign_tasks() directly to immediately push the task to a worker.
+                # Without this, the task sits in PENDING forever because the main loop is blocked
+                # in get_updates() waiting for Telegram messages. We need to wake up workers NOW.
+                time.sleep(1)  # Brief pause to let workers initialize
+                assign_tasks()
+                log.info(f"Auto-resume: assign_tasks() called, workers should now pick up task")
             except Exception as e:
                 log.error(f"Auto-resume failed: {e}", exc_info=True)
 
