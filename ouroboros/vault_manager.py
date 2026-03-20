@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import pathlib
@@ -23,6 +24,7 @@ class VaultManager:
         self.parser = WikilinkParser()
         self._graph_cache: Optional[Dict[str, Any]] = None
         self._index: Dict[str, ParsedNote] = {}
+        self._integrity_path = self.vault_root / ".vault" / "integrity.json"
 
     @property
     def graph_cache_path(self) -> pathlib.Path:
@@ -356,11 +358,11 @@ class VaultManager:
         graph = self.get_graph_data()
         lines = ["digraph vault {"]
         for node in graph["nodes"]:
-            node_id = node["id"].replace('"', '\"')
+            node_id = node["id"].replace('"', '"')
             lines.append(f'    "{node_id}" [label="{node_id}"];')
         for link in graph["links"]:
-            source = link["source"].replace('"', '\"')
-            target = link["target"].replace('"', '\"')
+            source = link["source"].replace('"', '"')
+            target = link["target"].replace('"', '"')
             lines.append(f'    "{source}" -> "{target}";')
         lines.append("}")
         return "\n".join(lines)
@@ -374,10 +376,107 @@ class VaultManager:
         # Copy all files and directories from self.vault_root to self.repo_vault_path
         # Use shutil.copytree with dirs_exist_ok=True
         import shutil
+
         shutil.copytree(self.vault_root, self.repo_vault_path, dirs_exist_ok=True)
 
-    def ensure_vault_structure(self) -> None:
-        """Create vault directory structure if it doesn't exist."""
-        (self.vault_root / ".vault").mkdir(parents=True, exist_ok=True)
-        for folder in ["concepts", "projects", "tools", "journal"]:
-            (self.vault_root / folder).mkdir(parents=True, exist_ok=True)
+    def compute_checksum(self, file_path: pathlib.Path) -> str:
+        """Compute SHA256 checksum of a file."""
+        sha256 = hashlib.sha256()
+        try:
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    sha256.update(chunk)
+            return sha256.hexdigest()
+        except Exception as e:
+            log.warning(f"Failed to compute checksum for {file_path}: {e}")
+            return ""
+
+    def check_integrity(self) -> Dict[str, Any]:
+        """Check vault integrity and return report."""
+        self.ensure_vault_structure()
+        integrity_data = self._load_integrity()
+        stored_checksums = integrity_data.get("checksums", {})
+        current_checksums = {}
+        issues = []
+
+        for md_file in self.vault_root.rglob("*.md"):
+            if ".vault" in md_file.parts:
+                continue
+            rel_path = str(md_file.relative_to(self.vault_root))
+            checksum = self.compute_checksum(md_file)
+            current_checksums[rel_path] = checksum
+
+            if rel_path not in stored_checksums:
+                issues.append(f"New file not in integrity log: {rel_path}")
+            elif stored_checksums[rel_path] != checksum:
+                issues.append(f"Checksum mismatch: {rel_path}")
+
+        removed_files = set(stored_checksums.keys()) - set(current_checksums.keys())
+        for f in removed_files:
+            issues.append(f"File removed: {f}")
+
+        return {
+            "healthy": len(issues) == 0,
+            "issues": issues,
+            "files_checked": len(current_checksums),
+            "last_check": utc_now_iso(),
+        }
+
+    def update_integrity(self) -> None:
+        """Update integrity checksums for all vault files."""
+        self.ensure_vault_structure()
+        checksums = {}
+        for md_file in self.vault_root.rglob("*.md"):
+            if ".vault" in md_file.parts:
+                continue
+            rel_path = str(md_file.relative_to(self.vault_root))
+            checksums[rel_path] = self.compute_checksum(md_file)
+
+        integrity_data = {
+            "checksums": checksums,
+            "last_updated": utc_now_iso(),
+        }
+
+        try:
+            self._integrity_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._integrity_path, "w") as f:
+                json.dump(integrity_data, f, indent=2)
+            log.info(f"Updated integrity log with {len(checksums)} files")
+        except Exception as e:
+            log.warning(f"Failed to update integrity log: {e}")
+
+    def _load_integrity(self) -> Dict[str, Any]:
+        """Load integrity data from disk."""
+        if self._integrity_path.exists():
+            try:
+                with open(self._integrity_path) as f:
+                    return json.load(f)
+            except Exception as e:
+                log.warning(f"Failed to load integrity data: {e}")
+        return {"checksums": {}}
+
+    def detect_duplicates(self) -> List[Dict[str, Any]]:
+        """Detect potential duplicate notes (same name stem)."""
+        duplicates = []
+        seen_names: Dict[str, List[pathlib.Path]] = {}
+
+        for md_file in self.vault_root.rglob("*.md"):
+            if ".vault" in md_file.parts:
+                continue
+            stem = md_file.stem
+            base_name = stem.rsplit("_", 1)[0]
+            if base_name not in seen_names:
+                seen_names[base_name] = []
+            seen_names[base_name].append(md_file)
+
+        for base_name, paths in seen_names.items():
+            if len(paths) > 1:
+                duplicates.append(
+                    {
+                        "base_name": base_name,
+                        "files": [str(p.relative_to(self.vault_root)) for p in paths],
+                        "count": len(paths),
+                    }
+                )
+
+        return duplicates

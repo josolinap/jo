@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 def _vault_path(ctx: ToolContext) -> pathlib.Path:
-    return ctx.drive_path("vault")
+    return ctx.repo_path("vault")
 
 
 def _get_vault(ctx: ToolContext) -> VaultManager:
@@ -198,6 +198,47 @@ def _vault_ensure(ctx: ToolContext) -> str:
     vault = _get_vault(ctx)
     vault.ensure_vault_structure()
     return "OK: Vault structure ready"
+
+
+def _vault_verify(ctx: ToolContext) -> str:
+    """Check vault integrity and detect duplicates."""
+    vault = _get_vault(ctx)
+
+    integrity = vault.check_integrity()
+    duplicates = vault.detect_duplicates()
+
+    lines = ["## Vault Integrity Report", ""]
+
+    if integrity["healthy"]:
+        lines.append("Status: **Healthy**")
+    else:
+        lines.append("Status: **Issues Found**")
+        for issue in integrity["issues"]:
+            lines.append(f"- {issue}")
+
+    lines.append(f"")
+    lines.append(f"Files checked: {integrity['files_checked']}")
+    lines.append(f"Last check: {integrity['last_check']}")
+
+    if duplicates:
+        lines.append("")
+        lines.append("### Potential Duplicates")
+        for dup in duplicates:
+            lines.append(f"- `{dup['base_name']}`: {dup['count']} files")
+            for f in dup["files"]:
+                lines.append(f"  - {f}")
+    else:
+        lines.append("")
+        lines.append("No duplicates detected.")
+
+    return "\n".join(lines)
+
+
+def _vault_integrity_update(ctx: ToolContext) -> str:
+    """Update vault integrity checksums."""
+    vault = _get_vault(ctx)
+    vault.update_integrity()
+    return "OK: Integrity checksums updated"
 
 
 def get_tools() -> List[ToolEntry]:
@@ -385,5 +426,23 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}, "required": []},
             },
             _vault_ensure,
+        ),
+        ToolEntry(
+            "vault_verify",
+            {
+                "name": "vault_verify",
+                "description": "Check vault integrity (checksums) and detect duplicates.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _vault_verify,
+        ),
+        ToolEntry(
+            "vault_integrity_update",
+            {
+                "name": "vault_integrity_update",
+                "description": "Update vault integrity checksums. Run after bulk changes.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _vault_integrity_update,
         ),
     ]

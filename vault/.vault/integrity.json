@@ -1,0 +1,15 @@
+{
+  "checksums": {
+    "README.md": "e8632af0d4762e64aa1e2f547201a8d3c8512c7893409a3628784a92d5aea426",
+    "concepts\\architecture.md": "f4449a1c6ab05494628c1acc2fa864732bd59f6c3268fa6c45d43e87c157b206",
+    "concepts\\bible_md.md": "7188598f7ce8f9e0bac1146dbd59b2fa5d8b839ec07323a2bc11991b4b4c2134",
+    "concepts\\identity.md": "18c715a4cf38616b440aad6e4e2a5cb77acdb8347fc45fe3bda97591a21e8d8a",
+    "concepts\\test_vault_write.md": "00f563ac40cfc850fd6f890a4d91804237de1906ff8e8fe0731983b2683a61bc",
+    "concepts\\tools.md": "2eef5a5b804f8af0641fa724aaac87770e054673075bff3d6ffe4b16ed62efda",
+    "journal\\vault_git_storage_test.md": "fa7bcad9b3c8a0cfbad94cef3d28e30169ce8d720055a9e143cacb249622aa0a",
+    "projects\\jo_knowledge_map.md": "0c4bd5892c37910e29b961bc090734cb82fc1747a37a17a73dc3bada3e6f564e",
+    "projects\\pipeline_architecture.md": "73a11f20f716e9d187a7aecea487245cc755734a62bfe50ad5b70e4ebf41f67c",
+    "tasks\\system_review_task.md": "b152bd5c7b50e60f0be84d160eb7c49decd4fe0b09974aeea15d6365573e9e6b"
+  },
+  "last_updated": "2026-03-20T22:53:33.274756+00:00"
+}

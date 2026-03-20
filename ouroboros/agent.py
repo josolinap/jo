@@ -871,6 +871,12 @@ class OuroborosAgent:
                 st["evolution_consecutive_failures"] = 0
             else:
                 st["evolution_consecutive_failures"] = int(st.get("evolution_consecutive_failures", 0)) + 1
+                failures = st["evolution_consecutive_failures"]
+                if failures >= 2:
+                    log.warning(
+                        f"EVOLUTION HEALTH ALERT: {failures} consecutive failures. "
+                        f"Consider pausing evolution mode and reviewing recent commits."
+                    )
 
             self._save_state_fn(st)
 
