@@ -228,6 +228,16 @@ jobs:
           DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}
 
+          # --- New features (from Kong-inspired pipeline) ---
+          # Normalize code before LLM processing (removes noise, reduces tokens)
+          OUROBOROS_NORMALIZE_CODE: "1"
+          # Pre-fetch relevant context before LLM calls
+          OUROBOROS_ENRICH_CONTEXT: "1"
+          # Max files to pre-fetch for context enrichment
+          OUROBOROS_MAX_ENRICH_FILES: "10"
+          # Run quality evaluation after task completion (off by default)
+          OUROBOROS_EVAL: "0"
+
           # Playwright in headless server environment
           PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
 

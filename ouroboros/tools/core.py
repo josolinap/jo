@@ -39,6 +39,12 @@ def _repo_read(ctx: ToolContext, path: str) -> str:
     try:
         result = read_text(ctx.repo_path(path))
         _auto_track_verification(ctx, "repo_read", path)
+        from ouroboros.normalizer import get_normalizer
+
+        normalizer = get_normalizer()
+        if normalizer.is_enabled():
+            file_type = path.split(".")[-1] if "." in path else "text"
+            result = normalizer.normalize(result, file_type)
         return result
     except FileNotFoundError:
         return f"⚠️ File not found: {path}"

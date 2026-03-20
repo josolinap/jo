@@ -123,10 +123,20 @@ def _handle_text_response(
     content: Optional[str],
     llm_trace: Dict[str, Any],
     accumulated_usage: Dict[str, Any],
+    task_text: Optional[str] = None,
+    repo_dir: Optional[pathlib.Path] = None,
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """Handle LLM response without tool calls (final response)."""
     if content and content.strip():
         llm_trace["assistant_notes"].append(content.strip()[:320])
+
+    if repo_dir is not None and task_text:
+        from ouroboros.eval import evaluate_task
+
+        eval_report = evaluate_task(task_text, content or "", repo_dir=repo_dir)
+        if eval_report:
+            content = f"{content or ''}\n\n{eval_report}".strip()
+
     return (content or ""), accumulated_usage, llm_trace
 
 
@@ -560,6 +570,22 @@ def run_llm_loop(
                 if summarize_info.get("auto_summarized"):
                     emit_progress(f"📝 [Memory] Auto-summarized: {summarize_info.get('reason', '')}")
 
+                from ouroboros.context_enricher import enrich_messages
+
+                task_text = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text = m.get("content", "")
+                        break
+                if task_text:
+                    task_type = (
+                        "code"
+                        if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
+                        else "general"
+                    )
+                    repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+                    messages = enrich_messages(messages, task_text, task_type, repo_dir)
+
             if round_idx == 1:
                 from ouroboros.tools.agent_coordinator import _coordinator
 
@@ -724,7 +750,13 @@ Version: {skill.version}
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls:
-                return _handle_text_response(content, llm_trace, accumulated_usage)
+                task_text = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text = m.get("content", "")
+                        break
+                repo_dir = pathlib.Path(os.environ.get("REPO_DIR", ".")) if drive_root else None
+                return _handle_text_response(content, llm_trace, accumulated_usage, task_text, repo_dir)
 
             messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
 
