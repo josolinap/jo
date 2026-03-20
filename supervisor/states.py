@@ -3,7 +3,8 @@ from typing import Dict
 import json
 
 # Define the Drive root directory
-DRIVE_ROOT = Path.home() / ".ouroboros"
+DRIVE_ROOT = Path.home() / ".jo_data"
+
 
 def load_state() -> Dict:
     state_path = DRIVE_ROOT / "state" / "state.json"

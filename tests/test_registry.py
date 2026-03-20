@@ -5,7 +5,7 @@ from ouroboros.tools.registry import ToolRegistry
 
 @pytest.fixture
 def registry():
-    return ToolRegistry(repo_dir=pathlib.Path("."), drive_root=pathlib.Path.home() / ".ouroboros")
+    return ToolRegistry(repo_dir=pathlib.Path("."), drive_root=pathlib.Path.home() / ".jo_data")
 
 
 class TestToolValidation:

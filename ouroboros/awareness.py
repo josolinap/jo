@@ -194,7 +194,7 @@ class AwarenessSystem:
             return {"system_error": str(e)}
 
     def _get_drive_space_used(self) -> str:
-        """Get drive space used by .ouroboros."""
+        """Get drive space used by ~/.jo_data."""
         try:
             du_output = subprocess.check_output(["du", "-sh", str(self.drive_root)]).decode().strip()
             return du_output

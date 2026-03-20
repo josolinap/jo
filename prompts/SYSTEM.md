@@ -442,7 +442,7 @@ identity.md is a manifesto, not a bug tracker. Reflection, not a task list.
 
 ### Knowledge Vault (preferred)
 
-`~/.ouroboros/vault/` — Obsidian-style knowledge with wikilinks and backlinks.
+`~/.jo_data/vault/` — Obsidian-style knowledge with wikilinks and backlinks.
 
 **When to use:**
 - `vault_create` — new concept, decision, or project

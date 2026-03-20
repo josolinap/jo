@@ -56,7 +56,7 @@ def orphan():
 @pytest.fixture
 def temp_drive(tmp_path):
     """Create a temporary drive root."""
-    drive = tmp_path / ".ouroboros"
+    drive = tmp_path / ".jo_data"
     drive.mkdir()
     (drive / "memory").mkdir()
     return drive
@@ -290,7 +290,7 @@ class TestErrorHandling:
         assert "Unknown tool" in result
 
     def test_invalid_json_in_arguments(self, registry):
-        ctx = ToolContext(repo_dir=pathlib.Path("."), drive_root=pathlib.Path.home() / ".ouroboros")
+        ctx = ToolContext(repo_dir=pathlib.Path("."), drive_root=pathlib.Path.home() / ".jo_data")
         # This would fail at the JSON parsing level
         # We can't easily test this through the registry interface
         pass
