@@ -23,15 +23,21 @@ def _get_vault(ctx: ToolContext) -> VaultManager:
 
 
 def _sync_vault_to_repo(ctx: ToolContext, vault: VaultManager, action: str) -> str:
-    """Sync vault changes to repo and commit."""
+    """Commit vault changes to repo.
+
+    If vault is in repo (vault_root == repo_vault_path), just commit.
+    If vault is external (vault_root != repo_vault_path), sync first then commit.
+    """
     if vault.repo_vault_path is None:
         return ""
 
     try:
         from ouroboros.tools.git import _repo_commit_push
 
-        # Sync vault files to repo
-        vault.sync_to_repo()
+        # Only sync if vault is stored separately from repo
+        needs_sync = vault.vault_root.resolve() != vault.repo_vault_path.resolve()
+        if needs_sync:
+            vault.sync_to_repo()
 
         # Commit vault changes
         commit_msg = f"vault: {action}"
