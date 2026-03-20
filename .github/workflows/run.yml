@@ -7,6 +7,7 @@ concurrency:
 
 # Opt into Node.js 24 (Node.js 20 deprecated)
 env:
+  HOME: /home/runner
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # Permissions for git push operations (Jo creates tags/commits)
@@ -113,7 +114,7 @@ jobs:
       - name: Restore Jo data
         uses: actions/cache@v4
         with:
-          path: ~/.jo_data
+          path: /home/runner/.jo_data
           key: jo-data-${{ github.ref_name }}
           restore-keys: |
             jo-data-
@@ -123,14 +124,18 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Initialize vault structure
         run: |
+          JO_DATA="/home/runner/.jo_data"
+          
           # Check what was restored from cache
           echo "=== Cache debug ==="
-          if [ -d ~/.jo_data ]; then
+          echo "HOME=$HOME"
+          echo "JO_DATA=$JO_DATA"
+          if [ -d "$JO_DATA" ]; then
             echo "jo_data exists"
-            ls -la ~/.jo_data/
-            if [ -d ~/.jo_data/vault ]; then
+            ls -la "$JO_DATA/"
+            if [ -d "$JO_DATA/vault" ]; then
               echo "vault exists"
-              ls -laR ~/.jo_data/vault/
+              ls -laR "$JO_DATA/vault/"
             else
               echo "vault NOT found in cache"
             fi
@@ -139,9 +144,9 @@ jobs:
           fi
           echo "=== End cache debug ==="
           
-          # Initialize vault structure
-          mkdir -p ~/.jo_data/vault/{concepts,projects,tools,journal}
-          mkdir -p ~/.jo_data/vault/.vault
+          # Initialize vault structure using explicit path
+          mkdir -p /home/runner/.jo_data/vault/{concepts,projects,tools,journal}
+          mkdir -p /home/runner/.jo_data/vault/.vault
           echo "Vault structure ready"
 
       # -----------------------------------------------------------------------
@@ -187,7 +192,7 @@ jobs:
           # Disable pre-push tests in CI (pytest runs separately)
           OUROBOROS_PRE_PUSH_TESTS: "0"
           # Persist data across runs via GitHub Actions cache
-          DATA_ROOT: ~/.jo_data
+          DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}
 
           # Playwright in headless server environment
@@ -221,7 +226,7 @@ jobs:
       - name: Save Jo data
         uses: actions/cache@v4
         with:
-          path: ~/.jo_data
+          path: /home/runner/.jo_data
           key: jo-data-${{ github.ref_name }}
           save-always: true
 
