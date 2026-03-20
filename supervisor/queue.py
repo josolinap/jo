@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level config (set via init())
 # ---------------------------------------------------------------------------
-DRIVE_ROOT: pathlib.Path = pathlib.Path.home() / ".ouroboros"
+DRIVE_ROOT: pathlib.Path = pathlib.Path.home() / ".jo_data"
 SOFT_TIMEOUT_SEC: int = 600
 HARD_TIMEOUT_SEC: int = 1800
 HEARTBEAT_STALE_SEC: int = 120

@@ -212,7 +212,7 @@ def _system_map(ctx: ToolContext, format: str = "text") -> str:
 
     lines.append("# System Map\n")
 
-    drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", pathlib.Path.home() / ".ouroboros"))
+    drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", pathlib.Path.home() / ".jo_data"))
 
     lines.append(f"**Drive Root:** `{drive_root}`")
     lines.append(f"**Repo Dir:** `{ctx.repo_dir}`")
@@ -296,7 +296,7 @@ def _system_map(ctx: ToolContext, format: str = "text") -> str:
 def _system_map_json(ctx: ToolContext) -> str:
     """System map in JSON format for programmatic use."""
     tools = _get_registry_tools(ctx)
-    drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", pathlib.Path.home() / ".ouroboros"))
+    drive_root = pathlib.Path(os.environ.get("DRIVE_ROOT", pathlib.Path.home() / ".jo_data"))
 
     result = {
         "tools": tools,

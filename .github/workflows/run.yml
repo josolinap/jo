@@ -111,7 +111,7 @@ jobs:
       - name: Restore Jo data
         uses: actions/cache@v4
         with:
-          path: ~/.ouroboros
+          path: ~/.jo_data
           key: jo-data-dev-${{ github.run_id }}
           restore-keys: |
             jo-data-dev-
@@ -156,7 +156,7 @@ jobs:
           # Disable pre-push tests in CI (pytest runs separately)
           OUROBOROS_PRE_PUSH_TESTS: "0"
           # Persist data across runs via GitHub Actions cache
-          DATA_ROOT: ~/.ouroboros
+          DATA_ROOT: ~/.jo_data
           REPO_DIR: ${{ github.workspace }}
 
           # Playwright in headless server environment
@@ -189,7 +189,7 @@ jobs:
       - name: Save Jo data
         uses: actions/cache@v4
         with:
-          path: ~/.ouroboros
+          path: ~/.jo_data
           key: jo-data-dev-${{ github.run_id }}
           save-always: true
 

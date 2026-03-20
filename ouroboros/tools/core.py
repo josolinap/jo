@@ -394,7 +394,7 @@ def get_tools() -> List[ToolEntry]:
             "drive_read",
             {
                 "name": "drive_read",
-                "description": "Read a UTF-8 text file from local storage (relative to ~/.ouroboros/).",
+                "description": "Read a UTF-8 text file from local storage (relative to ~/.jo_data/).",
                 "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
             },
             _drive_read,

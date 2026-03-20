@@ -11,7 +11,7 @@ class AwarenessSystem:
         if repo_root is None:
             repo_root = str(Path.cwd())
         if drive_root is None:
-            drive_root = str(Path.home() / ".ouroboros")
+            drive_root = str(Path.home() / ".jo_data")
         self.repo_root = Path(repo_root)
         self.drive_root = Path(drive_root)
         self.log_path = self.drive_root / "logs" / "awareness.jsonl"

@@ -35,7 +35,7 @@ from ouroboros.tools.registry import ToolEntry, ToolContext
 log = logging.getLogger(__name__)
 
 # Skill activation log path (can be overridden by environment)
-SKILL_LOG_PATH = os.environ.get("SKILL_LOG_PATH", "~/.ouroboros/skills_log.json")
+SKILL_LOG_PATH = os.environ.get("SKILL_LOG_PATH", "~/.jo_data/skills_log.json")
 
 
 def _get_skill_log_path() -> Path:

@@ -391,6 +391,6 @@ def initialize() -> None:
 
     # Get paths from environment variables (set by supervisor)
     repo_path = os.environ.get("REPO_DIR", os.getcwd())
-    drive_path = os.environ.get("DRIVE_ROOT", os.path.expanduser("~/.ouroboros"))
+    drive_path = os.environ.get("DRIVE_ROOT", os.path.expanduser("~/.jo_data"))
 
     _init_coordinator(pathlib.Path(repo_path), pathlib.Path(drive_path))

@@ -248,7 +248,7 @@ commands that expose env variables.
 - `supervisor/` — supervisor (state, telegram, queue, workers, git_ops, events)
 - `colab_launcher.py` — entry point
 
-### Local Storage (`~/.ouroboros/` or `data/`)
+### Local Storage (`~/.jo_data/`)
 - `state/state.json` — state (owner_id, budget, version).
 - `logs/` — logs (chat, progress, events, tools, supervisor).
 

@@ -118,7 +118,7 @@ def check_data_dir() -> dict:
     import os
 
     home = pathlib.Path.home()
-    data_root = pathlib.Path(os.environ.get("DATA_ROOT", home / ".ouroboros"))
+    data_root = pathlib.Path(os.environ.get("DATA_ROOT", home / ".jo_data"))
 
     if not data_root.exists():
         return {"exists": False}
@@ -143,7 +143,7 @@ def check_tools() -> dict:
 
         from ouroboros.tools.registry import ToolRegistry
 
-        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros"))
+        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".jo_data"))
 
         registry = ToolRegistry(repo_dir=repo_dir, drive_root=drive_root)
         tools = registry.available_tools()
@@ -161,7 +161,7 @@ def check_vault() -> dict:
     try:
         import os
 
-        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros"))
+        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".jo_data"))
         vault_dir = drive_root / "vault"
 
         if not vault_dir.exists():

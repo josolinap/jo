@@ -178,8 +178,8 @@ if str(ANTHROPIC_API_KEY or "").strip():
 # ----------------------------
 # 2) Setup storage paths
 # ----------------------------
-# Local/GitHub Actions: use DATA_ROOT env var or default ~/.ouroboros
-DRIVE_ROOT = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros")).resolve()
+# Local/GitHub Actions: use DATA_ROOT env var or default ~/.jo_data
+DRIVE_ROOT = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".jo_data")).resolve()
 REPO_DIR = pathlib.Path(os.environ.get("REPO_DIR", pathlib.Path.cwd())).resolve()
 
 for sub in ["state", "logs", "memory", "index", "locks", "archive"]:

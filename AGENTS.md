@@ -195,7 +195,7 @@ Tools auto-discovered from `ouroboros/tools/`. Each tool module should:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATA_ROOT` | `~/.ouroboros` | Root directory for all data storage |
+| `DATA_ROOT` | `~/.jo_data` | Root directory for all data storage |
 | `REPO_DIR` | Current working directory | Location of the Ouroboros repository |
 
 ---

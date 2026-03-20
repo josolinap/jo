@@ -112,7 +112,7 @@ Jo runs automatically in GitHub Actions. Just push to the `dev` branch and Jo wi
 | `OUROBOROS_HARD_TIMEOUT_SEC` | `1800` | Hard timeout for tasks (seconds) |
 | `OUROBOROS_NO_GIT_SYNC` | `false` | Set to `1` to disable git sync |
 | `OUROBOROS_PRE_PUSH_TESTS` | `1` | Set to `0` to disable pre-push tests |
-| `DATA_ROOT` | `~/.ouroboros` | Root directory for Jo's data storage |
+| `DATA_ROOT` | `~/.jo_data` | Root directory for Jo's data storage |
 | `REPO_DIR` | current dir | Location of the Jo repository |
 
 ### Setting Up Secrets
