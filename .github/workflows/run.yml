@@ -123,6 +123,23 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Initialize vault structure
         run: |
+          # Check what was restored from cache
+          echo "=== Cache debug ==="
+          if [ -d ~/.jo_data ]; then
+            echo "jo_data exists"
+            ls -la ~/.jo_data/
+            if [ -d ~/.jo_data/vault ]; then
+              echo "vault exists"
+              ls -laR ~/.jo_data/vault/
+            else
+              echo "vault NOT found in cache"
+            fi
+          else
+            echo "jo_data NOT found (fresh start)"
+          fi
+          echo "=== End cache debug ==="
+          
+          # Initialize vault structure
           mkdir -p ~/.jo_data/vault/{concepts,projects,tools,journal}
           mkdir -p ~/.jo_data/vault/.vault
           echo "Vault structure ready"
