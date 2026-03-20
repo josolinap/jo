@@ -220,6 +220,10 @@ jobs:
           OUROBOROS_NO_GIT_SYNC: "1"
           # Disable pre-push tests in CI (pytest runs separately)
           OUROBOROS_PRE_PUSH_TESTS: "0"
+          # Suppress internal progress messages to owner (show only model responses)
+          OUROBOROS_SUPPRESS_PROGRESS: "1"
+          # Spice injection interval (every N rounds, default 5 for less aggressive)
+          OUROBOROS_SPICE_INTERVAL: "5"
           # Persist data across runs via GitHub Actions cache
           DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}

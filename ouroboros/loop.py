@@ -629,26 +629,23 @@ Version: {skill.version}
 
             from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
 
-            if _previous_issues:
-                spice = get_spice_for_analysis(_previous_issues)
+            # Only inject targeted spice for HIGH severity issues (reduce spam)
+            high_severity_issues = [i for i in _previous_issues if i.severity == "high"]
+
+            if high_severity_issues:
+                spice = get_spice_for_analysis(high_severity_issues)
                 if spice:
                     messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
-                    # Build detailed message for owner
-                    issue = _previous_issues[0]
-                    issue_count = len(_previous_issues)
-                    details = issue.description[:100] if issue.description else "detected"
-                    emit_progress(
-                        f"[Quality Coach] Issue #{issue_count}: {issue.issue_type} ({issue.severity})\n"
-                        f"→ {details}\n"
-                        f"💡 Coaching: {spice[:80]}..."
-                    )
-                    # Clear after injection to prevent spam in next round
+                    # Log to internal logs only, don't bother owner
+                    log.info(f"[Spice] Targeted (high severity): {high_severity_issues[0].issue_type}")
+                    # Clear to prevent repeated injections
                     _previous_issues = []
             else:
-                spice = get_spice_for_round(round_idx, spice_interval=3)
+                # Less aggressive: every 5 rounds instead of 3
+                spice_interval = int(os.environ.get("OUROBOROS_SPICE_INTERVAL", "5"))
+                spice = get_spice_for_round(round_idx, spice_interval=spice_interval)
                 if spice:
                     messages.append({"role": "system", "content": f"[Spice] {spice}"})
-                    emit_progress(f"[Thinking Prompt] {spice[:100]}...")
 
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
             if pending_compaction is not None:

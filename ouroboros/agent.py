@@ -917,6 +917,12 @@ class OuroborosAgent:
 
     def _emit_progress(self, text: str) -> None:
         self._last_progress_ts = time.time()
+
+        # Suppress progress messages to owner if configured
+        if os.environ.get("OUROBOROS_SUPPRESS_PROGRESS", "1") == "1":
+            log.debug(f"[Progress] {text}")  # Still log internally
+            return
+
         if self._event_queue is None or self._current_chat_id is None:
             return
         try:
