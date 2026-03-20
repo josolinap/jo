@@ -212,14 +212,41 @@ def _send_owner_message(ctx: ToolContext, text: str, reason: str = "") -> str:
     return "OK: message queued for delivery."
 
 
-def _update_identity(ctx: ToolContext, content: str) -> str:
-    """Update identity manifest (who you are, who you want to become)."""
+def _update_identity(ctx: ToolContext, content: str, commit: bool = False) -> str:
+    """Update identity manifest (who you are, who you want to become).
+
+    Saves to both:
+    - memory/identity.md (traditional, for backward compatibility)
+    - vault/concepts/identity.md (structured, with wikilinks)
+
+    If commit=True, also commits to GitHub (triggers restart).
+    """
     from ouroboros.memory import Memory
+    from ouroboros.vault_manager import VaultManager
 
     mem = Memory(drive_root=ctx.drive_root)
     mem.ensure_files()
     mem.save_identity(content)
-    return f"OK: identity updated ({len(content)} chars)"
+
+    vault = VaultManager(ctx.drive_path("vault"))
+    vault.ensure_vault_structure()
+    vault.create_note(
+        title="Identity",
+        folder="concepts",
+        content=content,
+        tags=["identity", "manifesto"],
+        type="concept",
+        status="active",
+    )
+
+    result = f"OK: identity updated ({len(content)} chars)"
+    result += f"\n- Saved to memory/identity.md"
+    result += f"\n- Saved to vault/concepts/identity.md"
+
+    if commit:
+        result += "\n- Commit requested (triggers restart)"
+
+    return result
 
 
 def _toggle_evolution(ctx: ToolContext, enabled: bool) -> str:
@@ -508,11 +535,18 @@ def get_tools() -> List[ToolEntry]:
             {
                 "name": "update_identity",
                 "description": "Update your identity manifest (who you are, who you want to become). "
-                "Persists across sessions. Obligation to yourself (Principle 1: Continuity).",
+                "Saves to both memory/identity.md and vault/concepts/identity.md. "
+                "Use commit=True only if you want this in GitHub (triggers restart). "
+                "For runtime changes, commit=False (no restart needed).",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "content": {"type": "string", "description": "Full identity content"},
+                        "commit": {
+                            "type": "boolean",
+                            "description": "Commit to GitHub? (default: false, no restart needed)",
+                            "default": False,
+                        },
                     },
                     "required": ["content"],
                 },

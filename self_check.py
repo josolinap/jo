@@ -132,6 +132,57 @@ def check_data_dir() -> dict:
     return {"exists": True, "subdirs": status}
 
 
+def check_tools() -> dict:
+    """Check available tools by loading the registry."""
+    try:
+        import sys
+        import os
+
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        sys.path.insert(0, str(repo_dir))
+
+        from ouroboros.tools.registry import ToolRegistry
+
+        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros"))
+
+        registry = ToolRegistry(repo_dir=repo_dir, drive_root=drive_root)
+        tools = registry.available_tools()
+
+        return {
+            "total_tools": len(tools),
+            "tool_names": sorted(tools),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def check_vault() -> dict:
+    """Check vault system status."""
+    try:
+        import os
+
+        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".ouroboros"))
+        vault_dir = drive_root / "vault"
+
+        if not vault_dir.exists():
+            return {"initialized": False, "path": str(vault_dir)}
+
+        folders = {}
+        for folder in ["concepts", "projects", "tools", "journal"]:
+            folder_path = vault_dir / folder
+            if folder_path.exists():
+                notes = list(folder_path.glob("*.md"))
+                folders[folder] = {"note_count": len(notes), "notes": [n.stem for n in notes[:10]]}
+
+        return {
+            "initialized": True,
+            "path": str(vault_dir),
+            "folders": folders,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def run_self_check() -> dict:
     """Run all self-checks and return report."""
     report = {
@@ -146,6 +197,8 @@ def run_self_check() -> dict:
         "python_syntax": check_python_syntax(),
         "requirements": check_requirements(),
         "data_dir": check_data_dir(),
+        "tools": check_tools(),
+        "vault": check_vault(),
     }
     return report
 
@@ -197,6 +250,23 @@ def main():
         print("[OK] Data directory: Exists")
     else:
         print("[WARN] Data directory: Not found (first run?)")
+
+    # Tools
+    tools = report.get("tools", {})
+    if tools.get("error"):
+        print(f"[WARN] Tools: {tools['error']}")
+    else:
+        print(f"[*] Tools: {tools.get('total_tools', 0)} available")
+
+    # Vault
+    vault = report.get("vault", {})
+    if vault.get("error"):
+        print(f"[WARN] Vault: {vault['error']}")
+    elif vault.get("initialized"):
+        total_notes = sum(f.get("note_count", 0) for f in vault.get("folders", {}).values())
+        print(f"[*] Vault: Initialized ({total_notes} notes)")
+    else:
+        print("[*] Vault: Not yet initialized")
 
     print("\n" + "=" * 40)
 
