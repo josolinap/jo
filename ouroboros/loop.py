@@ -224,7 +224,9 @@ def _maybe_inject_self_check(
         f"This is not a hard limit — you decide. But be honest with yourself."
     )
     messages.append({"role": "system", "content": reminder})
-    emit_progress(f"Checkpoint {checkpoint_num} at round {round_idx}: ~{ctx_tokens} tokens, ${task_cost:.2f} spent")
+    emit_progress(
+        f"📍 Checkpoint {checkpoint_num} | Round {round_idx} | ~{ctx_tokens // 1000}k tokens | ${task_cost:.2f}"
+    )
 
 
 def _setup_dynamic_tools(tools_registry, tool_schemas, messages):
@@ -556,7 +558,7 @@ def run_llm_loop(
                 context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
                 messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
                 if summarize_info.get("auto_summarized"):
-                    emit_progress(f"Auto-summarized conversation: {summarize_info.get('reason', '')}")
+                    emit_progress(f"📝 [Memory] Auto-summarized: {summarize_info.get('reason', '')}")
 
             if round_idx == 1:
                 from ouroboros.tools.agent_coordinator import _coordinator
@@ -619,7 +621,7 @@ Version: {skill.version}
 {skill.post_task_prompt}"""
                             messages.append({"role": "system", "content": skill_prompt})
                             emit_progress(
-                                f"Skill activated: {skill.name.upper()} - {skill.description} (triggers: {matched_triggers})"
+                                f"🎯 [Skill] {skill.name.upper()} activated - {skill.description[:60]}... (triggers: {matched_triggers})"
                             )
                             _current_skill = skill
                             _last_reevaluation_round = round_idx
@@ -631,8 +633,14 @@ Version: {skill.version}
                 spice = get_spice_for_analysis(_previous_issues)
                 if spice:
                     messages.append({"role": "system", "content": f"[Targeted Spice] {spice}"})
+                    # Build detailed message for owner
+                    issue = _previous_issues[0]
+                    issue_count = len(_previous_issues)
+                    details = issue.description[:100] if issue.description else "detected"
                     emit_progress(
-                        f"[Spice] Targeted: {_previous_issues[0].issue_type if _previous_issues else 'unknown'}"
+                        f"[Quality Coach] Issue #{issue_count}: {issue.issue_type} ({issue.severity})\n"
+                        f"→ {details}\n"
+                        f"💡 Coaching: {spice[:80]}..."
                     )
                     # Clear after injection to prevent spam in next round
                     _previous_issues = []
@@ -640,6 +648,7 @@ Version: {skill.version}
                 spice = get_spice_for_round(round_idx, spice_interval=3)
                 if spice:
                     messages.append({"role": "system", "content": f"[Spice] {spice}"})
+                    emit_progress(f"[Thinking Prompt] {spice[:100]}...")
 
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
             if pending_compaction is not None:
@@ -688,7 +697,7 @@ Version: {skill.version}
                     )
 
                 fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
-                emit_progress(fallback_progress)
+                emit_progress(f"🔄 [Fallback] {active_model} → {fallback_model}")
 
                 msg, fallback_cost = _call_llm_with_retry(
                     llm,
@@ -757,7 +766,9 @@ Version: {skill.version}
                                     "content": analysis.feedback_for_next_round,
                                 }
                             )
-                            emit_progress(f"Quality feedback: {analysis.quality_score:.1%}")
+                            emit_progress(
+                                f"📊 Quality check: {analysis.quality_score:.0%} | Issues: {len(analysis.issues)} | {analysis.confidence} confidence"
+                            )
                             _quality_feedback_injected = True
             except Exception:
                 pass
@@ -777,7 +788,9 @@ Version: {skill.version}
                             "content": "[ESCALATION] You've been drifting for 5+ rounds. STOP analyzing. Either: (1) Make a decision NOW, or (2) Say you cannot complete the task and explain why.",
                         }
                     )
-                    emit_progress("[ESCALATION] Drift loop detected - forcing decision")
+                    emit_progress(
+                        "🚨 [ESCALATION] Stuck in loop for 5+ rounds. Forcing a decision or admitting blockers."
+                    )
                     # Clear issues to prevent further spice spam after escalation
                     _previous_issues = []
                     _current_issues = []
@@ -824,7 +837,9 @@ Version: {skill.version}
                         switch_hint = get_skill_switch_hint(relevance)
                         if switch_hint:
                             messages.append({"role": "system", "content": switch_hint})
-                            emit_progress(f"Skill re-evaluation: {relevance.reason}")
+                            emit_progress(
+                                f"🔄 [Strategy] {relevance.reason} | Switching to: {_current_skill.name if _current_skill else 'default'}"
+                            )
 
                         _current_skill = relevance.skill
                         _last_reevaluation_round = round_idx
