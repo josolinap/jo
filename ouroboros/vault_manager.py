@@ -22,11 +22,73 @@ log = logging.getLogger(__name__)
 class VaultManager:
     """Manages Jo's Obsidian-style vault with wikilinks and backlinks."""
 
-    def __init__(self, vault_root: pathlib.Path):
+    def __init__(self, vault_root: pathlib.Path, repo_dir: Optional[pathlib.Path] = None):
         self.vault_root = vault_root
+        self.repo_dir = repo_dir
         self.parser = WikilinkParser()
         self._graph_cache: Optional[Dict[str, Any]] = None
         self._index: Dict[str, ParsedNote] = {}
+
+    @property
+    def repo_vault_path(self) -> Optional[pathlib.Path]:
+        """Path to vault in repo (for git persistence)."""
+        if self.repo_dir is None:
+            return None
+        return self.repo_dir / "vault"
+
+    def sync_from_repo(self) -> str:
+        """Sync vault from repo to local cache. Returns status message."""
+        if self.repo_vault_path is None:
+            return "OK: No repo vault configured"
+
+        if not self.repo_vault_path.exists():
+            return "OK: Repo vault doesn't exist yet"
+
+        try:
+            self.ensure_vault_structure()
+
+            # Copy all markdown files from repo to local
+            for md_file in self.repo_vault_path.rglob("*.md"):
+                rel_path = md_file.relative_to(self.repo_vault_path)
+                local_path = self.vault_root / rel_path
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Only copy if repo version is newer or local doesn't exist
+                if not local_path.exists() or md_file.stat().st_mtime > local_path.stat().st_mtime:
+                    local_path.write_bytes(md_file.read_bytes())
+
+            self.invalidate_cache()
+            note_count = len(list(self.vault_root.rglob("*.md")))
+            return f"OK: Synced vault from repo ({note_count} notes)"
+        except Exception as e:
+            log.warning(f"Failed to sync from repo: {e}")
+            return f"⚠️ Sync from repo failed: {e}"
+
+    def sync_to_repo(self, commit_message: str = "vault: auto-sync") -> str:
+        """Commit vault changes to repo. Returns status message."""
+        if self.repo_vault_path is None:
+            return "OK: No repo vault configured"
+
+        try:
+            import shutil
+
+            # Ensure repo vault directory exists
+            self.repo_vault_path.mkdir(parents=True, exist_ok=True)
+
+            # Copy all vault content to repo vault
+            for md_file in self.vault_root.rglob("*.md"):
+                rel_path = md_file.relative_to(self.vault_root)
+                repo_path = self.repo_vault_path / rel_path
+                repo_path.parent.mkdir(parents=True, exist_ok=True)
+                repo_path.write_bytes(md_file.read_bytes())
+
+            # Commit to git
+            from ouroboros.tools.git import _repo_write_commit
+
+            return f"OK: Vault synced to repo (ready to commit: {commit_message})"
+        except Exception as e:
+            log.warning(f"Failed to sync to repo: {e}")
+            return f"⚠️ Sync to repo failed: {e}"
 
     @property
     def graph_cache_path(self) -> pathlib.Path:

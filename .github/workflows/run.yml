@@ -144,9 +144,12 @@ jobs:
           fi
           echo "=== End cache debug ==="
           
-          # Initialize vault structure using explicit path
+          # Initialize vault structure in local cache
           mkdir -p /home/runner/.jo_data/vault/{concepts,projects,tools,journal}
           mkdir -p /home/runner/.jo_data/vault/.vault
+          
+          # Ensure vault/ exists in repo workspace (for git persistence)
+          mkdir -p ${{ github.workspace }}/vault/{concepts,projects,tools,journal}
           echo "Vault structure ready"
 
       # -----------------------------------------------------------------------

@@ -18,7 +18,33 @@ def _vault_path(ctx: ToolContext) -> pathlib.Path:
 
 
 def _get_vault(ctx: ToolContext) -> VaultManager:
-    return VaultManager(_vault_path(ctx))
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else None
+    return VaultManager(_vault_path(ctx), repo_dir=repo_dir)
+
+
+def _sync_vault_to_repo(ctx: ToolContext, vault: VaultManager, action: str) -> str:
+    """Sync vault changes to repo and commit."""
+    if vault.repo_vault_path is None:
+        return ""
+
+    try:
+        from ouroboros.tools.git import _repo_commit_push
+
+        # Sync vault files to repo
+        vault.sync_to_repo()
+
+        # Commit vault changes
+        commit_msg = f"vault: {action}"
+        result = _repo_commit_push(ctx, commit_message=commit_msg, paths=["vault"])
+
+        if "OK:" in result:
+            return f" [{result}]"
+        elif "⚠️" in result:
+            return f" [Sync: {result}]"
+        return ""
+    except Exception as e:
+        log.warning(f"Failed to sync vault to repo: {e}")
+        return f" [Sync: {e}]"
 
 
 def _vault_create(
@@ -34,7 +60,8 @@ def _vault_create(
     vault = _get_vault(ctx)
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     path = vault.create_note(title=title, folder=folder, content=content, tags=tag_list, type=type, status=status)
-    return f"OK: Created {path}"
+    sync_msg = _sync_vault_to_repo(ctx, vault, f"create {title}")
+    return f"OK: Created {path}{sync_msg}"
 
 
 def _vault_read(ctx: ToolContext, note: str, include_backlinks: bool = False) -> str:
@@ -62,7 +89,9 @@ def _vault_write(ctx: ToolContext, note: str, content: str, mode: str = "append"
     """Write content to a vault note."""
     vault = _get_vault(ctx)
     if mode == "overwrite":
-        return vault.write_note(note, content, preserve_frontmatter=True)
+        result = vault.write_note(note, content, mode="overwrite")
+        sync_msg = _sync_vault_to_repo(ctx, vault, f"update {note}")
+        return f"{result}{sync_msg}"
     path = vault.resolve_path(note)
     if not path:
         return f"⚠️ Note not found: {note}"
@@ -71,7 +100,8 @@ def _vault_write(ctx: ToolContext, note: str, content: str, mode: str = "append"
         full_content = existing.rstrip() + "\n\n" + content
         path.write_text(full_content, encoding="utf-8")
         vault.invalidate_cache()
-        return f"OK: Appended to {path.name}"
+        sync_msg = _sync_vault_to_repo(ctx, vault, f"update {note}")
+        return f"OK: Appended to {path.name}{sync_msg}"
     except Exception as e:
         return f"⚠️ Error writing note: {e}"
 
@@ -158,7 +188,9 @@ def _vault_graph(ctx: ToolContext, format: str = "json") -> str:
 def _vault_delete(ctx: ToolContext, note: str) -> str:
     """Delete a vault note."""
     vault = _get_vault(ctx)
-    return vault.delete_note(note)
+    result = vault.delete_note(note)
+    sync_msg = _sync_vault_to_repo(ctx, vault, f"delete {note}")
+    return f"{result}{sync_msg}"
 
 
 def _vault_ensure(ctx: ToolContext) -> str:

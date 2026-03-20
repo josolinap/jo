@@ -365,7 +365,19 @@ def main() -> None:
     )
 
     # ----------------------------
-    # 6.1) Auto-resume after restart
+    # 6.1) Sync vault from repo
+    # ----------------------------
+    try:
+        from ouroboros.vault_manager import VaultManager
+
+        vault = VaultManager(DRIVE_ROOT / "vault", repo_dir=REPO_DIR)
+        sync_result = vault.sync_from_repo()
+        print(f"[vault] {sync_result}")
+    except Exception as e:
+        print(f"[vault] Startup sync failed: {e}")
+
+    # ----------------------------
+    # 6.2) Auto-resume after restart
     # ----------------------------
     auto_resume_after_restart()
 
