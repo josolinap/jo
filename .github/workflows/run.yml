@@ -107,14 +107,16 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 5. Restore Jo data from cache (state, logs, memory)
+      # NOTE: Uses stable key (branch name) so cache persists across runs.
+      # Each new workflow run restores the SAME cache and saves back to it.
       # -----------------------------------------------------------------------
       - name: Restore Jo data
         uses: actions/cache@v4
         with:
           path: ~/.jo_data
-          key: jo-data-dev-${{ github.run_id }}
+          key: jo-data-${{ github.ref_name }}
           restore-keys: |
-            jo-data-dev-
+            jo-data-
 
       # -----------------------------------------------------------------------
       # 5.1 Initialize vault structure if not exists
@@ -197,12 +199,13 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 6. Save Jo data to cache (state, logs, memory)
+      # Uses same stable key as restore so cache persists across runs
       # -----------------------------------------------------------------------
       - name: Save Jo data
         uses: actions/cache@v4
         with:
           path: ~/.jo_data
-          key: jo-data-dev-${{ github.run_id }}
+          key: jo-data-${{ github.ref_name }}
           save-always: true
 
       # -----------------------------------------------------------------------
