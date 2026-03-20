@@ -253,21 +253,25 @@ class VaultManager:
         """Get all notes with their metadata."""
         self.build_index()
         notes = []
-        for path_str, parsed in self._index.items():
-            notes.append(
-                {
-                    "title": parsed.title or parsed.path,
-                    "path": parsed.path,
-                    "aliases": parsed.aliases,
-                    "tags": parsed.tags,
-                    "type": parsed.frontmatter.get("type", "reference"),
-                    "status": parsed.frontmatter.get("status", "active"),
-                    "created": parsed.frontmatter.get("created", ""),
-                    "modified": parsed.frontmatter.get("modified", ""),
-                    "outlinks": [w.note_name for w in parsed.wikilinks],
-                    "backlink_count": len(self.get_backlinks(parsed.title)),
-                }
-            )
+        items_snapshot = list(self._index.items())
+        for path_str, parsed in items_snapshot:
+            try:
+                notes.append(
+                    {
+                        "title": parsed.title or parsed.path,
+                        "path": parsed.path,
+                        "aliases": parsed.aliases,
+                        "tags": parsed.tags,
+                        "type": parsed.frontmatter.get("type", "reference"),
+                        "status": parsed.frontmatter.get("status", "active"),
+                        "created": parsed.frontmatter.get("created", ""),
+                        "modified": parsed.frontmatter.get("modified", ""),
+                        "outlinks": [w.note_name for w in parsed.wikilinks],
+                        "backlink_count": len(self.get_backlinks(parsed.title)),
+                    }
+                )
+            except Exception as e:
+                log.warning(f"Failed to process note {path_str}: {e}")
         return notes
 
     def search(self, query: str, field: str = "content") -> List[Dict[str, Any]]:
