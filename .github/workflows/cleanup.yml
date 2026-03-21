@@ -1,0 +1,49 @@
+name: Cleanup Old Workflow Runs
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Manual trigger from GitHub UI
+    inputs:
+      keep_last:
+        description: 'Number of recent runs to keep'
+        required: false
+        default: '30'
+        type: string
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old workflow runs
+        run: |
+          # Get number of runs to keep (default 30)
+          KEEP_LAST=${1:-30}
+          
+          echo "Keeping last $KEEP_LAST completed runs..."
+          
+          # Get list of completed run IDs, skip first KEEP_LAST
+          RUN_IDS=$(gh run list --status completed --limit 500 --json databaseId | \
+            jq -r ".[${KEEP_LAST}:][].databaseId")
+          
+          if [ -z "$RUN_IDS" ]; then
+            echo "No old runs to delete."
+            exit 0
+          fi
+          
+          COUNT=$(echo "$RUN_IDS" | wc -l | tr -d ' ')
+          echo "Found $COUNT runs to delete."
+          
+          # Delete each run
+          echo "$RUN_IDS" | while read run_id; do
+            if [ -n "$run_id" ]; then
+              gh run delete "$run_id" && echo "Deleted run $run_id" || echo "Failed to delete run $run_id"
+            fi
+          done
+          
+          echo "Cleanup complete."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
