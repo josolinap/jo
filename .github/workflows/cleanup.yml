@@ -8,8 +8,9 @@ on:
 
 jobs:
   cleanup:
-    # Only run if the triggering workflow was successful
-    if: github.event.workflow_run.conclusion == 'success'
+    # Run on any workflow completion (success, cancelled, or failure)
+    # We want to clean up regardless of how the workflow ended
+    if: github.event.workflow_run.conclusion != 'in_progress'
     runs-on: ubuntu-latest
     steps:
       - name: Delete old completed runs
