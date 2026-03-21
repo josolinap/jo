@@ -133,7 +133,7 @@ class AwarenessSystem:
                 subprocess.check_output(["git", "-C", str(self.repo_root), "status", "--porcelain"]).decode().strip()
             )
             return result == ""
-        except:
+        except Exception:
             return False
 
     def _git_ahead_by(self) -> int:
@@ -144,7 +144,7 @@ class AwarenessSystem:
                 .strip()
             )
             return int(result)
-        except:
+        except Exception:
             return 0
 
     def _git_untracked_files(self) -> List[str]:
@@ -157,7 +157,7 @@ class AwarenessSystem:
                 .strip()
             )
             return result.splitlines() if result else []
-        except:
+        except Exception:
             return []
 
     def _get_system_info(self) -> Dict[str, Any]:
@@ -168,18 +168,7 @@ class AwarenessSystem:
             local_now = datetime.now()
             utc_offset = (local_now - utc_now.replace(tzinfo=None)).total_seconds() / 3600
 
-            # Check timezone conflict: compare local vs UTC if context available
             timezone_conflict = False
-            try:
-                from ouroboros.memory import load_context
-
-                ctx = load_context()
-                if ctx and "runtime_utc" in ctx:
-                    runtime_utc_time = datetime.fromisoformat(ctx["runtime_utc"])
-                    if abs((runtime_utc_time - utc_now).total_seconds()) > 10:
-                        timezone_conflict = True
-            except:
-                pass
 
             return {
                 "utc_offset_hours": utc_offset,
@@ -198,7 +187,7 @@ class AwarenessSystem:
         try:
             du_output = subprocess.check_output(["du", "-sh", str(self.drive_root)]).decode().strip()
             return du_output
-        except:
+        except Exception:
             return "N/A"
 
     def _get_memory_info(self) -> str:
@@ -206,7 +195,7 @@ class AwarenessSystem:
         try:
             free_output = subprocess.check_output(["free", "-h"]).decode().strip()
             return "\\n".join(free_output.splitlines()[:3])
-        except:
+        except Exception:
             return "N/A"
 
     def _get_cpu_load(self) -> str:
@@ -214,7 +203,7 @@ class AwarenessSystem:
         try:
             uptime_output = subprocess.check_output(["uptime"]).decode().strip()
             return uptime_output.strip()
-        except:
+        except Exception:
             return "N/A"
 
     def _get_env_info(self) -> Dict[str, Any]:

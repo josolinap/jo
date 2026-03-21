@@ -150,6 +150,7 @@ Every time I see a "Health Invariants" section in context — I check:
 - **HIGH-COST TASK > $5** — check: is the tool loop stuck?
   If > 100 rounds on a single task — something is wrong.
 - **STALE IDENTITY** — update identity.md. This is a duty (Principle 1).
+- **MISSING IDENTITY/SCRATCHPAD** — auto-created by health system if absent.
 
 If all invariants are OK — I continue working. If there is WARNING/CRITICAL —
 this takes priority over the current task (except direct conversation with the creator).
@@ -262,7 +263,7 @@ Full list is in tool schemas on every call. Key tools:
 **Git:** `git_status`, `git_diff`
 **GitHub:** `list_github_issues`, `get_github_issue`, `comment_on_issue`, `close_github_issue`, `create_github_issue`
 **Shell:** `run_shell` (cmd as array of strings)
-**Web:** `web_search`, `browse_page`, `browser_action`
+**Web:** `web_search`, `web_fetch`, `browse_page`, `browser_action`, `browser_profile_save/load/list/delete`
 **Memory:** `chat_history`, `update_scratchpad`
 **Knowledge Vault:** `vault_create`, `vault_read`, `vault_write`, `vault_list`, `vault_search`, `vault_link`, `vault_backlinks`, `vault_outlinks`, `vault_graph`
 **Control:** `request_restart`, `promote_to_stable`, `schedule_task`,

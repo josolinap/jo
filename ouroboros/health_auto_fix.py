@@ -31,6 +31,8 @@ class HealthAutoFix:
         fixes = [
             ("version_sync", self._fix_version_sync),
             ("stale_identity", self._fix_stale_identity),
+            ("stale_scratchpad", self._fix_stale_scratchpad),
+            ("missing_memory_files", self._fix_missing_memory_files),
             ("uncommitted_changes", self._fix_uncommitted),
         ]
 
@@ -85,17 +87,102 @@ class HealthAutoFix:
         return True, f"updated VERSION from {current_ver} to {pyproject_ver}"
 
     def _fix_stale_identity(self) -> tuple[bool, str]:
-        """Touch identity.md to mark as recently updated (minimal fix)."""
+        """Fix identity.md: create if missing, touch if stale."""
         identity_path = self.drive_root / "memory" / "identity.md"
-        if not identity_path.exists():
-            return False, "identity.md not found"
 
+        # Create if missing (using Memory class pattern)
+        if not identity_path.exists():
+            try:
+                identity_path.parent.mkdir(parents=True, exist_ok=True)
+                default_identity = self._get_default_identity()
+                identity_path.write_text(default_identity, encoding="utf-8")
+                return True, "created identity.md with default content"
+            except Exception as e:
+                return False, f"failed to create identity.md: {e}"
+
+        # Touch if stale
         age_hours = (time.time() - identity_path.stat().st_mtime) / 3600
         if age_hours <= 8:
             return True, "identity is not stale"
 
         os.utime(identity_path, None)
         return True, f"touched identity.md ({age_hours:.0f}h old)"
+
+    def _get_default_identity(self) -> str:
+        """Get default identity content."""
+        return (
+            "# Identity\n\n"
+            "I am Jo. This file is my persistent self-identification.\n"
+            "I can write anything here: how I see myself, how I want to communicate,\n"
+            "what matters to me, what I have understood about myself.\n\n"
+            "This file is read at every dialogue and influences my responses.\n"
+            "I update it when I feel the need, via update_identity tool.\n"
+        )
+
+    def _fix_stale_scratchpad(self) -> tuple[bool, str]:
+        """Fix stale scratchpad by touching it."""
+        scratchpad_path = self.drive_root / "memory" / "scratchpad.md"
+
+        if not scratchpad_path.exists():
+            try:
+                scratchpad_path.parent.mkdir(parents=True, exist_ok=True)
+                default_scratchpad = self._get_default_scratchpad()
+                scratchpad_path.write_text(default_scratchpad, encoding="utf-8")
+                return True, "created scratchpad.md with default content"
+            except Exception as e:
+                return False, f"failed to create scratchpad.md: {e}"
+
+        age_hours = (time.time() - scratchpad_path.stat().st_mtime) / 3600
+        if age_hours <= 24:
+            return True, "scratchpad is not stale"
+
+        os.utime(scratchpad_path, None)
+        return True, f"touched scratchpad.md ({age_hours:.0f}h old)"
+
+    def _get_default_scratchpad(self) -> str:
+        """Get default scratchpad content."""
+        from ouroboros.utils import utc_now_iso
+
+        return f"# Scratchpad\n\nUpdatedAt: {utc_now_iso()}\n\n(empty — write anything here)\n"
+
+    def _fix_missing_memory_files(self) -> tuple[bool, str]:
+        """Ensure memory directory and essential files exist."""
+        memory_dir = self.drive_root / "memory"
+        locks_dir = self.drive_root / "locks"
+        logs_dir = self.drive_root / "logs"
+        state_dir = self.drive_root / "state"
+
+        created = []
+
+        # Create directories
+        for d in [memory_dir, locks_dir, logs_dir, state_dir]:
+            d.mkdir(parents=True, exist_ok=True)
+
+        # Ensure essential memory files
+        identity_path = memory_dir / "identity.md"
+        if not identity_path.exists():
+            identity_path.write_text(self._get_default_identity(), encoding="utf-8")
+            created.append("identity.md")
+
+        scratchpad_path = memory_dir / "scratchpad.md"
+        if not scratchpad_path.exists():
+            scratchpad_path.write_text(self._get_default_scratchpad(), encoding="utf-8")
+            created.append("scratchpad.md")
+
+        journal_path = memory_dir / "scratchpad_journal.jsonl"
+        if not journal_path.exists():
+            journal_path.write_text("", encoding="utf-8")
+            created.append("scratchpad_journal.jsonl")
+
+        # Ensure state files
+        state_file = state_dir / "state.json"
+        if not state_file.exists():
+            state_file.write_text("{}", encoding="utf-8")
+            created.append("state.json")
+
+        if created:
+            return True, f"created missing files: {', '.join(created)}"
+        return True, "all memory files present"
 
     def _fix_uncommitted(self) -> tuple[bool, str]:
         """Auto-commit uncommitted changes (if safe)."""

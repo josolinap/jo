@@ -256,17 +256,47 @@ def _build_health_invariants(env: Any) -> str:
     except Exception:
         pass
 
-    # 4. Stale identity.md
+    # 4. Identity.md awareness (missing or stale)
     try:
         import time as _time
 
         identity_path = env.drive_path("memory/identity.md")
-        if identity_path.exists():
+        if not identity_path.exists():
+            checks.append("⚠️ MISSING IDENTITY — identity.md not found, will be auto-created")
+        else:
             age_hours = (_time.time() - identity_path.stat().st_mtime) / 3600
             if age_hours > 8:
                 checks.append(f"WARNING: STALE IDENTITY — identity.md last updated {age_hours:.0f}h ago")
             else:
                 checks.append("OK: identity.md recent")
+    except Exception:
+        pass
+
+    # 4b. Scratchpad awareness
+    try:
+        import time as _time
+
+        scratchpad_path = env.drive_path("memory/scratchpad.md")
+        if not scratchpad_path.exists():
+            checks.append("⚠️ MISSING SCRATCHPAD — scratchpad.md not found")
+        else:
+            age_hours = (_time.time() - scratchpad_path.stat().st_mtime) / 3600
+            if age_hours > 24:
+                checks.append(f"INFO: SCRATCHPAD STALE — {age_hours:.0f}h since last update")
+            elif age_hours > 1:
+                checks.append(f"OK: scratchpad updated {age_hours:.1f}h ago")
+    except Exception:
+        pass
+
+    # 4c. Memory directory health
+    try:
+        memory_dir = env.drive_path("memory")
+        required_files = ["identity.md", "scratchpad.md"]
+        missing = [f for f in required_files if not (memory_dir / f).exists()]
+        if missing:
+            checks.append(f"⚠️ MISSING MEMORY FILES — {', '.join(missing)} will be auto-created")
+        else:
+            checks.append("OK: memory files present")
     except Exception:
         pass
 
@@ -343,6 +373,45 @@ def _build_health_invariants(env: Any) -> str:
             )
         elif recent > 0 and total > 0:
             checks.append(f"OK: correctness tracking active ({recent} verifications in 24h, {total} total)")
+    except Exception:
+        pass
+
+    # 7. Session continuity awareness
+    try:
+        import time as _time
+
+        events_path = env.drive_path("logs/events.jsonl")
+        if events_path.exists():
+            try:
+                with events_path.open("rb") as f:
+                    f.seek(0, 2)
+                    f.seek(max(0, f.tell() - 10000))
+                    f.readline()
+                    last_lines = f.read().decode("utf-8", errors="replace").strip().split("\n")
+
+                last_event_time = None
+                for line in reversed(last_lines):
+                    if line.strip():
+                        try:
+                            evt = json.loads(line)
+                            if evt.get("ts"):
+                                last_event_time = _time.mktime(_time.strptime(evt["ts"][:19], "%Y-%m-%dT%H:%M:%S"))
+                                break
+                        except Exception:
+                            continue
+
+                if last_event_time:
+                    hours_since = (_time.time() - last_event_time) / 3600
+                    if hours_since < 0.1:
+                        checks.append("OK: session active (last event <6min ago)")
+                    elif hours_since < 1:
+                        checks.append(f"INFO: session idle ({int(hours_since * 60)}min since last event)")
+                    elif hours_since < 24:
+                        checks.append(f"INFO: session resumed ({hours_since:.1f}h since last event)")
+                    else:
+                        checks.append(f"INFO: fresh start ({hours_since:.0f}h since last event)")
+            except Exception:
+                pass
     except Exception:
         pass
 
