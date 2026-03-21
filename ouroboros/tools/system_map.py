@@ -187,12 +187,17 @@ def _derive_drive_paths(drive_root: pathlib.Path) -> Dict[str, Any]:
         p = drive_root / f
         paths[f] = _check_path_exists(p)
 
-    paths["vault"] = _check_path_exists(drive_root / "vault")
-    paths["vault/concepts"] = _check_path_exists(drive_root / "vault" / "concepts")
-    paths["vault/projects"] = _check_path_exists(drive_root / "vault" / "projects")
-    paths["vault/tools"] = _check_path_exists(drive_root / "vault" / "tools")
-    paths["vault/journal"] = _check_path_exists(drive_root / "vault" / "journal")
+    return paths
 
+
+def _derive_repo_paths(repo_dir: pathlib.Path) -> Dict[str, Any]:
+    """Derive repo paths including vault."""
+    paths = {}
+    paths["vault"] = _check_path_exists(repo_dir / "vault")
+    paths["vault/concepts"] = _check_path_exists(repo_dir / "vault" / "concepts")
+    paths["vault/projects"] = _check_path_exists(repo_dir / "vault" / "projects")
+    paths["vault/tools"] = _check_path_exists(repo_dir / "vault" / "tools")
+    paths["vault/journal"] = _check_path_exists(repo_dir / "vault" / "journal")
     return paths
 
 
@@ -248,10 +253,26 @@ def _system_map(ctx: ToolContext, format: str = "text") -> str:
         total_core = sum(1 for t in tools.values() if t["is_core"])
         lines.append(f"**Total:** {len(tools)} tools ({total_core} core, {len(tools) - total_core} extended)\n")
 
-    lines.append("## Drive Paths\n")
+    lines.append("## Drive Paths (~/.jo_data/)\n")
 
     paths = _derive_drive_paths(drive_root)
     for path_name, status in sorted(paths.items()):
+        if status.get("exists"):
+            if status.get("is_dir"):
+                lines.append(f"- [OK] `{path_name}/` (directory)")
+            else:
+                size = status.get("size_bytes", 0)
+                size_str = f" ({size:,} bytes)" if size else ""
+                lines.append(f"- [OK] `{path_name}`{size_str}")
+        else:
+            lines.append(f"- [MISSING] `{path_name}`")
+
+    lines.append("")
+    lines.append("## Repo Paths (repo/vault/ - git-tracked)\n")
+
+    repo_dir = pathlib.Path(ctx.repo_dir)
+    repo_paths = _derive_repo_paths(repo_dir)
+    for path_name, status in sorted(repo_paths.items()):
         if status.get("exists"):
             if status.get("is_dir"):
                 lines.append(f"- [OK] `{path_name}/` (directory)")

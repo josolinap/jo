@@ -228,7 +228,7 @@ def _update_identity(ctx: ToolContext, content: str, commit: bool = False) -> st
     mem.ensure_files()
     mem.save_identity(content)
 
-    vault = VaultManager(ctx.drive_path("vault"))
+    vault = VaultManager(ctx.repo_path("vault"))
     vault.ensure_vault_structure()
     vault.create_note(
         title="Identity",
