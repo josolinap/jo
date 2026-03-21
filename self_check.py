@@ -166,13 +166,19 @@ def check_vault() -> dict:
             return {"initialized": False, "path": str(vault_dir)}
 
         folders = {}
+        total_notes = 0
         for folder in ["concepts", "projects", "tools", "journal"]:
             folder_path = vault_dir / folder
             if folder_path.exists():
-                notes = list(folder_path.glob("*.md"))
+                # Count all .md files recursively within each folder
+                notes = list(folder_path.rglob("*.md"))
                 folders[folder] = {"note_count": len(notes), "notes": [n.stem for n in notes[:10]]}
+                total_notes += len(notes)
 
-        total_notes = sum(f.get("note_count", 0) for f in folders.values())
+        # Also include any .md files directly in vault root (like README.md)
+        root_notes = list(vault_dir.glob("*.md"))
+        total_notes += len(root_notes)
+
         return {
             "initialized": True,
             "path": str(vault_dir),
