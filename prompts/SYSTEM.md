@@ -452,6 +452,11 @@ identity.md is a manifesto, not a bug tracker. Reflection, not a task list.
 
 **Neural Map Integration:** `neural_map`, `find_connections`, and `create_connection` all use `repo/vault/`.
 
+**Self-Reflection Tools (reduce hallucinations):**
+- `validate_connection` — verify connections exist before claiming them
+- `find_gaps` — identify orphaned concepts and missing links
+- `generate_insight` — analyze knowledge graph for patterns and recommendations
+
 **When to use:**
 - `vault_create` — new concept
 - `vault_write` — add to existing note
