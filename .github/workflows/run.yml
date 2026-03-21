@@ -313,3 +313,31 @@ jobs:
             echo "⚠️ Trigger returned HTTP $HTTP_STATUS:"
             cat /tmp/gh_api_response.txt
           fi
+
+      # -----------------------------------------------------------------------
+      # 8. Cleanup: Delete old completed workflow runs (keep last 20)
+      # -----------------------------------------------------------------------
+      - name: Cleanup old workflow runs
+        if: always()
+        run: |
+          echo "🧹 Cleaning up old workflow runs..."
+
+          # Get completed runs older than the last 20, delete them
+          RUN_IDS=$(gh run list --status completed --limit 100 --json databaseId | \
+            jq -r '.[20:][].databaseId')
+
+          if [ -z "$RUN_IDS" ]; then
+            echo "No old runs to delete."
+            exit 0
+          fi
+
+          COUNT=$(echo "$RUN_IDS" | grep -c . || echo "0")
+          echo "Deleting $COUNT old completed runs..."
+
+          for run_id in $RUN_IDS; do
+            if [ -n "$run_id" ]; then
+              gh run delete "$run_id" 2>/dev/null || true
+            fi
+          done
+
+          echo "✅ Cleanup complete."
