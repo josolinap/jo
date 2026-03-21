@@ -24,7 +24,8 @@ tags: [tools, capabilities, extensions]
 
 ### Shell & Web
 - `run_shell` - command execution
-- `web_search`, `browse_page`, `browser_action`
+- `web_search`, `web_fetch`, `browse_page`, `browser_action`
+- Profile persistence: `browser_profile_save`, `browser_profile_load`, `browser_profile_list`, `browser_profile_delete`
 
 ### Memory & Knowledge
 - `chat_history`, `update_scratchpad`
