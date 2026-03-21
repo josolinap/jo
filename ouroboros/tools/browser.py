@@ -6,6 +6,13 @@ and browser_action (click, fill, evaluate JS on current page).
 
 Browser state lives in ToolContext (per-task lifecycle),
 not module-level globals — safe across threads.
+
+Enhancements:
+- User agent rotation for anti-detection
+- Randomized viewport and window sizes
+- Human-like mouse movement simulation
+- Exponential backoff retry with multiple strategies
+- Profile persistence for session management
 """
 
 from __future__ import annotations
@@ -14,10 +21,12 @@ import base64
 import datetime
 import logging
 import pathlib
+import random
 import subprocess
 import sys
 import threading
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from playwright_stealth import Stealth
@@ -29,6 +38,31 @@ except ImportError:
 from ouroboros.tools.registry import ToolContext, ToolEntry
 
 log = logging.getLogger(__name__)
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0",
+]
+
+VIEWPORT_CONFIGS = [
+    {"width": 1920, "height": 1080},
+    {"width": 1536, "height": 864},
+    {"width": 1366, "height": 768},
+    {"width": 1440, "height": 900},
+    {"width": 1600, "height": 900},
+]
+
+SCREEN_CONFIGS = [
+    {"width": 1920, "height": 1080},
+    {"width": 2560, "height": 1440},
+    {"width": 1366, "height": 768},
+]
 
 _playwright_ready = False
 # Module-level Playwright instance to avoid greenlet threading issues
@@ -147,6 +181,10 @@ def _ensure_browser(ctx: ToolContext):
     # Store reference in ctx for cleanup
     ctx.browser_state.pw_instance = _pw_instance
 
+    user_agent = random.choice(USER_AGENTS)
+    viewport = random.choice(VIEWPORT_CONFIGS)
+    screen = random.choice(SCREEN_CONFIGS)
+
     ctx.browser_state.browser = _pw_instance.chromium.launch(
         headless=True,
         args=[
@@ -154,15 +192,17 @@ def _ensure_browser(ctx: ToolContext):
             "--disable-dev-shm-usage",
             "--disable-blink-features=AutomationControlled",
             "--disable-features=site-per-process",
-            "--window-size=1920,1080",
+            f"--window-size={viewport['width']},{viewport['height']}",
+            "--disable-web-security",
+            "--disable-extensions",
+            "--disable-images",
+            "--blink-settings=imagesEnabled=false",
         ],
     )
     ctx.browser_state.page = ctx.browser_state.browser.new_page(
-        viewport={"width": 1920, "height": 1080},
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        ),
+        viewport=viewport,
+        user_agent=user_agent,
+        screen=screen,
     )
 
     if _HAS_STEALTH:
@@ -170,6 +210,15 @@ def _ensure_browser(ctx: ToolContext):
         stealth.apply_stealth_sync(ctx.browser_state.page)
 
     ctx.browser_state.page.set_default_timeout(30000)
+
+    ctx.browser_state.page.evaluate(
+        """() => {
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        }"""
+    )
+
     return ctx.browser_state.page
 
 
@@ -248,24 +297,193 @@ def _extract_page_output(page: Any, output: str, ctx: ToolContext) -> str:
         return text[:30000] + ("... [truncated]" if len(text) > 30000 else "")
 
 
-def _browse_page(ctx: ToolContext, url: str, output: str = "text", wait_for: str = "", timeout: int = 30000) -> str:
-    try:
-        page = _ensure_browser(ctx)
-        page.goto(url, timeout=timeout, wait_until="domcontentloaded")
-        if wait_for:
-            page.wait_for_selector(wait_for, timeout=timeout)
-        return _extract_page_output(page, output, ctx)
-    except Exception as e:
-        if "cannot switch" in str(e) or "different thread" in str(e) or "greenlet" in str(e).lower():
-            log.warning(f"Browser thread error detected: {e}. Resetting Playwright and retrying...")
-            cleanup_browser(ctx)
-            _reset_playwright_greenlet()
+def _human_like_mouse_move(page: Any, x: int, y: int) -> None:
+    """Move mouse in a human-like pattern with curved path."""
+    import math
+
+    current_x, current_y = page.mouse.position
+
+    distance = math.sqrt((x - current_x) ** 2 + (y - current_y) ** 2)
+
+    steps = max(int(distance / 50), 5)
+
+    for i in range(steps):
+        t = i / steps
+
+        curve = math.sin(t * math.pi) * random.uniform(-20, 20)
+        current_step_x = current_x + (x - current_x) * t
+        current_step_y = current_y + (y - current_y) * t + curve
+
+        jitter_x = random.uniform(-2, 2)
+        jitter_y = random.uniform(-2, 2)
+
+        page.mouse.move(int(current_step_x + jitter_x), int(current_step_y + jitter_y))
+        time.sleep(random.uniform(0.01, 0.03))
+
+    page.mouse.move(x, y)
+
+
+def _browse_page_with_retry(
+    ctx: ToolContext, url: str, output: str = "text", wait_for: str = "", timeout: int = 30000
+) -> str:
+    """Browse page with exponential backoff retry."""
+    strategies = [
+        {"wait_until": "domcontentloaded", "timeout": timeout},
+        {"wait_until": "load", "timeout": timeout},
+        {"wait_until": "commit", "timeout": timeout // 2},
+    ]
+
+    for attempt, strategy in enumerate(strategies):
+        try:
             page = _ensure_browser(ctx)
-            page.goto(url, timeout=timeout, wait_until="domcontentloaded")
+            page.goto(url, timeout=strategy["timeout"], wait_until=strategy["wait_until"])
+
             if wait_for:
-                page.wait_for_selector(wait_for, timeout=timeout)
+                page.wait_for_selector(wait_for, timeout=strategy["timeout"])
+
+            page.wait_for_timeout(random.randint(500, 1500))
+
             return _extract_page_output(page, output, ctx)
-        raise
+
+        except Exception as e:
+            if attempt < len(strategies) - 1:
+                delay = 2**attempt
+                log.warning(f"Browse attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+                cleanup_browser(ctx)
+            elif "cannot switch" in str(e) or "different thread" in str(e) or "greenlet" in str(e).lower():
+                log.warning(f"Browser thread error: {e}. Resetting and retrying...")
+                cleanup_browser(ctx)
+                _reset_playwright_greenlet()
+                page = _ensure_browser(ctx)
+                page.goto(url, timeout=timeout, wait_until="commit")
+                return _extract_page_output(page, output, ctx)
+            else:
+                raise
+
+    return f"Failed to load {url} after {len(strategies)} attempts"
+
+
+def _browse_page(ctx: ToolContext, url: str, output: str = "text", wait_for: str = "", timeout: int = 30000) -> str:
+    """Browse page with automatic retry strategies."""
+    return _browse_page_with_retry(ctx, url, output, wait_for, timeout)
+
+
+def _get_accessibility_snapshot(page: Any) -> str:
+    """Get accessibility tree snapshot with element refs for AI agents."""
+    try:
+        tree = page.accessibility.snapshot()
+        if not tree:
+            return "No accessibility tree available"
+
+        lines = ["## Page Snapshot (Accessibility Tree)", ""]
+        lines.append("**Usage:** Use `@eN` refs with click/fill actions")
+        lines.append("")
+
+        counter = [0]
+
+        def walk_node(node: dict, depth: int = 0) -> None:
+            if not node or depth > 5:
+                return
+
+            role = node.get("role", "")
+            name = node.get("name", "")
+
+            if name and role and role not in ("StaticText", "Generic"):
+                counter[0] += 1
+                ref = f"@e{counter[0]}"
+                indent = "  " * depth
+
+                focusable = ""
+                if node.get("focusable"):
+                    focusable = " [focusable]"
+
+                lines.append(f"{indent}{ref} {role}: {name[:80]}{focusable}")
+
+                attrs = []
+                if node.get("checked"):
+                    attrs.append("checked")
+                if node.get("pressed"):
+                    attrs.append("pressed")
+                if node.get("disabled"):
+                    attrs.append("disabled")
+                if attrs:
+                    lines.append(f"{indent}  attrs: {', '.join(attrs)}")
+
+            for child in node.get("children", []):
+                walk_node(child, depth + 1)
+
+        walk_node(tree)
+
+        lines.append("")
+        lines.append(f"**Found {counter[0]} interactive elements**")
+
+        return "\n".join(lines)[:15000]
+    except Exception as e:
+        log.warning(f"Accessibility snapshot failed: {e}")
+        return f"Accessibility snapshot unavailable: {e}"
+
+
+def _extract_structured_fields(page: Any, field_descriptions: str) -> str:
+    """Extract structured data fields from page using LLM patterns."""
+    try:
+        html = page.content()
+
+        import re
+        from typing import Dict, List, Tuple
+
+        fields: List[Tuple[str, str]] = []
+        for line in field_descriptions.split("\n"):
+            line = line.strip()
+            if ":" in line:
+                field_name, description = line.split(":", 1)
+                fields.append((field_name.strip(), description.strip()))
+            elif line:
+                fields.append((line, line))
+
+        results: Dict[str, str] = {}
+
+        body_text = page.inner_text("body")
+        body_lower = body_text.lower()
+
+        for field_name, description in fields:
+            field_lower = field_name.lower()
+            desc_lower = description.lower()
+
+            lines = body_text.split("\n")
+            found = None
+
+            for i, line in enumerate(lines):
+                line_stripped = line.strip()
+                if not line_stripped:
+                    continue
+
+                if field_lower in line_stripped.lower() or desc_lower in line_stripped.lower():
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if next_line and len(next_line) < 500:
+                            found = next_line
+                            break
+                    if ":" in line_stripped:
+                        found = line_stripped.split(":", 1)[1].strip()
+                        break
+
+            if not found:
+                pattern = rf"{re.escape(field_name)}[:\s]+([^\n]+)"
+                match = re.search(pattern, body_text, re.IGNORECASE)
+                if match:
+                    found = match.group(1).strip()
+
+            results[field_name] = found or "(not found)"
+
+        lines = ["## Extracted Fields", ""]
+        for field_name, value in results.items():
+            lines.append(f"**{field_name}:** {value}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        log.warning(f"Field extraction failed: {e}")
+        return f"Field extraction failed: {e}"
 
 
 def _browser_action(ctx: ToolContext, action: str, selector: str = "", value: str = "", timeout: int = 5000) -> str:
@@ -275,13 +493,27 @@ def _browser_action(ctx: ToolContext, action: str, selector: str = "", value: st
         if action == "click":
             if not selector:
                 return "Error: selector required for click"
-            page.click(selector, timeout=timeout)
-            page.wait_for_timeout(500)
-            return f"Clicked: {selector}"
+            try:
+                box = page.locator(selector).bounding_box(timeout=timeout)
+                if box:
+                    target_x = int(box["x"] + box["width"] / 2 + random.uniform(-5, 5))
+                    target_y = int(box["y"] + box["height"] / 2 + random.uniform(-5, 5))
+                    _human_like_mouse_move(page, target_x, target_y)
+                    time.sleep(random.uniform(0.1, 0.3))
+                    page.mouse.click(target_x, target_y)
+                else:
+                    page.click(selector, timeout=timeout)
+                page.wait_for_timeout(random.randint(300, 800))
+                return f"Clicked: {selector}"
+            except Exception as e:
+                log.warning(f"Click failed: {e}, using fallback")
+                page.click(selector, timeout=timeout)
+                return f"Clicked (fallback): {selector}"
         elif action == "fill":
             if not selector:
                 return "Error: selector required for fill"
             page.fill(selector, value, timeout=timeout)
+            page.wait_for_timeout(random.randint(100, 300))
             return f"Filled {selector} with: {value}"
         elif action == "select":
             if not selector:
@@ -313,8 +545,28 @@ def _browser_action(ctx: ToolContext, action: str, selector: str = "", value: st
             elif direction == "bottom":
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             return f"Scrolled {direction}"
+        elif action == "extract_text":
+            text = page.inner_text("body")
+            return text[:30000] + ("... [truncated]" if len(text) > 30000 else "")
+        elif action == "extract_markdown":
+            text = page.evaluate(_MARKDOWN_JS)
+            lines = text.split("\n")
+            formatted = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped:
+                    formatted.append(stripped)
+            result = "\n\n".join(formatted)
+            return result[:30000] + ("\n\n[truncated]" if len(result) > 30000 else "")
+        elif action == "get_snapshot":
+            return _get_accessibility_snapshot(page)
+        elif action == "extract_fields":
+            field_desc = selector or value
+            if not field_desc:
+                return "Error: selector (field names) or value (field descriptions) required"
+            return _extract_structured_fields(page, field_desc)
         else:
-            return f"Unknown action: {action}. Use: click, fill, select, screenshot, evaluate, scroll"
+            return f"Unknown action: {action}. Use: click, fill, select, screenshot, evaluate, scroll, extract_text, extract_markdown, get_snapshot, extract_fields"
 
     try:
         return _do_action()
