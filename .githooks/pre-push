@@ -36,4 +36,13 @@ echo "Running smoke tests..."
 $PYTHON -m pytest tests/test_smoke.py -q --tb=short 2>/dev/null || { echo "✗ Smoke tests failed"; exit 1; }
 echo "✓ Tests OK"
 
+# Optional: Run ruff linting if available
+if $PYTHON -m ruff check . >/dev/null 2>&1; then
+    echo "Running ruff linting..."
+    $PYTHON -m ruff check . || { echo "✗ Ruff linting failed"; exit 1; }
+    echo "✓ Ruff OK"
+else
+    echo "ℹ️ Ruff not installed (optional)"
+fi
+
 echo "✅ Pre-push validation passed"
