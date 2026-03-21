@@ -526,6 +526,173 @@ def _query_knowledge(ctx: ToolContext, query: str, max_results: int = 10) -> str
     return "\n".join(lines)
 
 
+def _validate_connection(ctx: ToolContext, source: str, target: str) -> str:
+    """Verify a connection exists between two concepts."""
+    neural_map = _build_unified_map(ctx)
+
+    source_lower = source.lower().replace(" ", "_")
+    target_lower = target.lower().replace(" ", "_")
+
+    source_id = _find_concept_id(neural_map, source_lower)
+    target_id = _find_concept_id(neural_map, target_lower)
+
+    if not source_id:
+        return f"❌ Source '{source}' not found in knowledge graph"
+    if not target_id:
+        return f"❌ Target '{target}' not found in knowledge graph"
+
+    connection = None
+    for conn in neural_map.connections:
+        if (conn.source == source_id and conn.target == target_id) or (
+            conn.source == target_id and conn.target == source_id
+        ):
+            connection = conn
+            break
+
+    if connection:
+        return f"✅ Connection verified: {source} → {target}\n**Type:** {connection.type}\n**Strength:** {connection.strength:.2f}"
+    else:
+        return f"❌ No connection found between '{source}' and '{target}'"
+
+
+def _find_concept_id(neural_map: NeuralMap, name: str) -> Optional[str]:
+    """Find concept ID by name."""
+    name_lower = name.lower()
+    for concept_id, concept in neural_map.concepts.items():
+        if name_lower in concept_id.lower() or name_lower in concept.name.lower():
+            return concept_id
+    return None
+
+
+def _find_gaps(ctx: ToolContext) -> str:
+    """Find gaps in the knowledge graph."""
+    from collections import defaultdict
+
+    neural_map = _build_unified_map(ctx)
+    lines = ["## Knowledge Graph Gaps", ""]
+
+    orphan_concepts = []
+    for concept_id, concept in neural_map.concepts.items():
+        if not neural_map._adjacency.get(concept_id):
+            orphan_concepts.append(concept)
+
+    if orphan_concepts:
+        lines.append(f"### Orphaned Concepts ({len(orphan_concepts)})")
+        lines.append("These have no connections:")
+        for c in orphan_concepts[:10]:
+            lines.append(f"- {c.name}")
+        lines.append("")
+
+    orphan_tools = []
+    for concept_id, concept in neural_map.concepts.items():
+        if concept.type == "tool" and not neural_map._adjacency.get(concept_id):
+            orphan_tools.append(concept)
+
+    if orphan_tools:
+        lines.append(f"### Orphaned Tools ({len(orphan_tools)})")
+        lines.append("Tools without documentation links:")
+        for t in orphan_tools[:10]:
+            lines.append(f"- {t.name}")
+        lines.append("")
+
+    principles_without_impl = []
+    principle_ids = [c for c in neural_map.concepts.keys() if "principle" in c.lower()]
+    for p_id in principle_ids:
+        if p_id not in neural_map._adjacency or not neural_map._adjacency.get(p_id):
+            principles_without_impl.append(neural_map.concepts[p_id])
+
+    if principles_without_impl:
+        lines.append(f"### Principles Without Implementation Links ({len(principles_without_impl)})")
+        for p in principles_without_impl:
+            lines.append(f"- {p.name}")
+
+    orphaned_concepts = [
+        c for c in neural_map.concepts.values() if c.type == "concept" and not neural_map._adjacency.get(c.id)
+    ]
+    if orphaned_concepts:
+        lines.append(f"### Unlinked Concepts ({len(orphaned_concepts)})")
+        for c in orphaned_concepts[:5]:
+            lines.append(f"- {c.name}")
+
+    if not orphan_concepts and not orphan_tools and not principles_without_impl:
+        lines.append("✅ No significant gaps found - knowledge graph is well-connected!")
+
+    return "\n".join(lines)
+
+
+def _generate_insight(ctx: ToolContext, focus_area: str = "all") -> str:
+    """Analyze knowledge graph and generate insights."""
+    neural_map = _build_unified_map(ctx)
+    lines = ["## Knowledge Graph Insights", ""]
+
+    total_concepts = len(neural_map.concepts)
+    total_connections = len(neural_map.connections)
+    lines.append(f"**Stats:** {total_concepts} concepts, {total_connections} connections")
+
+    avg_connections = 0.0
+    if total_connections > 0:
+        avg_connections = sum(len(v) for v in neural_map._adjacency.values()) / total_concepts
+        lines.append(f"**Avg connections per concept:** {avg_connections:.2f}")
+
+    hubs = []
+    for concept_id, connections in neural_map._adjacency.items():
+        if len(connections) >= 3:
+            concept = neural_map.concepts.get(concept_id)
+            if concept:
+                hubs.append((concept.name, len(connections)))
+
+    if hubs:
+        lines.append("")
+        lines.append("### Hub Concepts (most connected)")
+        for name, count in sorted(hubs, key=lambda x: -x[1])[:5]:
+            lines.append(f"- {name}: {count} connections")
+
+    if focus_area in ("all", "principles"):
+        principles = [c for c in neural_map.concepts.values() if "principle" in c.id.lower()]
+        if principles:
+            lines.append("")
+            lines.append("### Principles Analysis")
+            for p in principles:
+                conn_count = len(neural_map._adjacency.get(p.id, []))
+                lines.append(f"- {p.name}: {conn_count} connections")
+
+    if focus_area in ("all", "architecture"):
+        arch_related = [
+            c for c in neural_map.concepts.values() if "architecture" in c.id.lower() or "loop" in c.id.lower()
+        ]
+        if arch_related:
+            lines.append("")
+            lines.append("### Architecture Components")
+            for a in arch_related:
+                conn_count = len(neural_map._adjacency.get(a.id, []))
+                lines.append(f"- {a.name}: {conn_count} connections")
+
+    if focus_area in ("all", "self-reflection"):
+        reflection_related = [
+            c
+            for c in neural_map.concepts.values()
+            if any(x in c.id.lower() for x in ["audit", "deep_dive", "analysis", "neural"])
+        ]
+        if reflection_related:
+            lines.append("")
+            lines.append("### Self-Reflection Insights")
+            for r in reflection_related:
+                conn_count = len(neural_map._adjacency.get(r.id, []))
+                lines.append(f"- {r.name}: {conn_count} connections")
+
+    lines.append("")
+    lines.append("### Recommendations")
+    if avg_connections < 1:
+        lines.append("- Consider running weave_connection to create more links")
+    orphan_count = sum(1 for c in neural_map.concepts.values() if not neural_map._adjacency.get(c.id))
+    if orphan_count > 5:
+        lines.append(f"- {orphan_count} concepts are orphaned - add wikilinks to connect them")
+    if not hubs:
+        lines.append("- No hub concepts found - system may lack central architecture")
+
+    return "\n".join(lines)
+
+
 def get_tools() -> List[ToolEntry]:
     """Get neural mapping tools."""
     return [
@@ -631,6 +798,63 @@ def get_tools() -> List[ToolEntry]:
             },
             handler=_create_connection,
             timeout_sec=15,
+        ),
+        ToolEntry(
+            name="validate_connection",
+            schema={
+                "name": "validate_connection",
+                "description": (
+                    "Verify a connection exists between two concepts. Returns evidence for the connection "
+                    "and checks if it's still valid. Helps reduce hallucinations by confirming knowledge links."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "source": {"type": "string", "description": "Source concept or file"},
+                        "target": {"type": "string", "description": "Target concept or file"},
+                    },
+                    "required": ["source", "target"],
+                },
+            },
+            handler=_validate_connection,
+            timeout_sec=15,
+        ),
+        ToolEntry(
+            name="find_gaps",
+            schema={
+                "name": "find_gaps",
+                "description": (
+                    "Find gaps in the knowledge graph where connections should exist but don't. "
+                    "Identifies orphaned concepts, missing links between related ideas, and unreferenced tools. "
+                    "Use to discover what needs linking."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_find_gaps,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="generate_insight",
+            schema={
+                "name": "generate_insight",
+                "description": (
+                    "Analyze the knowledge graph to generate new insights. Reviews connections, identifies patterns, "
+                    "and proposes new understandings. Can help identify gaps and suggest areas for exploration. "
+                    "Reduces hallucinations by grounding insights in actual connections."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "focus_area": {
+                            "type": "string",
+                            "description": "Area to focus on: architecture, tools, principles, self-reflection (default: all)",
+                            "default": "all",
+                        },
+                    },
+                },
+            },
+            handler=_generate_insight,
+            timeout_sec=60,
         ),
         ToolEntry(
             name="query_knowledge",
