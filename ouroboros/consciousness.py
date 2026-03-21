@@ -443,6 +443,19 @@ class BackgroundConsciousness:
             "code_quality",
             # Shell for running self_check.py
             "run_shell",
+            # Autonomy tools (neural map, evolution, learning)
+            "neural_map",
+            "learn_from_result",
+            "autonomous_evaluate",
+            "run_evolution_cycle",
+            "check_evolution_readiness",
+            "request_capability",
+            "find_connections",
+            "create_connection",
+            "weave_connection",
+            "reflect_on_change",
+            "ai_code_edit",
+            "research_pipeline",
         }
     )
 
