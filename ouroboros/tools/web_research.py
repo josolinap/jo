@@ -148,13 +148,16 @@ def get_tools() -> List[ToolEntry]:
 
 
 def _web_search_handler(ctx: ToolContext, query: str, num_results: int = 10) -> str:
-    """Handle web search requests."""
+    """Handle web search requests with multiple fallback engines."""
     log.info(f"Web search: {query}")
 
-    try:
-        # Use DuckDuckGo (no API key needed)
-        result = run_cmd(["ddgr", "--json", "-n", str(num_results), query], cwd=ctx.repo_dir, timeout=30)
+    # Validate query
+    if not query or not query.strip():
+        return "⚠️ Search query cannot be empty. Please provide a search term."
 
+    query = query.strip()
+    try:
+        result = run_cmd(["ddgr", "--json", "-n", str(num_results), query], cwd=ctx.repo_dir, timeout=30)
         if result.strip():
             try:
                 results = json.loads(result)
@@ -173,29 +176,223 @@ def _web_search_handler(ctx: ToolContext, query: str, num_results: int = 10) -> 
                 return "\n".join(lines)
             except json.JSONDecodeError:
                 pass
+    except Exception:
+        pass  # ddgr not available, try alternatives
 
-        # Fallback: use curl to search
-        search_url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-        curl_result = run_cmd(["curl", "-s", search_url], cwd=ctx.repo_dir, timeout=30)
+    # Try Bing search (more reliable for curl)
+    bing_results = _search_bing(query, num_results)
+    if bing_results:
+        return bing_results
 
-        # Parse results (basic)
-        urls = re.findall(r'class="result__a"[^>]*href="([^"]*)"', curl_result)
-        titles = re.findall(r'class="result__a"[^>]*>([^<]*)', curl_result)
+    # Try DuckDuckGo HTML (fallback)
+    ddg_results = _search_duckduckgo(query, num_results)
+    if ddg_results:
+        return ddg_results
 
-        if not urls:
-            return f"No search results found for: {query}"
+    # Try Searx (open meta-search engine)
+    searx_results = _search_searx(query, num_results)
+    if searx_results:
+        return searx_results
 
-        lines = [f"## Search Results: {query}", ""]
-        for i, (title, url) in enumerate(zip(titles[:num_results], urls[:num_results]), 1):
-            lines.append(f"{i}. **{title}**")
-            lines.append(f"   {url}")
+    # Last resort: suggest using browse_page
+    return (
+        f"## Search Results: {query}\n\n"
+        f"Automated search is currently unavailable.\n\n"
+        f"To search manually, use:\n"
+        f'1. `browse_page(url="https://www.google.com/search?q={query.replace(" ", "+")}")`\n'
+        f'2. Then use `browse_action(action="extract_text")` to get results\n\n'
+        f"Alternatively, install ddgr for better search: `pip install ddgr` or `apt install ddgr`"
+    )
+
+
+def _search_bing(query: str, num_results: int) -> Optional[str]:
+    """Search using Bing with better URL extraction."""
+    try:
+        import urllib.parse
+        import html
+
+        encoded_query = urllib.parse.quote_plus(query)
+        search_url = f"https://www.bing.com/search?q={encoded_query}&count={num_results}"
+
+        result = run_cmd(
+            [
+                "curl",
+                "-s",
+                "-L",
+                "--max-time",
+                "15",
+                "-A",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                search_url,
+            ],
+            cwd=None,
+            timeout=20,
+        )
+
+        if not result or len(result) < 1000:
+            return None
+
+        items = []
+        item_blocks = re.findall(r'<li[^>]*class="[^"]*b_algo[^"]*"[^>]*>(.*?)</li>', result, re.DOTALL)
+
+        for block in item_blocks[:num_results]:
+            url_match = re.search(r'href="([^"]*)"', block)
+            title_match = re.search(r"<h2[^>]*><a[^>]*>([^<]*)</a>", block)
+            snippet_match = re.search(r'<p[^>]*class="[^"]*b_paractip[^"]*"[^>]*>([^<]*)</p>', block)
+
+            if url_match and title_match:
+                raw_url = url_match.group(1)
+                title = html.unescape(title_match.group(1).strip())
+                snippet = html.unescape(snippet_match.group(1).strip()) if snippet_match else ""
+
+                clean_url = _resolve_bing_redirect(raw_url)
+                items.append((clean_url, title, snippet))
+
+        if not items:
+            return None
+
+        lines = [
+            f"## Search Results: {query} (via Bing)",
+            "",
+            f"_{len(items)} results_",
+            "",
+        ]
+
+        for i, (url, title, snippet) in enumerate(items, 1):
+            lines.append(f"### {i}. {title}")
+            lines.append(f"**URL:** {url}")
+            if snippet:
+                lines.append(f"**Snippet:** {snippet[:200]}")
             lines.append("")
 
         return "\n".join(lines)
+    except Exception:
+        return None
 
-    except Exception as e:
-        log.warning(f"Web search failed: {e}")
-        return f"Search failed: {str(e)}. Note: Install 'ddgr' (DuckDuckGo CLI) for better results, or use web_search with alternative search engine."
+
+def _resolve_bing_redirect(url: str) -> str:
+    """Resolve Bing redirect URLs to final destination."""
+    import base64
+    import urllib.parse
+
+    if not url:
+        return ""
+
+    if "bing.com/ck/a" in url:
+        match = re.search(r"[?&]u=([^&]+)", url)
+        if match:
+            encoded = match.group(1)
+            try:
+                b64_data = encoded[2:] if encoded.startswith("a1") else encoded[1:]
+                padding = (4 - (len(b64_data) % 4)) % 4
+                b64_padded = b64_data + "=" * padding
+                decoded_b64 = base64.b64decode(b64_padded).decode("utf-8", errors="ignore")
+                if decoded_b64.startswith("http"):
+                    return decoded_b64
+                return urllib.parse.unquote(encoded)
+            except Exception:
+                return urllib.parse.unquote(encoded)
+    elif "bing.com/rd" in url:
+        match = re.search(r"[?&]q=([^&]+)", url)
+        if match:
+            decoded = urllib.parse.unquote(match.group(1))
+            return decoded
+
+    return urllib.parse.unquote(url)
+
+
+def _search_duckduckgo(query: str, num_results: int) -> Optional[str]:
+    """Search using DuckDuckGo HTML (fallback)."""
+    try:
+        import urllib.parse
+
+        encoded_query = urllib.parse.quote_plus(query)
+        search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+
+        result = run_cmd(
+            [
+                "curl",
+                "-s",
+                "-L",
+                "--max-time",
+                "15",
+                "-A",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                search_url,
+            ],
+            cwd=None,
+            timeout=20,
+        )
+
+        if not result or len(result) < 1000:
+            return None
+
+        # Try multiple patterns for DuckDuckGo HTML structure
+        # Pattern 1: result links
+        urls = re.findall(r'<a class="result__a" href="([^"]*)"', result)
+        titles = re.findall(r'<a class="result__a"[^>]*>([^<]*)', result)
+
+        # Pattern 2: Alternative structure
+        if not urls:
+            urls = re.findall(r'href="(https?://[^"]*)"[^>]*class="[^"]*result[^"]*"', result)
+            titles = re.findall(r'class="[^"]*result[^"]*"[^>]*>.*?<a[^>]*>([^<]*)', result, re.DOTALL)
+
+        if not urls:
+            return None
+
+        lines = [
+            f"## Search Results: {query} (via DuckDuckGo)",
+            "",
+        ]
+        for i, (url, title) in enumerate(zip(urls[:num_results], titles[:num_results]), 1):
+            clean_title = re.sub(r"<[^>]+>", "", title).strip()
+            lines.append(f"### {i}. {clean_title}")
+            lines.append(f"**URL:** {url}")
+            lines.append("")
+
+        return "\n".join(lines)
+    except Exception:
+        return None
+
+
+def _search_searx(query: str, num_results: int) -> Optional[str]:
+    """Search using Searx (open meta-search)."""
+    try:
+        import urllib.parse
+
+        encoded_query = urllib.parse.quote_plus(query)
+        search_url = f"https://searx.be/search?q={encoded_query}&format=json"
+
+        result = run_cmd(["curl", "-s", "-L", "--max-time", "15", search_url], cwd=None, timeout=20)
+
+        if not result:
+            return None
+
+        try:
+            data = json.loads(result)
+            results = data.get("results", [])
+            if not results:
+                return None
+
+            lines = [
+                f"## Search Results: {query} (via Searx)",
+                "",
+            ]
+            for i, r in enumerate(results[:num_results], 1):
+                title = r.get("title", "Untitled")
+                url = r.get("url", "")
+                content = r.get("content", "")[:150]
+                lines.append(f"### {i}. {title}")
+                lines.append(f"**URL:** {url}")
+                if content:
+                    lines.append(f"**Snippet:** {content}")
+                lines.append("")
+
+            return "\n".join(lines)
+        except json.JSONDecodeError:
+            return None
+    except Exception:
+        return None
 
 
 def _web_fetch_handler(ctx: ToolContext, url: str, extract_type: str = "text") -> str:
