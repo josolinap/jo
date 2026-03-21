@@ -388,6 +388,18 @@ def _get_task_result(ctx: ToolContext, task_id: str) -> str:
     status = data.get("status", "unknown")
     result = data.get("result", "")
     cost = data.get("cost_usd", 0)
+    description = data.get("description", f"Task {task_id}")
+
+    try:
+        from ouroboros.traceability import get_traceability_layer
+
+        traceability = get_traceability_layer(ctx)
+        traceability.on_task_completed(task_id, description, result[:500], status == "completed")
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"Traceability hook failed: {e}")
+
     return f"Task {task_id} [{status}]: cost=${cost:.2f}\n\n[BEGIN_SUBTASK_OUTPUT]\n{result}\n[END_SUBTASK_OUTPUT]"
 
 

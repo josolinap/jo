@@ -117,7 +117,10 @@ def _handle_task_done(evt: Dict[str, Any], ctx: Any) -> None:
             )
 
     if task_id:
+        task_data = ctx.RUNNING.pop(str(task_id), {})
         ctx.RUNNING.pop(str(task_id), None)
+    else:
+        task_data = {}
     if wid in ctx.WORKERS and ctx.WORKERS[wid].busy_task_id == task_id:
         ctx.WORKERS[wid].busy_task_id = None
     ctx.persist_queue_snapshot(reason="task_done")
@@ -129,12 +132,14 @@ def _handle_task_done(evt: Dict[str, Any], ctx: Any) -> None:
         results_dir.mkdir(parents=True, exist_ok=True)
         result_file = results_dir / f"{task_id}.json"
         if not result_file.exists():
+            task_desc = task_data.get("text", "")[:200] or task_data.get("description", "")[:200] or f"Task {task_id}"
             result_data = {
                 "task_id": task_id,
                 "status": "completed",
                 "result": "",
                 "cost_usd": float(evt.get("cost_usd", 0)),
                 "ts": evt.get("ts", ""),
+                "description": task_desc,
             }
             tmp_file = results_dir / f"{task_id}.json.tmp"
             tmp_file.write_text(json.dumps(result_data, ensure_ascii=False), encoding="utf-8")

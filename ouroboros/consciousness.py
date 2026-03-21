@@ -427,6 +427,13 @@ class BackgroundConsciousness:
             "knowledge_read",
             "knowledge_write",
             "knowledge_list",
+            # Vault tools (git-tracked knowledge)
+            "vault_read",
+            "vault_list",
+            "vault_search",
+            "vault_backlinks",
+            "vault_outlinks",
+            "vault_graph",
             # Read-only tools for awareness
             "web_search",
             "repo_read",
