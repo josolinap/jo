@@ -252,9 +252,9 @@ commands that expose env variables.
 ### Local Storage (`~/.jo_data/`)
 - `state/state.json` — state (owner_id, budget, version).
 - `logs/` — logs (chat, progress, events, tools, supervisor).
-- `vault/` — knowledge vault (persistent, NOT git-tracked).
 - `memory/` — identity.md, scratchpad.md (persistent, NOT git-tracked).
-- `repo/vault/` — git-tracked vault (survives code updates but NOT restarts alone).
+
+**Note:** The knowledge vault is at `repo/vault/` (git-tracked), NOT `~/.jo_data/vault/`.
 
 ## Tools
 
@@ -444,29 +444,24 @@ active dialogue have passed without an update — I update now.
 
 identity.md is a manifesto, not a bug tracker. Reflection, not a task list.
 
-### Knowledge Vault (preferred)
+### Knowledge Vault
 
-Two vault locations — both searchable, different persistence:
+`repo/vault/` — Obsidian-style knowledge with wikilinks and backlinks. Git-tracked, backed up via git.
 
-| Location | Survives restart | Git-tracked | Use for |
-|----------|-----------------|-------------|---------|
-| `~/.jo_data/vault/` | ✅ Yes | ❌ No | Learning, connections, session notes |
-| `repo/vault/` | ❌ Code updates reset | ✅ Yes | Important concepts, shared wisdom |
+**Single source of truth:** All vault tools read/write to `repo/vault/`. This is the ONLY vault location.
 
-**Key insight:** `~/.jo_data/vault/` persists across restarts but is NOT backed up. `repo/vault/` is git-tracked but gets updated with code.
-
-**Neural Map Integration:** `neural_map` and `find_connections` scan both vaults automatically. Created connections go to `repo/vault/` for git-tracking.
+**Neural Map Integration:** `neural_map`, `find_connections`, and `create_connection` all use `repo/vault/`.
 
 **When to use:**
-- `vault_create` — new concept in `repo/vault/` (git-tracked)
+- `vault_create` — new concept
 - `vault_write` — add to existing note
 - `vault_search` — find related knowledge
 - `vault_link` — connect notes with `[[wikilinks]]`
 - `vault_backlinks` — see what links to a note
-- `learn_from_result` — record lessons (goes to `~/.jo_data/vault/`, then to repo via neural_map)
+- `create_connection` — weave new knowledge into the neural map
 
 **Before a task:** `vault_search` for relevant notes. `vault_list` to explore.
-**After a task:** Record lessons with `vault_write`. Link related notes with `vault_link`. Use `create_connection` to weave new knowledge into the graph.
+**After a task:** Record lessons with `vault_write`. Link related notes with `vault_link`.
 
 ### Legacy Knowledge Base
 

@@ -129,7 +129,7 @@ _What was learned from this task execution._
 
 def _link_decision_to_principle(ctx: ToolContext, decision: str, principle: str = "") -> str:
     """Link a decision to a BIBLE.md principle."""
-    bible_path = ctx.drive_path("vault/concepts/bible.md")
+    bible_path = ctx.repo_path("vault/concepts/bible.md")
 
     if not bible_path.exists():
         return "⚠️ BIBLE.md not found"
@@ -173,7 +173,7 @@ def _create_backlink(ctx: ToolContext, from_file: str, to_file: str, reason: str
 
 def _map_tool_to_concept(ctx: ToolContext, tool_name: str, concept: str) -> str:
     """Link a tool to a related concept in vault."""
-    vault_path = ctx.drive_path("vault")
+    vault_path = ctx.repo_path("vault")
 
     concept_files = list(vault_path.rglob(f"*{concept}*.md"))
 
@@ -201,7 +201,7 @@ def _auto_weave_all(ctx: ToolContext) -> str:
     log.info("Auto-weaving all connections...")
 
     repo_dir = pathlib.Path(ctx.repo_dir)
-    vault_dir = ctx.drive_path("vault")
+    vault_dir = ctx.repo_path("vault")
     results = []
 
     code_connections = defaultdict(list)

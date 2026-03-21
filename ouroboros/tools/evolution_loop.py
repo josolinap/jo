@@ -229,7 +229,7 @@ def _check_evolution_readiness(ctx: ToolContext) -> str:
 
 def _synthesize_lessons(ctx: ToolContext) -> str:
     """Synthesize lessons from recent cycles into wisdom."""
-    vault_dir = ctx.drive_path("vault/journal")
+    vault_dir = ctx.repo_path("vault/journal")
 
     if not vault_dir.exists():
         return "No journal entries found."
@@ -283,7 +283,7 @@ def _enable_evolution_mode(ctx: ToolContext) -> str:
 
 def _get_evolution_status(ctx: ToolContext) -> str:
     """Get current evolution status and statistics."""
-    vault_dir = ctx.drive_path("vault/journal")
+    vault_dir = ctx.repo_path("vault/journal")
 
     lines = ["## Evolution Status", ""]
 

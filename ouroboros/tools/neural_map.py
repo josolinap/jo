@@ -191,56 +191,51 @@ def _scan_codebase(ctx: ToolContext) -> NeuralMap:
 
 
 def _scan_vault(ctx: ToolContext) -> NeuralMap:
-    """Scan vault notes and build neural map. Scans both drive vault and repo vault."""
+    """Scan vault notes and build neural map. Uses repo vault (git-tracked)."""
     neural_map = NeuralMap()
+    vault_dir = pathlib.Path(ctx.repo_path("vault"))
 
-    vault_dirs = [
-        pathlib.Path(ctx.drive_path("vault")),
-        pathlib.Path(ctx.repo_path("vault")),
-    ]
+    if not vault_dir.exists():
+        return neural_map
 
-    for vault_dir in vault_dirs:
-        if not vault_dir.exists():
+    for md_file in vault_dir.rglob("*.md"):
+        if md_file.name.startswith("."):
             continue
 
-        for md_file in vault_dir.rglob("*.md"):
-            if md_file.name.startswith("."):
-                continue
+        rel_path = md_file.relative_to(vault_dir)
+        rel_path_str = str(rel_path).replace("\\", "/").replace(".md", "")
+        concept_id = f"vault/{rel_path_str}"
 
-            rel_path = md_file.relative_to(vault_dir)
-            rel_path_str = str(rel_path).replace("\\", "/").replace(".md", "")
-            concept_id = f"{vault_dir.name}/{rel_path_str}"
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
 
-            try:
-                content = md_file.read_text(encoding="utf-8")
-            except Exception:
-                continue
+        tags = re.findall(r"tags?:\s*\[([^\]]+)\]", content) or []
+        tags = [t.strip() for t in " ".join(tags).split(",")]
 
-            tags = re.findall(r"tags?:\s*\[([^\]]+)\]", content) or []
-            tags = [t.strip() for t in " ".join(tags).split(",")]
+        concept = Concept(
+            id=concept_id,
+            name=md_file.stem,
+            type="concept",
+            path=str(rel_path),
+            content=content[:500],
+            tags=tags,
+        )
+        neural_map.add_concept(concept)
 
-            concept = Concept(
-                id=concept_id,
-                name=md_file.stem,
-                type="concept",
-                path=str(rel_path),
-                content=content[:500],
-                tags=tags,
-            )
-            neural_map.add_concept(concept)
+        wikilinks = re.findall(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", content)
+        for link in wikilinks:
+            link_id = link.strip()
+            if not neural_map.concepts.get(link_id):
+                neural_map.add_concept(Concept(id=link_id, name=link, type="concept"))
+            neural_map.add_connection(concept_id, link_id, "link", strength=1.0)
 
-            wikilinks = re.findall(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", content)
-            for link in wikilinks:
-                link_id = link.strip()
-                if not neural_map.concepts.get(link_id):
-                    neural_map.add_concept(Concept(id=link_id, name=link, type="concept"))
-                neural_map.add_connection(concept_id, link_id, "link", strength=1.0)
-
-            for tag in tags:
-                tag_id = f"tag:{tag}"
-                if not neural_map.concepts.get(tag_id):
-                    neural_map.add_concept(Concept(id=tag_id, name=tag, type="tag"))
-                neural_map.add_connection(concept_id, tag_id, "tagged", strength=0.5)
+        for tag in tags:
+            tag_id = f"tag:{tag}"
+            if not neural_map.concepts.get(tag_id):
+                neural_map.add_concept(Concept(id=tag_id, name=tag, type="tag"))
+            neural_map.add_connection(concept_id, tag_id, "tagged", strength=0.5)
 
     return neural_map
 
@@ -416,11 +411,8 @@ def _explore_concept(ctx: ToolContext, concept: str, depth: int = 2) -> str:
 
 
 def _create_connection(ctx: ToolContext, from_concept: str, to_concept: str, connection_type: str = "related") -> str:
-    """Create a new connection between concepts by adding wikilinks. Searches both drive vault and repo vault."""
-    vault_dirs = [
-        pathlib.Path(ctx.drive_path("vault")),
-        pathlib.Path(ctx.repo_path("vault")),
-    ]
+    """Create a new connection between concepts by adding wikilinks to repo vault (git-tracked)."""
+    vault_dir = pathlib.Path(ctx.repo_path("vault"))
 
     lines = [
         f"## Creating Connection",
@@ -434,43 +426,38 @@ def _create_connection(ctx: ToolContext, from_concept: str, to_concept: str, con
     created = False
     wikilink = f"[[{to_concept}]]"
 
-    for vault_dir in vault_dirs:
-        if not vault_dir.exists():
+    if not vault_dir.exists():
+        lines.append("❌ Vault directory does not exist")
+        return "\n".join(lines)
+
+    for md_file in vault_dir.rglob("*.md"):
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except Exception:
             continue
 
-        for md_file in vault_dir.rglob("*.md"):
-            try:
-                content = md_file.read_text(encoding="utf-8")
-            except Exception:
-                continue
-
-            if from_concept.lower() in content.lower() and md_file.stem.lower() == from_concept.lower().replace(
-                " ", "_"
-            ):
-                if wikilink not in content:
-                    content = content.rstrip() + f"\n\nRelated: {wikilink}\n"
-                    md_file.write_text(content, encoding="utf-8")
-                    lines.append(f"✅ Added link to {md_file.name} ({vault_dir.name}/)")
-                    created = True
-                else:
-                    lines.append(f"ℹ️ Link already exists in {md_file.name}")
+        if from_concept.lower() in content.lower() and md_file.stem.lower() == from_concept.lower().replace(" ", "_"):
+            if wikilink not in content:
+                content = content.rstrip() + f"\n\nRelated: {wikilink}\n"
+                md_file.write_text(content, encoding="utf-8")
+                lines.append(f"✅ Added link to {md_file.name}")
+                created = True
+            else:
+                lines.append(f"ℹ️ Link already exists in {md_file.name}")
 
     if not created:
-        for vault_dir in vault_dirs:
-            if not vault_dir.exists():
-                continue
-            for md_file in vault_dir.rglob("*.md"):
-                if to_concept.lower() in md_file.name.lower():
-                    try:
-                        content = md_file.read_text(encoding="utf-8")
-                        backlink = f"[[{from_concept}]]"
-                        if backlink not in content:
-                            content = content.rstrip() + f"\n\nRelated: {backlink}\n"
-                            md_file.write_text(content, encoding="utf-8")
-                            lines.append(f"✅ Added link to {md_file.name} ({vault_dir.name}/)")
-                            created = True
-                    except Exception:
-                        pass
+        for md_file in vault_dir.rglob("*.md"):
+            if to_concept.lower() in md_file.name.lower():
+                try:
+                    content = md_file.read_text(encoding="utf-8")
+                    backlink = f"[[{from_concept}]]"
+                    if backlink not in content:
+                        content = content.rstrip() + f"\n\nRelated: {backlink}\n"
+                        md_file.write_text(content, encoding="utf-8")
+                        lines.append(f"✅ Added link to {md_file.name}")
+                        created = True
+                except Exception:
+                    pass
 
     if not created:
         repo_vault_dir = pathlib.Path(ctx.repo_path("vault/concepts"))
@@ -491,9 +478,8 @@ def _create_connection(ctx: ToolContext, from_concept: str, to_concept: str, con
 
 
 def _query_knowledge(ctx: ToolContext, query: str, max_results: int = 10) -> str:
-    """Query across all knowledge structures. Searches repo, drive vault, and repo vault."""
+    """Query across all knowledge structures. Searches repo code and repo vault."""
     repo_dir = pathlib.Path(ctx.repo_dir)
-    vault_dir = pathlib.Path(ctx.drive_path("vault"))
     repo_vault_dir = pathlib.Path(ctx.repo_path("vault"))
     knowledge_dir = ctx.drive_path("memory/knowledge")
 
@@ -503,7 +489,6 @@ def _query_knowledge(ctx: ToolContext, query: str, max_results: int = 10) -> str
 
     for search_dir, pattern in [
         (repo_dir, "*.py"),
-        (vault_dir, "*.md"),
         (repo_vault_dir, "*.md"),
         (knowledge_dir, "*.md"),
     ]:
