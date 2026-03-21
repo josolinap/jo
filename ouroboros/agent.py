@@ -100,70 +100,45 @@ class OuroborosAgent:
         init_coordinator()
 
         self._log_worker_boot_once()
-        self._start_sha_watchdog()
+        self._start_hot_reload_manager()
 
     def inject_message(self, text: str) -> None:
         """Thread-safe: inject owner message into the active conversation."""
         self._incoming_messages.put(text)
 
-    def _start_sha_watchdog(self, check_interval: int = 60) -> None:
-        """Start a daemon thread that self-terminates this worker if the git SHA drifts.
+    def _start_hot_reload_manager(self, check_interval: int = 60) -> None:
+        """Start smart reload detection - hybrid hot reload + vault notification.
 
-        The expected SHA is read from the ``OUROBOROS_EXPECTED_SHA`` environment
-        variable injected by the supervisor at spawn time.  If the on-disk git
-        HEAD changes (because the supervisor pushed a new commit and updated the
-        repo), the worker calls ``os._exit(1)`` so the supervisor detects a
-        dead worker and respawns it with fresh code.
+        This replaces the simple SHA watchdog with intelligent change detection:
+        - If vault/docs change: notify model, no restart, preserve context
+        - If code changes: exit for clean restart as before
 
-        The watchdog is a no-op when ``OUROBOROS_EXPECTED_SHA`` is not set (e.g.
-        during local development or unit tests).
+        The expected SHA is read from ``OUROBOROS_EXPECTED_SHA`` env var.
         """
+        from ouroboros.hot_reload import HotReloadManager
+
         initial_sha = os.environ.get("OUROBOROS_EXPECTED_SHA", "").strip()
         if not initial_sha:
-            log.debug("SHA watchdog: OUROBOROS_EXPECTED_SHA not set — watchdog inactive.")
+            log.debug("Hot reload manager: OUROBOROS_EXPECTED_SHA not set — inactive.")
             return
 
-        repo_dir = self.env.repo_dir
-        drive_root = self.env.drive_root
+        def on_vault_change(notification: str) -> None:
+            """Called when vault/docs change - notify the model."""
+            try:
+                self._incoming_messages.put(f"[System] {notification}")
+                log.info("Vault change notification sent to model")
+            except Exception as e:
+                log.debug(f"Failed to notify model of vault change: {e}")
 
-        def _watchdog() -> None:
-            while True:
-                time.sleep(check_interval)
-                try:
-                    result = subprocess.run(
-                        ["git", "rev-parse", "HEAD"],
-                        cwd=str(repo_dir),
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    current_sha = result.stdout.strip() if result.returncode == 0 else ""
-                except Exception:
-                    current_sha = ""
-
-                if current_sha and current_sha != initial_sha:
-                    try:
-                        append_jsonl(
-                            drive_root / "logs" / "events.jsonl",
-                            {
-                                "ts": utc_now_iso(),
-                                "type": "worker_sha_drift_exit",
-                                "pid": os.getpid(),
-                                "initial_sha": initial_sha,
-                                "current_sha": current_sha,
-                            },
-                        )
-                    except Exception:
-                        pass
-                    log.warning(
-                        "SHA watchdog: SHA changed from %s to %s — exiting worker for clean respawn.",
-                        initial_sha[:8],
-                        current_sha[:8],
-                    )
-                    os._exit(1)
-
-        threading.Thread(target=_watchdog, daemon=True, name="sha-watchdog").start()
-        log.debug("SHA watchdog started (interval=%ds, initial_sha=%s).", check_interval, initial_sha[:8])
+        self._hot_reload = HotReloadManager(
+            repo_dir=self.env.repo_dir,
+            drive_root=self.env.drive_root,
+            initial_sha=initial_sha,
+            check_interval=check_interval,
+            on_vault_change=on_vault_change,
+        )
+        self._hot_reload.start()
+        log.debug("Hot reload manager started (interval=%ds, initial_sha=%s)", check_interval, initial_sha[:8])
 
     def _log_worker_boot_once(self) -> None:
         global _worker_boot_logged
