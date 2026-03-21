@@ -8,6 +8,7 @@ parallel execution, and timeout handling.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -20,6 +21,8 @@ from ouroboros.utils import (
     sanitize_tool_args_for_log,
     sanitize_tool_result_for_log,
 )
+
+log = logging.getLogger(__name__)
 
 
 READ_ONLY_PARALLEL_TOOLS = frozenset(
@@ -62,6 +65,7 @@ def _execute_single_tool(
     tc: Dict[str, Any],
     drive_logs: Path,
     task_id: str = "",
+    traceability: Any = None,
 ) -> Dict[str, Any]:
     fn_name = tc["function"]["name"]
     tool_call_id = tc["id"]
@@ -83,11 +87,13 @@ def _execute_single_tool(
     args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
 
     tool_ok = True
+    error_msg = None
     try:
         result = tools.execute(fn_name, args)
     except Exception as e:
         tool_ok = False
-        result = f"⚠️ TOOL_ERROR ({fn_name}): {type(e).__name__}: {e}"
+        error_msg = f"{type(e).__name__}: {e}"
+        result = f"⚠️ TOOL_ERROR ({fn_name}): {error_msg}"
         append_jsonl(
             drive_logs / "events.jsonl",
             {
@@ -112,6 +118,12 @@ def _execute_single_tool(
     )
 
     is_error = (not tool_ok) or str(result).startswith("⚠️")
+
+    if traceability is not None:
+        try:
+            traceability.on_tool_invoked(fn_name, args_for_log, str(result)[:500], error_msg)
+        except Exception as e:
+            log.debug(f"Traceability hook failed: {e}")
 
     return {
         "tool_call_id": tool_call_id,
@@ -226,6 +238,7 @@ def _execute_with_timeout(
     timeout_sec: int,
     task_id: str = "",
     stateful_executor: Optional[_StatefulToolExecutor] = None,
+    traceability: Any = None,
 ) -> Dict[str, Any]:
     fn_name = tc["function"]["name"]
     tool_call_id = tc["id"]
@@ -233,7 +246,7 @@ def _execute_with_timeout(
     use_stateful = stateful_executor and fn_name in STATEFUL_BROWSER_TOOLS
 
     if use_stateful:
-        future = stateful_executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id)
+        future = stateful_executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id, traceability)
         try:
             return future.result(timeout=timeout_sec)
         except TimeoutError:
@@ -245,7 +258,7 @@ def _execute_with_timeout(
     else:
         executor = ThreadPoolExecutor(max_workers=1)
         try:
-            future = executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id)
+            future = executor.submit(_execute_single_tool, tools, tc, drive_logs, task_id, traceability)
             try:
                 return future.result(timeout=timeout_sec)
             except TimeoutError:
@@ -265,6 +278,7 @@ def _handle_tool_calls(
     messages: List[Dict[str, Any]],
     llm_trace: Dict[str, Any],
     emit_progress: Callable[[str], None],
+    traceability: Any = None,
 ) -> int:
     can_parallel = len(tool_calls) > 1 and all(
         tc.get("function", {}).get("name") in READ_ONLY_PARALLEL_TOOLS for tc in tool_calls
@@ -273,7 +287,13 @@ def _handle_tool_calls(
     if not can_parallel:
         results = [
             _execute_with_timeout(
-                tools, tc, drive_logs, tools.get_timeout(tc["function"]["name"]), task_id, stateful_executor
+                tools,
+                tc,
+                drive_logs,
+                tools.get_timeout(tc["function"]["name"]),
+                task_id,
+                stateful_executor,
+                traceability,
             )
             for tc in tool_calls
         ]
@@ -290,6 +310,7 @@ def _handle_tool_calls(
                     tools.get_timeout(tc["function"]["name"]),
                     task_id,
                     stateful_executor,
+                    traceability,
                 ): idx
                 for idx, tc in enumerate(tool_calls)
             }

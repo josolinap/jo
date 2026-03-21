@@ -29,6 +29,7 @@ from ouroboros.utils import (
     estimate_tokens,
 )
 from ouroboros.tool_executor import _StatefulToolExecutor, _handle_tool_calls
+from ouroboros.traceability import get_traceability_layer
 
 log = logging.getLogger(__name__)
 
@@ -494,6 +495,7 @@ def run_llm_loop(
     tools._ctx.task_id = task_id
     stateful_executor = _StatefulToolExecutor()
     _owner_msg_seen: set = set()
+    traceability = get_traceability_layer(tools._ctx)
 
     try:
         MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
@@ -751,7 +753,15 @@ Version: {skill.version}
                 llm_trace["assistant_notes"].append(content.strip()[:320])
 
             error_count = _handle_tool_calls(
-                tool_calls, tools, drive_logs, task_id, stateful_executor, messages, llm_trace, emit_progress
+                tool_calls,
+                tools,
+                drive_logs,
+                task_id,
+                stateful_executor,
+                messages,
+                llm_trace,
+                emit_progress,
+                traceability,
             )
 
             _current_issues: List[Any] = []

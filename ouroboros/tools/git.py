@@ -205,6 +205,15 @@ def _repo_commit_push(ctx: ToolContext, commit_message: str, paths: Optional[Lis
         except Exception:
             log.debug("Failed to check for untracked files after repo_commit_push", exc_info=True)
             pass
+
+    try:
+        from ouroboros.traceability import get_traceability_layer
+
+        traceability = get_traceability_layer(ctx)
+        traceability.on_code_committed(commit_message, paths or [])
+    except Exception as e:
+        log.debug(f"Traceability hook failed after commit: {e}")
+
     return result
 
 
