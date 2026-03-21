@@ -1,15 +1,20 @@
 {
   "checksums": {
     "README.md": "e8632af0d4762e64aa1e2f547201a8d3c8512c7893409a3628784a92d5aea426",
-    "concepts\\architecture.md": "f4449a1c6ab05494628c1acc2fa864732bd59f6c3268fa6c45d43e87c157b206",
-    "concepts\\bible_md.md": "7188598f7ce8f9e0bac1146dbd59b2fa5d8b839ec07323a2bc11991b4b4c2134",
-    "concepts\\identity.md": "92f0fc3803849a5af9c108d85ae144d63d05c8d1d7096187f41fe28ff0e73df3",
-    "concepts\\test_vault_write.md": "00f563ac40cfc850fd6f890a4d91804237de1906ff8e8fe0731983b2683a61bc",
-    "concepts\\tools.md": "2eef5a5b804f8af0641fa724aaac87770e054673075bff3d6ffe4b16ed62efda",
-    "journal\\vault_git_storage_test.md": "fa7bcad9b3c8a0cfbad94cef3d28e30169ce8d720055a9e143cacb249622aa0a",
-    "projects\\jo_knowledge_map.md": "0c4bd5892c37910e29b961bc090734cb82fc1747a37a17a73dc3bada3e6f564e",
-    "projects\\pipeline_architecture.md": "73a11f20f716e9d187a7aecea487245cc755734a62bfe50ad5b70e4ebf41f67c",
-    "tasks\\system_review_task.md": "b152bd5c7b50e60f0be84d160eb7c49decd4fe0b09974aeea15d6365573e9e6b"
+    "projects/jo_knowledge_map.md": "8c7640f1dc4b932da8cf48028c18520e3169e35093da513a166b3dcc8040edf9",
+    "projects/pipeline_architecture.md": "a96ccfb9795e25d0e08ed1f7505d5f258f7c142835c30f45ffe951a20e9140b7",
+    "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
+    "concepts/identity.md": "92f0fc3803849a5af9c108d85ae144d63d05c8d1d7096187f41fe28ff0e73df3",
+    "concepts/jo_deep_dive_analysis.md": "1846aea1d178e7e8297ec49f0dece1d71b58da1d8b04e688d068c2c806d672a6",
+    "concepts/autonomous_agent_frameworks_-_github_analysis.md": "ca7b14c2d0a1897402e0853e68a62226f698bbb2e33976d6441639774f07eafe",
+    "concepts/bible_md.md": "07cfb2d19944be2a0672b1b17137fb8a17d8ca6831a7c0a7f596924cc08cccd2",
+    "concepts/architecture.md": "86ee6e74e2ca968a979d73e1a4df265bebe416c01a57a2a483545d7968ec7f4e",
+    "concepts/tools.md": "ad8fd5b75c6120ad07f60b8ca9b3615f34280fe25785097cdc600993f3df1a09",
+    "concepts/test_vault_write.md": "f19143c9f9730e3c2159c65e28dfb88ec24d62aa1035dfd3f8c46453484274d0",
+    "journal/2026-03-21-system-deep-dive.md": "38083af98033d11429e4c9d129364c978908fa7754c5a1ab580765441264bf04",
+    "journal/system_deep_dive__browsing_capabilities.md": "8d5dfa4cc01317425aa0452b847865bf3620c22d6376e9d76587278ab462602b",
+    "journal/vault_git_storage_test.md": "32177e3f06b6dc25eb299dccb3f1a50df498eb1cdfbb7cbcaf4a84d31ccc9eb7",
+    "tasks/system_review_task.md": "b152bd5c7b50e60f0be84d160eb7c49decd4fe0b09974aeea15d6365573e9e6b"
   },
-  "last_updated": "2026-03-20T23:16:04.890307+00:00"
+  "last_updated": "2026-03-21T05:18:54.450678+00:00"
 }
