@@ -69,9 +69,9 @@ class BackgroundConsciousness:
         self._observations: queue.Queue = queue.Queue()
         self._deferred_events: list = []
 
-        # Budget tracking
+        # Budget tracking (30% default for free models - can afford more thinking time)
         self._bg_spent_usd: float = 0.0
-        self._bg_budget_pct: float = float(os.environ.get("OUROBOROS_BG_BUDGET_PCT", "10"))
+        self._bg_budget_pct: float = float(os.environ.get("OUROBOROS_BG_BUDGET_PCT", "30"))
 
         # Awareness system for system-wide state monitoring
         try:
@@ -195,6 +195,20 @@ class BackgroundConsciousness:
                 log.debug(f"[Awareness] System state scanned: {len(awareness_data.get('repo_files', []))} files")
             except Exception as e:
                 log.debug(f"[Awareness] Scan failed: {e}")
+
+        # Run auto-fix if enabled
+        if os.environ.get("AUTO_FIX_ENABLED", "0") == "1":
+            try:
+                from ouroboros.health_auto_fix import run_auto_fix
+
+                fix_results = run_auto_fix(self._repo_dir, self._drive_root)
+                if fix_results["fixes_attempted"]:
+                    log.info(
+                        f"[AutoFix] Attempted: {fix_results['fixes_attempted']}, "
+                        f"Succeeded: {[f['fix'] for f in fix_results['fixes_succeeded']]}"
+                    )
+            except Exception as e:
+                log.debug(f"[AutoFix] Failed: {e}")
 
         context = self._build_context()
         model = self._model

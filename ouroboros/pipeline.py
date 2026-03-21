@@ -318,6 +318,6 @@ def get_pipeline() -> Pipeline:
     """Get singleton pipeline instance."""
     global _pipeline
     if _pipeline is None:
-        enabled = os.environ.get("OUROBOROS_USE_PIPELINE", "0") == "1"
+        enabled = os.environ.get("OUROBOROS_USE_PIPELINE", "1") == "1"
         _pipeline = Pipeline(enabled=enabled)
     return _pipeline

@@ -239,6 +239,12 @@ jobs:
           OUROBOROS_EVAL: "1"
           # Run semantic synthesis after task completion
           OUROBOROS_SYNTHESIS: "1"
+          # Enable pipeline (diagnose, plan, execute, verify, synthesize)
+          OUROBOROS_USE_PIPELINE: "1"
+          # Background consciousness budget (30% for free models)
+          OUROBOROS_BG_BUDGET_PCT: "30"
+          # Enable health auto-fix (version sync, stale identity, uncommitted)
+          AUTO_FIX_ENABLED: "0"
 
           # Playwright in headless server environment
           PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
