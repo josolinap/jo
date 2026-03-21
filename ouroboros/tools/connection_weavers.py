@@ -276,6 +276,119 @@ def _auto_weave_all(ctx: ToolContext) -> str:
     return "\n".join(results)
 
 
+def _auto_document_orphan_tools(ctx: ToolContext, create_entries: bool = False) -> str:
+    """Automatically find and document orphan tools (tools without vault entries).
+
+    Args:
+        create_entries: If True, create vault entries for orphan tools
+    """
+    from ouroboros.tools.registry import ToolRegistry
+
+    lines = ["## Auto-Document Orphan Tools\n"]
+
+    registry = ToolRegistry(repo_dir=ctx.repo_dir, drive_root=ctx.drive_root)
+    all_tools = registry.available_tools()
+
+    vault_dir = ctx.repo_path("vault/tools")
+    vault_dir.mkdir(parents=True, exist_ok=True)
+
+    documented_tools = set()
+    for md_file in vault_dir.rglob("*.md"):
+        if md_file.name.startswith("."):
+            continue
+        documented_tools.add(md_file.stem.lower().replace("-", "_"))
+
+    orphan_tools = []
+    for tool_name in all_tools:
+        if tool_name.startswith("_"):
+            continue
+        if tool_name.lower().replace("-", "_") not in documented_tools:
+            orphan_tools.append(tool_name)
+
+    lines.append(f"**Total registered tools:** {len(all_tools)}")
+    lines.append(f"**Already documented:** {len(documented_tools)}")
+    lines.append(f"**Orphan tools:** {len(orphan_tools)}")
+    lines.append("")
+
+    if not orphan_tools:
+        lines.append("✅ All tools are documented!")
+        return "\n".join(lines)
+
+    if create_entries:
+        created_count = 0
+        for tool_name in orphan_tools:
+            schema = registry.get_schema_by_name(tool_name)
+            if not schema:
+                continue
+
+            description = schema.get("function", {}).get("description", "No description available.")
+            params = schema.get("function", {}).get("parameters", {})
+            param_props = params.get("properties", {}) if isinstance(params, dict) else {}
+
+            content = _generate_tool_doc(tool_name, description, param_props)
+
+            safe_name = tool_name.replace("_", "-")
+            doc_path = vault_dir / f"{safe_name}.md"
+            try:
+                doc_path.write_text(content, encoding="utf-8")
+                created_count += 1
+            except Exception as e:
+                lines.append(f"❌ Failed to create {tool_name}: {e}")
+
+        lines.append(f"✅ Created {created_count} tool documentation entries in vault/tools/")
+    else:
+        lines.append("### Orphan Tools (not yet documented)")
+        lines.append("")
+        lines.append("Run with `create_entries=true` to auto-generate documentation:")
+        for t in orphan_tools[:20]:
+            lines.append(f"- `{t}`")
+        if len(orphan_tools) > 20:
+            lines.append(f"- ... and {len(orphan_tools) - 20} more")
+
+    return "\n".join(lines)
+
+
+def _generate_tool_doc(tool_name: str, description: str, params: Dict[str, Any]) -> str:
+    """Generate vault documentation for a tool."""
+    lines = [
+        f"# {tool_name}",
+        "",
+        f"**Type:** Tool",
+        f"**Category:** See system_map",
+        "",
+        "## Description",
+        "",
+        description,
+        "",
+        "## Parameters",
+        "",
+    ]
+
+    if params:
+        for param_name, param_info in params.items():
+            param_type = param_info.get("type", "unknown")
+            param_desc = param_info.get("description", "No description")
+            lines.append(f"- `{param_name}` ({param_type}): {param_desc}")
+    else:
+        lines.append("_No parameters_")
+
+    lines.extend(
+        [
+            "",
+            "## Usage",
+            "",
+            f"Called automatically when needed. Use `system_map` tool to see full tool list.",
+            "",
+            "## Related",
+            "",
+            "_Add related tools and concepts here_",
+            "",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
 def get_tools() -> List[ToolEntry]:
     """Get connection weaver tools."""
     return [
@@ -405,5 +518,28 @@ def get_tools() -> List[ToolEntry]:
             },
             handler=_auto_weave_all,
             timeout_sec=30,
+        ),
+        ToolEntry(
+            name="auto_document_tools",
+            schema={
+                "name": "auto_document_tools",
+                "description": (
+                    "Automatically find and document orphan tools (tools without vault entries). "
+                    "Scans all 130+ registered tools and creates vault/tools/ entries. "
+                    "Run without create_entries=true to preview, or with create_entries=true to generate."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "create_entries": {
+                            "type": "boolean",
+                            "description": "If true, create vault entries for orphan tools",
+                            "default": False,
+                        },
+                    },
+                },
+            },
+            handler=_auto_document_orphan_tools,
+            timeout_sec=60,
         ),
     ]
