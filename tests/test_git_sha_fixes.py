@@ -154,10 +154,10 @@ class TestShaWatchdog(unittest.TestCase):
                 with patch.object(OuroborosAgent, "__init__", lambda self, *a, **kw: None):
                     agent = OuroborosAgent.__new__(OuroborosAgent)
                     agent.env = env
-                    agent._start_sha_watchdog()
+                    agent._start_hot_reload_manager()
 
             threads_after = {t.name for t in threading.enumerate()}
-            self.assertNotIn("sha-watchdog", threads_after - threads_before)
+            self.assertNotIn("hot-reload-manager", threads_after - threads_before)
         finally:
             if env_backup is not None:
                 os.environ["OUROBOROS_EXPECTED_SHA"] = env_backup
@@ -176,11 +176,11 @@ class TestShaWatchdog(unittest.TestCase):
                 with patch.object(OuroborosAgent, "__init__", lambda self, *a, **kw: None):
                     agent = OuroborosAgent.__new__(OuroborosAgent)
                     agent.env = env
-                    agent._start_sha_watchdog(check_interval=9999)  # long interval — won't fire
+                    agent._start_hot_reload_manager(check_interval=9999)  # long interval — won't fire
 
             # Thread should now exist
             names = {t.name for t in threading.enumerate()}
-            self.assertIn("sha-watchdog", names)
+            self.assertIn("hot-reload-manager", names)
         finally:
             os.environ.pop("OUROBOROS_EXPECTED_SHA", None)
 
