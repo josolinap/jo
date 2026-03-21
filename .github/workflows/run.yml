@@ -319,11 +319,17 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Cleanup old workflow runs
         if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           echo "🧹 Cleaning up old workflow runs..."
 
+          # Ensure we're in the repo directory
+          cd ${{ github.workspace }}
+
           # Get completed runs older than the last 20, delete them
-          RUN_IDS=$(gh run list --status completed --limit 100 --json databaseId | \
+          RUN_IDS=$(gh run list --status completed --limit 100 --json databaseId --repo $GITHUB_REPOSITORY | \
             jq -r '.[20:][].databaseId')
 
           if [ -z "$RUN_IDS" ]; then
@@ -336,7 +342,7 @@ jobs:
 
           for run_id in $RUN_IDS; do
             if [ -n "$run_id" ]; then
-              gh run delete "$run_id" 2>/dev/null || true
+              gh run delete "$run_id" --repo $GITHUB_REPOSITORY 2>/dev/null || true
             fi
           done
 
