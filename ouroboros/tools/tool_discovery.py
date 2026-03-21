@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
 
@@ -11,11 +12,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Module-level registry reference — set by set_registry() after ToolRegistry is created.
-# loop.py also overrides these handlers with closures that have access to per-loop state
-# (e.g. the _enabled_extra_tools set); the module-level ref serves as a fallback for
-# any context where the tool is called without going through run_llm_loop.
 _registry: Optional["ToolRegistry"] = None
+_enabled_tools: Dict[str, List[str]] = {}  # Per-task tracking: task_id -> list of enabled tools
 
 
 def set_registry(reg: "ToolRegistry") -> None:
@@ -25,37 +23,63 @@ def set_registry(reg: "ToolRegistry") -> None:
 
 def _list_available_tools(ctx: ToolContext, **kwargs) -> str:
     if _registry is None:
-        return "Tool discovery not available in this context."
+        return "⚠️ Tool discovery not available in this context."
     non_core = _registry.list_non_core_tools()
-    # Exclude the meta-tools themselves from the listing
     non_core = [t for t in non_core if t["name"] not in ("list_available_tools", "enable_tools")]
     if not non_core:
-        return "All tools are already in your active set."
-    lines = [f"**{len(non_core)} additional tools available** (use `enable_tools` to activate):\n"]
+        return "✅ All tools are available (no separate non-core set)."
+
+    task_id = getattr(ctx, "task_id", "unknown") or "unknown"
+    enabled = _enabled_tools.get(task_id, [])
+
+    lines = [f"**{len(non_core)} additional tools available**:\n"]
     for t in non_core:
-        lines.append(f"- **{t['name']}**: {t['description'][:120]}")
+        status = " ✅" if t["name"] in enabled else ""
+        lines.append(f"- **{t['name']}**{status}: {t['description'][:100]}")
+    lines.append("\n💡 Use `enable_tools(tools='tool1,tool2')` to activate tools for this task.")
     return "\n".join(lines)
 
 
 def _enable_tools(ctx: ToolContext, tools: str = "", **kwargs) -> str:
     if _registry is None:
-        return "Tool enablement not available in this context."
+        return "⚠️ Tool enablement not available in this context."
+
     names = [n.strip() for n in tools.split(",") if n.strip()]
     if not names:
-        return "No tools specified."
+        return "⚠️ No tools specified. Usage: enable_tools(tools='tool1,tool2')"
+
+    task_id = getattr(ctx, "task_id", "unknown") or "unknown"
+    if task_id not in _enabled_tools:
+        _enabled_tools[task_id] = []
+
     found = []
     not_found = []
+    already_enabled = []
+
     for name in names:
         schema = _registry.get_schema_by_name(name)
         if schema:
-            found.append(f"{name}: {schema['function'].get('description', '')[:100]}")
+            if name in _enabled_tools[task_id]:
+                already_enabled.append(name)
+            else:
+                _enabled_tools[task_id].append(name)
+                found.append(name)
         else:
             not_found.append(name)
+
     parts = []
     if found:
-        parts.append("✅ Tools are registered and callable:\n" + "\n".join(f"  - {s}" for s in found))
+        parts.append(f"✅ **Enabled for this task** ({task_id[:8]}...): {', '.join(found)}")
+    if already_enabled:
+        parts.append(f"ℹ️ Already enabled: {', '.join(already_enabled)}")
     if not_found:
         parts.append(f"❌ Not found: {', '.join(not_found)}")
+
+    parts.append(
+        f"\n📋 {len(_enabled_tools[task_id])} tools enabled this task. "
+        f"Note: Tools reset each task (by design for isolation)."
+    )
+
     return "\n".join(parts)
 
 
@@ -66,9 +90,9 @@ def get_tools() -> List[ToolEntry]:
             schema={
                 "name": "list_available_tools",
                 "description": (
-                    "List all additional tools not currently in your active tool set. "
-                    "Returns name + description for each. Use this to discover tools "
-                    "you might need for specific tasks."
+                    "List all additional tools available but not in core set. "
+                    "Shows which are currently enabled. "
+                    "Use `enable_tools` to activate tools for the current task."
                 ),
                 "parameters": {
                     "type": "object",
@@ -83,9 +107,10 @@ def get_tools() -> List[ToolEntry]:
             schema={
                 "name": "enable_tools",
                 "description": (
-                    "Enable specific additional tools by name (comma-separated). "
-                    "Their schemas will be added to your active tool set for the "
-                    "remainder of this task. Example: enable_tools(tools='multi_model_review,generate_evolution_stats')"
+                    "Enable additional tools for the current task. "
+                    "Tools are added to your active tool set and available immediately. "
+                    "Example: enable_tools(tools='multi_model_review,cli_generate') "
+                    "Note: Tools are per-task (reset each task for safety)."
                 ),
                 "parameters": {
                     "type": "object",
