@@ -389,6 +389,112 @@ def _generate_tool_doc(tool_name: str, description: str, params: Dict[str, Any])
     return "\n".join(lines)
 
 
+def _health_alert(ctx: ToolContext, invariant_name: str, message: str, severity: str = "medium") -> str:
+    """Log a health alert to vault journal and update health dashboard.
+
+    Args:
+        invariant_name: Name of the health invariant that triggered
+        message: Alert message
+        severity: critical, high, medium, or low
+    """
+    from datetime import datetime
+    from ouroboros.tools.vault import _vault_create
+
+    severity_icons = {
+        "critical": "[CRITICAL]",
+        "high": "[HIGH]",
+        "medium": "[MEDIUM]",
+        "low": "[LOW]",
+    }
+    icon = severity_icons.get(severity.lower(), "[INFO]")
+
+    vault_path = ctx.repo_path("vault/journal")
+    vault_path.mkdir(parents=True, exist_ok=True)
+    dashboard_path = vault_path / "health-dashboard.md"
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    title = f"Health Alert: {invariant_name}"
+    content = f"""
+## Alert {icon}
+
+**Invariant:** {invariant_name}
+**Severity:** {severity.upper()}
+**Message:** {message}
+**Time:** {timestamp}
+
+## Action Required
+
+_This alert requires review and potential remediation._
+"""
+
+    try:
+        _vault_create(
+            ctx,
+            title=title,
+            folder="journal",
+            content=content,
+            tags=f"health, alert, {severity}",
+            type="alert",
+            status="open",
+        )
+
+        new_entry = f"- {icon} **{timestamp}** {invariant_name}: {message[:100]}"
+
+        if dashboard_path.exists():
+            dash_content = dashboard_path.read_text(encoding="utf-8")
+            if "## Recent Alerts" in dash_content:
+                lines = dash_content.split("\n")
+                insert_idx = None
+                for i, line in enumerate(lines):
+                    if line == "## Recent Alerts":
+                        insert_idx = i + 2
+                        break
+                if insert_idx:
+                    lines.insert(insert_idx, new_entry)
+                    dash_content = "\n".join(lines)
+                else:
+                    dash_content += f"\n{new_entry}"
+            else:
+                dash_content += f"\n\n{new_entry}"
+        else:
+            dash_content = f"""# Health Dashboard
+
+_Automatically maintained by traceability layer._
+
+## Status
+
+Current system health status. Check for recent alerts.
+
+## Recent Alerts
+
+{new_entry}
+
+## System Health Checks
+
+### Verification Tracking
+_Track via verify_claim tool_
+
+### Version Sync
+_Checked automatically_
+
+### Budget Drift
+_Monitored via state_
+
+### Memory Files
+_health_auto_fix ensures integrity_
+
+---
+_Generated: {datetime.now().isoformat()}_
+"""
+
+        dashboard_path.write_text(dash_content, encoding="utf-8")
+        return f"OK: Health alert logged - {invariant_name} [{severity.upper()}]"
+
+    except Exception as e:
+        return f"Failed to log health alert: {e}"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get connection weaver tools."""
     return [
@@ -541,5 +647,30 @@ def get_tools() -> List[ToolEntry]:
             },
             handler=_auto_document_orphan_tools,
             timeout_sec=60,
+        ),
+        ToolEntry(
+            name="health_alert",
+            schema={
+                "name": "health_alert",
+                "description": (
+                    "Log a health alert to the vault journal and health dashboard. "
+                    "Automatically tracks system health issues with severity levels."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "invariant_name": {"type": "string", "description": "Name of the health invariant"},
+                        "message": {"type": "string", "description": "Alert message"},
+                        "severity": {
+                            "type": "string",
+                            "description": "Alert severity: critical, high, medium, low",
+                            "default": "medium",
+                        },
+                    },
+                    "required": ["invariant_name", "message"],
+                },
+            },
+            handler=_health_alert,
+            timeout_sec=15,
         ),
     ]
