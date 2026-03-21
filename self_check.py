@@ -157,12 +157,10 @@ def check_tools() -> dict:
 
 
 def check_vault() -> dict:
-    """Check vault system status."""
+    """Check vault system status - using git-tracked vault as SSOT per BIBLE.md."""
     try:
-        import os
-
-        drive_root = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".jo_data"))
-        vault_dir = drive_root / "vault"
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        vault_dir = repo_dir / "vault"  # Repository vault is the single source of truth
 
         if not vault_dir.exists():
             return {"initialized": False, "path": str(vault_dir)}
@@ -174,10 +172,12 @@ def check_vault() -> dict:
                 notes = list(folder_path.glob("*.md"))
                 folders[folder] = {"note_count": len(notes), "notes": [n.stem for n in notes[:10]]}
 
+        total_notes = sum(f.get("note_count", 0) for f in folders.values())
         return {
             "initialized": True,
             "path": str(vault_dir),
             "folders": folders,
+            "total_notes": total_notes,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -263,7 +263,7 @@ def main():
     if vault.get("error"):
         print(f"[WARN] Vault: {vault['error']}")
     elif vault.get("initialized"):
-        total_notes = sum(f.get("note_count", 0) for f in vault.get("folders", {}).values())
+        total_notes = vault.get('total_notes', 0)
         print(f"[*] Vault: Initialized ({total_notes} notes)")
     else:
         print("[*] Vault: Not yet initialized")
