@@ -31,10 +31,24 @@ from ouroboros.utils import (
 from ouroboros.tool_executor import _StatefulToolExecutor, _handle_tool_calls
 from ouroboros.traceability import get_traceability_layer
 
+# PIPELINE_PLAN.md Feature Flags
+USE_STRUCTURED_PIPELINE = os.environ.get("OUROBOROS_USE_PIPELINE", "0") == "1"
+USE_CONTEXT_ENRICHMENT = os.environ.get("OUROBOROS_ENRICH_CONTEXT", "1") == "1"
+USE_SEMANTIC_SYNTHESIS = os.environ.get("OUROBOROS_SYNTHESIS", "0") == "1"
+USE_TASK_GRAPH = os.environ.get("OUROBOROS_TASK_GRAPH", "0") == "1"
+USE_TASK_EVALUATION = os.environ.get("OUROBOROS_EVAL", "0") == "1"
+USE_CODE_NORMALIZATION = os.environ.get("OUROBOROS_NORMALIZE_CODE", "1") == "1"
+
 log = logging.getLogger(__name__)
+
+# Initialize pipeline components (used when USE_STRUCTURED_PIPELINE is enabled)
+_pipeline = None
 
 # Track quality feedback injection state (per-task, reset in run_llm_loop)
 _quality_feedback_injected: bool = False
+
+# Track files changed across rounds for synthesis and evaluation
+_files_changed_total: List[str] = []
 
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
@@ -128,6 +142,51 @@ def _handle_text_response(
     """Handle LLM response without tool calls (final response)."""
     if content and content.strip():
         llm_trace["assistant_notes"].append(content.strip()[:320])
+
+        # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
+        synthesis_summary = None
+        if USE_SEMANTIC_SYNTHESIS:
+            from ouroboros.synthesis import synthesize_task
+
+            # Use the response content as task hint for synthesis
+            task_text = content[:200] if content else ""
+
+            if task_text:
+                synthesis_summary = synthesize_task(
+                    task=task_text,
+                    output=content or "",
+                    files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                    repo_dir=pathlib.Path(os.environ.get("REPO_DIR", ".")) if os.environ.get("REPO_DIR", ".") else None,
+                )
+
+        # PIPELINE_PLAN.md Feature 5: Eval Framework / Quality Scoring
+        eval_report_str = None
+        if USE_TASK_EVALUATION:
+            from ouroboros.eval import evaluate_task
+
+            # Use the response content as task hint for evaluation
+            task_text = content[:200] if content else ""
+
+            if task_text:
+                repo_dir_str = os.environ.get("REPO_DIR")
+                repo_dir = pathlib.Path(repo_dir_str) if repo_dir_str else None
+
+                eval_report_str = evaluate_task(
+                    task=task_text,
+                    output=content or "",
+                    files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                    repo_dir=repo_dir,
+                )
+
+        # Add synthesis and eval insights to content
+        insights_added = []
+        if synthesis_summary:
+            insights_added.append(f"\n\n## Synthesis Insights\n{synthesis_summary}")
+        if eval_report_str:  # evaluate_task returns a formatted string if there are issues
+            insights_added.append(f"\n\n## Quality Evaluation\n{eval_report_str}")
+
+        if insights_added:
+            content = content + "".join(insights_added)
 
     return (content or ""), accumulated_usage, llm_trace
 
@@ -455,6 +514,35 @@ def _call_llm_with_retry(
     return None, 0.0
 
 
+# Pipeline Phase Handlers for Feature 1: Structured Pipeline Architecture
+if USE_STRUCTURED_PIPELINE:
+    from ouroboros.pipeline import Pipeline, PipelineContext, PipelinePhase, PhaseResult
+
+    # Initialize pipeline with default handlers (already built into Pipeline class)
+    _pipeline = Pipeline(enabled=True)
+    log.info("[Pipeline] Structured pipeline enabled with default phase handlers")
+
+
+def _maybe_build_task_graph(task: str) -> Optional[Any]:
+    """Build task graph for complex multi-step tasks (Feature 4: Task Graph)."""
+    if not USE_TASK_GRAPH:
+        return None
+
+    try:
+        from ouroboros.task_graph import decompose_into_graph
+
+        # Use the existing decompose_into_graph function which uses heuristics
+        graph = decompose_into_graph(task)
+
+        if graph:
+            log.info(f"[TaskGraph] Decomposed task into {len(graph.nodes)} subtasks")
+            return graph
+    except Exception as e:
+        log.warning(f"[TaskGraph] Failed to decompose task: {e}")
+
+    return None
+
+
 def run_llm_loop(
     messages: List[Dict[str, Any]],
     tools: ToolRegistry,
@@ -676,6 +764,25 @@ Version: {skill.version}
                 if len(messages) > 60:
                     messages = compact_tool_history(messages, keep_recent=6)
 
+            # PIPELINE_PLAN.md Feature 2: Context Enrichment Before LLM Calls
+            if USE_CONTEXT_ENRICHMENT:
+                from ouroboros.context_enricher import enrich_messages
+
+                task_text = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text = m.get("content", "")
+                        break
+
+                if task_text:
+                    task_type_detected = (
+                        "code"
+                        if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
+                        else "general"
+                    )
+                    repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+                    messages = enrich_messages(messages, task_text, task_type_detected, repo_dir)
+
             msg, cost = _call_llm_with_retry(
                 llm,
                 messages,
@@ -763,6 +870,78 @@ Version: {skill.version}
                 emit_progress,
                 traceability,
             )
+
+            # Track files changed during this round (from tool calls)
+            files_changed_this_round = []
+            for tc in tool_calls:
+                if tc.get("function", {}).get("name") in ["repo_write_commit", "drive_write", "apply_patch"]:
+                    # Try to extract file path from tool arguments
+                    try:
+                        import json
+
+                        args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+                        if "path" in args:
+                            files_changed_this_round.append(args["path"])
+                        elif "file_path" in args:
+                            files_changed_this_round.append(args["file_path"])
+                    except:
+                        pass
+
+            # Accumulate files changed across rounds
+            if not hasattr(run_llm_loop, "_files_changed_total"):
+                run_llm_loop._files_changed_total = []
+            run_llm_loop._files_changed_total.extend(files_changed_this_round)
+            # Remove duplicates while preserving order
+            seen = set()
+            run_llm_loop._files_changed_total = [
+                x for x in run_llm_loop._files_changed_total if not (x in seen or seen.add(x))
+            ]
+
+            # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
+            synthesis_summary = None
+            if USE_SEMANTIC_SYNTHESIS and round_idx >= 3:  # Run synthesis after a few rounds
+                from ouroboros.synthesis import synthesize_task
+
+                task_text_for_synth = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text_for_synth = m.get("content", "")
+                        break
+
+                if task_text_for_synth:
+                    repo_dir_str = os.environ.get("REPO_DIR")
+                    repo_dir_path = pathlib.Path(repo_dir_str) if repo_dir_str else None
+
+                    synthesis_summary = synthesize_task(
+                        task=task_text_for_synth,
+                        output=content or "",
+                        files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                        repo_dir=repo_dir_path,
+                    )
+
+            # PIPELINE_PLAN.md Feature 5: Eval Framework / Quality Scoring
+            # Note: Evaluation in mid-loop is for logging only; final eval happens in _handle_text_response
+            if USE_TASK_EVALUATION and round_idx >= 2:  # Log evaluation after tool usage
+                from ouroboros.eval import evaluate_task
+
+                task_text_for_eval = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text_for_eval = m.get("content", "")
+                        break
+
+                if task_text_for_eval:
+                    repo_dir_str = os.environ.get("REPO_DIR")
+                    repo_dir_path = pathlib.Path(repo_dir_str) if repo_dir_str else None
+
+                    eval_result = evaluate_task(
+                        task=task_text_for_eval,
+                        output=content or "",
+                        files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                        repo_dir=repo_dir_path,
+                    )
+                    if eval_result:
+                        log.info(f"[Eval] Quality issue detected in round {round_idx}")
 
             _current_issues: List[Any] = []
             try:
