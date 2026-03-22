@@ -10,9 +10,11 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
+from datetime import datetime
 
 
 def check_git_status() -> dict:
@@ -189,14 +191,99 @@ def check_vault() -> dict:
         return {"error": str(e)}
 
 
+def check_skills() -> dict:
+    """Check if skills are registered correctly."""
+    try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        sys.path.insert(0, str(repo_dir))
+
+        from ouroboros.tools.skills import SKILLS, TRIGGERS
+
+        # Pi-related skills we added
+        pi_skills = ["github-review", "changelog", "issue-analyzer", "evolution", "debug", "security"]
+        missing = [s for s in pi_skills if s not in SKILLS]
+
+        return {
+            "total_skills": len(SKILLS),
+            "total_triggers": len(TRIGGERS),
+            "pi_skills_present": len(pi_skills) - len(missing),
+            "pi_skills_missing": missing,
+            "all_registered": len(missing) == 0,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def check_pi_prompts() -> dict:
+    """Check if .pi/prompts/ templates can be loaded."""
+    try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        sys.path.insert(0, str(repo_dir))
+
+        from ouroboros.pi_prompts import (
+            get_pr_review_prompt,
+            get_changelog_prompt,
+            get_issue_prompt,
+            get_audit_prompt,
+            get_evolution_prompt,
+            get_debug_prompt,
+            get_security_prompt,
+        )
+
+        prompts = {
+            "pr": get_pr_review_prompt(),
+            "changelog": get_changelog_prompt(),
+            "issue": get_issue_prompt(),
+            "audit": get_audit_prompt(),
+            "evolution": get_evolution_prompt(),
+            "debug": get_debug_prompt(),
+            "security": get_security_prompt(),
+        }
+
+        loaded = {k: len(v) if v else 0 for k, v in prompts.items()}
+        missing = [k for k, v in prompts.items() if not v]
+
+        return {
+            "total_templates": len(prompts),
+            "loaded": loaded,
+            "missing": missing,
+            "all_loaded": len(missing) == 0,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def check_pipeline_features() -> dict:
+    """Check if pipeline feature flags are configured."""
+    try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        sys.path.insert(0, str(repo_dir))
+
+        from ouroboros.loop import (
+            USE_STRUCTURED_PIPELINE,
+            USE_CONTEXT_ENRICHMENT,
+            USE_SEMANTIC_SYNTHESIS,
+            USE_TASK_GRAPH,
+            USE_TASK_EVALUATION,
+            USE_CODE_NORMALIZATION,
+        )
+
+        return {
+            "USE_STRUCTURED_PIPELINE": USE_STRUCTURED_PIPELINE,
+            "USE_CONTEXT_ENRICHMENT": USE_CONTEXT_ENRICHMENT,
+            "USE_SEMANTIC_SYNTHESIS": USE_SEMANTIC_SYNTHESIS,
+            "USE_TASK_GRAPH": USE_TASK_GRAPH,
+            "USE_TASK_EVALUATION": USE_TASK_EVALUATION,
+            "USE_CODE_NORMALIZATION": USE_CODE_NORMALIZATION,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def run_self_check() -> dict:
     """Run all self-checks and return report."""
     report = {
-        "timestamp": subprocess.run(
-            ["date", "+%Y-%m-%d %H:%M:%S"],
-            capture_output=True,
-            text=True,
-        ).stdout.strip(),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "git_status": check_git_status(),
         "git_diff": check_git_diff(),
         "version": check_version(),
@@ -205,6 +292,9 @@ def run_self_check() -> dict:
         "data_dir": check_data_dir(),
         "tools": check_tools(),
         "vault": check_vault(),
+        "skills": check_skills(),
+        "pi_prompts": check_pi_prompts(),
+        "pipeline_features": check_pipeline_features(),
     }
     return report
 
@@ -269,15 +359,54 @@ def main():
     if vault.get("error"):
         print(f"[WARN] Vault: {vault['error']}")
     elif vault.get("initialized"):
-        total_notes = vault.get('total_notes', 0)
+        total_notes = vault.get("total_notes", 0)
         print(f"[*] Vault: Initialized ({total_notes} notes)")
     else:
         print("[*] Vault: Not yet initialized")
 
+    # Skills (NEW)
+    skills = report.get("skills", {})
+    if skills.get("error"):
+        print(f"[WARN] Skills: {skills['error']}")
+    else:
+        total = skills.get("total_skills", 0)
+        pi_count = skills.get("pi_skills_present", 0)
+        missing = skills.get("pi_skills_missing", [])
+        if missing:
+            print(f"[WARN] Skills: {total} total, {pi_count}/6 pi skills (missing: {', '.join(missing)})")
+        else:
+            print(f"[OK] Skills: {total} total, all 6 pi skills registered")
+
+    # Pi Prompts (NEW)
+    pi = report.get("pi_prompts", {})
+    if pi.get("error"):
+        print(f"[WARN] Pi Prompts: {pi['error']}")
+    else:
+        total = pi.get("total_templates", 0)
+        missing = pi.get("missing", [])
+        if missing:
+            print(f"[WARN] Pi Prompts: {total - len(missing)}/{total} loaded (missing: {', '.join(missing)})")
+        else:
+            print(f"[OK] Pi Prompts: {total}/{total} templates loaded")
+
+    # Pipeline Features (NEW)
+    pipeline = report.get("pipeline_features", {})
+    if pipeline.get("error"):
+        print(f"[WARN] Pipeline: {pipeline['error']}")
+    else:
+        active = [k for k, v in pipeline.items() if v is True]
+        print(f"[*] Pipeline: {len(active)} features enabled ({', '.join(active) if active else 'none'})")
+
     print("\n" + "=" * 40)
 
     # Exit code based on health
-    has_issues = not gs.get("clean", True) or bool(ps.get("errors")) or not r.get("satisfied", True)
+    has_issues = (
+        not gs.get("clean", True)
+        or bool(ps.get("errors"))
+        or not r.get("satisfied", True)
+        or bool(skills.get("pi_skills_missing"))
+        or bool(pi.get("missing"))
+    )
 
     if has_issues:
         print("[WARN] Issues detected - review recommended")
