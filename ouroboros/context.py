@@ -1014,7 +1014,7 @@ def _compact_tool_call_arguments(tool_name: str, args_json: str) -> Dict[str, An
     LARGE_CONTENT_TOOLS = {
         "repo_write_commit": "content",
         "drive_write": "content",
-        "claude_code_edit": "prompt",
+        "code_edit": "content",
         "update_scratchpad": "content",
     }
 

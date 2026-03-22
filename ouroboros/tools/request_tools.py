@@ -110,7 +110,7 @@ def _request_api_key(ctx: ToolContext, provider: str, purpose: str) -> str:
         "anthropic": {
             "name": "Anthropic",
             "url": "https://console.anthropic.com/settings/keys",
-            "tools": "Claude Code CLI, claude_code_edit tool",
+            "tools": "Claude models via OpenRouter",
         },
         "openai": {
             "name": "OpenAI",
@@ -210,9 +210,8 @@ def _check_capabilities(ctx: ToolContext) -> str:
         "OPENAI_API_KEY": {
             "name": "OpenRouter (via OpenAI compat)",
             "status": "unknown",
-            "tools": ["ai_code_edit", "web search", "LLM calls"],
+            "tools": ["ai_code_edit", "code_edit", "web search", "LLM calls"],
         },
-        "ANTHROPIC_API_KEY": {"name": "Anthropic", "status": "missing", "tools": ["claude_code_edit (optional)"]},
         "GITHUB_TOKEN": {"name": "GitHub", "status": "missing", "tools": ["PR creation"]},
         "ddgr": {"name": "ddgr CLI", "status": "unknown", "tools": ["CLI web search (optional)"]},
     }
