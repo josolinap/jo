@@ -445,34 +445,77 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 8. Cleanup: Delete old completed workflow runs (keep last 20)
+      # Deletes completed runs older than the most recent 20 for this workflow
       # -----------------------------------------------------------------------
       - name: Cleanup old workflow runs
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          WORKFLOW_FILE: run.yml
+          KEEP_RUNS: 20
         run: |
           echo "🧹 Cleaning up old workflow runs..."
+          echo "   Keeping the most recent $KEEP_RUNS completed runs"
 
           # Ensure we're in the repo directory
           cd ${{ github.workspace }}
 
-          # Get completed runs older than the last 20, delete them
-          RUN_IDS=$(gh run list --status completed --limit 100 --json databaseId --repo $GITHUB_REPOSITORY | \
-            jq -r '.[20:][].databaseId')
+          # Get the workflow ID for run.yml
+          WORKFLOW_ID=$(gh workflow list --repo $GITHUB_REPOSITORY | grep "$WORKFLOW_FILE" | awk '{print $1}')
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "⚠️ Could not find workflow ID for $WORKFLOW_FILE"
+            exit 0
+          fi
+          echo "   Workflow ID: $WORKFLOW_ID"
 
-          if [ -z "$RUN_IDS" ]; then
-            echo "No old runs to delete."
+          # Get all completed runs for this workflow, sorted newest first
+          # gh run list returns newest first by default
+          ALL_RUNS=$(gh run list \
+            --workflow "$WORKFLOW_ID" \
+            --status completed \
+            --limit 500 \
+            --json databaseId,createdAt \
+            --repo $GITHUB_REPOSITORY 2>/dev/null)
+
+          if [ -z "$ALL_RUNS" ] || [ "$ALL_RUNS" = "[]" ]; then
+            echo "ℹ️ No completed runs found."
             exit 0
           fi
 
-          COUNT=$(echo "$RUN_IDS" | grep -c . || echo "0")
-          echo "Deleting $COUNT old completed runs..."
+          # Count total runs
+          TOTAL_RUNS=$(echo "$ALL_RUNS" | jq length)
+          echo "   Total completed runs: $TOTAL_RUNS"
 
-          for run_id in $RUN_IDS; do
+          if [ "$TOTAL_RUNS" -le "$KEEP_RUNS" ]; then
+            echo "ℹ️ Only $TOTAL_RUNS runs found, keeping all (threshold: $KEEP_RUNS)"
+            exit 0
+          fi
+
+          # Get runs to delete (skip the most recent KEEP_RUNS, delete the rest)
+          # jq '.[20:]' skips first 20 (newest) and returns the rest (older ones to delete)
+          RUNS_TO_DELETE=$(echo "$ALL_RUNS" | jq -r ".[$KEEP_RUNS:][].databaseId")
+
+          if [ -z "$RUNS_TO_DELETE" ]; then
+            echo "ℹ️ No old runs to delete."
+            exit 0
+          fi
+
+          # Count how many we'll delete
+          DELETE_COUNT=$(echo "$RUNS_TO_DELETE" | wc -l)
+          echo "   Deleting $DELETE_COUNT old completed runs..."
+
+          # Delete each run
+          DELETED=0
+          FAILED=0
+          for run_id in $RUNS_TO_DELETE; do
             if [ -n "$run_id" ]; then
-              gh run delete "$run_id" --repo $GITHUB_REPOSITORY 2>/dev/null || true
+              if gh run delete "$run_id" --repo $GITHUB_REPOSITORY 2>/dev/null; then
+                DELETED=$((DELETED + 1))
+              else
+                FAILED=$((FAILED + 1))
+              fi
             fi
           done
 
-          echo "✅ Cleanup complete."
+          echo "✅ Cleanup complete: deleted $DELETED runs, $FAILED failed"
