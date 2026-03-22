@@ -743,6 +743,150 @@ def compact_tool_history(messages: list, keep_recent: int = 6) -> list:
     return result
 
 
+def create_isolated_context(
+    task: str,
+    relevant_files: Optional[List[str]] = None,
+    max_context_tokens: int = 4000,
+) -> List[Dict[str, Any]]:
+    """Create an isolated context for sub-agent execution.
+
+    Inspired by DeerFlow's isolated sub-agent context approach.
+    Creates a fresh context with only the task and relevant files,
+    not the full conversation history.
+
+    Args:
+        task: The task description for the sub-agent
+        relevant_files: List of file paths to include in context
+        max_context_tokens: Maximum tokens for context
+
+    Returns:
+        List of messages for the sub-agent
+    """
+    import pathlib
+
+    messages = []
+
+    # Add system message with task context
+    system_msg = {
+        "role": "system",
+        "content": (
+            f"You are a sub-agent working on a specific task. "
+            f"Focus only on this task. Do not reference previous conversations.\n\n"
+            f"TASK: {task}"
+        ),
+    }
+    messages.append(system_msg)
+
+    # Add relevant file contents if provided
+    if relevant_files:
+        file_contents = []
+        for file_path in relevant_files[:5]:  # Limit to 5 files
+            try:
+                path = pathlib.Path(file_path)
+                if path.exists() and path.is_file():
+                    content = path.read_text(encoding="utf-8", errors="ignore")
+                    # Truncate long files
+                    if len(content) > 2000:
+                        content = content[:1000] + "\n... (truncated) ...\n" + content[-1000:]
+                    file_contents.append(f"=== {file_path} ===\n{content}")
+            except Exception:
+                continue
+
+        if file_contents:
+            context_msg = {
+                "role": "user",
+                "content": (
+                    f"Here are the relevant files for your task:\n\n"
+                    + "\n\n".join(file_contents)
+                    + f"\n\nNow complete this task: {task}"
+                ),
+            }
+            messages.append(context_msg)
+        else:
+            # No files, just give the task
+            messages.append({"role": "user", "content": task})
+    else:
+        messages.append({"role": "user", "content": task})
+
+    return messages
+
+
+def summarize_completed_task(
+    task: str,
+    result: str,
+    files_changed: Optional[List[str]] = None,
+) -> str:
+    """Create a concise summary of a completed sub-task.
+
+    Used to replace detailed tool call history with a brief summary,
+    keeping the main context lean.
+
+    Args:
+        task: Original task description
+        result: Task result/output
+        files_changed: List of files that were modified
+
+    Returns:
+        Concise summary string
+    """
+    summary_parts = [f"Task: {task[:100]}"]
+
+    # Summarize result (keep first 200 chars)
+    result_summary = result[:200].replace("\n", " ").strip()
+    if len(result) > 200:
+        result_summary += "..."
+    summary_parts.append(f"Result: {result_summary}")
+
+    # List files changed
+    if files_changed:
+        files_str = ", ".join(files_changed[:3])
+        if len(files_changed) > 3:
+            files_str += f" (+{len(files_changed) - 3} more)"
+        summary_parts.append(f"Files: {files_str}")
+
+    return " | ".join(summary_parts)
+
+
+def smart_context_compress(
+    messages: List[Dict[str, Any]],
+    completed_tasks: Optional[List[str]] = None,
+    keep_recent: int = 4,
+) -> List[Dict[str, Any]]:
+    """Smart context compression inspired by DeerFlow.
+
+    Compresses context by:
+    1. Summarizing completed sub-tasks
+    2. Offloading old tool results
+    3. Keeping recent + active context
+
+    Args:
+        messages: Full message history
+        completed_tasks: List of completed task descriptions
+        keep_recent: Number of recent tool rounds to keep intact
+
+    Returns:
+        Compressed message list
+    """
+    if not messages:
+        return messages
+
+    # First apply standard compaction
+    compacted = compact_tool_history(messages, keep_recent=keep_recent)
+
+    # If we have completed tasks, add a summary
+    if completed_tasks:
+        task_summary = f"[Context Summary] Completed tasks: " + "; ".join(t[:50] for t in completed_tasks[-5:])
+        # Insert after system messages
+        insert_idx = 0
+        for i, msg in enumerate(compacted):
+            if msg.get("role") != "system":
+                insert_idx = i
+                break
+        compacted.insert(insert_idx, {"role": "system", "content": task_summary})
+
+    return compacted
+
+
 def compact_tool_history_llm(messages: list, keep_recent: int = 6) -> list:
     """LLM-driven compaction: summarize old tool results via a light model.
 

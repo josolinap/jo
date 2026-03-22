@@ -28,7 +28,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 
@@ -377,6 +377,76 @@ SKILLS: Dict[str, Skill] = {}
 # Separate mapping from trigger/alias to skill name
 # This allows O(1) lookup by any trigger while keeping SKILLS unique
 TRIGGERS: Dict[str, str] = {}
+
+# Progressive skill loading support (DeerFlow-inspired)
+# Skills can be loaded on-demand instead of all at startup
+_SKILL_LOADERS: Dict[str, Any] = {}  # skill_name -> loader function
+_LOADED_SKILLS: Set[str] = set()  # Track which skills are fully loaded
+
+
+def register_skill_loader(skill_name: str, loader_func: Any) -> None:
+    """Register a lazy loader for a skill.
+
+    Skills with loaders are loaded only when first accessed,
+    reducing startup time and memory usage.
+
+    Args:
+        skill_name: Name of the skill
+        loader_func: Function that returns Skill when called
+    """
+    _SKILL_LOADERS[skill_name] = loader_func
+    # Register trigger immediately (lightweight)
+    if skill_name not in TRIGGERS:
+        TRIGGERS[skill_name] = skill_name
+
+
+def ensure_skill_loaded(skill_name: str) -> Optional[Skill]:
+    """Ensure a skill is fully loaded (progressive loading).
+
+    If the skill has a lazy loader, loads it now.
+    Otherwise returns the already-loaded skill.
+
+    Args:
+        skill_name: Name of the skill to load
+
+    Returns:
+        Skill object or None if not found
+    """
+    # Already loaded
+    if skill_name in _LOADED_SKILLS:
+        return SKILLS.get(skill_name)
+
+    # Has a lazy loader
+    if skill_name in _SKILL_LOADERS:
+        try:
+            loader = _SKILL_LOADERS[skill_name]
+            skill = loader()
+            if skill:
+                register_skill(skill)
+                _LOADED_SKILLS.add(skill_name)
+                log.debug(f"Progressive load: {skill_name}")
+                return skill
+        except Exception as e:
+            log.warning(f"Failed to lazy load skill {skill_name}: {e}")
+            return None
+
+    # No loader, check if already registered
+    if skill_name in SKILLS:
+        _LOADED_SKILLS.add(skill_name)
+        return SKILLS[skill_name]
+
+    return None
+
+
+def get_loaded_skill_count() -> Tuple[int, int]:
+    """Get count of loaded vs total skills.
+
+    Returns:
+        Tuple of (loaded_count, total_count)
+    """
+    total = len(SKILLS) + len(_SKILL_LOADERS)
+    loaded = len(_LOADED_SKILLS)
+    return loaded, total
 
 
 def register_skill(skill: Skill) -> None:
@@ -910,11 +980,38 @@ Think like an attacker, defend like an expert.
 
 
 def get_skill(name: str) -> Optional[Skill]:
-    """Get a skill by name or alias using TRIGGERS lookup."""
+    """Get a skill by name or alias with progressive loading support.
+
+    This is the preferred way to access skills - it handles:
+    1. Direct skill name lookup
+    2. Trigger/alias resolution
+    3. Progressive (lazy) loading
+
+    Args:
+        name: Skill name or trigger keyword
+
+    Returns:
+        Skill object or None
+    """
+    # Try direct name first
+    if name in SKILLS:
+        _LOADED_SKILLS.add(name)
+        return SKILLS[name]
+
+    # Try trigger resolution with various formats
     skill_name = TRIGGERS.get(name) or TRIGGERS.get(f"/{name}") or TRIGGERS.get(name.replace("/", ""))
+
     if skill_name:
-        return SKILLS.get(skill_name)
-    return None
+        # Check if already loaded
+        if skill_name in SKILLS:
+            _LOADED_SKILLS.add(skill_name)
+            return SKILLS[skill_name]
+
+        # Try progressive loading
+        return ensure_skill_loaded(skill_name)
+
+    # Try progressive loading with original name
+    return ensure_skill_loaded(name)
 
 
 def detect_skill_from_text(text: str) -> Optional[Skill]:
