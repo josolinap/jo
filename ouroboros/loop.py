@@ -20,7 +20,13 @@ import logging
 
 from ouroboros.llm import LLMClient, normalize_reasoning_effort, add_usage
 from ouroboros.tools.registry import ToolRegistry
-from ouroboros.context import compact_tool_history, compact_tool_history_llm, auto_summarize_if_needed, smart_context_optimize, DifferentialContext
+from ouroboros.context import (
+    compact_tool_history,
+    compact_tool_history_llm,
+    auto_summarize_if_needed,
+    smart_context_optimize,
+    DifferentialContext,
+)
 from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
     utc_now_iso,
@@ -960,6 +966,30 @@ Version: {skill.version}
                     )
 
                 _current_issues = analysis.issues
+
+                # HALLUCINATION ENFORCEMENT - Block high-severity hallucinations
+                hallucination_issues = [
+                    i for i in analysis.issues if i.issue_type == "hallucination" and i.severity == "high"
+                ]
+                if hallucination_issues and not tool_calls:
+                    # High-severity hallucination without tool calls to verify
+                    # Inject correction instead of sending hallucinated response
+                    correction_msg = (
+                        "[ANTI-HALLUCINATION] Your response contains unverified claims. "
+                        "Before stating something as fact, you MUST verify it with tools:\n"
+                    )
+                    for issue in hallucination_issues[:3]:
+                        correction_msg += f"- {issue.description}\n"
+                        if issue.suggestion:
+                            correction_msg += f"  Suggestion: {issue.suggestion}\n"
+                    correction_msg += (
+                        "\nPlease verify your claims with repo_read, grep, or other tools before continuing."
+                    )
+
+                    messages.append({"role": "system", "content": correction_msg})
+                    emit_progress("⚠️ Hallucination detected - requesting verification")
+                    log.warning(f"[HALLUCINATION] Blocked response with {len(hallucination_issues)} issues")
+                    continue  # Skip to next round, let LLM correct
 
                 high_severity_issues = [i for i in analysis.issues if i.severity in ("high", "medium")]
                 if analysis.quality_score < 0.85 and high_severity_issues:
