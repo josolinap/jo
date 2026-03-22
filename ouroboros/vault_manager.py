@@ -383,6 +383,19 @@ class VaultManager:
 
         shutil.copytree(self.vault_root, self.repo_vault_path, dirs_exist_ok=True)
 
+    def sync_from_repo(self) -> None:
+        """Copy vault files from repository vault directory to local vault."""
+        if self.repo_vault_path is None:
+            return
+        if not self.repo_vault_path.exists():
+            return
+        # Ensure target exists
+        self.vault_root.mkdir(parents=True, exist_ok=True)
+        # Copy all files and directories from self.repo_vault_path to self.vault_root
+        import shutil
+
+        shutil.copytree(self.repo_vault_path, self.vault_root, dirs_exist_ok=True)
+
     def compute_checksum(self, file_path: pathlib.Path) -> str:
         """Compute SHA256 checksum of a file."""
         sha256 = hashlib.sha256()

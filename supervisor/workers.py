@@ -268,10 +268,8 @@ def auto_resume_after_restart() -> None:
         if last_run:
             # Calculate time since last run
             try:
-                from datetime import datetime, timezone
-
-                last_dt = datetime.fromisoformat(last_run.replace("Z", "+00:00"))
-                now = datetime.now(timezone.utc)
+                last_dt = datetime.datetime.fromisoformat(last_run.replace("Z", "+00:00"))
+                now = datetime.datetime.now(datetime.timezone.utc)
                 delta = now - last_dt
                 if delta.total_seconds() < 60:
                     time_ago = f"{int(delta.total_seconds())} seconds ago"
