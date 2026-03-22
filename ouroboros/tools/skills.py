@@ -1075,3 +1075,10 @@ Suggested skill: {relevance.skill.name.upper()}
 Reason: {relevance.reason}
 
 To activate: Use this context with {relevance.skill.name} approach."""
+
+
+# Import and register pi prompts as skills
+try:
+    from ouroboros import pi_prompts  # noqa: F401 - auto-registers skills
+except Exception as e:
+    log.warning(f"Failed to import pi_prompts: {e}")

@@ -353,6 +353,16 @@ class BackgroundConsciousness:
     def _build_context(self) -> str:
         parts = [self._load_bg_prompt()]
 
+        # Add audit prompt for periodic self-audits
+        try:
+            from ouroboros.pi_prompts import get_audit_prompt
+
+            audit_prompt = get_audit_prompt()
+            if audit_prompt:
+                parts.append("## Self-Audit Instructions\n\n" + audit_prompt)
+        except Exception as e:
+            log.debug(f"Failed to load audit prompt: {e}")
+
         # Bible (abbreviated)
         bible_path = self._repo_dir / "BIBLE.md"
         if bible_path.exists():
