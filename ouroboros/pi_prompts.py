@@ -134,6 +134,24 @@ def get_audit_prompt() -> Optional[str]:
     return extract_prompt_content(content) if content else None
 
 
+def get_evolution_prompt() -> Optional[str]:
+    """Get the evolution cycle prompt template."""
+    content = load_pi_prompt("evolution")
+    return extract_prompt_content(content) if content else None
+
+
+def get_debug_prompt() -> Optional[str]:
+    """Get the debugging prompt template."""
+    content = load_pi_prompt("debug")
+    return extract_prompt_content(content) if content else None
+
+
+def get_security_prompt() -> Optional[str]:
+    """Get the security audit prompt template."""
+    content = load_pi_prompt("security")
+    return extract_prompt_content(content) if content else None
+
+
 def register_pi_skills():
     """Register all pi prompts as skills with the skills system.
 
@@ -229,6 +247,97 @@ Do NOT implement unless explicitly asked. Analyze and propose only.""",
             )
         )
         log.info("Registered issue-analyzer skill from .pi/prompts/issue.md")
+
+    # Evolution Cycle Skill
+    evolution_prompt = get_evolution_prompt()
+    if evolution_prompt:
+        register_skill(
+            Skill(
+                name="evolution",
+                aliases=["evolution", "/evolution", "evolve", "/evolve", "self-modify"],
+                description="Execute self-modification and evolution cycles",
+                system_prompt_addition=f"""You are now in EVOLUTION mode.
+
+Your job is to systematically improve Jo's capabilities through self-modification.
+
+{evolution_prompt}
+
+Focus on one axis of growth per cycle. Verify everything before committing.""",
+                enabled_tools=[
+                    "repo_read",
+                    "repo_write",
+                    "run_tests",
+                    "git_status",
+                    "git_diff",
+                    "git_add",
+                    "git_commit",
+                ],
+                pre_task_prompt="Before evolving: Run health check and review recent changes to understand current state.",
+                post_task_prompt="""Document your evolution cycle:
+- What changed
+- Why it matters
+- What was learned""",
+                triggers=["evolution", "evolve", "self-modify", "improve", "upgrade"],
+                version="1.0.0",
+            )
+        )
+        log.info("Registered evolution skill from .pi/prompts/evolution.md")
+
+    # Debug Skill
+    debug_prompt = get_debug_prompt()
+    if debug_prompt:
+        register_skill(
+            Skill(
+                name="debug",
+                aliases=["debug", "/debug", "debug-issue", "/debug-issue"],
+                description="Systematic debugging methodology for complex issues",
+                system_prompt_addition=f"""You are now in DEBUG MODE.
+
+Your job is to systematically diagnose and fix complex issues.
+
+{debug_prompt}
+
+Read the code first. Hypothesize based on evidence. Verify with tests.""",
+                enabled_tools=["repo_read", "grep", "git_log", "run_tests", "python"],
+                pre_task_prompt="Before debugging: Reproduce the issue and gather evidence (error messages, stack traces).",
+                post_task_prompt="""Provide your debug report:
+- Root cause identified
+- Fix applied
+- Tests passing
+- Prevention measures""",
+                triggers=["debug", "bug", "error", "fix", "broken"],
+                version="1.0.0",
+            )
+        )
+        log.info("Registered debug skill from .pi/prompts/debug.md")
+
+    # Security Skill
+    security_prompt = get_security_prompt()
+    if security_prompt:
+        register_skill(
+            Skill(
+                name="security",
+                aliases=["security", "/security", "security-audit", "/security-audit", "audit-security"],
+                description="Comprehensive security audit for code and infrastructure",
+                system_prompt_addition=f"""You are now in SECURITY AUDIT mode.
+
+Your job is to identify and document security vulnerabilities.
+
+{security_prompt}
+
+Be thorough. Document everything. Prioritize by risk level.""",
+                enabled_tools=["repo_read", "grep", "git_log", "run_tests"],
+                pre_task_prompt="Before auditing: Understand the attack surface and critical assets.",
+                post_task_prompt="""Provide your security audit report:
+- Risk summary by severity
+- Critical findings with fixes
+- Compliance checklist status
+- Action items""",
+                triggers=["security", "audit", "vulnerability", "secure", "penetration"],
+                version="1.0.0",
+            )
+        )
+        log.info("Registered security skill from .pi/prompts/security.md")
 
     log.info("Pi prompts skills registration complete")
 
