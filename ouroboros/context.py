@@ -1190,59 +1190,262 @@ def auto_summarize_if_needed(
                 except Exception:
                     pass
     except Exception:
-        log.debug("Failed to check last summary time", exc_info=True)
-
-    # Summarize chat history
-    summary = _summarize_chat_history(drive_root, keep_recent=50)
-    if summary:
-        info["auto_summarized"] = True
-        info["reason"] = f"context at {current_tokens} tokens, threshold {threshold}"
-        info["summary"] = summary[:500]  # Store preview
-
-        # Find and update the chat summary in messages
-        for i, msg in enumerate(messages):
-            if msg.get("role") == "system":
-                content = msg.get("content", "")
-                if isinstance(content, str) and "## Recent chat" in content:
-                    # Replace the chat section with summary
-                    lines = content.split("\n\n")
-                    new_lines = []
-                    for line in lines:
-                        if line.startswith("## Recent chat"):
-                            new_lines.append(
-                                f"## Recent chat\n\n[SUMMARY OF EARLIER CONVERSATION]\n{summary}\n\n[RECENT MESSAGES]"
-                            )
-                        elif line.strip():
-                            new_lines.append(line)
-                    msg["content"] = "\n\n".join(new_lines)
-                    break
-                elif isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            text = block.get("text", "")
-                            if "## Recent chat" in text:
-                                lines = text.split("\n\n")
-                                new_lines = []
-                                for line in lines:
-                                    if line.startswith("## Recent chat"):
-                                        new_lines.append(
-                                            f"## Recent chat\n\n[SUMMARY OF EARLIER CONVERSATION]\n{summary}\n\n[RECENT MESSAGES]"
-                                        )
-                                    elif line.strip():
-                                        new_lines.append(line)
-                                block["text"] = "\n\n".join(new_lines)
-                                break
-
-        # Record that we summarized
-        try:
-            state_path = drive_root / "state" / "state.json"
-            if state_path.exists():
-                state = json.loads(state_path.read_text(encoding="utf-8"))
-                state["last_chat_summary_ts"] = utc_now_iso()
-                state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            log.debug("Failed to record summary timestamp", exc_info=True)
-
-        log.info(f"Auto-summarization complete: {info['reason']}")
+        pass
 
     return messages, info
+
+
+# ============================================================================
+# DIFFERENTIAL CONTEXT - Inspired by pi-mono's differential rendering
+# ============================================================================
+
+
+def _hash_message(msg: Dict[str, Any]) -> str:
+    """Create a hash for a message to track if it's been seen."""
+    import hashlib
+
+    # Create a stable representation
+    content = msg.get("content", "")
+    role = msg.get("role", "")
+    tool_calls = msg.get("tool_calls")
+
+    # Build hash input
+    parts = [f"role:{role}"]
+
+    if isinstance(content, str):
+        parts.append(f"content:{content[:500]}")  # First 500 chars
+    elif isinstance(content, list):
+        # Multipart content
+        for item in content:
+            if isinstance(item, dict):
+                parts.append(f"part:{item.get('type', '')}:{str(item.get('text', ''))[:200]}")
+
+    if tool_calls:
+        for tc in tool_calls[:5]:  # Max 5 tool calls for hash
+            func = tc.get("function", {})
+            parts.append(f"tool:{func.get('name', '')}:{func.get('arguments', '')[:100]}")
+
+    hash_input = "|".join(parts)
+    return hashlib.md5(hash_input.encode()).hexdigest()[:16]
+
+
+class DifferentialContext:
+    """Track what context the LLM has seen and provide incremental updates.
+
+    Inspired by pi-mono's differential rendering approach.
+    Only sends messages the LLM hasn't seen yet, reducing token usage.
+    """
+
+    def __init__(self):
+        self._seen_hashes: Dict[str, int] = {}  # hash -> message index
+        self._last_full_context_size: int = 0
+
+    def get_incremental_messages(
+        self,
+        messages: List[Dict[str, Any]],
+        force_full: bool = False,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """Get only the messages the LLM hasn't seen yet.
+
+        Args:
+            messages: Full message list
+            force_full: If True, return all messages (for first call or reset)
+
+        Returns:
+            Tuple of:
+            - Incremental messages (new + system messages)
+            - Stats dict with compression info
+        """
+        if force_full or not self._seen_hashes:
+            # First call or forced full - return everything
+            hashes = {_hash_message(msg): i for i, msg in enumerate(messages)}
+            self._seen_hashes = hashes
+            self._last_full_context_size = len(messages)
+
+            return messages, {
+                "mode": "full",
+                "total_messages": len(messages),
+                "new_messages": len(messages),
+                "saved_tokens": 0,
+            }
+
+        # Find new messages
+        new_messages = []
+        new_hashes = {}
+        system_messages = []  # Always include system messages
+
+        for i, msg in enumerate(messages):
+            msg_hash = _hash_message(msg)
+            new_hashes[msg_hash] = i
+
+            # Always include system messages (they may have changed)
+            if msg.get("role") == "system":
+                system_messages.append(msg)
+                continue
+
+            # Check if we've seen this message
+            if msg_hash not in self._seen_hashes:
+                new_messages.append(msg)
+
+        # Update seen hashes
+        self._seen_hashes = new_hashes
+
+        # Build result: system messages + new messages
+        if new_messages:
+            # Include system messages at the start
+            result = system_messages + new_messages
+            mode = "incremental"
+        else:
+            # No new messages, just return system messages
+            result = system_messages
+            mode = "system_only"
+
+        # Estimate token savings
+        total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+        new_chars = sum(len(str(m.get("content", ""))) for m in result)
+        saved_chars = max(0, total_chars - new_chars)
+
+        stats = {
+            "mode": mode,
+            "total_messages": len(messages),
+            "new_messages": len(new_messages),
+            "system_messages": len(system_messages),
+            "estimated_saved_chars": saved_chars,
+        }
+
+        self._last_full_context_size = len(messages)
+
+        return result, stats
+
+    def reset(self) -> None:
+        """Reset the differential context (e.g., on new task)."""
+        self._seen_hashes.clear()
+        self._last_full_context_size = 0
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get current tracking statistics."""
+        return {
+            "seen_hashes": len(self._seen_hashes),
+            "last_context_size": self._last_full_context_size,
+        }
+
+
+def get_differential_context(
+    messages: List[Dict[str, Any]],
+    context_tracker: Optional[DifferentialContext] = None,
+    force_full: bool = False,
+) -> Tuple[List[Dict[str, Any]], DifferentialContext, Dict[str, Any]]:
+    """Get differential context for LLM calls.
+
+    This is the main entry point for differential context.
+    Returns incremental messages and updates the tracker.
+
+    Args:
+        messages: Full message list
+        context_tracker: Existing tracker (creates new one if None)
+        force_full: Force full context on this call
+
+    Returns:
+        Tuple of:
+        - Messages to send (incremental or full)
+        - Updated context tracker
+        - Stats dict
+    """
+    if context_tracker is None:
+        context_tracker = DifferentialContext()
+
+    result_messages, stats = context_tracker.get_incremental_messages(messages, force_full=force_full)
+
+    return result_messages, context_tracker, stats
+
+
+def smart_context_optimize(
+    messages: List[Dict[str, Any]],
+    max_tokens: int = 8000,
+    context_tracker: Optional[DifferentialContext] = None,
+) -> Tuple[List[Dict[str, Any]], DifferentialContext, Dict[str, Any]]:
+    """Optimize context for LLM calls using multiple strategies.
+
+    Combines:
+    1. Differential context (only new messages)
+    2. Token budget enforcement
+    3. Smart compaction
+
+    Args:
+        messages: Full message list
+        max_tokens: Maximum tokens to send
+        context_tracker: Existing tracker
+
+    Returns:
+        Tuple of:
+        - Optimized messages
+        - Updated context tracker
+        - Optimization stats
+    """
+    # Step 1: Get differential context
+    if context_tracker is None:
+        context_tracker = DifferentialContext()
+
+    incremental_msgs, diff_stats = context_tracker.get_incremental_messages(messages)
+
+    # Step 2: Check token budget
+    estimated_tokens = estimate_tokens(json.dumps(incremental_msgs))
+
+    if estimated_tokens <= max_tokens:
+        # Within budget, return as-is
+        return (
+            incremental_msgs,
+            context_tracker,
+            {
+                **diff_stats,
+                "estimated_tokens": estimated_tokens,
+                "within_budget": True,
+            },
+        )
+
+    # Step 3: Over budget - apply compaction
+    # First try standard compaction
+    compacted = compact_tool_history(incremental_msgs, keep_recent=3)
+
+    estimated_tokens = estimate_tokens(json.dumps(compacted))
+
+    if estimated_tokens <= max_tokens:
+        return (
+            compacted,
+            context_tracker,
+            {
+                **diff_stats,
+                "estimated_tokens": estimated_tokens,
+                "within_budget": True,
+                "compaction_applied": True,
+            },
+        )
+
+    # Step 4: Still over budget - aggressive truncation
+    # Keep system messages + most recent messages
+    system_msgs = [m for m in compacted if m.get("role") == "system"]
+    other_msgs = [m for m in compacted if m.get("role") != "system"]
+
+    # Keep only recent messages that fit budget
+    result = list(system_msgs)
+    budget_remaining = max_tokens - estimate_tokens(json.dumps(system_msgs))
+
+    for msg in reversed(other_msgs):
+        msg_tokens = estimate_tokens(json.dumps(msg))
+        if msg_tokens <= budget_remaining:
+            result.insert(len(system_msgs), msg)  # Insert after system messages
+            budget_remaining -= msg_tokens
+        else:
+            break
+
+    return (
+        result,
+        context_tracker,
+        {
+            **diff_stats,
+            "estimated_tokens": max_tokens - budget_remaining,
+            "within_budget": True,
+            "aggressive_truncation": True,
+            "messages_truncated": len(other_msgs) - (len(result) - len(system_msgs)),
+        },
+    )
