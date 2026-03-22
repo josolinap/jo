@@ -877,15 +877,13 @@ Version: {skill.version}
                 if tc.get("function", {}).get("name") in ["repo_write_commit", "drive_write", "apply_patch"]:
                     # Try to extract file path from tool arguments
                     try:
-                        import json
-
                         args = json.loads(tc.get("function", {}).get("arguments", "{}"))
                         if "path" in args:
                             files_changed_this_round.append(args["path"])
                         elif "file_path" in args:
                             files_changed_this_round.append(args["file_path"])
-                    except:
-                        pass
+                    except (json.JSONDecodeError, KeyError, TypeError) as e:
+                        log.debug(f"Failed to parse tool args: {e}")
 
             # Accumulate files changed across rounds
             if not hasattr(run_llm_loop, "_files_changed_total"):
