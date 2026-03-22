@@ -4,6 +4,7 @@
     "projects/jo_knowledge_map.md": "8c7640f1dc4b932da8cf48028c18520e3169e35093da513a166b3dcc8040edf9",
     "projects/pipeline_architecture.md": "a96ccfb9795e25d0e08ed1f7505d5f258f7c142835c30f45ffe951a20e9140b7",
     "projects/intelligent_vault_system_architecture.md": "803bb7ff33c3b76b991dcf3f73a95550ed3111d12f47813a26a72a41e27534dc",
+    "concepts/delegated_reasoning.md": "d129bed1283ce8f0657b59aa17ae9fc28182b129b5e8cde6c6de5f8b14ed736f",
     "concepts/bible_md_principles__deep_analysis_and_application.md": "9e72a14c99ca411594bce9eba8b0daead1e3ace6065e857b608b3cca13b75576",
     "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
     "concepts/identity.md": "017432000809f8c99382d841cc6a091986159c03ce3a2633e1044287951c7a45",
@@ -23,9 +24,11 @@
     "concepts/principle_0__agency.md": "a2421d86ee7aeba1fbc9f2a937a68771f6e152060fbd11e3017f6fa1c90b7634",
     "concepts/principle_1__continuity_1.md": "dae9d071a1c9fed187722c0d0631e11c5fdb1b00dfd46cb5813dee8f11cd17c4",
     "concepts/multi-agent_architecture_and_delegated_reasoning.md": "15514379bf6bd2f71d97175dc7f692cc672bb1d18ad6f2b2a700a80324cc8f0c",
+    "concepts/tool_result_processing_protocol.md": "b218785be35b2f85b764b329b96b04ca3256e20b9d0c8e06f4407c583e477bb3",
     "concepts/principle_4__authenticity.md": "50f14b64bc8641d4fe041381cd53c5a090013f691f6c8e8a0387597b63cf3f01",
     "concepts/architecture.md": "abba0bcd0260f88853ea1f875cd71212bb6fbacc64e022aa9be1dd7cd65f3fef",
     "concepts/verification_as_agency__anti-hallucination_system.md": "330ec0ba0d6ab16952879325cf8eb04cbd90b228db1a7bbf331b5a6b228b485f",
+    "concepts/evolution_cycle.md": "13b92909ccdda55aab373373239091642d298a0629e484e04af6778325b1916e",
     "concepts/git_storage_test.md": "00ad26da42b7e88bc2a6527c71a426a627b79ce28ac6fc82f56ee5c6d0b3d8a0",
     "concepts/tools.md": "3b2c99c56715ade323a66ef3eb8d88ac8859764fa167c07d253401ca147497e6",
     "concepts/test_vault_write.md": "f19143c9f9730e3c2159c65e28dfb88ec24d62aa1035dfd3f8c46453484274d0",
@@ -173,5 +176,5 @@
     "tools/wait-for-task.md": "6fa0a9511303b4140ed5306626b58edfb365fbd1d0d7efdac8180f4fcbf231ac",
     "tools/ai-code-edit.md": "6fe24a463f2ca35f747d4e2255d43d61925b5c52232ce17f14fb73ef5b3cb367"
   },
-  "last_updated": "2026-03-22T08:49:43.068121+00:00"
+  "last_updated": "2026-03-22T09:01:26.091928+00:00"
 }
