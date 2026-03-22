@@ -16,4 +16,9 @@ This demonstrates that Jo can modify the repository without depending on Claude 
 4. Git commit created automatically
 5. No external LLM was involved
 
+## Line-based Edit Test
+
+I just edited this section using `code_edit_lines` - another Claude-free tool.
+This demonstrates line-based precision editing without external dependencies.
+
 This is important: Jo can self-modify autonomously.
