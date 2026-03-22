@@ -262,10 +262,6 @@ class LLMClient:
             self._client = None
             self._is_local = False
 
-        # Initialize Hugging Face fallback
-        self._hf_fallback = HuggingFaceLLMClient()
-        self._hf_key = os.environ.get("HUGGINGFACE_API_KEY", "")
-
     def _get_client(self):
         if self._client is None:
             from openai import OpenAI
@@ -357,18 +353,26 @@ class LLMClient:
 
             return msg, usage
         except Exception as e:
-            if self._hf_key and not self._is_local:
-                log.warning(f"OpenRouter failed or empty, falling back to Hugging Face: {e}")
-                fallback_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
-                return self._hf_fallback.chat(
-                    messages=messages,
-                    model=fallback_model,
-                    tools=tools,
-                    reasoning_effort=reasoning_effort,
-                    max_tokens=max_tokens,
-                    tool_choice=tool_choice,
-                )
-            raise
+            # Fallback to HuggingFace if API key is configured
+            hf_key = os.environ.get("HUGGINGFACE_API_KEY", "")
+            if hf_key:
+                log.warning(f"OpenRouter failed, attempting HuggingFace fallback: {e}")
+                try:
+                    from ouroboros.llm import HuggingFaceLLMClient
+
+                    hf_client = HuggingFaceLLMClient()
+                    fallback_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
+                    return hf_client.chat(
+                        messages=messages,
+                        model=fallback_model,
+                        tools=tools,
+                        reasoning_effort=reasoning_effort,
+                        max_tokens=max_tokens,
+                        tool_choice=tool_choice,
+                    )
+                except Exception as hf_error:
+                    log.error(f"HuggingFace fallback also failed: {hf_error}")
+            raise  # Re-raise original error if no fallback or fallback failed
 
     def _chat_openrouter(
         self,

@@ -277,7 +277,6 @@ jobs:
           OUROBOROS_MODEL: ${{ secrets.OUROBOROS_MODEL || 'openrouter/free' }}
           OUROBOROS_MODEL_CODE: ${{ secrets.OUROBOROS_MODEL_CODE || 'openrouter/free' }}
           OUROBOROS_MODEL_LIGHT: ${{ secrets.OUROBOROS_MODEL_LIGHT || 'openrouter/free' }}
-          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
 
           # --- Behavior flags ---
           # Skip git-sync: the runner already has the code checked out
