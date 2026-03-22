@@ -296,6 +296,10 @@ jobs:
           OUROBOROS_NORMALIZE_CODE: "1"
           # Pre-fetch relevant context before LLM calls
           OUROBOROS_ENRICH_CONTEXT: "1"
+          # Enable vault search during context enrichment
+          OUROBOROS_USE_VAULT_ENRICH: "1"
+          # Max vault notes to include in context enrichment
+          OUROBOROS_MAX_VAULT_NOTES: "3"
           # Max files to pre-fetch for context enrichment
           OUROBOROS_MAX_ENRICH_FILES: "10"
           # Run quality evaluation after task completion
