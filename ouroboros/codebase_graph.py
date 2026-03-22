@@ -332,6 +332,10 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                 )
             )
 
+    # Extract function calls for call graph
+    call_edges = extract_function_calls(tree, rel_path, repo_dir)
+    edges.extend(call_edges)
+
     return nodes, edges
 
 
@@ -526,3 +530,363 @@ def load_graph_from_vault(repo_dir: Optional[Path] = None) -> Optional[CodebaseG
     except Exception as e:
         log.error(f"Failed to load graph from vault: {e}")
         return None
+
+
+# ============================================================================
+# ADVANCED FEATURES - Function Calls, Impact Analysis, Code Metrics
+# ============================================================================
+
+
+def extract_function_calls(tree: ast.Module, file_path: str, repo_dir: Path) -> List[GraphEdge]:
+    """Extract function calls from AST to build call graph.
+
+    This enables understanding WHO calls WHAT - critical for impact analysis.
+    """
+    edges = []
+    rel_path = str(file_path) if isinstance(file_path, str) else str(file_path.relative_to(repo_dir))
+
+    # Track current context (class/function we're inside)
+    current_context: List[str] = []
+
+    class CallVisitor(ast.NodeVisitor):
+        def visit_ClassDef(self, node: ast.ClassDef):
+            class_id = f"class:{rel_path}:{node.name}"
+            current_context.append(class_id)
+            self.generic_visit(node)
+            current_context.pop()
+
+        def visit_FunctionDef(self, node: ast.FunctionDef):
+            # Build function ID based on context
+            if current_context and current_context[-1].startswith("class:"):
+                func_id = f"func:{rel_path}:{current_context[-1].split(':')[-1]}.{node.name}"
+            else:
+                func_id = f"func:{rel_path}:{node.name}"
+
+            current_context.append(func_id)
+            self.generic_visit(node)
+            current_context.pop()
+
+        def visit_Call(self, node: ast.Call):
+            if current_context:
+                caller = current_context[-1]
+
+                # Extract called function name
+                called_name = None
+                if isinstance(node.func, ast.Name):
+                    called_name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Name):
+                        called_name = f"{node.func.value.id}.{node.func.attr}"
+                    else:
+                        called_name = node.func.attr
+
+                if called_name:
+                    # Try to find the target in same file first
+                    target_id = f"func:{rel_path}:{called_name}"
+                    edges.append(
+                        GraphEdge(
+                            source=caller,
+                            target=target_id,
+                            relation="calls",
+                            metadata={"line": node.lineno},
+                        )
+                    )
+
+            self.generic_visit(node)
+
+    visitor = CallVisitor()
+    visitor.visit(tree)
+    return edges
+
+
+def analyze_impact(graph: CodebaseGraph, changed_node_id: str) -> Dict[str, Any]:
+    """Analyze the impact of changing a node.
+
+    Returns:
+        - directly_affected: Nodes that directly depend on changed_node
+        - indirectly_affected: Nodes affected through chains
+        - impact_depth: How far the impact spreads
+        - risk_level: low/medium/high based on affected count
+    """
+    directly_affected = graph.get_dependents(changed_node_id)
+
+    # Trace indirect impact (2 levels deep)
+    indirectly_affected = set()
+    for dep in directly_affected:
+        for indirect in graph.get_dependents(dep):
+            if indirect != changed_node_id and indirect not in directly_affected:
+                indirectly_affected.add(indirect)
+
+    total_affected = len(directly_affected) + len(indirectly_affected)
+
+    # Risk assessment
+    if total_affected == 0:
+        risk_level = "low"
+    elif total_affected <= 3:
+        risk_level = "low"
+    elif total_affected <= 10:
+        risk_level = "medium"
+    else:
+        risk_level = "high"
+
+    # Get affected node details
+    affected_details = []
+    for node_id in directly_affected + list(indirectly_affected):
+        node = graph.get_node(node_id)
+        if node:
+            affected_details.append(
+                {
+                    "id": node_id,
+                    "name": node.name,
+                    "type": node.type,
+                    "file": node.file_path,
+                }
+            )
+
+    return {
+        "changed_node": changed_node_id,
+        "directly_affected": directly_affected,
+        "indirectly_affected": list(indirectly_affected),
+        "total_affected": total_affected,
+        "risk_level": risk_level,
+        "affected_details": affected_details,
+    }
+
+
+def get_code_metrics(graph: CodebaseGraph) -> Dict[str, Any]:
+    """Calculate code metrics from the graph.
+
+    Returns metrics like:
+    - Total files, classes, functions
+    - Average functions per file
+    - Most complex files
+    - Inheritance depth
+    - Import density
+    """
+    file_count = sum(1 for n in graph.nodes.values() if n.type == "file")
+    class_count = sum(1 for n in graph.nodes.values() if n.type == "class")
+    func_count = sum(1 for n in graph.nodes.values() if n.type == "function")
+    import_count = sum(1 for n in graph.nodes.values() if n.type == "import")
+
+    # Functions per file
+    funcs_per_file: Dict[str, int] = {}
+    for node in graph.nodes.values():
+        if node.type == "function":
+            funcs_per_file[node.file_path] = funcs_per_file.get(node.file_path, 0) + 1
+
+    avg_funcs_per_file = sum(funcs_per_file.values()) / max(len(funcs_per_file), 1)
+
+    # Most complex files (by function count)
+    complex_files = sorted(funcs_per_file.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    # Inheritance analysis
+    inheritance_edges = [e for e in graph.edges if e.relation == "inherits"]
+    classes_with_bases = len(set(e.source for e in inheritance_edges))
+
+    # Layer distribution
+    layer_counts: Dict[str, int] = {}
+    for node in graph.nodes.values():
+        layer = node.layer or "unknown"
+        layer_counts[layer] = layer_counts.get(layer, 0) + 1
+
+    # Connection density
+    connection_count: Dict[str, int] = {}
+    for edge in graph.edges:
+        connection_count[edge.source] = connection_count.get(edge.source, 0) + 1
+        connection_count[edge.target] = connection_count.get(edge.target, 0) + 1
+
+    most_connected = sorted(connection_count.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    return {
+        "summary": {
+            "files": file_count,
+            "classes": class_count,
+            "functions": func_count,
+            "imports": import_count,
+            "edges": len(graph.edges),
+        },
+        "complexity": {
+            "avg_functions_per_file": round(avg_funcs_per_file, 1),
+            "most_complex_files": [{"file": f, "functions": c} for f, c in complex_files],
+        },
+        "inheritance": {
+            "classes_with_bases": classes_with_bases,
+            "inheritance_edges": len(inheritance_edges),
+        },
+        "layers": layer_counts,
+        "connectivity": {
+            "most_connected": [{"node": n, "connections": c} for n, c in most_connected],
+        },
+    }
+
+
+def detect_patterns(graph: CodebaseGraph) -> List[Dict[str, Any]]:
+    """Detect code patterns and potential issues.
+
+    Identifies:
+    - God classes (too many methods)
+    - Large files (too many functions)
+    - Circular dependencies (import cycles)
+    - Isolated nodes (no connections)
+    """
+    patterns = []
+
+    # God classes (>10 methods)
+    class_methods: Dict[str, int] = {}
+    for edge in graph.edges:
+        if edge.relation == "contains" and edge.source.startswith("class:"):
+            class_methods[edge.source] = class_methods.get(edge.source, 0) + 1
+
+    for class_id, method_count in class_methods.items():
+        if method_count > 10:
+            node = graph.get_node(class_id)
+            if node:
+                patterns.append(
+                    {
+                        "type": "god_class",
+                        "severity": "warning",
+                        "node": class_id,
+                        "name": node.name,
+                        "file": node.file_path,
+                        "detail": f"Class has {method_count} methods - consider splitting",
+                    }
+                )
+
+    # Large files (>20 functions)
+    file_funcs: Dict[str, int] = {}
+    for node in graph.nodes.values():
+        if node.type == "function":
+            file_funcs[node.file_path] = file_funcs.get(node.file_path, 0) + 1
+
+    for file_path, func_count in file_funcs.items():
+        if func_count > 20:
+            patterns.append(
+                {
+                    "type": "large_file",
+                    "severity": "info",
+                    "file": file_path,
+                    "detail": f"File has {func_count} functions - consider splitting",
+                }
+            )
+
+    # Isolated nodes (no connections)
+    connected_nodes = set()
+    for edge in graph.edges:
+        connected_nodes.add(edge.source)
+        connected_nodes.add(edge.target)
+
+    for node_id, node in graph.nodes.items():
+        if node_id not in connected_nodes and node.type in ("class", "function"):
+            patterns.append(
+                {
+                    "type": "isolated_node",
+                    "severity": "info",
+                    "node": node_id,
+                    "name": node.name,
+                    "file": node.file_path,
+                    "detail": f"{node.type.title()} has no connections in graph",
+                }
+            )
+
+    return patterns
+
+
+def generate_insights(graph: CodebaseGraph) -> str:
+    """Generate human-readable insights about the codebase.
+
+    Combines metrics, patterns, and graph analysis into actionable insights.
+    """
+    metrics = get_code_metrics(graph)
+    patterns = detect_patterns(graph)
+
+    lines = [
+        "# Codebase Insights",
+        "",
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "",
+        "## Overview",
+        "",
+        f"- **{metrics['summary']['files']}** files analyzed",
+        f"- **{metrics['summary']['classes']}** classes",
+        f"- **{metrics['summary']['functions']}** functions",
+        f"- **{metrics['summary']['imports']}** imports",
+        f"- **{metrics['summary']['edges']}** relationships",
+        "",
+    ]
+
+    # Complexity insights
+    if metrics["complexity"]["most_complex_files"]:
+        lines.extend(
+            [
+                "## Complexity Hotspots",
+                "",
+                "Files with most functions (potential refactoring targets):",
+                "",
+            ]
+        )
+        for item in metrics["complexity"]["most_complex_files"]:
+            lines.append(f"- **{item['file']}**: {item['functions']} functions")
+        lines.append("")
+
+    # Pattern warnings
+    warnings = [p for p in patterns if p["severity"] == "warning"]
+    if warnings:
+        lines.extend(
+            [
+                "## ⚠️ Warnings",
+                "",
+            ]
+        )
+        for w in warnings:
+            lines.append(f"- **{w['type']}**: {w['detail']}")
+        lines.append("")
+
+    # Pattern info
+    infos = [p for p in patterns if p["severity"] == "info"]
+    if infos:
+        lines.extend(
+            [
+                "## ℹ️ Observations",
+                "",
+            ]
+        )
+        for i in infos[:5]:  # Limit to 5
+            lines.append(f"- **{i['type']}**: {i['detail']}")
+        lines.append("")
+
+    # Layer distribution
+    if metrics["layers"]:
+        lines.extend(
+            [
+                "## Architecture Layers",
+                "",
+            ]
+        )
+        for layer, count in sorted(metrics["layers"].items()):
+            lines.append(f"- **{layer}**: {count} nodes")
+        lines.append("")
+
+    # Most connected
+    if metrics["connectivity"]["most_connected"]:
+        lines.extend(
+            [
+                "## Central Components",
+                "",
+                "Most connected nodes (key infrastructure):",
+                "",
+            ]
+        )
+        for item in metrics["connectivity"]["most_connected"][:5]:
+            node = graph.get_node(item["node"])
+            if node:
+                lines.append(f"- **{node.name}** ({node.type}): {item['connections']} connections")
+        lines.append("")
+
+    lines.extend(
+        [
+            "---",
+            "*Auto-generated by Jo's codebase graph system*",
+        ]
+    )
+
+    return "\n".join(lines)
