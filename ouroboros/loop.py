@@ -50,6 +50,9 @@ _quality_feedback_injected: bool = False
 # Track files changed across rounds for synthesis and evaluation
 _files_changed_total: List[str] = []
 
+# Track context optimization state per task (differential context optimization)
+_task_context_tracker: Dict[str, DifferentialContext] = {}
+
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
     "anthropic/claude-opus-4.6": (5.0, 0.5, 25.0),
