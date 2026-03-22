@@ -7,7 +7,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -19,8 +19,10 @@ class ContextEnricher:
         self.repo_dir = Path(repo_dir)
         self._cache: Dict[str, Any] = {}
         self._enabled = os.environ.get("OUROBOROS_ENRICH_CONTEXT", "1") == "1"
+        self._use_vault = os.environ.get("OUROBOROS_USE_VAULT_ENRICH", "0") == "1"
         self._max_files = int(os.environ.get("OUROBOROS_MAX_ENRICH_FILES", "10"))
         self._max_chars_per_file = int(os.environ.get("OUROBOROS_MAX_ENRICH_CHARS", "8000"))
+        self._max_vault_notes = int(os.environ.get("OUROBOROS_MAX_VAULT_NOTES", "3"))
 
     def is_enabled(self) -> bool:
         return self._enabled
@@ -44,6 +46,11 @@ class ContextEnricher:
             "code_patterns": self._extract_code_patterns(task),
             "file_contents": {},
         }
+
+        if self._use_vault:
+            vault_context = self._get_vault_context(task)
+            if vault_context:
+                enriched["vault_context"] = vault_context
 
         if enriched["relevant_files"]:
             enriched["file_contents"] = self._prefetch_file_contents(enriched["relevant_files"])
@@ -82,6 +89,11 @@ class ContextEnricher:
         if enriched.get("related_context"):
             parts.append("### Related Context")
             parts.append(enriched["related_context"][:300])
+            parts.append("")
+
+        if enriched.get("vault_context"):
+            parts.append("### Vault Knowledge")
+            parts.append(enriched["vault_context"])
             parts.append("")
 
         return "\n".join(parts)
@@ -265,6 +277,33 @@ class ContextEnricher:
                 pass
 
         return "\n\n".join(context_parts[:2])
+
+    def _get_vault_context(self, task: str) -> str:
+        """Get relevant knowledge from vault."""
+        try:
+            from ouroboros.vault import vault_search
+            
+            results = vault_search(
+                query=task,
+                field="content",
+                max_results=self._max_vault_notes
+            )
+            
+            if not results:
+                return ""
+            
+            context_parts = []
+            for result in results:
+                note = result.get("note", {})
+                title = note.get("title", "Untitled")
+                content = note.get("content", "")
+                preview = content[:500] + ("..." if len(content) > 500 else "")
+                context_parts.append(f"#### {title}\n{preview}")
+            
+            return "\n\n".join(context_parts)
+        except Exception as e:
+            log.debug(f"Failed to search vault: {e}")
+            return ""
 
     def _extract_code_patterns(self, task: str) -> List[str]:
         """Extract code patterns mentioned in task."""
