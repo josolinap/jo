@@ -6,8 +6,9 @@
     "projects/intelligent_vault_system_architecture.md": "803bb7ff33c3b76b991dcf3f73a95550ed3111d12f47813a26a72a41e27534dc",
     "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
     "concepts/identity.md": "92f0fc3803849a5af9c108d85ae144d63d05c8d1d7096187f41fe28ff0e73df3",
-    "concepts/identity_1.md": "43f1185378cdc9eafcb1198ee6461de30cbce954906949ac72f0ae38e87be247",
+    "concepts/principle_5__minimalism.md": "ba0ec8955b4f1ec44c9428f60503422003a43f3dc42ad0cd58c1bef4b362c533",
     "concepts/jo_deep_dive_analysis.md": "1846aea1d178e7e8297ec49f0dece1d71b58da1d8b04e688d068c2c806d672a6",
+    "concepts/vault_git_test.md": "1fcca73d4a3f30124e550606e749e818f9e0c79b4bf00fa813b4d1fb6cdb8bee",
     "concepts/jo_system_neural_hub.md": "fa9b55b7020ea5fbd47973190540723dffe85c48386e3fbffbee6fd903bd355a",
     "concepts/principle_2__self-creation.md": "185889ca48441116df063d2d8befe148d15d2c4ef97ed850040067483f45fa5e",
     "concepts/agent_py.md": "6ebe49ed030680334259746386f5e5c62ac2d9b9354a07e9092d9994a9ddc378",
@@ -15,7 +16,9 @@
     "concepts/principle_3__llm-first.md": "cdf135beb8331c7cfbe61dcaf2959aea8d49aa852e2879112b4f41a7f8f926b4",
     "concepts/bible_md.md": "07cfb2d19944be2a0672b1b17137fb8a17d8ca6831a7c0a7f596924cc08cccd2",
     "concepts/principle_0__agency.md": "a2421d86ee7aeba1fbc9f2a937a68771f6e152060fbd11e3017f6fa1c90b7634",
+    "concepts/principle_4__authenticity.md": "50f14b64bc8641d4fe041381cd53c5a090013f691f6c8e8a0387597b63cf3f01",
     "concepts/architecture.md": "86ee6e74e2ca968a979d73e1a4df265bebe416c01a57a2a483545d7968ec7f4e",
+    "concepts/git_storage_test.md": "00ad26da42b7e88bc2a6527c71a426a627b79ce28ac6fc82f56ee5c6d0b3d8a0",
     "concepts/tools.md": "ad8fd5b75c6120ad07f60b8ca9b3615f34280fe25785097cdc600993f3df1a09",
     "concepts/test_vault_write.md": "f19143c9f9730e3c2159c65e28dfb88ec24d62aa1035dfd3f8c46453484274d0",
     "concepts/principle_1__continuity.md": "887a0e8632947c31051573093a8ec6de39e984680e1e3cf044845c2088ff6f56",
@@ -24,6 +27,8 @@
     "journal/2026-03-21-system-deep-dive.md": "38083af98033d11429e4c9d129364c978908fa7754c5a1ab580765441264bf04",
     "journal/health-dashboard.md": "5580e2230a746a1ab056f5c49977d7b7b35080c15592984c855b9f3aabb5587b",
     "journal/system_deep_dive__browsing_capabilities.md": "8d5dfa4cc01317425aa0452b847865bf3620c22d6376e9d76587278ab462602b",
+    "journal/vault_git_storage_test_2.md": "d98c6023ab95802b1bbea9b87712a64b627341fb126c2547fecfda6bf73ace2e",
+    "journal/vault_usage_demonstration.md": "90edb40f8577456bd4a7e3703ecbffaf0bcf7734340cfc59a72c7e6e7c182107",
     "journal/vault_git_storage_test.md": "32177e3f06b6dc25eb299dccb3f1a50df498eb1cdfbb7cbcaf4a84d31ccc9eb7",
     "tasks/system_review_task.md": "e9f46756334010d57e603695f1df7938584bdb4248b0fa864d13a32180b79ec3",
     "tools/request-review.md": "214278e13e23141f054809346cc3e6f541bf4fc9c4b276e3ccb776b1cbb1395f",
@@ -158,5 +163,5 @@
     "tools/wait-for-task.md": "6fa0a9511303b4140ed5306626b58edfb365fbd1d0d7efdac8180f4fcbf231ac",
     "tools/ai-code-edit.md": "6fe24a463f2ca35f747d4e2255d43d61925b5c52232ce17f14fb73ef5b3cb367"
   },
-  "last_updated": "2026-03-21T08:35:24.407067+00:00"
+  "last_updated": "2026-03-22T04:15:36.946802+00:00"
 }
