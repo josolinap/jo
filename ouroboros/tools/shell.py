@@ -1,4 +1,4 @@
-"""Shell tools: run_shell, claude_code_edit."""
+"""Shell tools: run_shell, claude_code_edit, code_edit, code_edit_lines."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import subprocess
 from typing import Any, Dict, List
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
-from ouroboros.utils import utc_now_iso, run_cmd, append_jsonl, truncate_for_log
+from ouroboros.utils import utc_now_iso, run_cmd, append_jsonl, truncate_for_log, safe_relpath
 
 log = logging.getLogger(__name__)
 
@@ -47,13 +47,16 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
             warning = "run_shell_cmd_string_split_fallback"
 
         try:
-            append_jsonl(ctx.drive_logs() / "events.jsonl", {
-                "ts": utc_now_iso(),
-                "type": "tool_warning",
-                "tool": "run_shell",
-                "warning": warning,
-                "cmd_preview": truncate_for_log(raw_cmd, 500),
-            })
+            append_jsonl(
+                ctx.drive_logs() / "events.jsonl",
+                {
+                    "ts": utc_now_iso(),
+                    "type": "tool_warning",
+                    "tool": "run_shell",
+                    "warning": warning,
+                    "cmd_preview": truncate_for_log(raw_cmd, 500),
+                },
+            )
         except Exception:
             log.debug("Failed to log run_shell warning to events.jsonl", exc_info=True)
             pass
@@ -70,8 +73,11 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
 
     try:
         res = subprocess.run(
-            cmd, cwd=str(work_dir),
-            capture_output=True, text=True, timeout=120,
+            cmd,
+            cwd=str(work_dir),
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         out = res.stdout + ("\n--- STDERR ---\n" + res.stderr if res.stderr else "")
         if len(out) > 50000:
@@ -88,10 +94,15 @@ def _run_claude_cli(work_dir: str, prompt: str, env: dict) -> subprocess.Complet
     """Run Claude CLI with permission-mode fallback."""
     claude_bin = shutil.which("claude")
     cmd = [
-        claude_bin, "-p", prompt,
-        "--output-format", "json",
-        "--max-turns", "12",
-        "--tools", "Read,Edit,Grep,Glob",
+        claude_bin,
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--max-turns",
+        "12",
+        "--tools",
+        "Read,Edit,Grep,Glob",
     ]
 
     # Try --permission-mode first, fallback to --dangerously-skip-permissions
@@ -100,8 +111,12 @@ def _run_claude_cli(work_dir: str, prompt: str, env: dict) -> subprocess.Complet
     legacy_cmd = cmd + ["--dangerously-skip-permissions"]
 
     res = subprocess.run(
-        primary_cmd, cwd=work_dir,
-        capture_output=True, text=True, timeout=300, env=env,
+        primary_cmd,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env=env,
     )
 
     if res.returncode != 0:
@@ -110,8 +125,12 @@ def _run_claude_cli(work_dir: str, prompt: str, env: dict) -> subprocess.Complet
             m in combined for m in ("unknown option", "unknown argument", "unrecognized option", "unexpected argument")
         ):
             res = subprocess.run(
-                legacy_cmd, cwd=work_dir,
-                capture_output=True, text=True, timeout=300, env=env,
+                legacy_cmd,
+                cwd=work_dir,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                env=env,
             )
 
     return res
@@ -146,6 +165,88 @@ def _check_uncommitted_changes(repo_dir: pathlib.Path) -> str:
     return ""
 
 
+def _code_edit(ctx: ToolContext, path: str, content: str, commit_message: str) -> str:
+    """Edit a file directly without external dependencies (Claude-free alternative).
+
+    This is Jo's native code editing tool that doesn't depend on Claude or any external LLM.
+    It writes file content directly and commits the change.
+
+    Args:
+        path: File path relative to repo root
+        content: New file content
+        commit_message: Git commit message
+
+    Returns:
+        Success/error message with details
+    """
+    from ouroboros.tools.git import _repo_write_commit
+
+    ctx.emit_progress_fn(f"Editing {path}...")
+
+    # Validate path is within repo
+    try:
+        safe_path = safe_relpath(path)
+    except ValueError as e:
+        return f"⚠️ PATH_ERROR: {e}"
+
+    # Validate commit message
+    if not commit_message or not commit_message.strip():
+        return "⚠️ ERROR: commit_message must be non-empty."
+
+    # Use the existing repo_write_commit function
+    return _repo_write_commit(ctx, path, content, commit_message)
+
+
+def _code_edit_lines(ctx: ToolContext, path: str, old_lines: str, new_lines: str, commit_message: str) -> str:
+    """Edit specific lines in a file (Claude-free alternative).
+
+    This is a line-based editor that replaces old_lines with new_lines.
+    Useful for small, targeted changes without rewriting entire files.
+
+    Args:
+        path: File path relative to repo root
+        old_lines: Lines to find and replace
+        new_lines: Replacement lines
+        commit_message: Git commit message
+
+    Returns:
+        Success/error message with details
+    """
+    from ouroboros.tools.git import _repo_write_commit
+
+    ctx.emit_progress_fn(f"Editing lines in {path}...")
+
+    # Validate path
+    try:
+        safe_path = safe_relpath(path)
+    except ValueError as e:
+        return f"⚠️ PATH_ERROR: {e}"
+
+    # Read current file
+    file_path = ctx.repo_path(path)
+    if not file_path.exists():
+        return f"⚠️ FILE_NOT_FOUND: {path}"
+
+    try:
+        current_content = file_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"⚠️ FILE_READ_ERROR: {e}"
+
+    # Find and replace
+    if old_lines not in current_content:
+        return f"⚠️ PATTERN_NOT_FOUND: Could not find the specified lines in {path}"
+
+    # Replace only the first occurrence
+    new_content = current_content.replace(old_lines, new_lines, 1)
+
+    # Check if content actually changed
+    if new_content == current_content:
+        return f"⚠️ NO_CHANGE: The specified lines match existing content in {path}"
+
+    # Write and commit
+    return _repo_write_commit(ctx, path, new_content, commit_message)
+
+
 def _parse_claude_output(stdout: str, ctx: ToolContext) -> str:
     """Parse JSON output and emit cost event, return result string."""
     try:
@@ -155,14 +256,16 @@ def _parse_claude_output(stdout: str, ctx: ToolContext) -> str:
             "session_id": payload.get("session_id"),
         }
         if isinstance(payload.get("total_cost_usd"), (int, float)):
-            ctx.pending_events.append({
-                "type": "llm_usage",
-                "provider": "claude_code_cli",
-                "usage": {"cost": float(payload["total_cost_usd"])},
-                "source": "claude_code_edit",
-                "ts": utc_now_iso(),
-                "category": "task",
-            })
+            ctx.pending_events.append(
+                {
+                    "type": "llm_usage",
+                    "provider": "claude_code_cli",
+                    "usage": {"cost": float(payload["total_cost_usd"])},
+                    "source": "claude_code_edit",
+                    "ts": utc_now_iso(),
+                    "category": "task",
+                }
+            )
         return json.dumps(out, ensure_ascii=False, indent=2)
     except Exception:
         log.debug("Failed to parse claude_code_edit JSON output", exc_info=True)
@@ -241,20 +344,76 @@ def _claude_code_edit(ctx: ToolContext, prompt: str, cwd: str = "") -> str:
 
 def get_tools() -> List[ToolEntry]:
     return [
-        ToolEntry("run_shell", {
-            "name": "run_shell",
-            "description": "Run a shell command (list of args) inside the repo. Returns stdout+stderr.",
-            "parameters": {"type": "object", "properties": {
-                "cmd": {"type": "array", "items": {"type": "string"}},
-                "cwd": {"type": "string", "default": ""},
-            }, "required": ["cmd"]},
-        }, _run_shell, is_code_tool=True),
-        ToolEntry("claude_code_edit", {
-            "name": "claude_code_edit",
-            "description": "Delegate code edits to Claude Code CLI. Preferred for multi-file changes and refactors. Follow with repo_commit_push.",
-            "parameters": {"type": "object", "properties": {
-                "prompt": {"type": "string"},
-                "cwd": {"type": "string", "default": ""},
-            }, "required": ["prompt"]},
-        }, _claude_code_edit, is_code_tool=True, timeout_sec=300),
+        ToolEntry(
+            "run_shell",
+            {
+                "name": "run_shell",
+                "description": "Run a shell command (list of args) inside the repo. Returns stdout+stderr.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "cmd": {"type": "array", "items": {"type": "string"}},
+                        "cwd": {"type": "string", "default": ""},
+                    },
+                    "required": ["cmd"],
+                },
+            },
+            _run_shell,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "claude_code_edit",
+            {
+                "name": "claude_code_edit",
+                "description": "Delegate code edits to Claude Code CLI. Preferred for multi-file changes and refactors. Follow with repo_commit_push.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {"type": "string"},
+                        "cwd": {"type": "string", "default": ""},
+                    },
+                    "required": ["prompt"],
+                },
+            },
+            _claude_code_edit,
+            is_code_tool=True,
+            timeout_sec=300,
+        ),
+        ToolEntry(
+            "code_edit",
+            {
+                "name": "code_edit",
+                "description": "Edit a file directly (Claude-free). Write entire file content and commit. Use this instead of claude_code_edit when API key is unavailable.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path relative to repo root"},
+                        "content": {"type": "string", "description": "New file content"},
+                        "commit_message": {"type": "string", "description": "Git commit message"},
+                    },
+                    "required": ["path", "content", "commit_message"],
+                },
+            },
+            _code_edit,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "code_edit_lines",
+            {
+                "name": "code_edit_lines",
+                "description": "Edit specific lines in a file (Claude-free). Replace old_lines with new_lines for targeted changes.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "File path relative to repo root"},
+                        "old_lines": {"type": "string", "description": "Lines to find and replace"},
+                        "new_lines": {"type": "string", "description": "Replacement lines"},
+                        "commit_message": {"type": "string", "description": "Git commit message"},
+                    },
+                    "required": ["path", "old_lines", "new_lines", "commit_message"],
+                },
+            },
+            _code_edit_lines,
+            is_code_tool=True,
+        ),
     ]
