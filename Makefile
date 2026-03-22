@@ -13,9 +13,10 @@ test-v:
 
 # Run codebase health check (requires ouroboros importable)
 health:
-	python3 -c "from ouroboros.review import compute_complexity_metrics; \
+	python3 -c "from ouroboros.review import collect_sections, compute_complexity_metrics; \
 		import pathlib, json; \
-		m = compute_complexity_metrics(pathlib.Path('.')); \
+		sections, stats = collect_sections(pathlib.Path('.'), pathlib.Path('/home/runner/.jo_data')); \
+		m = compute_complexity_metrics(sections); \
 		print(json.dumps(m, indent=2, default=str))"
 
 # Verify code compiles and tests pass before commit
