@@ -20,7 +20,7 @@ import logging
 
 from ouroboros.llm import LLMClient, normalize_reasoning_effort, add_usage
 from ouroboros.tools.registry import ToolRegistry
-from ouroboros.context import compact_tool_history, compact_tool_history_llm, auto_summarize_if_needed
+from ouroboros.context import compact_tool_history, compact_tool_history_llm, auto_summarize_if_needed, smart_context_optimize, DifferentialContext
 from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
     utc_now_iso,
