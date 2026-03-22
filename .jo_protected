@@ -1,0 +1,32 @@
+# .jo_protected - Files Jo cannot modify without explicit permission
+# 
+# These files are critical to system operation and require human approval
+# before any changes. Jo will refuse to edit these files automatically.
+#
+# Format: one file path per line (relative to repo root)
+# Lines starting with # are comments
+
+# Constitution & Identity
+BIBLE.md
+VERSION
+
+# Core System Prompts
+prompts/SYSTEM.md
+prompts/CONSCIOUSNESS.md
+
+# Workflow Configuration
+.github/workflows/run.yml
+
+# Git Configuration
+.gitignore
+.gitattributes
+
+# Package Configuration
+pyproject.toml
+requirements.txt
+
+# License
+LICENSE
+
+# Agent Configuration
+AGENTS.md

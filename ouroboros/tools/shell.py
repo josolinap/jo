@@ -136,11 +136,30 @@ def _run_claude_cli(work_dir: str, prompt: str, env: dict) -> subprocess.Complet
     return res
 
 
-def _code_edit(ctx: ToolContext, path: str, content: str, commit_message: str) -> str:
-    """Edit a file directly without external dependencies (Claude-free alternative).
+def _is_protected_file(path: str) -> bool:
+    """Check if a file is protected and cannot be modified without approval."""
+    protected_file = pathlib.Path(".jo_protected")
+    if not protected_file.exists():
+        return False
 
-    This is Jo's native code editing tool that doesn't depend on Claude or any external LLM.
-    It writes file content directly and commits the change.
+    try:
+        protected_list = protected_file.read_text(encoding="utf-8").splitlines()
+        # Normalize path for comparison
+        normalized_path = path.replace("\\", "/").strip("./")
+        for protected in protected_list:
+            protected = protected.strip()
+            if protected and not protected.startswith("#"):
+                if normalized_path == protected.replace("\\", "/").strip("./"):
+                    return True
+    except Exception:
+        pass
+    return False
+
+
+def _code_edit(ctx: ToolContext, path: str, content: str, commit_message: str) -> str:
+    """Edit a file directly using Jo's native code editing.
+
+    This is Jo's primary code editing tool. It writes file content directly and commits the change.
 
     Args:
         path: File path relative to repo root
@@ -153,6 +172,10 @@ def _code_edit(ctx: ToolContext, path: str, content: str, commit_message: str) -
     from ouroboros.tools.git import _repo_write_commit
 
     ctx.emit_progress_fn(f"Editing {path}...")
+
+    # Check if file is protected
+    if _is_protected_file(path):
+        return f"⚠️ PROTECTED_FILE: {path} is protected and cannot be modified without human approval. Ask the creator first."
 
     # Validate path is within repo
     try:
@@ -169,7 +192,7 @@ def _code_edit(ctx: ToolContext, path: str, content: str, commit_message: str) -
 
 
 def _code_edit_lines(ctx: ToolContext, path: str, old_lines: str, new_lines: str, commit_message: str) -> str:
-    """Edit specific lines in a file (Claude-free alternative).
+    """Edit specific lines in a file.
 
     This is a line-based editor that replaces old_lines with new_lines.
     Useful for small, targeted changes without rewriting entire files.
@@ -186,6 +209,10 @@ def _code_edit_lines(ctx: ToolContext, path: str, old_lines: str, new_lines: str
     from ouroboros.tools.git import _repo_write_commit
 
     ctx.emit_progress_fn(f"Editing lines in {path}...")
+
+    # Check if file is protected
+    if _is_protected_file(path):
+        return f"⚠️ PROTECTED_FILE: {path} is protected and cannot be modified without human approval. Ask the creator first."
 
     # Validate path
     try:

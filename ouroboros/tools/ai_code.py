@@ -23,6 +23,27 @@ from ouroboros.tools.registry import ToolEntry, ToolContext
 
 log = logging.getLogger(__name__)
 
+
+def _is_protected_file(path: str) -> bool:
+    """Check if a file is protected and cannot be modified without approval."""
+    protected_file = pathlib.Path(".jo_protected")
+    if not protected_file.exists():
+        return False
+
+    try:
+        protected_list = protected_file.read_text(encoding="utf-8").splitlines()
+        # Normalize path for comparison
+        normalized_path = path.replace("\\", "/").strip("./")
+        for protected in protected_list:
+            protected = protected.strip()
+            if protected and not protected.startswith("#"):
+                if normalized_path == protected.replace("\\", "/").strip("./"):
+                    return True
+    except Exception:
+        pass
+    return False
+
+
 SYSTEM_PROMPT = """You are an expert Python programmer generating code for the Jo project.
 
 Rules:
@@ -99,6 +120,10 @@ def _generate_code_edit(
 ) -> str:
     """Generate code edits using AI."""
     log.info(f"AI code generation: {prompt[:100]}...")
+
+    # Check if target file is protected
+    if target_file and _is_protected_file(target_file):
+        return f"⚠️ PROTECTED_FILE: {target_file} is protected and cannot be modified without human approval. Ask the creator first."
 
     context_parts = ["## User Request\n\n" + prompt]
 
@@ -256,6 +281,10 @@ def _refactor_code(ctx: ToolContext, prompt: str, target_file: str) -> str:
     Focuses on improving code quality, readability, and maintainability.
     """
     log.info(f"Refactoring code: {target_file}")
+
+    # Check if target file is protected
+    if _is_protected_file(target_file):
+        return f"⚠️ PROTECTED_FILE: {target_file} is protected and cannot be modified without human approval. Ask the creator first."
 
     file_path = ctx.repo_dir / target_file
     if not file_path.exists():
