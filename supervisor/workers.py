@@ -264,8 +264,26 @@ def auto_resume_after_restart() -> None:
         restart_msg_parts = ["🔄 Jo has been restarted"]
 
         # Get previous session info
-        last_run = st.get("last_run_at", "unknown")
-        restart_msg_parts.append(f"• Last run: {last_run}")
+        last_run = st.get("last_run_at", "")
+        if last_run:
+            # Calculate time since last run
+            try:
+                from datetime import datetime, timezone
+
+                last_dt = datetime.fromisoformat(last_run.replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                delta = now - last_dt
+                if delta.total_seconds() < 60:
+                    time_ago = f"{int(delta.total_seconds())} seconds ago"
+                elif delta.total_seconds() < 3600:
+                    time_ago = f"{int(delta.total_seconds() / 60)} minutes ago"
+                else:
+                    time_ago = f"{int(delta.total_seconds() / 3600)} hours ago"
+                restart_msg_parts.append(f"• Last run: {last_run[:16]} ({time_ago})")
+            except Exception:
+                restart_msg_parts.append(f"• Last run: {last_run}")
+        else:
+            restart_msg_parts.append("• Last run: First session")
 
         # Get pending tasks count
         from supervisor.queue import PENDING, RUNNING
@@ -286,6 +304,19 @@ def auto_resume_after_restart() -> None:
         sha = st.get("current_sha", "unknown")[:8]
         restart_msg_parts.append(f"• Branch: {branch} ({sha})")
 
+        # Get last task description
+        last_task = st.get("last_task_description", "")
+        if last_task:
+            restart_msg_parts.append(f"• Last task: {last_task[:80]}...")
+
+        # Get files changed in last task
+        last_files = st.get("last_files_changed", [])
+        if last_files:
+            files_str = ", ".join(last_files[:3])
+            if len(last_files) > 3:
+                files_str += f" (+{len(last_files) - 3} more)"
+            restart_msg_parts.append(f"• Files changed: {files_str}")
+
         # Get scratchpad preview
         scratchpad_path = DRIVE_ROOT / "memory" / "scratchpad.md"
         if scratchpad_path.exists():
@@ -295,7 +326,7 @@ def auto_resume_after_restart() -> None:
                 if lines:
                     preview = lines[0][:100] if lines else ""
                     if preview:
-                        restart_msg_parts.append(f"• Last work: {preview}...")
+                        restart_msg_parts.append(f"• 💭 {preview}...")
             except Exception:
                 pass
 

@@ -91,6 +91,17 @@ def _handle_task_done(evt: Dict[str, Any], ctx: Any) -> None:
     task_id = evt.get("task_id")
     task_type = str(evt.get("task_type") or "")
     wid = evt.get("worker_id")
+    task_description = str(evt.get("description") or evt.get("text") or "")
+
+    # Save last run timestamp
+    try:
+        st = ctx.load_state()
+        st["last_run_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if task_description:
+            st["last_task_description"] = task_description[:200]
+        ctx.save_state(st)
+    except Exception:
+        pass
 
     if task_type == "evolution":
         st = ctx.load_state()

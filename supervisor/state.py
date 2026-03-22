@@ -143,6 +143,7 @@ def ensure_state_defaults(st: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("session_id", uuid.uuid4().hex)
     st.setdefault("current_branch", None)
     st.setdefault("current_sha", None)
+    st.setdefault("last_run_at", "")
     st.setdefault("last_owner_message_at", "")
     st.setdefault("last_evolution_task_at", "")
     st.setdefault("budget_messages_since_report", 0)
@@ -154,6 +155,8 @@ def ensure_state_defaults(st: Dict[str, Any]) -> Dict[str, Any]:
     st.setdefault("budget_drift_alert", False)
     st.setdefault("evolution_consecutive_failures", 0)
     st.setdefault("evolution_history", [])  # List of {task_id, cycle, timestamp, commits, success, archived}
+    st.setdefault("last_task_description", "")  # What Jo was working on
+    st.setdefault("last_files_changed", [])  # Files modified in last task
     for legacy_key in (
         "approvals",
         "idle_cursor",
