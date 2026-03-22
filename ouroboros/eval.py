@@ -369,3 +369,201 @@ def evaluate_task(
         return evaluator.format_report(report)
 
     return None
+
+
+# ============================================================================
+# BLIND VALIDATION - Inspired by Zeroshot's isolated validator concept
+# ============================================================================
+
+
+@dataclass
+class BlindValidationResult:
+    """Result of blind validation (no implementation context)."""
+
+    passed: bool
+    score: float  # 0.0 - 1.0
+    findings: List[str]  # Actionable findings if failed
+    checked_items: List[str]  # What was checked
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "passed": self.passed,
+            "score": self.score,
+            "findings": self.findings,
+            "checked_items": self.checked_items,
+            "metadata": self.metadata,
+        }
+
+
+def blind_validate(
+    task: str,
+    result: str,
+    code: str = "",
+    repo_dir: Optional[Path] = None,
+) -> BlindValidationResult:
+    """Validate task result WITHOUT seeing implementation details.
+
+    BLIND VALIDATION (Zeroshot-inspired):
+    - Validator sees ONLY: task description + final result
+    - Validator does NOT see: tool calls, reasoning, implementation steps
+
+    This prevents "confirmation bias" where implementation details
+    convince the validator that bad code is good.
+
+    Args:
+        task: Original task description
+        result: Final output/result to validate
+        code: Optional code content (if task involved coding)
+        repo_dir: Repository directory
+
+    Returns:
+        BlindValidationResult with pass/fail and actionable findings
+    """
+    findings = []
+    checked_items = []
+    score = 1.0
+
+    # Check 1: Does result address the task?
+    checked_items.append("Task addressing")
+    task_keywords = set(task.lower().split())
+    result_lower = result.lower()
+
+    # Simple heuristic: check if key task words appear in result
+    key_matches = sum(1 for kw in task_keywords if len(kw) > 3 and kw in result_lower)
+    if key_matches < 2 and len(task_keywords) > 3:
+        findings.append(f"Result may not address task: '{task[:50]}...' not clearly addressed")
+        score -= 0.2
+
+    # Check 2: Is result substantive (not just "done" or "fixed")?
+    checked_items.append("Result substance")
+    if len(result.strip()) < 20:
+        findings.append("Result too brief - expected detailed output")
+        score -= 0.3
+
+    # Check 3: If code involved, check for basic quality
+    if code:
+        checked_items.append("Code syntax")
+        try:
+            compile(code, "<string>", "exec")
+        except SyntaxError as e:
+            findings.append(f"Syntax error in code: {e}")
+            score -= 0.4
+
+        checked_items.append("Code completeness")
+        # Check for TODO/FIXME markers
+        if "TODO" in code or "FIXME" in code or "HACK" in code:
+            findings.append("Code contains TODO/FIXME markers - may be incomplete")
+            score -= 0.1
+
+        # Check for bare except
+        if "except:" in code and "pass" in code:
+            findings.append("Code has bare 'except: pass' - errors silently swallowed")
+            score -= 0.2
+
+        # Check for pass-only functions
+        if re.search(r"def \w+\([^)]*\):\s*pass", code):
+            findings.append("Code has empty function definitions (pass only)")
+            score -= 0.1
+
+    # Check 4: Does result mention what was changed/fixed?
+    checked_items.append("Change documentation")
+    change_indicators = ["fixed", "added", "updated", "changed", "created", "modified", "removed"]
+    has_change_mention = any(ind in result_lower for ind in change_indicators)
+    if not has_change_mention and code:
+        findings.append("Result doesn't describe what was changed")
+        score -= 0.1
+
+    # Check 5: Verify result isn't hallucinated
+    checked_items.append("Hallucination check")
+    unverifiable_claims = [
+        "definitely works",
+        "guaranteed to",
+        "100% correct",
+        "no bugs",
+        "perfect solution",
+    ]
+    for claim in unverifiable_claims:
+        if claim in result_lower:
+            findings.append(f"Overconfident claim detected: '{claim}' - verify with tests")
+            score -= 0.15
+
+    # Check 6: If task mentions specific requirements, check they're addressed
+    checked_items.append("Requirements check")
+    requirement_patterns = [
+        r"must\s+(\w+)",
+        r"should\s+(\w+)",
+        r"need[s]?\s+to\s+(\w+)",
+        r"require[s]?\s+(\w+)",
+    ]
+    for pattern in requirement_patterns:
+        matches = re.findall(pattern, task.lower())
+        for req in matches:
+            if req not in result_lower:
+                findings.append(f"Requirement '{req}' may not be addressed in result")
+                score -= 0.1
+
+    # Calculate final score and pass/fail
+    score = max(0.0, min(1.0, score))
+    passed = score >= 0.7 and len(findings) == 0
+
+    return BlindValidationResult(
+        passed=passed,
+        score=score,
+        findings=findings,
+        checked_items=checked_items,
+        metadata={
+            "task_length": len(task),
+            "result_length": len(result),
+            "code_provided": bool(code),
+        },
+    )
+
+
+def blind_validate_with_action(
+    task: str,
+    result: str,
+    code: str = "",
+    repo_dir: Optional[Path] = None,
+) -> str:
+    """Run blind validation and return actionable feedback.
+
+    This is the main entry point for blind validation in Jo's loop.
+    Returns a message that can be injected into the LLM context.
+
+    Args:
+        task: Original task description
+        result: Final output to validate
+        code: Optional code content
+        repo_dir: Repository directory
+
+    Returns:
+        Formatted feedback string (empty if passed)
+    """
+    validation = blind_validate(task, result, code, repo_dir)
+
+    if validation.passed:
+        return ""
+
+    # Format actionable feedback
+    lines = [
+        "[BLIND VALIDATION] Task result has issues:",
+        "",
+        f"Score: {validation.score:.0%}",
+        "",
+        "**Findings:**",
+    ]
+
+    for i, finding in enumerate(validation.findings, 1):
+        lines.append(f"{i}. {finding}")
+
+    lines.extend(
+        [
+            "",
+            "**What was checked:** " + ", ".join(validation.checked_items),
+            "",
+            "Please address these findings and try again.",
+        ]
+    )
+
+    return "\n".join(lines)
