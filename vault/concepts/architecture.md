@@ -49,3 +49,5 @@ tags: [architecture, system-design]
 - Health checks: verification, budget, duplicate processing, identity freshness
 
 *This architecture enables agency through simplicity and coherence.*
+Architecture embodies [[Principle 3: LLM-First]]
+Structure follows [[Principle 5: Minimalis]]
