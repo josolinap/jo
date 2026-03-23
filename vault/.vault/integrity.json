@@ -7,7 +7,7 @@
     "concepts/delegated_reasoning.md": "d129bed1283ce8f0657b59aa17ae9fc28182b129b5e8cde6c6de5f8b14ed736f",
     "concepts/bible_md_principles__deep_analysis_and_application.md": "9e72a14c99ca411594bce9eba8b0daead1e3ace6065e857b608b3cca13b75576",
     "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
-    "concepts/identity.md": "017432000809f8c99382d841cc6a091986159c03ce3a2633e1044287951c7a45",
+    "concepts/identity.md": "c3c5e9a23c334c948e4b5f9fb9e89d959d2523a676f84fce6244d26797d2d38f",
     "concepts/principle_5__minimalism.md": "ba0ec8955b4f1ec44c9428f60503422003a43f3dc42ad0cd58c1bef4b362c533",
     "concepts/tool_usage_patterns_and_best_practices.md": "344d839ecef268ab382a0b2e254ab0e49a303e795e2ce8339f564fd096a266cf",
     "concepts/jo_deep_dive_analysis.md": "1846aea1d178e7e8297ec49f0dece1d71b58da1d8b04e688d068c2c806d672a6",
@@ -179,5 +179,5 @@
     "tools/ai-code-edit.md": "6fe24a463f2ca35f747d4e2255d43d61925b5c52232ce17f14fb73ef5b3cb367",
     "concepts/codebase_overview.md": "f1cc726db1eb129c4e42df7f207e1510f2be13d8c15b3b1b25ef635dc41e4489"
   },
-  "last_updated": "2026-03-23T09:01:00.000000+00:00"
+  "last_updated": "2026-03-23T10:00:00.000000+00:00"
 }

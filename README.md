@@ -134,7 +134,7 @@ Jo's memory is **narrative, not database**:
 
 ## Current State
 
-**Version:** 6.3.2  
+**Version:** 6.4.0  
 **Git branch:** dev  
 **Last commit:** 659ad63f8bfce3a8a4ebd350354b5c617d4c9af8  
 **Budget:** $50.00 (unspent)  
