@@ -12,7 +12,7 @@
     "concepts/tool_usage_patterns_and_best_practices.md": "344d839ecef268ab382a0b2e254ab0e49a303e795e2ce8339f564fd096a266cf",
     "concepts/jo_deep_dive_analysis.md": "1846aea1d178e7e8297ec49f0dece1d71b58da1d8b04e688d068c2c806d672a6",
     "concepts/vault_git_test.md": "1fcca73d4a3f30124e550606e749e818f9e0c79b4bf00fa813b4d1fb6cdb8bee",
-    "concepts/jo_system_neural_hub.md": "fa9b55b7020ea5fbd47973190540723dffe85c48386e3fbffbee6fd903bd355a",
+    "concepts/jo_system_neural_hub.md": "88786d269711928bfc1d2fb07d7308c1956eaee67ebabd26f6a95be880e0841e",
     "concepts/principle_0__agency_1.md": "71a40cce9e41e065b2ba7cee4be79b3b0ab198db18e38911a8dab046bae1d509",
     "concepts/principle_2__self-creation.md": "185889ca48441116df063d2d8befe148d15d2c4ef97ed850040067483f45fa5e",
     "concepts/agent_py.md": "6ebe49ed030680334259746386f5e5c62ac2d9b9354a07e9092d9994a9ddc378",
@@ -26,11 +26,11 @@
     "concepts/multi-agent_architecture_and_delegated_reasoning.md": "15514379bf6bd2f71d97175dc7f692cc672bb1d18ad6f2b2a700a80324cc8f0c",
     "concepts/tool_result_processing_protocol.md": "b218785be35b2f85b764b329b96b04ca3256e20b9d0c8e06f4407c583e477bb3",
     "concepts/principle_4__authenticity.md": "50f14b64bc8641d4fe041381cd53c5a090013f691f6c8e8a0387597b63cf3f01",
-    "concepts/architecture.md": "abba0bcd0260f88853ea1f875cd71212bb6fbacc64e022aa9be1dd7cd65f3fef",
+    "concepts/architecture.md": "c6d8fba479aad08a782a53d2770b8d39bdcd654f4ca2794ac0061b063d74f182",
     "concepts/verification_as_agency__anti-hallucination_system.md": "330ec0ba0d6ab16952879325cf8eb04cbd90b228db1a7bbf331b5a6b228b485f",
     "concepts/evolution_cycle.md": "13b92909ccdda55aab373373239091642d298a0629e484e04af6778325b1916e",
     "concepts/git_storage_test.md": "00ad26da42b7e88bc2a6527c71a426a627b79ce28ac6fc82f56ee5c6d0b3d8a0",
-    "concepts/tools.md": "3b2c99c56715ade323a66ef3eb8d88ac8859764fa167c07d253401ca147497e6",
+    "concepts/tools.md": "0a5e34778208e9403802604fdd2ddc8a10561de869eae4e033615459f2a3e7f8",
     "concepts/test_vault_write.md": "f19143c9f9730e3c2159c65e28dfb88ec24d62aa1035dfd3f8c46453484274d0",
     "concepts/principle_1__continuity.md": "887a0e8632947c31051573093a8ec6de39e984680e1e3cf044845c2088ff6f56",
     "journal/health_alert__system_initialized.md": "d2fb8874c2c3bed555018be484f58c20c53630771d7747ff6bf846b5f9727a9f",
@@ -176,7 +176,8 @@
     "tools/git-status.md": "d21a8f1c88933fe83646e190bb20fed797a0e161f7a8d8cfc7e4e1838b8a6be0",
     "tools/schedule-task.md": "c9b51f8dcc6e6b8c6b37f67983f40303b396b8f6b1921a427620190a9ae7b28a",
     "tools/wait-for-task.md": "6fa0a9511303b4140ed5306626b58edfb365fbd1d0d7efdac8180f4fcbf231ac",
-    "tools/ai-code-edit.md": "6fe24a463f2ca35f747d4e2255d43d61925b5c52232ce17f14fb73ef5b3cb367"
+    "tools/ai-code-edit.md": "6fe24a463f2ca35f747d4e2255d43d61925b5c52232ce17f14fb73ef5b3cb367",
+    "concepts/codebase_overview.md": "f1cc726db1eb129c4e42df7f207e1510f2be13d8c15b3b1b25ef635dc41e4489"
   },
-  "last_updated": "2026-03-22T09:39:14.374806+00:00"
+  "last_updated": "2026-03-23T09:01:00.000000+00:00"
 }

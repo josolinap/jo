@@ -48,6 +48,7 @@ class Connection:
     target: str
     type: str  # import, call, link, reference, implements, extends
     strength: float = 1.0
+    confidence: float = 1.0  # 0.0-1.0: AST-resolved=0.9, regex=0.3, link=0.7
 
 
 class NeuralMap:
@@ -61,11 +62,18 @@ class NeuralMap:
     def add_concept(self, concept: Concept) -> None:
         self.concepts[concept.id] = concept
 
-    def add_connection(self, source: str, target: str, conn_type: str, strength: float = 1.0) -> None:
+    def add_connection(
+        self,
+        source: str,
+        target: str,
+        conn_type: str,
+        strength: float = 1.0,
+        confidence: float = 1.0,
+    ) -> None:
         if source not in self.concepts or target not in self.concepts:
             return
 
-        conn = Connection(source=source, target=target, type=conn_type, strength=strength)
+        conn = Connection(source=source, target=target, type=conn_type, strength=strength, confidence=confidence)
         self.connections.append(conn)
         self._adjacency[source].add(target)
 
@@ -116,9 +124,43 @@ class NeuralMap:
         return result
 
     def get_clusters(self) -> List[List[str]]:
-        """Find connected components (concept clusters)."""
-        visited = set()
-        clusters = []
+        """Find clusters using Louvain community detection if available, else DFS connected components."""
+        try:
+            import community as community_louvain
+            import networkx as nx
+
+            return self._get_clusters_louvain(community_louvain, nx)
+        except ImportError:
+            return self._get_clusters_dfs()
+
+    def _get_clusters_louvain(self, community_louvain: Any, nx: Any) -> List[List[str]]:
+        """Louvain community detection for better functional grouping."""
+        G = nx.Graph()
+        for concept_id in self.concepts:
+            G.add_node(concept_id)
+        for conn in self.connections:
+            w = conn.strength * conn.confidence
+            if G.has_edge(conn.source, conn.target):
+                G[conn.source][conn.target]["weight"] += w
+            else:
+                G.add_edge(conn.source, conn.target, weight=w)
+
+        if len(G.nodes) == 0:
+            return []
+
+        partition = community_louvain.best_partition(G, weight="weight")
+
+        groups: Dict[int, List[str]] = {}
+        for node_id, comm_id in partition.items():
+            groups.setdefault(comm_id, []).append(node_id)
+
+        # Sort by cluster size descending
+        return sorted(groups.values(), key=len, reverse=True)
+
+    def _get_clusters_dfs(self) -> List[List[str]]:
+        """Fallback: DFS connected components (no external deps)."""
+        visited: Set[str] = set()
+        clusters: List[List[str]] = []
 
         def dfs(node: str, cluster: List[str]) -> None:
             visited.add(node)
@@ -138,54 +180,35 @@ class NeuralMap:
 
 
 def _scan_codebase(ctx: ToolContext) -> NeuralMap:
-    """Scan codebase and build neural map."""
+    """Scan codebase using AST-based codebase_graph (not regex)."""
+    from ouroboros.codebase_graph import scan_repo
+
     neural_map = NeuralMap()
     repo_dir = pathlib.Path(ctx.repo_dir)
 
-    python_files = list(repo_dir.rglob("*.py"))
-    for py_file in python_files:
-        if "venv" in str(py_file) or ".git" in str(py_file) or "__pycache__" in str(py_file):
-            continue
+    graph = scan_repo(repo_dir=repo_dir, max_files=200)
 
-        rel_path = py_file.relative_to(repo_dir)
-        concept_id = str(rel_path).replace("\\", "/")
-
-        try:
-            content = py_file.read_text(encoding="utf-8")
-        except Exception:
-            continue
-
+    # Convert CodebaseGraph nodes → NeuralMap concepts
+    for node in graph.nodes.values():
         concept = Concept(
-            id=concept_id,
-            name=py_file.stem,
-            type="file",
-            path=str(rel_path),
-            content=content[:500],
+            id=node.id,
+            name=node.name,
+            type=node.type,
+            path=node.file_path,
+            content=node.summary,
+            tags=[node.layer] if node.layer else [],
         )
-
         neural_map.add_concept(concept)
 
-        imports = re.findall(r"^import (\w+)|^from (\w+)", content, re.MULTILINE)
-        for imp in imports:
-            module = imp[0] or imp[1]
-            neural_map.add_connection(concept_id, module, "import", strength=0.5)
-
-        classes = re.findall(r"^class (\w+)", content, re.MULTILINE)
-        for cls in classes:
-            cls_id = f"{concept_id}:{cls}"
-            neural_map.add_concept(Concept(id=cls_id, name=cls, type="class", path=str(rel_path)))
-            neural_map.add_connection(concept_id, cls_id, "contains", strength=1.0)
-
-        functions = re.findall(r"^def (\w+)", content, re.MULTILINE)
-        for fn in functions:
-            fn_id = f"{concept_id}:{fn}"
-            neural_map.add_concept(Concept(id=fn_id, name=fn, type="function", path=str(rel_path)))
-            neural_map.add_connection(concept_id, fn_id, "contains", strength=0.8)
-
-        calls = re.findall(r"(\w+)\(", content)
-        for fn_call in set(calls):
-            if len(fn_call) > 2 and fn_call[0].islower():
-                neural_map.add_connection(concept_id, fn_call, "calls", strength=0.3)
+    # Convert CodebaseGraph edges → NeuralMap connections
+    for edge in graph.edges:
+        neural_map.add_connection(
+            source=edge.source,
+            target=edge.target,
+            conn_type=edge.relation,
+            strength=edge.confidence,
+            confidence=edge.confidence,
+        )
 
     return neural_map
 
@@ -229,13 +252,13 @@ def _scan_vault(ctx: ToolContext) -> NeuralMap:
             link_id = link.strip()
             if not neural_map.concepts.get(link_id):
                 neural_map.add_concept(Concept(id=link_id, name=link, type="concept"))
-            neural_map.add_connection(concept_id, link_id, "link", strength=1.0)
+            neural_map.add_connection(concept_id, link_id, "link", strength=1.0, confidence=0.7)
 
         for tag in tags:
             tag_id = f"tag:{tag}"
             if not neural_map.concepts.get(tag_id):
                 neural_map.add_concept(Concept(id=tag_id, name=tag, type="tag"))
-            neural_map.add_connection(concept_id, tag_id, "tagged", strength=0.5)
+            neural_map.add_connection(concept_id, tag_id, "tagged", strength=0.5, confidence=0.5)
 
     return neural_map
 
@@ -308,14 +331,31 @@ def _neural_map(ctx: ToolContext, depth: int = 2) -> str:
         f"**Concepts:** {len(neural_map.concepts)}",
         f"**Connections:** {len(neural_map.connections)}",
         "",
-        "### Clusters (Related Groups)",
-        "",
     ]
+
+    # Check which clustering method is used
+    try:
+        import community as _c  # noqa: F401
+        import networkx as _n  # noqa: F401
+
+        lines.append("**Clustering:** Louvain community detection (weighted)")
+    except ImportError:
+        lines.append("**Clustering:** DFS connected components (install python-louvain + networkx for Louvain)")
+    lines.append("")
+
+    lines.append("### Clusters (Related Groups)")
+    lines.append("")
 
     clusters = neural_map.get_clusters()
     for i, cluster in enumerate(clusters[:10], 1):
         if len(cluster) > 1:
-            lines.append(f"**Cluster {i}:** {len(cluster)} concepts")
+            # Calculate cohesion: average confidence of internal edges
+            internal_edges = [
+                conn for conn in neural_map.connections if conn.source in cluster and conn.target in cluster
+            ]
+            avg_conf = sum(c.confidence for c in internal_edges) / max(len(internal_edges), 1)
+
+            lines.append(f"**Cluster {i}:** {len(cluster)} concepts (cohesion: {avg_conf:.0%})")
             for concept_id in cluster[:5]:
                 if concept_id in neural_map.concepts:
                     c = neural_map.concepts[concept_id]
@@ -693,6 +733,198 @@ def _generate_insight(ctx: ToolContext, focus_area: str = "all") -> str:
     return "\n".join(lines)
 
 
+def _codebase_impact(ctx: ToolContext, target: str, direction: str = "upstream", max_depth: int = 3) -> str:
+    """Blast radius analysis - depth-grouped impact with confidence scoring."""
+    from ouroboros.codebase_graph import CodebaseGraph, scan_repo
+
+    graph = scan_repo(repo_dir=ctx.repo_dir)
+
+    # Find the target node
+    target_id = None
+    for node_id, node in graph.nodes.items():
+        if target.lower() in node_id.lower() or target.lower() in node.name.lower():
+            target_id = node_id
+            break
+
+    if not target_id:
+        # Search by file path too
+        for node_id, node in graph.nodes.items():
+            if target.lower() in node.file_path.lower():
+                target_id = node_id
+                break
+
+    if not target_id:
+        return f"⚠️ Target not found in codebase graph: {target}"
+
+    from ouroboros.codebase_graph import analyze_impact
+
+    result = analyze_impact(graph, target_id, max_depth=max_depth, direction=direction)
+
+    t = result["target"]
+    lines = [
+        f"## Impact Analysis: {t['name']} ({direction})",
+        "",
+        f"**Target:** `{t['name']}` ({t['type']})",
+        f"**File:** {t['file']}:{t['line']}",
+        f"**Risk Level:** {result['risk_level'].upper()}",
+        f"**Total Affected:** {result['total_affected']} symbols",
+        "",
+    ]
+
+    depth_labels = result["depth_labels"]
+    for depth in sorted(result["depth_groups"].keys()):
+        details = result["depth_groups"][depth]
+        label = depth_labels.get(depth, f"Depth {depth}")
+        lines.append(f"### Depth {depth}: {label} ({len(details)} symbols)")
+        lines.append("")
+        for d in details[:15]:
+            conf_str = f" (confidence: {d['confidence']:.0%})" if d["confidence"] < 1 else ""
+            loc = f" - {d['file']}:{d['line']}" if d["file"] else ""
+            lines.append(f"- `{d['name']}` ({d['type']}){loc}{conf_str}")
+        if len(details) > 15:
+            lines.append(f"  ... and {len(details) - 15} more")
+        lines.append("")
+
+    if result["total_affected"] == 0:
+        lines.append("✅ No dependents found - safe to modify.")
+
+    return "\n".join(lines)
+
+
+def _symbol_context(ctx: ToolContext, name: str) -> str:
+    """360-degree view of a symbol: callers, callees, clusters, and connections."""
+    from ouroboros.codebase_graph import CodebaseGraph, scan_repo
+
+    graph = scan_repo(repo_dir=ctx.repo_dir)
+    neural_map = _build_unified_map(ctx)
+
+    # Find the target symbol
+    target_id = None
+    for node_id, node in graph.nodes.items():
+        if name.lower() in node_id.lower() or name.lower() in node.name.lower():
+            target_id = node_id
+            break
+
+    if not target_id:
+        # Fall back to neural map search
+        for concept_id, concept in neural_map.concepts.items():
+            if name.lower() in concept_id.lower() or name.lower() in concept.name.lower():
+                target_id = concept_id
+                return _explore_concept(ctx, name)
+
+    if not target_id:
+        return f"⚠️ Symbol not found: {name}"
+
+    node = graph.get_node(target_id)
+
+    # Incoming (who references this)
+    incoming_calls = []
+    incoming_imports = []
+    incoming_inherits = []
+    for edge in graph.edges:
+        if edge.target == target_id:
+            source_node = graph.get_node(edge.source)
+            entry = {
+                "name": source_node.name if source_node else edge.source,
+                "file": source_node.file_path if source_node else "",
+                "line": source_node.line_number if source_node else 0,
+                "confidence": edge.confidence,
+            }
+            if edge.relation == "calls":
+                incoming_calls.append(entry)
+            elif edge.relation == "imports":
+                incoming_imports.append(entry)
+            elif edge.relation == "inherits":
+                incoming_inherits.append(entry)
+
+    # Outgoing (what this references)
+    outgoing_calls = []
+    outgoing_imports = []
+    for edge in graph.edges:
+        if edge.source == target_id:
+            target_node = graph.get_node(edge.target)
+            entry = {
+                "name": target_node.name if target_node else edge.target,
+                "file": target_node.file_path if target_node else "",
+                "line": target_node.line_number if target_node else 0,
+                "confidence": edge.confidence,
+            }
+            if edge.relation == "calls":
+                outgoing_calls.append(entry)
+            elif edge.relation == "imports":
+                outgoing_imports.append(entry)
+
+    # Cluster membership (from neural map)
+    clusters = neural_map.get_clusters()
+    membership = []
+    for i, cluster in enumerate(clusters):
+        if target_id in cluster or any(name.lower() in cid.lower() for cid in cluster):
+            members = [neural_map.concepts[cid].name for cid in cluster[:5] if cid in neural_map.concepts]
+            membership.append({"cluster_id": i, "size": len(cluster), "members": members})
+
+    lines = [
+        f"## Symbol Context: {node.name if node else name}",
+        "",
+    ]
+
+    if node:
+        lines.extend(
+            [
+                f"**Type:** {node.type}",
+                f"**File:** {node.file_path}:{node.line_number}",
+                f"**Layer:** {node.layer or 'unclassified'}",
+                "",
+            ]
+        )
+
+    if incoming_calls or incoming_imports or incoming_inherits:
+        lines.append("### Incoming (who references this)")
+        lines.append("")
+        if incoming_calls:
+            lines.append("**Called by:**")
+            for c in sorted(incoming_calls, key=lambda x: -x["confidence"])[:10]:
+                conf_str = f" {c['confidence']:.0%}" if c["confidence"] < 1 else ""
+                lines.append(f"- `{c['name']}` ({c['file']}:{c['line']}){conf_str}")
+        if incoming_imports:
+            lines.append("**Imported by:**")
+            for c in sorted(incoming_imports, key=lambda x: -x["confidence"])[:10]:
+                lines.append(f"- `{c['name']}` ({c['file']})")
+        if incoming_inherits:
+            lines.append("**Inherited by:**")
+            for c in incoming_inherits[:10]:
+                lines.append(f"- `{c['name']}` ({c['file']})")
+        lines.append("")
+
+    if outgoing_calls or outgoing_imports:
+        lines.append("### Outgoing (what this references)")
+        lines.append("")
+        if outgoing_calls:
+            lines.append("**Calls:**")
+            for c in sorted(outgoing_calls, key=lambda x: -x["confidence"])[:10]:
+                conf_str = f" {c['confidence']:.0%}" if c["confidence"] < 1 else ""
+                lines.append(f"- `{c['name']}` ({c['file']}:{c['line']}){conf_str}")
+        if outgoing_imports:
+            lines.append("**Imports:**")
+            for c in outgoing_imports[:10]:
+                lines.append(f"- `{c['name']}` ({c['file']})")
+        lines.append("")
+
+    if membership:
+        lines.append("### Cluster Membership")
+        lines.append("")
+        for m in membership[:5]:
+            lines.append(f"- **Cluster {m['cluster_id']}** ({m['size']} members): {', '.join(m['members'])}")
+        lines.append("")
+
+    if not incoming_calls and not incoming_imports and not outgoing_calls:
+        lines.append(
+            "ℹ️ No strong relationships detected in the AST graph. "
+            "This symbol may be loosely connected or defined in a non-Python file."
+        )
+
+    return "\n".join(lines)
+
+
 def get_tools() -> List[ToolEntry]:
     """Get neural mapping tools."""
     return [
@@ -880,6 +1112,62 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             handler=_query_knowledge,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="codebase_impact",
+            schema={
+                "name": "codebase_impact",
+                "description": (
+                    "Blast radius analysis - depth-grouped impact with confidence scoring. "
+                    "Shows what WILL BREAK (depth 1), LIKELY AFFECTED (depth 2), and "
+                    "MAY NEED TESTING (depth 3) if you modify a symbol. "
+                    "Run BEFORE editing any function, class, or method."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "target": {
+                            "type": "string",
+                            "description": "Symbol, function, class, or file name to analyze",
+                        },
+                        "direction": {
+                            "type": "string",
+                            "description": "'upstream' (who depends on this) or 'downstream' (what this depends on)",
+                            "default": "upstream",
+                        },
+                        "max_depth": {
+                            "type": "integer",
+                            "description": "Maximum traversal depth (default: 3)",
+                            "default": 3,
+                        },
+                    },
+                    "required": ["target"],
+                },
+            },
+            handler=_codebase_impact,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="symbol_context",
+            schema={
+                "name": "symbol_context",
+                "description": (
+                    "360-degree view of a symbol: callers, callees, imports, cluster membership, "
+                    "and confidence scores. Use to understand what a symbol connects to before editing it."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Symbol, function, class, or file name to view",
+                        },
+                    },
+                    "required": ["name"],
+                },
+            },
+            handler=_symbol_context,
             timeout_sec=30,
         ),
     ]

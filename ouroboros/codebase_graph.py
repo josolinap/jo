@@ -11,6 +11,7 @@ import ast
 import json
 import logging
 import os
+import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -40,6 +41,7 @@ class GraphEdge:
     source: str  # Node ID
     target: str  # Node ID
     relation: str  # "imports", "calls", "contains", "inherits"
+    confidence: float = 1.0  # 0.0-1.0: AST-resolved=0.9, structural=1.0, heuristic=0.3
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -122,6 +124,7 @@ class CodebaseGraph:
                     "source": e.source,
                     "target": e.target,
                     "relation": e.relation,
+                    "confidence": e.confidence,
                     "metadata": e.metadata,
                 }
                 for e in self.edges
@@ -152,6 +155,7 @@ class CodebaseGraph:
                 source=edge_data["source"],
                 target=edge_data["target"],
                 relation=edge_data["relation"],
+                confidence=edge_data.get("confidence", 1.0),
                 metadata=edge_data.get("metadata", {}),
             )
             graph.add_edge(edge)
@@ -224,6 +228,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                         source=file_id,
                         target=import_id,
                         relation="imports",
+                        confidence=0.85,
                     )
                 )
         elif isinstance(node, ast.ImportFrom):
@@ -246,6 +251,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                         source=file_id,
                         target=import_id,
                         relation="imports",
+                        confidence=0.85,
                     )
                 )
 
@@ -271,6 +277,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                     source=file_id,
                     target=class_id,
                     relation="contains",
+                    confidence=1.0,
                 )
             )
 
@@ -282,6 +289,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                             source=class_id,
                             target=f"class:*:{base.id}",
                             relation="inherits",
+                            confidence=0.9,
                         )
                     )
 
@@ -306,6 +314,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                             source=class_id,
                             target=method_id,
                             relation="contains",
+                            confidence=1.0,
                         )
                     )
 
@@ -329,6 +338,7 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                     source=file_id,
                     target=func_id,
                     relation="contains",
+                    confidence=1.0,
                 )
             )
 
@@ -410,6 +420,9 @@ def export_to_vault(graph: CodebaseGraph, repo_dir: Optional[Path] = None) -> st
 def export_summary_to_vault(graph: CodebaseGraph, repo_dir: Optional[Path] = None) -> str:
     """Export human-readable summary of codebase graph to vault.
 
+    Includes freshness metadata: git SHA, timestamp, node/edge counts.
+    This lets Jo detect when the note is stale.
+
     Args:
         graph: CodebaseGraph to summarize
         repo_dir: Repository directory
@@ -423,6 +436,20 @@ def export_summary_to_vault(graph: CodebaseGraph, repo_dir: Optional[Path] = Non
     vault_path = repo_dir / "vault" / "concepts" / "codebase_overview.md"
 
     try:
+        # Get git SHA for freshness tracking
+        git_sha = ""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=str(repo_dir),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            git_sha = result.stdout.strip()[:12] if result.returncode == 0 else ""
+        except Exception:
+            pass
+
         # Group by layer
         layers: Dict[str, List[GraphNode]] = {}
         for node in graph.nodes.values():
@@ -437,11 +464,15 @@ def export_summary_to_vault(graph: CodebaseGraph, repo_dir: Optional[Path] = Non
             type_counts[node.type] = type_counts.get(node.type, 0) + 1
 
         # Build markdown
+        freshness_note = f" (git: {git_sha})" if git_sha else ""
         lines = [
             "# Codebase Overview",
             "",
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}{freshness_note}",
             f"Repository: {graph.repo_dir}",
+            "",
+            f"> Freshness: This note reflects the codebase at commit `{git_sha}`. "
+            f"If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.",
             "",
             "## Summary",
             "",
@@ -583,11 +614,15 @@ def extract_function_calls(tree: ast.Module, file_path: str, repo_dir: Path) -> 
                 if called_name:
                     # Try to find the target in same file first
                     target_id = f"func:{rel_path}:{called_name}"
+                    # AST-based call detection: high confidence for simple names,
+                    # medium for attribute access (receiver type unknown)
+                    call_conf = 0.9 if isinstance(node.func, ast.Name) else 0.5
                     edges.append(
                         GraphEdge(
                             source=caller,
                             target=target_id,
                             relation="calls",
+                            confidence=call_conf,
                             metadata={"line": node.lineno},
                         )
                     )
@@ -599,27 +634,66 @@ def extract_function_calls(tree: ast.Module, file_path: str, repo_dir: Path) -> 
     return edges
 
 
-def analyze_impact(graph: CodebaseGraph, changed_node_id: str) -> Dict[str, Any]:
-    """Analyze the impact of changing a node.
+def analyze_impact(
+    graph: CodebaseGraph,
+    changed_node_id: str,
+    max_depth: int = 3,
+    min_confidence: float = 0.0,
+    direction: str = "upstream",
+) -> Dict[str, Any]:
+    """Analyze the blast radius of changing a node.
+
+    Depth-grouped impact analysis inspired by GitNexus:
+    - Depth 1: WILL BREAK - direct dependents, must update
+    - Depth 2: LIKELY AFFECTED - indirect dependents, should test
+    - Depth 3: MAY NEED TESTING - transitive, test if critical
+
+    Args:
+        graph: CodebaseGraph to analyze
+        changed_node_id: ID of the node being changed
+        max_depth: Maximum traversal depth (default 3)
+        min_confidence: Minimum edge confidence to traverse (default 0.0)
+        direction: "upstream" (who depends on this) or "downstream" (what does this depend on)
 
     Returns:
-        - directly_affected: Nodes that directly depend on changed_node
-        - indirectly_affected: Nodes affected through chains
-        - impact_depth: How far the impact spreads
-        - risk_level: low/medium/high based on affected count
+        Dict with depth-grouped results, confidence scores, and risk assessment
     """
-    directly_affected = graph.get_dependents(changed_node_id)
+    # BFS with depth tracking and parent mapping (for confidence lookup)
+    depth_groups: Dict[int, List[str]] = {}
+    parent_map: Dict[str, str] = {}  # child -> parent (the node that discovered it)
+    visited = {changed_node_id}
+    current_level = {changed_node_id}
 
-    # Trace indirect impact (2 levels deep)
-    indirectly_affected = set()
-    for dep in directly_affected:
-        for indirect in graph.get_dependents(dep):
-            if indirect != changed_node_id and indirect not in directly_affected:
-                indirectly_affected.add(indirect)
+    for depth in range(1, max_depth + 1):
+        next_level = set()
+        for node_id in current_level:
+            for edge in graph.edges:
+                if edge.confidence < min_confidence:
+                    continue
+                if direction == "upstream":
+                    if edge.target == node_id and edge.source not in visited:
+                        next_level.add(edge.source)
+                        visited.add(edge.source)
+                        parent_map[edge.source] = node_id
+                else:
+                    if edge.source == node_id and edge.target not in visited:
+                        next_level.add(edge.target)
+                        visited.add(edge.target)
+                        parent_map[edge.target] = node_id
 
-    total_affected = len(directly_affected) + len(indirectly_affected)
+        if next_level:
+            depth_groups[depth] = sorted(next_level)
+        current_level = next_level
+
+    # Build depth labels
+    depth_labels = {
+        1: "WILL BREAK",
+        2: "LIKELY AFFECTED",
+        3: "MAY NEED TESTING",
+    }
 
     # Risk assessment
+    total_affected = sum(len(nodes) for nodes in depth_groups.values())
     if total_affected == 0:
         risk_level = "low"
     elif total_affected <= 3:
@@ -629,27 +703,65 @@ def analyze_impact(graph: CodebaseGraph, changed_node_id: str) -> Dict[str, Any]
     else:
         risk_level = "high"
 
-    # Get affected node details
-    affected_details = []
-    for node_id in directly_affected + list(indirectly_affected):
-        node = graph.get_node(node_id)
-        if node:
-            affected_details.append(
-                {
-                    "id": node_id,
-                    "name": node.name,
-                    "type": node.type,
-                    "file": node.file_path,
-                }
-            )
+    # Get details for each affected node
+    affected_details: Dict[int, List[Dict[str, Any]]] = {}
+    for depth, node_ids in depth_groups.items():
+        details = []
+        for node_id in node_ids:
+            node = graph.get_node(node_id)
+            # Get connecting edge confidence (look at edge to parent, not just changed_node)
+            edge_conf = 0.0
+            parent = parent_map.get(node_id, changed_node_id)
+            for edge in graph.edges:
+                if edge.confidence < min_confidence:
+                    continue
+                if direction == "upstream":
+                    if edge.source == node_id and edge.target == parent:
+                        edge_conf = max(edge_conf, edge.confidence)
+                else:
+                    if edge.source == parent and edge.target == node_id:
+                        edge_conf = max(edge_conf, edge.confidence)
+
+            if node:
+                details.append(
+                    {
+                        "id": node_id,
+                        "name": node.name,
+                        "type": node.type,
+                        "file": node.file_path,
+                        "line": node.line_number,
+                        "confidence": round(edge_conf, 2),
+                    }
+                )
+            else:
+                details.append(
+                    {
+                        "id": node_id,
+                        "name": node_id.split(":")[-1] if ":" in node_id else node_id,
+                        "type": "unknown",
+                        "file": "",
+                        "confidence": round(edge_conf, 2),
+                    }
+                )
+        affected_details[depth] = details
+
+    # Change node info
+    changed_node = graph.get_node(changed_node_id)
+    target_info = {
+        "id": changed_node_id,
+        "name": changed_node.name if changed_node else changed_node_id,
+        "type": changed_node.type if changed_node else "unknown",
+        "file": changed_node.file_path if changed_node else "",
+        "line": changed_node.line_number if changed_node else 0,
+    }
 
     return {
-        "changed_node": changed_node_id,
-        "directly_affected": directly_affected,
-        "indirectly_affected": list(indirectly_affected),
+        "target": target_info,
+        "direction": direction,
         "total_affected": total_affected,
         "risk_level": risk_level,
-        "affected_details": affected_details,
+        "depth_groups": affected_details,
+        "depth_labels": depth_labels,
     }
 
 

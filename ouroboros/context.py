@@ -151,6 +151,58 @@ def _build_recent_sections(memory: Memory, env: Any, task_id: str = "") -> List[
     return sections
 
 
+def _build_vault_context(env: Any, task_text: str) -> str:
+    """Find vault notes relevant to the current task. Makes vault participatory."""
+    try:
+        vault_dir = env.repo_path("vault")
+        if not vault_dir.exists():
+            return ""
+
+        # Extract key terms from task (words > 3 chars, lowercase)
+        terms = [w.lower() for w in task_text.split() if len(w) > 3 and w.isalpha()]
+        if not terms:
+            return ""
+
+        matches = []
+        for md_file in vault_dir.rglob("*.md"):
+            if md_file.name.startswith("."):
+                continue
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+
+            content_lower = content.lower()
+            score = sum(1 for t in terms if t in content_lower)
+            if score >= 2:
+                rel = md_file.relative_to(vault_dir)
+                # Extract first meaningful paragraph (skip frontmatter)
+                lines = content.split("\n")
+                body_lines = []
+                in_frontmatter = False
+                for line in lines:
+                    if line.strip() == "---":
+                        in_frontmatter = not in_frontmatter
+                        continue
+                    if not in_frontmatter and line.strip():
+                        body_lines.append(line.strip())
+                    if len(body_lines) >= 3:
+                        break
+                preview = " ".join(body_lines)[:200]
+                matches.append((score, str(rel).replace("\\", "/"), preview))
+
+        if not matches:
+            return ""
+
+        matches.sort(reverse=True, key=lambda x: x[0])
+        parts = ["## Relevant Vault Notes\n"]
+        for score, path, preview in matches[:3]:
+            parts.append(f"- **{path}**: {preview}")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def _build_recent_commits_section(repo_dir: pathlib.Path, limit: int = 10) -> str:
     """Build recent git commits section for restart continuity."""
     try:
@@ -415,6 +467,45 @@ def _build_health_invariants(env: Any) -> str:
     except Exception:
         pass
 
+    # 8. Vault staleness — check if codebase_overview.md references a stale commit
+    try:
+        overview_path = env.repo_path("vault/concepts/codebase_overview.md")
+        if overview_path.exists():
+            import re as _re
+
+            overview_content = read_text(overview_path)
+            sha_match = _re.search(r"git:\s*`?([a-f0-9]+)`?", overview_content)
+            if sha_match:
+                note_sha = sha_match.group(1)
+                current_sha = ""
+                try:
+                    import subprocess as _sp
+
+                    result = _sp.run(
+                        ["git", "rev-parse", "HEAD"],
+                        cwd=str(env.repo_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    current_sha = result.stdout.strip()[:12] if result.returncode == 0 else ""
+                except Exception:
+                    pass
+                if (
+                    current_sha
+                    and note_sha
+                    and not current_sha.startswith(note_sha)
+                    and not note_sha.startswith(current_sha)
+                ):
+                    checks.append(
+                        f"INFO: VAULT STALE — codebase_overview.md references {note_sha[:8]}, HEAD is {current_sha[:8]}. "
+                        f"Consider running scan_repo() to refresh."
+                    )
+                elif current_sha:
+                    checks.append(f"OK: vault overview fresh (HEAD={current_sha[:8]})")
+    except Exception:
+        pass
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
@@ -495,6 +586,13 @@ def build_llm_messages(
         commits_section = _build_recent_commits_section(env.repo_dir, limit=5)
         if commits_section:
             dynamic_parts.append(commits_section)
+
+    # Vault context — relevant vault notes for this task (makes vault participatory)
+    task_text = task.get("text", "") or ""
+    if task_text:
+        vault_ctx = _build_vault_context(env, task_text)
+        if vault_ctx:
+            dynamic_parts.append(vault_ctx)
 
     dynamic_parts.extend(_build_recent_sections(memory, env, task_id=task.get("id", "")))
 

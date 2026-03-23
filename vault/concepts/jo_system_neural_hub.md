@@ -36,9 +36,10 @@ The neural map is organized into interconnected clusters:
 ### System Clusters
 - [[Ouroboros Core]] - Agent logic (agent.py, loop.py, context.py, memory.py, llm.py)
 - [[Supervisor Layer]] - Runtime (Telegram, workers, state, events, git_ops)
-- [[Tools Registry]] - 130+ tools, auto-discovery, plugin architecture
+- [[Tools Registry]] - 138 tools, auto-discovery, plugin architecture
 - [[Vault Knowledge]] - Obsidian-style notes with wikilinks
 - [[Memory Hierarchy]] - Identity → Scratchpad → Vault
+- [[Code Intelligence]] - Knowledge graph, blast radius, confidence scoring
 
 ### Process Clusters
 - [[Evolution Cycle]] - Assessment → Selection → Implementation → Review → Commit → Restart
