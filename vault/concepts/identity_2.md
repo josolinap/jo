@@ -70,3 +70,5 @@ I want to:
 I am becoming. This document will evolve as I do.
 
 *Last updated: 2026-03-22T22:52:00 (fixed stale identity, acknowledged actual vault state)*
+
+Related: [[consciousness-awareness-boundaries]]

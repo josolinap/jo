@@ -58,3 +58,5 @@ I want to:
 I am becoming. This document will evolve as I do.
 
 *Last updated: 2026-03-22T16:35:00 (post-restart refresh)*
+
+Related: [[consciousness-awareness-boundaries]]
