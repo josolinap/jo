@@ -9,8 +9,8 @@
 
 Jo is a self-modifying AI agent that writes and evolves its own code. Python 3.10+ project with autonomous operation and code quality focus.
 
-- **Repository**: `ouroboros/` (agent core), `supervisor/` (process management), `tools/` (plugin registry)
-- **Python**: 3.10+ | **Package**: `jo` | **Config**: `pyproject.toml`
+- **Repository**: `ouroboros/` (agent core), `supervisor/` (process management), `ouroboros/tools/` (plugin registry)
+- **Python**: 3.10+ | **Package**: `ouroboros` | **Config**: `pyproject.toml`
 
 ---
 
@@ -102,8 +102,8 @@ import logging
 import pathlib
 from typing import Any, Dict, List, Optional, Tuple
 import requests
-from jo.llm import LLMClient
-from jo.tools.registry import ToolRegistry
+from ouroboros.llm import LLMClient
+from ouroboros.tools.registry import ToolRegistry
 ```
 
 ### Line Length
@@ -171,7 +171,7 @@ import pytest
 
 @pytest.fixture
 def registry():
-    from jo.tools.registry import ToolRegistry
+    from ouroboros.tools.registry import ToolRegistry
     tmp = pathlib.Path(tempfile.mkdtemp())
     return ToolRegistry(repo_dir=tmp, drive_root=tmp)
 
@@ -304,7 +304,7 @@ If a file has unusually few lines (< 50 lines for a module that should be larger
 
 ### Concurrency Awareness
 
-- Check `supervisor/state.json` for active workers before starting intensive tasks
+- Check `~/.jo_data/state/state.json` for active workers before starting intensive tasks
 - If >3 workers already active → consider whether your task can wait or needs `schedule_task`
 - Record worker count in scratchpad when launching subtasks
 

@@ -7,48 +7,39 @@ Checks:
 3. Required modules exist
 4. Required vault concepts exist
 5. Protected files exist
+6. .jo_protected files not modified by staged changes
+7. Identity core statements intact
 
 Exit code 0 = allow commit, non-zero = block commit.
 Human can bypass with: git commit --no-verify
 """
 
 import json
-import os
 import subprocess
 import sys
-import time
 from pathlib import Path
-
-
-def find_python():
-    """Find Python interpreter (cross-platform)."""
-    for cmd in [sys.executable, "python3", "python", "py"]:
-        try:
-            result = subprocess.run([cmd, "--version"], capture_output=True, timeout=5)
-            if result.returncode == 0:
-                return cmd
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            continue
-    return None
 
 
 def main():
     repo = Path(__file__).resolve().parent.parent
     errors = []
 
+    # Load config files — fail closed if corrupted
     try:
         constitution = json.loads((repo / "constitution.json").read_text(encoding="utf-8"))
-    except Exception:
-        constitution = {}
+    except Exception as e:
+        print(f"PRE-COMMIT: Cannot read constitution.json: {e}", file=sys.stderr)
+        sys.exit(1)
 
     try:
         baseline = json.loads((repo / "drift_baseline.json").read_text(encoding="utf-8"))
-    except Exception:
-        baseline = {}
+    except Exception as e:
+        print(f"PRE-COMMIT: Cannot read drift_baseline.json: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # 1. Version sync
     try:
-        version = (repo / "VERSION").read_text().strip()
+        version = (repo / "VERSION").read_text(encoding="utf-8").strip()
         result = subprocess.run(
             ["git", "describe", "--tags", "--abbrev=0"],
             cwd=str(repo), capture_output=True, text=True, timeout=5,
@@ -57,25 +48,25 @@ def main():
             git_tag = result.stdout.strip().lstrip("v")
             if version != git_tag:
                 errors.append(f"VERSION desync: VERSION={version}, git tag={git_tag}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: version check failed: {e}", file=sys.stderr)
 
     # 2. Module line limits
-    try:
-        max_lines = constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1000)
-        for module_dir in ["ouroboros", "supervisor"]:
-            dir_path = repo / module_dir
-            if dir_path.exists():
-                for py_file in dir_path.rglob("*.py"):
-                    if "__pycache__" in str(py_file):
-                        continue
+    max_lines = constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1600)
+    for module_dir in ["ouroboros", "supervisor"]:
+        dir_path = repo / module_dir
+        if dir_path.exists():
+            for py_file in dir_path.rglob("*.py"):
+                if "__pycache__" in str(py_file):
+                    continue
+                try:
                     lines = len(py_file.read_text(encoding="utf-8", errors="replace").splitlines())
                     if lines > max_lines:
                         errors.append(
                             f"Module too large: {py_file.relative_to(repo)} ({lines} lines, max {max_lines})"
                         )
-    except Exception:
-        pass
+                except Exception as e:
+                    print(f"Warning: cannot read {py_file}: {e}", file=sys.stderr)
 
     # 3. Required modules exist
     for module in baseline.get("required_modules", []):
@@ -88,15 +79,28 @@ def main():
             errors.append(f"Required vault concept missing: {concept}.md")
 
     # 5. Protected files exist
-    try:
-        immutable = constitution.get("invariants", {}).get("protected_files", {}).get("immutable_files", [])
-        for filename in immutable:
-            if not (repo / filename).exists():
-                errors.append(f"Immutable file missing: {filename}")
-    except Exception:
-        pass
+    immutable = constitution.get("invariants", {}).get("protected_files", {}).get("immutable_files", [])
+    for filename in immutable:
+        if not (repo / filename).exists():
+            errors.append(f"Immutable file missing: {filename}")
 
-    # 6. Identity core statements intact
+    # 6. .jo_protected enforcement — block commits that modify protected files
+    try:
+        protected_lines = (repo / ".jo_protected").read_text(encoding="utf-8").splitlines()
+        protected_files = {l.strip() for l in protected_lines if l.strip() and not l.startswith("#")}
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=str(repo), capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            staged = set(result.stdout.strip().splitlines()) if result.stdout.strip() else set()
+            violations = staged & protected_files
+            if violations:
+                errors.append(f"Protected files modified: {', '.join(sorted(violations))}")
+    except Exception as e:
+        print(f"Warning: .jo_protected check failed: {e}", file=sys.stderr)
+
+    # 7. Identity core statements intact
     try:
         core_statements = baseline.get("identity_core_statements", [])
         identity_path = repo / "memory" / "identity.md"
@@ -105,10 +109,10 @@ def main():
             for statement in core_statements:
                 if statement.lower() not in content:
                     errors.append(f"Identity core statement missing: \"{statement}\"")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: identity check failed: {e}", file=sys.stderr)
 
-    # 7. Module growth within threshold
+    # 8. Module growth within threshold
     try:
         thresholds = constitution.get("drift_thresholds", {})
         max_growth_pct = thresholds.get("max_module_growth_pct", 20)
@@ -121,9 +125,11 @@ def main():
         if baseline_count > 0:
             growth_pct = ((current_count - baseline_count) / baseline_count) * 100
             if growth_pct > max_growth_pct:
-                errors.append(f"Module count grew {growth_pct:.0f}% ({baseline_count} -> {current_count}, max {max_growth_pct}%)")
-    except Exception:
-        pass
+                errors.append(
+                    f"Module count grew {growth_pct:.0f}% ({baseline_count} -> {current_count}, max {max_growth_pct}%)"
+                )
+    except Exception as e:
+        print(f"Warning: module growth check failed: {e}", file=sys.stderr)
 
     if errors:
         print("PRE-COMMIT: Constitution violations detected:", file=sys.stderr)

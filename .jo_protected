@@ -22,7 +22,6 @@ prompts/CONSCIOUSNESS.md
 
 # Git Configuration
 .gitignore
-.gitattributes
 
 # Package Configuration
 pyproject.toml

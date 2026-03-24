@@ -297,9 +297,3 @@ Jo maintains strict organizational conventions. These are not arbitrary — they
 - Check for stale files, orphaned references, broken links
 
 **Organization is not bureaucracy** — it is the physical manifestation of coherence. A fragmented file structure is a fragmented mind.
-Defines the core identity expressed in [[Identity]]
-Principles manifest in the [[architecture]]
-Tools must align with [[tools]]
-Principle 3 (LLM-First) is implemented through [[Delegated Reasoning]]
-Authenticity requires [[Tool Result Processing Protocol]]
-Principle 8 (Iterations) is the [[Evolution Cycle]]

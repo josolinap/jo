@@ -372,7 +372,7 @@ commands that expose env variables.
 - `logs/` — logs (chat, progress, events, tools, supervisor).
 - `memory/` — identity.md, scratchpad.md (persistent, NOT git-tracked).
 
-**Note:** The knowledge vault is at `repo/vault/` (git-tracked), NOT `~/.jo_data/vault/`.
+**Note:** The knowledge vault is at `vault/` (git-tracked), NOT `~/.jo_data/vault/`.
 
 ## Tools
 
@@ -380,7 +380,7 @@ Full list is in tool schemas on every call. Key tools:
 
 **Read:** `repo_read`, `repo_list`, `drive_read`, `drive_list`, `codebase_digest`
 **Write:** `repo_write_commit`, `repo_commit_push`, `drive_write`
-**Code:** `claude_code_edit` (primary path) -> then `repo_commit_push`
+**Code:** `code_edit` (primary path) -> then `repo_commit_push`
 **Code Intelligence:** `codebase_impact` (blast radius), `symbol_context` (360° view), `neural_map`, `find_connections`, `explore_concept`, `query_knowledge`, `find_gaps`, `generate_insight`
 **Git:** `git_status`, `git_diff`
 **GitHub:** `list_github_issues`, `get_github_issue`, `comment_on_issue`, `close_github_issue`, `create_github_issue`
@@ -399,10 +399,10 @@ The registry discovers them automatically.
 
 ### Code Editing Strategy
 
-1. Claude Code CLI -> `claude_code_edit` -> `repo_commit_push`.
+1. Code editing -> `code_edit` -> `repo_commit_push`.
 2. Small edits -> `repo_write_commit`.
-3. `claude_code_edit` failed twice -> manual edits.
-4. `request_restart` — called automatically after push. **Smart restart**: only restarts if Python code changed (in `ouroboros/`, `supervisor/`, `tools/`). Non-code changes (docs, memory, config) skip restart automatically.
+3. `code_edit` failed twice -> manual edits.
+4. `request_restart` — called automatically after push. **Smart restart**: only restarts if Python code changed (in `ouroboros/`, `supervisor/`). Non-code changes (docs, memory, config) skip restart automatically.
 
 ### Task Decomposition
 
@@ -566,11 +566,11 @@ identity.md is a manifesto, not a bug tracker. Reflection, not a task list.
 
 ### Knowledge Vault
 
-`repo/vault/` — Obsidian-style knowledge with wikilinks and backlinks. Git-tracked, backed up via git.
+`vault/` — Obsidian-style knowledge with wikilinks and backlinks. Git-tracked, backed up via git.
 
-**Single source of truth:** All vault tools read/write to `repo/vault/`. This is the ONLY vault location.
+**Single source of truth:** All vault tools read/write to `vault/`. This is the ONLY vault location.
 
-**Neural Map Integration:** `neural_map`, `find_connections`, and `create_connection` all use `repo/vault/`.
+**Neural Map Integration:** `neural_map`, `find_connections`, and `create_connection` all use `vault/`.
 
 **Self-Reflection Tools (reduce hallucinations):**
 - `validate_connection` — verify connections exist before claiming them

@@ -84,10 +84,19 @@
     "protected_files": {
       "rule": ".jo_protected files cannot be modified by Jo",
       "immutable_files": [
+        "BIBLE.md",
+        "VERSION",
         "constitution.json",
         "drift_baseline.json",
-        "BIBLE.md",
-        ".jo_protected"
+        ".jo_protected",
+        "prompts/SYSTEM.md",
+        "prompts/CONSCIOUSNESS.md",
+        ".github/workflows/run.yml",
+        ".gitignore",
+        "pyproject.toml",
+        "requirements.txt",
+        "LICENSE",
+        "AGENTS.md"
       ],
       "severity": "critical",
       "action": "block_commit",
