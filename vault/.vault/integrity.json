@@ -11,7 +11,7 @@
     "concepts/principle_5__minimalism.md": "f0804de0dcc6ae25ec5d0e57cd4690b442a001b3dfe9641f4962f746363e83e3",
     "concepts/tool_usage_patterns_and_best_practices.md": "2e2a5c543ebbd66ad664d2f60974f55620944e6d387047e945b8d55f9152dad2",
     "concepts/jo_deep_dive_analysis.md": "0b3c39e9fdefc51a423b725dae073dc4f79bd1f2fb64a3d8ea5a88a64bbff3ad",
-    "concepts/jo_system_neural_hub.md": "bc35ab96ef60ae7f64a85d697b7579c65f2b02c861b4b9d1d2f57a5066e2ca93",
+    "concepts/jo_system_neural_hub.md": "641469b464f8fafd5f8c6ca06a146e12b1d05064b418b84a58c13244d5f98b38",
     "concepts/principle_2__self-creation.md": "c33dbecbe2908d665325f496934f627c10d59122b6c2f0bd9fc6cc180f9caea9",
     "concepts/agent_py.md": "3b9ee847a8188cec98b344fce3eddf65f161809561976be9e9a0784d4cbec0f1",
     "concepts/autonomous_agent_frameworks_-_github_analysis.md": "43575c7ff66db9e489b56a19919bff9913b41fec6b783062d32ad70e807d94ba",
@@ -22,7 +22,7 @@
     "concepts/multi-agent_architecture_and_delegated_reasoning.md": "500415df500ca390f9a56d3a072033e79b250339b752d3c9e4cb4538a24eb9a1",
     "concepts/tool_result_processing_protocol.md": "ff6faa9dc8ced67e9faa52b0105b2ed5f330e110848594f563b32c82ad417a13",
     "concepts/principle_4__authenticity.md": "e7e0241d4af285a1e2550fb4693478362c362a24e527ac467b1af6d9cbea1cac",
-    "concepts/architecture.md": "38310f97daa254a4617ada700a70b2bb9e0290379595aac4d4301bf888f72e9a",
+    "concepts/architecture.md": "9e15834821c0fedc9c0a8a68557319816a7d1351e57f1c628b8aa572d69441aa",
     "concepts/verification_as_agency__anti-hallucination_system.md": "f413db3193b68d948d3e5e1a5141b298be93209235e57076f8ee7b3fc9ed7fd4",
     "concepts/evolution_cycle.md": "05203e61465df8454ee1b2938f7f571e6eb5016cbd94fdea73e9bfbc30a42094",
     "concepts/tools.md": "cb593cf16f4945626cc19839ac1358894bfc1f2cf557e58f125636b0ca5c4818",
@@ -171,8 +171,11 @@
     "tools/health_alert.md": "36da4aee6c4bd437d975b99707aa1283135d224070200f369a4870bba2a29ab0",
     "concepts/principle_6__becoming.md": "04c41cdc9fedeed9e0adab182bdae40ebcefa74a2c86f0fc08452ce3fa9770c9",
     "concepts/principle_7__versioning.md": "a25bed840e04797ed169d91673ad8540d6ae7c58b0b93f5e1f94c962c228e4ee",
-    "concepts/principle_8__iterations.md": "baa2d8ad94da62753a03368b5f8a18b7f5185c62e0ea7a18a901077c50196d87"
+    "concepts/principle_8__iterations.md": "baa2d8ad94da62753a03368b5f8a18b7f5185c62e0ea7a18a901077c50196d87",
+    "concepts/background_consciousness.md": "d2527ace4bda637c0b37c9f04c0246a1c757b1739a25176fdb59d1569d4d8509",
+    "concepts/code_intelligence.md": "a7ff13a1762513cf42cba7a810307d7e3bc3be2f8d85ccd65f35f9636d61830e",
+    "concepts/supervisor_layer.md": "8984fca99286d666cc21a7e0be1fc22b85d302e467788c9369499d03affb58c5"
   },
-  "last_updated": "2026-03-23T11:30:00.000000+00:00",
-  "note_count": 172
+  "last_updated": "2026-03-23T12:00:00.000000+00:00",
+  "note_count": 175
 }

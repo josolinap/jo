@@ -29,14 +29,16 @@ The neural map is organized into interconnected clusters:
 - [[principle_3__llm-first]] - Decision architecture
 - [[principle_4__authenticity]] - Communication mode
 - [[principle_5__minimalism]] - Complexity management
-- [[Principle 6: Becoming]] - Three axes of evolution
-- [[Principle 7: Versioning]] - Release discipline
-- [[Principle 8: Iterations]] - Evolution cycles
+- [[principle_6__becoming]] - Three axes of evolution
+- [[principle_7__versioning]] - Release discipline
+- [[principle_8__iterations]] - Evolution cycles
 
 ### System Clusters
-- [[Ouroboros Core]] - Agent logic (agent.py, loop.py, context.py, memory.py, llm.py)
-- [[Supervisor Layer]] - Runtime (Telegram, workers, state, events, git_ops)
-- [[Tools Registry]] - 138 tools, auto-discovery, plugin architecture
+- [[architecture]] - Agent logic (agent.py, loop.py, context.py, memory.py, llm.py)
+- [[supervisor_layer]] - Runtime (Telegram, workers, state, events, git_ops)
+- [[background_consciousness]] - Persistent thinking loop
+- [[code_intelligence]] - Knowledge graph, confidence scoring, blast radius
+- [[tools]] - 138 tools, auto-discovery, plugin architecture
 - [[Vault Knowledge]] - Obsidian-style notes with wikilinks
 - [[jo_system_neural_hub]] - Identity → Scratchpad → Vault
 - [[Code Intelligence]] - Knowledge graph, blast radius, confidence scoring
