@@ -1,0 +1,8 @@
+# Jo Configuration - Environment Overrides
+# This file is for environment-specific adjustments.
+# Values here override defaults from default.yaml
+
+# Example: Override for development environment
+# llm:
+#   default_model: "anthropic/claude-3-haiku"
+#   temperature: 0.7
