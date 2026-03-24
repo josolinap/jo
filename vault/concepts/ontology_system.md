@@ -1,3 +1,11 @@
+---
+title: TrustGraph-Inspired Ontology System
+created: 2026-03-25
+category: concepts
+tags:  []
+
+---
+
 # TrustGraph-Inspired Ontology System
 
 ## Overview

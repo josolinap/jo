@@ -19,3 +19,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[move_file]]

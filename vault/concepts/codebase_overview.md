@@ -1,3 +1,11 @@
+---
+title: Codebase Overview
+created: 2026-03-25
+category: concepts
+tags:  []
+
+---
+
 # Codebase Overview
 
 Generated: 2026-03-24 21:13 (git: 061d5b2c8d51)

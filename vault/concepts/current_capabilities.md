@@ -1,3 +1,11 @@
+---
+title: Jo Current Capabilities (v6.4.0)
+created: 2026-03-25
+category: concepts
+tags:  []
+
+---
+
 # Jo Current Capabilities (v6.4.0)
 
 ## Tool Inventory: 138 Tools

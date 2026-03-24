@@ -1,3 +1,11 @@
+---
+title: Jo's Vault
+created: 2026-03-25
+category: .
+tags:  []
+
+---
+
 # Jo's Vault
 
 This is Jo's knowledge vault - an Obsidian-style note system stored in git for persistence across restarts.

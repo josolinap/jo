@@ -877,11 +877,268 @@ def get_vault_health_report(vault_dir: Optional[Path] = None) -> VaultHealthRepo
     )
 
 
-def get_vault_engine(vault_dir: Optional[Path] = None) -> VaultGraphEngine:
-    """Get singleton vault graph engine."""
-    global _vault_engine
-    if _vault_engine is None:
-        if vault_dir is None:
-            vault_dir = Path(os.environ.get("REPO_DIR", ".")) / "vault"
-        _vault_engine = VaultGraphEngine(vault_dir)
-    return _vault_engine
+# ============================================================================
+# PHASE 3A: Execute Improvements (Auto-Fix)
+# ============================================================================
+
+
+@dataclass
+class ImprovementResult:
+    """Result of executing an improvement."""
+
+    note_path: str
+    improvement_type: str  # "link_added", "frontmatter_added", "tag_added"
+    success: bool
+    message: str
+    details: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "note_path": self.note_path,
+            "type": self.improvement_type,
+            "success": self.success,
+            "message": self.message,
+            "details": self.details,
+        }
+
+
+class VaultAutoFixer:
+    """Execute improvements to fix vault issues.
+
+    Phase 3A: Actually applies fixes, not just suggestions.
+    """
+
+    def __init__(self, engine: VaultGraphEngine):
+        self._engine = engine
+
+    def fix_orphan_notes(self, max_fixes: int = 50) -> List[ImprovementResult]:
+        """Auto-link orphan notes based on content similarity.
+
+        Args:
+            max_fixes: Maximum number of fixes to apply
+
+        Returns:
+            List of improvement results
+        """
+        if not self._engine._graph:
+            self._engine.build_graph()
+
+        linker = VaultAutoLinker(self._engine)
+        suggestions = linker.suggest_links_for_orphans(max_per_note=1)
+
+        results = []
+        fixed_notes = set()
+
+        for suggestion in suggestions[:max_fixes]:
+            if suggestion.source_path in fixed_notes:
+                continue
+
+            # Only fix high-confidence suggestions
+            if suggestion.confidence < 0.5:
+                continue
+
+            success = linker.create_link(
+                suggestion.source_path,
+                suggestion.target_path,
+            )
+
+            results.append(
+                ImprovementResult(
+                    note_path=suggestion.source_path,
+                    improvement_type="link_added",
+                    success=success,
+                    message=f"Linked to {suggestion.target_path}" if success else "Failed to add link",
+                    details={
+                        "target": suggestion.target_path,
+                        "similarity": suggestion.similarity,
+                        "reason": suggestion.reason,
+                    },
+                )
+            )
+
+            if success:
+                fixed_notes.add(suggestion.source_path)
+
+        return results
+
+    def add_frontmatter(self, note_path: str) -> ImprovementResult:
+        """Add YAML frontmatter to a note that's missing it."""
+        note_file = self._engine._vault_dir / note_path
+        if not note_file.exists():
+            return ImprovementResult(
+                note_path=note_path,
+                improvement_type="frontmatter_added",
+                success=False,
+                message="Note file not found",
+            )
+
+        try:
+            content = note_file.read_text(encoding="utf-8")
+
+            # Check if already has frontmatter
+            if content.startswith("---"):
+                return ImprovementResult(
+                    note_path=note_path,
+                    improvement_type="frontmatter_added",
+                    success=False,
+                    message="Note already has frontmatter",
+                )
+
+            # Generate frontmatter
+            title = Path(note_path).stem
+            # Try to get title from first heading
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    break
+
+            # Extract any existing tags from content
+            tags = re.findall(r"#([a-zA-Z0-9_-]+)", content)
+            tags_str = f"\n  - {chr(10) + '  - '.join(tags)}" if tags else " []"
+
+            # Get folder for category
+            folder = str(Path(note_path).parent)
+            category = folder.split("/")[-1] if "/" in folder else folder.split("\\")[-1]
+
+            # Create frontmatter
+            frontmatter = f"""---
+title: {title}
+created: {datetime.now().strftime("%Y-%m-%d")}
+category: {category}
+tags: {tags_str}
+
+---
+
+"""
+            new_content = frontmatter + content
+            note_file.write_text(new_content, encoding="utf-8")
+
+            return ImprovementResult(
+                note_path=note_path,
+                improvement_type="frontmatter_added",
+                success=True,
+                message=f"Added frontmatter with title '{title}'",
+                details={"title": title, "category": category, "tags": tags},
+            )
+
+        except Exception as e:
+            return ImprovementResult(
+                note_path=note_path,
+                improvement_type="frontmatter_added",
+                success=False,
+                message=f"Error: {e}",
+            )
+
+    def fix_missing_frontmatter(self, max_fixes: int = 20) -> List[ImprovementResult]:
+        """Add frontmatter to notes missing it.
+
+        Args:
+            max_fixes: Maximum number of fixes to apply
+
+        Returns:
+            List of improvement results
+        """
+        if not self._engine._graph:
+            self._engine.build_graph()
+
+        results = []
+        fixed_count = 0
+
+        for path, note in self._engine._graph.notes.items():
+            if fixed_count >= max_fixes:
+                break
+
+            if not note.frontmatter:
+                result = self.add_frontmatter(path)
+                results.append(result)
+                if result.success:
+                    fixed_count += 1
+
+        return results
+
+    def auto_fix_violations(self, max_fixes: int = 30) -> Dict[str, Any]:
+        """Auto-fix vault quality violations.
+
+        Applies fixes in priority order:
+        1. Add frontmatter to notes missing it
+        2. Link orphan notes (high confidence only)
+
+        Args:
+            max_fixes: Maximum total fixes to apply
+
+        Returns:
+            Summary of fixes applied
+        """
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "total_fixes": 0,
+            "successful_fixes": 0,
+            "failed_fixes": 0,
+            "fixes_by_type": {},
+            "details": [],
+        }
+
+        # Priority 1: Add frontmatter (most impactful)
+        frontmatter_results = self.fix_missing_frontmatter(max_fixes // 2)
+        for r in frontmatter_results:
+            results["details"].append(r.to_dict())
+            results["total_fixes"] += 1
+            if r.success:
+                results["successful_fixes"] += 1
+                results["fixes_by_type"]["frontmatter_added"] = results["fixes_by_type"].get("frontmatter_added", 0) + 1
+            else:
+                results["failed_fixes"] += 1
+
+        # Priority 2: Link orphan notes
+        remaining = max_fixes - results["total_fixes"]
+        if remaining > 0:
+            link_results = self.fix_orphan_notes(remaining)
+            for r in link_results:
+                results["details"].append(r.to_dict())
+                results["total_fixes"] += 1
+                if r.success:
+                    results["successful_fixes"] += 1
+                    results["fixes_by_type"]["link_added"] = results["fixes_by_type"].get("link_added", 0) + 1
+                else:
+                    results["failed_fixes"] += 1
+
+        return results
+
+
+def execute_vault_improvements(
+    vault_dir: Optional[Path] = None,
+    max_fixes: int = 30,
+) -> Dict[str, Any]:
+    """Execute vault improvements (Phase 3A).
+
+    This is the main entry point for auto-fixing vault issues.
+
+    Args:
+        vault_dir: Vault directory path
+        max_fixes: Maximum number of fixes to apply
+
+    Returns:
+        Summary of improvements made
+    """
+    engine = get_vault_engine(vault_dir)
+    fixer = VaultAutoFixer(engine)
+
+    # Get initial state
+    initial_report = get_vault_health_report(vault_dir)
+    initial_score = initial_report.quality_score
+
+    # Execute fixes
+    results = fixer.auto_fix_violations(max_fixes)
+
+    # Rebuild graph to reflect changes
+    engine._graph = None  # Invalidate cache
+    final_report = get_vault_health_report(vault_dir)
+    final_score = final_report.quality_score
+
+    # Add comparison to results
+    results["quality_score_before"] = initial_score
+    results["quality_score_after"] = final_score
+    results["quality_improvement"] = final_score - initial_score
+
+    return results
