@@ -33,7 +33,10 @@ Thumbs.db
 .~.swp
 *.tmp
 
-# Memory & Runtime Data (persists in ~/.ouroboros, not needed in git)
-memory/scratchpad*
+# Memory & Runtime Data
+# identity.md - tracked (core identity)
+# scratchpad.md - tracked (working memory)
+# knowledge/ - not tracked (runtime cache)
+# awareness.jsonl - not tracked (runtime logs)
 memory/knowledge/
 memory/awareness.jsonl
