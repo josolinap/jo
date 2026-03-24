@@ -14,7 +14,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class ModelHealth:
 class ModelDiscovery:
     """Results from model discovery."""
 
-    models: List[Dict[str, any]]
+    models: List[Dict[str, Any]]
     providers: List[str]
     last_update: float
 
@@ -156,6 +156,9 @@ class ModelManager:
 
     def discover_models(self, force: bool = False) -> List[Dict]:
         """Query OpenRouter for available models and filter for free ones."""
+        # Periodic cleanup of stale health entries
+        self.cleanup_stale_health()
+
         if self.discovery and not force:
             # Use cached discovery if recent
             if time.time() - self.discovery.last_update < self.discovery_interval:
@@ -163,8 +166,8 @@ class ModelManager:
 
         try:
             import requests
-        except ImportError:
-            log.warning("requests not installed, cannot discover models")
+        except ImportError as e:
+            log.warning("requests not installed, cannot discover models: %s", e)
             return []
 
         try:
@@ -261,6 +264,16 @@ class ModelManager:
         if model_id in self.health:
             self.health[model_id] = ModelHealth(model_id, "healthy", time.time())
             log.info(f"Reset health for model {model_id}")
+
+    def cleanup_stale_health(self, max_age_hours: float = 24) -> int:
+        """Remove health entries for models not used in max_age_hours."""
+        cutoff = time.time() - (max_age_hours * 3600)
+        stale = [mid for mid, h in self.health.items() if h.last_check < cutoff and h.status == "healthy"]
+        for mid in stale:
+            del self.health[mid]
+        if stale:
+            log.debug("Cleaned up %d stale health entries", len(stale))
+        return len(stale)
 
     def get_health_report(self) -> Dict:
         """Generate a health report for monitoring."""
