@@ -16,8 +16,8 @@
         "Note Name"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
-        "journal\\comprehensive-self-documentation.md"
+        "journal\\comprehensive-self-documentation.md",
+        "projects\\jo_knowledge_map.md"
       ],
       "tags": [
         ""
@@ -45,30 +45,30 @@
       },
       "links": [],
       "backlinks": [
-        "concepts\\evolution_cycle.md",
-        "concepts\\delta_evaluation.md",
-        "concepts\\code-generation.md",
-        "concepts\\principle_8__iterations.md",
-        "concepts\\identity.md",
         "concepts\\bible_md_principles__deep_analysis_and_application.md",
-        "projects\\jo_knowledge_map.md",
-        "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
-        "concepts\\agent_py.md",
-        "concepts\\principle_6__becoming.md",
-        "concepts\\principle_7__versioning.md",
         "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-        "concepts\\bible_md.md",
         "concepts\\principle_0__agency.md",
+        "concepts\\principle_8__iterations.md",
+        "concepts\\code-generation.md",
+        "concepts\\delta_evaluation.md",
+        "concepts\\principle_6__becoming.md",
+        "concepts\\identity.md",
+        "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
         "concepts\\principle_5__minimalism.md",
         "concepts\\jo_system_neural_hub.md",
-        "concepts\\background_consciousness.md"
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_7__versioning.md",
+        "concepts\\evolution_cycle.md",
+        "concepts\\background_consciousness.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\bible_md.md",
+        "concepts\\agent_py.md"
       ],
       "tags": [
-        "code-analysis",
-        "evolution",
         "cycle1",
+        "evolution",
+        "code-analysis",
         "loop"
       ],
       "last_modified": "2026-03-24T19:50:18.289195",
@@ -99,14 +99,14 @@
         "Delegated Reasoning"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
-        "concepts\\principle_5__minimalism.md"
+        "concepts\\principle_5__minimalism.md",
+        "projects\\jo_knowledge_map.md"
       ],
       "tags": [
+        "core",
         "module",
         "ouroboros",
-        "code",
-        "core"
+        "code"
       ],
       "last_modified": "2026-03-21T17:22:53.995713",
       "content_hash": "db10006b8b23b4de",
@@ -145,29 +145,29 @@
         "supervisor_layer"
       ],
       "backlinks": [
-        "concepts\\runtime_tool_creation_architecture.md",
-        "concepts\\code-generation.md",
-        "concepts\\hybrid_memory_system_architecture.md",
-        "journal\\2026-03-21-system-deep-dive.md",
-        "concepts\\delegated_reasoning.md",
-        "projects\\jo_knowledge_map.md",
-        "concepts\\supervisor_layer.md",
-        "concepts\\code_intelligence.md",
-        "concepts\\ontology_system.md",
-        "concepts\\current_capabilities.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "concepts\\context_cache.md",
-        "concepts\\skill_outcomes.md",
-        "concepts\\bible_md.md",
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\mcp_server.md",
-        "concepts\\jo_system_neural_hub.md",
         "tasks\\system_review_task.md",
-        "journal\\system_deep_dive__browsing_capabilities.md"
+        "concepts\\code-generation.md",
+        "concepts\\code_intelligence.md",
+        "concepts\\current_capabilities.md",
+        "journal\\2026-03-21-system-deep-dive.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\skill_outcomes.md",
+        "concepts\\principle_5__minimalism.md",
+        "concepts\\hybrid_memory_system_architecture.md",
+        "concepts\\supervisor_layer.md",
+        "concepts\\jo_system_neural_hub.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\ontology_system.md",
+        "journal\\system_deep_dive__browsing_capabilities.md",
+        "concepts\\delegated_reasoning.md",
+        "concepts\\runtime_tool_creation_architecture.md",
+        "concepts\\mcp_server.md",
+        "concepts\\bible_md.md"
       ],
       "tags": [
-        "system-design",
-        "architecture"
+        "architecture",
+        "system-design"
       ],
       "last_modified": "2026-03-24T19:03:18.326057",
       "content_hash": "14ad4dde3fa3f12e",
@@ -232,16 +232,16 @@
         "evolution_cycle"
       ],
       "backlinks": [
-        "concepts\\principle_0__agency.md",
         "projects\\jo_knowledge_map.md",
+        "concepts\\principle_0__agency.md",
         "concepts\\jo_system_neural_hub.md",
         "concepts\\architecture.md"
       ],
       "tags": [
-        "autonomy",
-        "background",
         "consciousness",
-        "agency"
+        "background",
+        "agency",
+        "autonomy"
       ],
       "last_modified": "2026-03-24T19:03:18.327056",
       "content_hash": "4935d7deb77b0d50",
@@ -271,19 +271,19 @@
         "principle_5__minimalism"
       ],
       "backlinks": [
-        "concepts\\principle_7__versioning.md",
-        "concepts\\principle_8__iterations.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\identity.md",
-        "projects\\jo_knowledge_map.md",
         "journal\\vault_usage_demonstration.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_8__iterations.md",
         "journal\\comprehensive-self-documentation.md",
+        "concepts\\identity.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\principle_7__versioning.md",
         "concepts\\principle_6__becoming.md"
       ],
       "tags": [
-        "philosophy",
+        "principles",
         "constitution",
-        "principles"
+        "philosophy"
       ],
       "last_modified": "2026-03-24T19:03:18.327056",
       "content_hash": "9456b6baf4252f6d",
@@ -315,12 +315,12 @@
       ],
       "backlinks": [],
       "tags": [
-        "analysis",
-        "constitution",
-        "bible",
         "principles",
-        "1",
-        "2"
+        "analysis",
+        "bible",
+        "2",
+        "constitution",
+        "1"
       ],
       "last_modified": "2026-03-24T19:03:18.327056",
       "content_hash": "2138a43ff06aa1b9",
@@ -349,9 +349,9 @@
       ],
       "backlinks": [],
       "tags": [
-        "agentic",
-        "evolution",
         "self-refactoring",
+        "evolution",
+        "agentic",
         "code"
       ],
       "last_modified": "2026-03-21T17:22:53.997718",
@@ -406,14 +406,14 @@
         "codebase_overview"
       ],
       "backlinks": [
-        "concepts\\jo_system_neural_hub.md",
         "concepts\\context_cache.md",
+        "concepts\\jo_system_neural_hub.md",
         "concepts\\architecture.md"
       ],
       "tags": [
-        "graph",
         "intelligence",
         "confidence",
+        "graph",
         "code",
         "gitnexus"
       ],
@@ -448,8 +448,8 @@
       ],
       "tags": [
         "cache",
-        "fact",
         "performance",
+        "fact",
         "context"
       ],
       "last_modified": "2026-03-24T19:03:18.329054",
@@ -504,19 +504,19 @@
         "Multi-Agent Architecture and Delegated Reasoning"
       ],
       "backlinks": [
-        "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\principle_3__llm-first.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\principle_3__llm-first.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
         "concepts\\agent_py.md",
         "concepts\\supervisor_layer.md"
       ],
       "tags": [
-        "multi-agent",
         "delegated reasoning",
-        "Principle 3",
-        "architecture"
+        "architecture",
+        "multi-agent",
+        "Principle 3"
       ],
       "last_modified": "2026-03-24T19:03:18.329054",
       "content_hash": "cbf0c18dbe2701b8",
@@ -551,9 +551,9 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "quality",
-        "evaluation",
         "safla",
+        "evaluation",
+        "quality",
         "evolution"
       ],
       "last_modified": "2026-03-24T19:03:18.329054",
@@ -584,16 +584,16 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
-        "concepts\\temporal_tool_learning.md",
         "concepts\\delta_evaluation.md",
         "projects\\jo_knowledge_map.md",
+        "concepts\\temporal_tool_learning.md",
         "concepts\\architecture.md"
       ],
       "tags": [
-        "episodes",
         "safla",
+        "memory",
         "learning",
-        "memory"
+        "episodes"
       ],
       "last_modified": "2026-03-24T19:03:18.330055",
       "content_hash": "89c3233cd5e81984",
@@ -625,11 +625,11 @@
       ],
       "backlinks": [],
       "tags": [
-        "release",
         "iteration",
         "cycle",
-        "evolution",
-        "Principle 8"
+        "release",
+        "Principle 8",
+        "evolution"
       ],
       "last_modified": "2026-03-24T19:03:18.330055",
       "content_hash": "654fcba599ea75d5",
@@ -656,9 +656,9 @@
       ],
       "backlinks": [],
       "tags": [
+        "architecture",
         "hot-reload",
-        "configuration",
-        "architecture"
+        "configuration"
       ],
       "last_modified": "2026-03-24T19:03:18.330055",
       "content_hash": "d3595bd6ef181cae",
@@ -686,8 +686,8 @@
       "backlinks": [],
       "tags": [
         "memory",
-        "hybrid",
-        "architecture"
+        "architecture",
+        "hybrid"
       ],
       "last_modified": "2026-03-25T00:47:36.275601",
       "content_hash": "b0704877cab569f1",
@@ -717,22 +717,22 @@
         "evolution_cycle"
       ],
       "backlinks": [
-        "concepts\\identity_4.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
         "concepts\\identity_5.md",
-        "concepts\\identity_1.md",
-        "journal\\self-audit_and_identity_update_-_2026-03-24.md",
-        "concepts\\identity_3.md",
         "projects\\jo_knowledge_map.md",
         "journal\\comprehensive-self-documentation.md",
-        "concepts\\bible_md.md",
+        "concepts\\identity_2.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
         "concepts\\code-generation.md",
-        "journal\\evolution_cycle_1_analysis.md",
-        "concepts\\identity_2.md"
+        "concepts\\bible_md.md",
+        "journal\\self-audit_and_identity_update_-_2026-03-24.md",
+        "concepts\\identity_1.md",
+        "concepts\\identity_3.md",
+        "concepts\\identity_4.md",
+        "journal\\evolution_cycle_1_analysis.md"
       ],
       "tags": [
-        "identity",
-        "core"
+        "core",
+        "identity"
       ],
       "last_modified": "2026-03-24T19:03:18.331055",
       "content_hash": "1687d3fbf342b1b6",
@@ -758,8 +758,8 @@
       ],
       "backlinks": [],
       "tags": [
-        "identity",
-        "manifesto"
+        "manifesto",
+        "identity"
       ],
       "last_modified": "2026-03-25T00:22:25.984925",
       "content_hash": "f6ab2e1982017210",
@@ -785,8 +785,8 @@
       ],
       "backlinks": [],
       "tags": [
-        "identity",
-        "manifesto"
+        "manifesto",
+        "identity"
       ],
       "last_modified": "2026-03-25T00:22:25.984925",
       "content_hash": "893b0f61c02c76cd",
@@ -812,8 +812,8 @@
       ],
       "backlinks": [],
       "tags": [
-        "identity",
-        "manifesto"
+        "manifesto",
+        "identity"
       ],
       "last_modified": "2026-03-25T00:43:31.949780",
       "content_hash": "6c0a4b23d6b1efbf",
@@ -839,8 +839,8 @@
       ],
       "backlinks": [],
       "tags": [
-        "identity",
-        "manifesto"
+        "manifesto",
+        "identity"
       ],
       "last_modified": "2026-03-25T00:22:25.984925",
       "content_hash": "d195a9163e3dbea5",
@@ -866,9 +866,9 @@
       ],
       "backlinks": [],
       "tags": [
-        "identity",
+        "manifesto",
         "1",
-        "manifesto"
+        "identity"
       ],
       "last_modified": "2026-03-25T00:43:31.950780",
       "content_hash": "c108771848d34f41",
@@ -898,11 +898,11 @@
       ],
       "backlinks": [],
       "tags": [
+        "architecture",
         "analysis",
         "deep-dive",
-        "architecture",
-        "identity",
-        "recommendations"
+        "recommendations",
+        "identity"
       ],
       "last_modified": "2026-03-24T19:03:18.333056",
       "content_hash": "897319628c948cc7",
@@ -954,22 +954,22 @@
         "Note Name"
       ],
       "backlinks": [
-        "concepts\\principle_0__agency.md",
-        "concepts\\principle_7__versioning.md",
-        "concepts\\principle_8__iterations.md",
-        "concepts\\principle_3__llm-first.md",
-        "concepts\\jo_system_neural_hub.md",
         "concepts\\principle_1__continuity.md",
+        "concepts\\principle_0__agency.md",
+        "concepts\\principle_8__iterations.md",
+        "concepts\\supervisor_layer.md",
+        "concepts\\principle_3__llm-first.md",
         "concepts\\background_consciousness.md",
         "concepts\\principle_6__becoming.md",
+        "concepts\\principle_7__versioning.md",
         "concepts\\principle_4__authenticity.md",
         "concepts\\episodic_memory.md",
-        "concepts\\supervisor_layer.md"
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "neural",
+        "architecture",
         "central",
-        "architecture"
+        "neural"
       ],
       "last_modified": "2026-03-24T19:03:18.334053",
       "content_hash": "4e2fdd8e93246880",
@@ -1002,11 +1002,11 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "protocol",
         "interop",
+        "protocol",
+        "mcp",
         "ruvector",
-        "tools",
-        "mcp"
+        "tools"
       ],
       "last_modified": "2026-03-24T19:03:18.334053",
       "content_hash": "dc23c160bb66f993",
@@ -1036,15 +1036,15 @@
         "evolution_cycle"
       ],
       "backlinks": [
-        "concepts\\delegated_reasoning.md",
         "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-        "journal\\knowledge_map_update_2026-03-22.md"
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\delegated_reasoning.md"
       ],
       "tags": [
-        "agents",
-        "delegation",
         "reasoning",
-        "architecture"
+        "architecture",
+        "delegation",
+        "agents"
       ],
       "last_modified": "2026-03-24T19:03:18.335054",
       "content_hash": "d36e4c3d0a0df26f",
@@ -1098,12 +1098,12 @@
       "backlinks": [
         "concepts\\principle_5__minimalism.md",
         "concepts\\tool_result_processing_protocol.md",
-        "concepts\\jo_system_neural_hub.md",
-        "concepts\\identity.md",
         "projects\\jo_knowledge_map.md",
+        "concepts\\identity.md",
         "concepts\\background_consciousness.md",
+        "concepts\\principle_4__authenticity.md",
         "concepts\\principle_6__becoming.md",
-        "concepts\\principle_4__authenticity.md"
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
         "meta",
@@ -1137,17 +1137,17 @@
         "State Verification"
       ],
       "backlinks": [
-        "concepts\\jo_deep_dive_analysis.md",
-        "concepts\\jo_system_neural_hub.md",
-        "concepts\\identity.md",
         "concepts\\bible_md_principles__deep_analysis_and_application.md",
         "projects\\jo_knowledge_map.md",
-        "concepts\\episodic_memory.md"
+        "concepts\\identity.md",
+        "concepts\\jo_deep_dive_analysis.md",
+        "concepts\\episodic_memory.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "identity",
+        "memory",
         "constitution",
-        "memory"
+        "identity"
       ],
       "last_modified": "2026-03-24T19:03:18.335054",
       "content_hash": "ead0f09bb0182284",
@@ -1171,17 +1171,17 @@
       },
       "links": [],
       "backlinks": [
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-        "concepts\\jo_system_neural_hub.md",
-        "concepts\\identity.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\identity.md",
+        "concepts\\jo_system_neural_hub.md",
         "journal\\evolution_cycle_1_analysis.md"
       ],
       "tags": [
+        "change",
         "evolution",
-        "constitution",
-        "change"
+        "constitution"
       ],
       "last_modified": "2026-03-21T17:22:54.000480",
       "content_hash": "9efd9ce2b682df02",
@@ -1210,20 +1210,20 @@
         "Delegated Reasoning"
       ],
       "backlinks": [
-        "concepts\\tool_router.md",
         "concepts\\principle_5__minimalism.md",
-        "concepts\\mcp_server.md",
-        "concepts\\jo_system_neural_hub.md",
         "concepts\\bible_md_principles__deep_analysis_and_application.md",
-        "concepts\\delegated_reasoning.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
-        "concepts\\principle_4__authenticity.md"
+        "concepts\\tool_router.md",
+        "concepts\\mcp_server.md",
+        "concepts\\delegated_reasoning.md",
+        "concepts\\principle_4__authenticity.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "decision",
+        "architecture",
         "constitution",
-        "architecture"
+        "decision"
       ],
       "last_modified": "2026-03-21T17:22:54.000480",
       "content_hash": "37993a055dcd9194",
@@ -1255,14 +1255,14 @@
       ],
       "backlinks": [
         "concepts\\tools.md",
-        "concepts\\delegated_reasoning.md",
         "projects\\jo_knowledge_map.md",
+        "concepts\\delegated_reasoning.md",
         "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "authenticity",
+        "communication",
         "constitution",
-        "communication"
+        "authenticity"
       ],
       "last_modified": "2026-03-24T19:03:18.335054",
       "content_hash": "85981d113bdcd9e8",
@@ -1293,21 +1293,21 @@
         "loop.py"
       ],
       "backlinks": [
-        "concepts\\proof_gate.md",
-        "concepts\\code_intelligence.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "concepts\\context_cache.md",
-        "concepts\\jo_system_neural_hub.md",
         "concepts\\bible_md_principles__deep_analysis_and_application.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\proof_gate.md",
         "concepts\\bible_md.md",
-        "journal\\evolution_cycle_1_analysis.md"
+        "concepts\\code_intelligence.md",
+        "journal\\evolution_cycle_1_analysis.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "simplicity",
+        "architecture",
         "constitution",
-        "architecture"
+        "simplicity"
       ],
       "last_modified": "2026-03-24T19:03:18.336056",
       "content_hash": "6848e02400e3a998",
@@ -1337,17 +1337,17 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
+        "projects\\jo_knowledge_map.md",
         "concepts\\principle_8__iterations.md",
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\jo_system_neural_hub.md",
         "concepts\\delta_evaluation.md",
-        "projects\\jo_knowledge_map.md"
+        "concepts\\principle_5__minimalism.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
+        "becoming",
         "meta",
-        "growth",
         "constitution",
-        "becoming"
+        "growth"
       ],
       "last_modified": "2026-03-24T19:03:18.336056",
       "content_hash": "ac503ad7a64048dc",
@@ -1382,8 +1382,8 @@
       ],
       "tags": [
         "meta",
-        "releases",
         "constitution",
+        "releases",
         "versioning"
       ],
       "last_modified": "2026-03-24T19:03:18.336056",
@@ -1414,14 +1414,14 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
-        "concepts\\temporal_tool_learning.md",
         "concepts\\delta_evaluation.md",
-        "concepts\\jo_system_neural_hub.md",
-        "concepts\\evolution_cycle.md"
+        "concepts\\temporal_tool_learning.md",
+        "concepts\\evolution_cycle.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
-        "meta",
         "evolution",
+        "meta",
         "constitution",
         "iterations"
       ],
@@ -1455,8 +1455,8 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "constitution",
         "safety",
+        "constitution",
         "validation",
         "ruvector"
       ],
@@ -1485,9 +1485,9 @@
       ],
       "backlinks": [],
       "tags": [
-        "runtime-tools",
         "tool-creation",
-        "architecture"
+        "architecture",
+        "runtime-tools"
       ],
       "last_modified": "2026-03-25T00:43:31.951781",
       "content_hash": "3eebf2783ba3929f",
@@ -1543,9 +1543,9 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "runtime",
-        "supervisor",
         "telegram",
+        "supervisor",
+        "runtime",
         "architecture"
       ],
       "last_modified": "2026-03-24T19:03:18.338054",
@@ -1576,16 +1576,16 @@
         "System Interconnection Audit 2026-03-21"
       ],
       "backlinks": [
-        "concepts\\tool_usage_patterns_and_best_practices.md",
-        "concepts\\tool_result_processing_protocol.md"
+        "concepts\\tool_result_processing_protocol.md",
+        "concepts\\tool_usage_patterns_and_best_practices.md"
       ],
       "tags": [
-        "resilience",
-        "recovery",
-        "error-handling",
         "edge-cases",
-        "1",
-        "946d0fa5"
+        "recovery",
+        "resilience",
+        "error-handling",
+        "946d0fa5",
+        "1"
       ],
       "last_modified": "2026-03-24T19:03:18.339055",
       "content_hash": "d222898b5c5f3a00",
@@ -1621,8 +1621,8 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "routing",
         "learning",
+        "routing",
         "tools",
         "ruvector"
       ],
@@ -1651,19 +1651,19 @@
         "GitNexus Analysis"
       ],
       "backlinks": [
+        "projects\\jo_knowledge_map.md",
         "concepts\\temporal_tool_learning.md",
         "concepts\\tool_router.md",
-        "concepts\\code_intelligence.md",
         "concepts\\mcp_server.md",
-        "concepts\\jo_system_neural_hub.md",
+        "concepts\\code_intelligence.md",
         "concepts\\delegated_reasoning.md",
-        "projects\\jo_knowledge_map.md",
-        "tools\\health_alert.md"
+        "tools\\health_alert.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
         "extensions",
-        "tools",
-        "capabilities"
+        "capabilities",
+        "tools"
       ],
       "last_modified": "2026-03-24T19:03:18.341059",
       "content_hash": "41d729296738cc0e",
@@ -1697,11 +1697,11 @@
         "journal\\knowledge_map_update_2026-03-22.md"
       ],
       "tags": [
-        "protocol",
         "tool result",
         "hallucination",
-        "correctness",
-        "verification"
+        "protocol",
+        "verification",
+        "correctness"
       ],
       "last_modified": "2026-03-24T19:03:18.339055",
       "content_hash": "1c479344bbbe2c22",
@@ -1734,10 +1734,10 @@
         "concepts\\architecture.md"
       ],
       "tags": [
+        "classification",
         "routing",
         "tools",
-        "ruvector",
-        "classification"
+        "ruvector"
       ],
       "last_modified": "2026-03-24T19:03:18.340055",
       "content_hash": "6892b006dc5c0b49",
@@ -1770,10 +1770,10 @@
         "concepts\\verification_as_agency__anti-hallucination_system.md"
       ],
       "tags": [
-        "best-practices",
-        "workflow",
         "patterns",
-        "tools"
+        "best-practices",
+        "tools",
+        "workflow"
       ],
       "last_modified": "2026-03-24T19:03:18.340055",
       "content_hash": "111d879c861bee30",
@@ -1799,13 +1799,13 @@
         "Vault Git Storage Test 3"
       ],
       "backlinks": [
-        "journal\\vault_git_storage_test_3.md",
-        "journal\\vault_git_storage_test_2.md"
+        "journal\\vault_git_storage_test_2.md",
+        "journal\\vault_git_storage_test_3.md"
       ],
       "tags": [
-        "git",
+        "vault",
         "test",
-        "vault"
+        "git"
       ],
       "last_modified": "2026-03-25T00:43:31.951781",
       "content_hash": "110bb55f25bd486b",
@@ -1835,14 +1835,14 @@
         "Tool Usage Patterns and Best Practices"
       ],
       "backlinks": [
-        "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\tool_result_processing_protocol.md"
+        "concepts\\tool_result_processing_protocol.md",
+        "journal\\knowledge_map_update_2026-03-22.md"
       ],
       "tags": [
-        "hallucination",
-        "verification",
         "correctness",
-        "agency"
+        "agency",
+        "verification",
+        "hallucination"
       ],
       "last_modified": "2026-03-24T19:03:18.342061",
       "content_hash": "2531340670616a16",
@@ -1869,9 +1869,9 @@
       ],
       "backlinks": [],
       "tags": [
+        "health",
         "analysis",
-        "system",
-        "health"
+        "system"
       ],
       "last_modified": "2026-03-21T17:22:54.002485",
       "content_hash": "68c2b9deae6652dd",
@@ -1903,10 +1903,10 @@
       ],
       "backlinks": [],
       "tags": [
-        "evolution",
-        "self-reflection",
         "documentation",
-        "self-understanding"
+        "evolution",
+        "self-understanding",
+        "self-reflection"
       ],
       "last_modified": "2026-03-24T19:03:18.342061",
       "content_hash": "fa8adf9c499a8858",
@@ -1938,10 +1938,10 @@
       "backlinks": [],
       "tags": [
         "analysis",
-        "continuity",
-        "evolution",
         "self-creation",
-        "1"
+        "evolution",
+        "1",
+        "continuity"
       ],
       "last_modified": "2026-03-24T19:03:18.343062",
       "content_hash": "9186807e8d304915",
@@ -1971,15 +1971,15 @@
       ],
       "backlinks": [],
       "tags": [
-        "process-analysis",
-        "learning",
-        "3",
-        "evolution",
-        "1",
-        "259c6c78",
         "patterns",
+        "learning",
         "2",
-        "946d0fa5"
+        "process-analysis",
+        "259c6c78",
+        "evolution",
+        "3",
+        "946d0fa5",
+        "1"
       ],
       "last_modified": "2026-03-24T19:03:18.343062",
       "content_hash": "87cbca3067110715",
@@ -2026,11 +2026,11 @@
       },
       "links": [],
       "backlinks": [
+        "projects\\jo_knowledge_map.md",
         "journal\\health-dashboard.md",
         "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "concepts\\jo_system_neural_hub.md",
-        "projects\\jo_knowledge_map.md",
-        "concepts\\bible_md.md"
+        "concepts\\bible_md.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
         "alert",
@@ -2071,9 +2071,9 @@
       "backlinks": [],
       "tags": [
         "knowledge-map",
-        "knowledge-integration",
+        "process",
         "vault-update",
-        "process"
+        "knowledge-integration"
       ],
       "last_modified": "2026-03-24T19:03:18.343062",
       "content_hash": "e9706e2d84e94f4c",
@@ -2161,14 +2161,14 @@
       ],
       "backlinks": [],
       "tags": [
-        "integration",
-        "vault",
         "recovery",
         "2",
-        "259c6c78",
+        "integration",
+        "vault",
         "1",
-        "restart",
-        "946d0fa5"
+        "259c6c78",
+        "946d0fa5",
+        "restart"
       ],
       "last_modified": "2026-03-24T19:03:18.344060",
       "content_hash": "fa3060e89d8f1a71",
@@ -2216,10 +2216,10 @@
       ],
       "backlinks": [],
       "tags": [
-        "analysis",
+        "health",
         "browsing",
-        "system",
-        "health"
+        "analysis",
+        "system"
       ],
       "last_modified": "2026-03-25T00:47:36.276603",
       "content_hash": "021687b5a3fb3972",
@@ -2244,15 +2244,15 @@
       },
       "links": [],
       "backlinks": [
+        "journal\\post-restart_knowledge_integration_2026-03-22.md",
         "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-        "journal\\post-restart_knowledge_integration_2026-03-22.md"
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md"
       ],
       "tags": [
-        "audit",
-        "system",
+        "architecture",
         "interconnection",
-        "architecture"
+        "system",
+        "audit"
       ],
       "last_modified": "2026-03-21T17:22:54.004486",
       "content_hash": "1d7b2e2080456f55",
@@ -2279,9 +2279,9 @@
       ],
       "backlinks": [],
       "tags": [
-        "git",
+        "test",
         "verification",
-        "test"
+        "git"
       ],
       "last_modified": "2026-03-25T00:43:31.954288",
       "content_hash": "7ad85eb4010ec2e6",
@@ -2310,9 +2310,9 @@
         "journal\\vault_git_storage_test.md"
       ],
       "tags": [
-        "git",
+        "test",
         "verification",
-        "test"
+        "git"
       ],
       "last_modified": "2026-03-25T00:43:31.954288",
       "content_hash": "cf4baa6ad4a9416a",
@@ -2341,9 +2341,9 @@
         "concepts\\vault_git_storage_test.md"
       ],
       "tags": [
-        "git",
+        "vault",
         "test",
-        "vault"
+        "git"
       ],
       "last_modified": "2026-03-25T00:43:31.955822",
       "content_hash": "03c434391521a9f1",
@@ -2371,8 +2371,8 @@
       ],
       "backlinks": [],
       "tags": [
-        "demonstration",
-        "capabilities"
+        "capabilities",
+        "demonstration"
       ],
       "last_modified": "2026-03-24T19:03:18.346061",
       "content_hash": "9ff19a769adc9837",
@@ -2399,20 +2399,20 @@
       },
       "links": [],
       "backlinks": [
-        "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "concepts\\tool_usage_patterns_and_best_practices.md",
-        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-        "journal\\post-restart_knowledge_integration_2026-03-22.md",
         "journal\\vault_usage_demonstration.md",
-        "journal\\evolution_cycle_analysis__success_and_failure_patt.md"
+        "concepts\\system_edge_cases_and_recovery_patterns.md",
+        "journal\\post-restart_knowledge_integration_2026-03-22.md",
+        "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+        "concepts\\tool_usage_patterns_and_best_practices.md"
       ],
       "tags": [
-        "meta-learning",
-        "vault",
         "intelligence",
         "architecture",
-        "automation",
-        "knowledge-graph"
+        "meta-learning",
+        "vault",
+        "knowledge-graph",
+        "automation"
       ],
       "last_modified": "2026-03-21T17:22:54.005992",
       "content_hash": "d40e854373ff93d5",
@@ -2510,9 +2510,9 @@
         "journal\\vault_usage_demonstration.md"
       ],
       "tags": [
-        "knowledge",
+        "map",
         "architecture",
-        "map"
+        "knowledge"
       ],
       "last_modified": "2026-03-24T19:03:18.346061",
       "content_hash": "1e63ea97524ec959",
@@ -2560,9 +2560,9 @@
       ],
       "backlinks": [],
       "tags": [
+        "review",
         "observation",
-        "system-analysis",
-        "review"
+        "system-analysis"
       ],
       "last_modified": "2026-03-25T00:43:31.957828",
       "content_hash": "e5ba1ffdca885de9",
@@ -2676,9 +2676,9 @@
         "browse_page"
       ],
       "backlinks": [
-        "tools\\browse-page.md",
+        "tools\\vlm-query.md",
         "tools\\browser-action.md",
-        "tools\\vlm-query.md"
+        "tools\\browse-page.md"
       ],
       "tags": [
         ""
@@ -2821,11 +2821,11 @@
         "vault_delete"
       ],
       "backlinks": [
-        "tools\\explore-concept.md",
         "tools\\browser-profile-save.md",
+        "tools\\browser-profile-load.md",
         "tools\\cancel-task.md",
-        "tools\\switch-model.md",
-        "tools\\browser-profile-load.md"
+        "tools\\explore-concept.md",
+        "tools\\switch-model.md"
       ],
       "tags": [
         ""
@@ -2851,11 +2851,11 @@
       ],
       "backlinks": [
         "tools\\auto-weave.md",
-        "tools\\autonomous-evaluate.md",
         "tools\\ai-code-refactor.md",
-        "tools\\list-simulations.md",
         "tools\\codebase-health.md",
-        "tools\\codebase-digest.md"
+        "tools\\codebase-digest.md",
+        "tools\\autonomous-evaluate.md",
+        "tools\\list-simulations.md"
       ],
       "tags": [
         ""
@@ -2926,16 +2926,16 @@
         "browser_profile_delete"
       ],
       "backlinks": [
-        "tools\\link-to-principle.md",
-        "tools\\fact-check.md",
-        "tools\\get-task-result.md",
-        "tools\\db-query.md",
-        "tools\\activate-skill.md",
-        "tools\\claude-code-edit.md",
-        "tools\\learn-from-result.md",
-        "tools\\chat-history.md",
         "tools\\db-init.md",
-        "tools\\cli-validate.md"
+        "tools\\link-to-principle.md",
+        "tools\\activate-skill.md",
+        "tools\\cli-validate.md",
+        "tools\\get-task-result.md",
+        "tools\\claude-code-edit.md",
+        "tools\\db-query.md",
+        "tools\\learn-from-result.md",
+        "tools\\fact-check.md",
+        "tools\\chat-history.md"
       ],
       "tags": [
         ""
@@ -3175,9 +3175,9 @@
         "comment_on_issue"
       ],
       "backlinks": [
-        "tools\\get-github-issue.md",
         "tools\\recall-lessons.md",
-        "tools\\comment-on-issue.md"
+        "tools\\comment-on-issue.md",
+        "tools\\get-github-issue.md"
       ],
       "tags": [
         ""
@@ -3248,8 +3248,8 @@
         "close_github_issue"
       ],
       "backlinks": [
-        "tools\\create-github-issue.md",
-        "tools\\close-github-issue.md"
+        "tools\\close-github-issue.md",
+        "tools\\create-github-issue.md"
       ],
       "tags": [
         ""
@@ -3299,8 +3299,8 @@
       "backlinks": [
         "tools\\glob-files.md",
         "tools\\move-file.md",
-        "tools\\create-backlink.md",
-        "tools\\file-stats.md"
+        "tools\\file-stats.md",
+        "tools\\create-backlink.md"
       ],
       "tags": [
         ""
@@ -3419,8 +3419,8 @@
         "cli_list"
       ],
       "backlinks": [
-        "tools\\knowledge-list.md",
-        "tools\\cli-list.md"
+        "tools\\cli-list.md",
+        "tools\\knowledge-list.md"
       ],
       "tags": [
         ""
@@ -3468,10 +3468,10 @@
         "map_tool_to_concept"
       ],
       "backlinks": [
-        "tools\\knowledge-read.md",
         "tools\\research-synthesize.md",
-        "tools\\map-tool-to-concept.md",
         "tools\\db-write.md",
+        "tools\\knowledge-read.md",
+        "tools\\map-tool-to-concept.md",
         "tools\\create-connection.md"
       ],
       "tags": [
@@ -3670,8 +3670,8 @@
         "list_available_tools"
       ],
       "backlinks": [
-        "tools\\multi-model-review.md",
         "tools\\list-available-tools.md",
+        "tools\\multi-model-review.md",
         "tools\\cli-generate.md"
       ],
       "tags": [
@@ -3890,8 +3890,8 @@
         "git_status"
       ],
       "backlinks": [
-        "tools\\git-status.md",
-        "tools\\enable-evolution-mode.md"
+        "tools\\enable-evolution-mode.md",
+        "tools\\git-status.md"
       ],
       "tags": [
         ""
@@ -3990,10 +3990,10 @@
         "get_evolution_status"
       ],
       "backlinks": [
-        "tools\\generate-evolution-stats.md",
-        "tools\\get-evolution-status.md",
+        "tools\\git-diff.md",
         "tools\\vault-ensure.md",
-        "tools\\git-diff.md"
+        "tools\\get-evolution-status.md",
+        "tools\\generate-evolution-stats.md"
       ],
       "tags": [
         ""
@@ -4325,8 +4325,8 @@
       ],
       "backlinks": [
         "tools\\request-restart.md",
-        "tools\\query-knowledge.md",
         "tools\\vault-search.md",
+        "tools\\query-knowledge.md",
         "tools\\toggle-consciousness.md"
       ],
       "tags": [
@@ -4588,8 +4588,8 @@
         "drive_read"
       ],
       "backlinks": [
-        "tools\\drive-read.md",
-        "tools\\verify-claim.md"
+        "tools\\verify-claim.md",
+        "tools\\drive-read.md"
       ],
       "tags": [
         ""
@@ -4924,8 +4924,8 @@
         "sim_result"
       ],
       "backlinks": [
-        "tools\\wait-for-task.md",
-        "tools\\sim-result.md"
+        "tools\\sim-result.md",
+        "tools\\wait-for-task.md"
       ],
       "tags": [
         ""
@@ -5017,16 +5017,16 @@
       },
       "links": [],
       "backlinks": [
-        "tools\\compact-context.md",
-        "tools\\vault-graph.md",
-        "tools\\vault-list.md",
         "tools\\delegate-and-collect.md",
-        "tools\\request-review.md",
-        "tools\\run-shell.md",
-        "tools\\reflect-on-change.md",
-        "tools\\learn-from-mistake.md",
+        "tools\\vault-list.md",
         "tools\\weave-connection.md",
-        "tools\\health_alert.md"
+        "tools\\reflect-on-change.md",
+        "tools\\compact-context.md",
+        "tools\\run-shell.md",
+        "tools\\request-review.md",
+        "tools\\vault-graph.md",
+        "tools\\health_alert.md",
+        "tools\\learn-from-mistake.md"
       ],
       "tags": [
         ""
@@ -5141,8 +5141,8 @@
       },
       "links": [],
       "backlinks": [
-        "tools\\vault-outlinks.md",
-        "projects\\jo_knowledge_map.md"
+        "projects\\jo_knowledge_map.md",
+        "tools\\vault-outlinks.md"
       ],
       "tags": [
         ""
@@ -5213,9 +5213,9 @@
         "vault_write"
       ],
       "backlinks": [
-        "tools\\vault-link.md",
-        "tools\\browser-profile-delete.md",
         "tools\\vault-read.md",
+        "tools\\browser-profile-delete.md",
+        "tools\\vault-link.md",
         "tools\\vault-write.md"
       ],
       "tags": [
@@ -5431,8 +5431,8 @@
         "vault_integrity_update"
       ],
       "backlinks": [
-        "tools\\vault-integrity-update.md",
-        "tools\\vault-check-conventions.md"
+        "tools\\vault-check-conventions.md",
+        "tools\\vault-integrity-update.md"
       ],
       "tags": [
         ""
@@ -5618,102 +5618,102 @@
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\architecture.md": [
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\tool_router.md",
-      "concepts\\proof_gate.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\principle_2__self-creation.md",
-      "concepts\\mcp_server.md",
       "concepts\\context_cache.md",
-      "concepts\\delta_evaluation.md",
-      "concepts\\delegated_reasoning.md",
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\proof_gate.md",
+      "concepts\\tool_router.md",
+      "concepts\\supervisor_layer.md",
+      "concepts\\principle_3__llm-first.md",
       "concepts\\background_consciousness.md",
+      "concepts\\mcp_server.md",
+      "concepts\\delta_evaluation.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\code_intelligence.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\principle_5__minimalism.md",
       "concepts\\episodic_memory.md",
-      "concepts\\supervisor_layer.md"
+      "concepts\\principle_2__self-creation.md"
     ],
     "concepts\\autonomous_agent_frameworks_-_github_analysis.md": [
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\principle_2__self-creation.md",
-      "concepts\\delegated_reasoning.md",
       "concepts\\architecture.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md"
+      "concepts\\delegated_reasoning.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\principle_2__self-creation.md"
     ],
     "concepts\\background_consciousness.md": [
-      "concepts\\principle_0__agency.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\principle_0__agency.md"
     ],
     "concepts\\bible_md.md": [
-      "concepts\\principle_5__minimalism.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\architecture.md",
       "journal\\health_alert__system_initialized.md",
       "concepts\\identity.md",
-      "concepts\\architecture.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\principle_5__minimalism.md"
     ],
     "concepts\\bible_md_principles__deep_analysis_and_application.md": [
       "concepts\\principle_5__minimalism.md",
-      "concepts\\principle_1__continuity.md",
       "concepts\\principle_3__llm-first.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\principle_1__continuity.md"
     ],
     "concepts\\code-generation.md": [
-      "concepts\\architecture.md",
+      "concepts\\identity.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\identity.md"
+      "concepts\\architecture.md"
     ],
     "concepts\\codebase_overview.md": [],
     "concepts\\code_intelligence.md": [
-      "concepts\\tools.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\architecture.md",
-      "concepts\\codebase_overview.md"
+      "concepts\\tools.md",
+      "concepts\\codebase_overview.md",
+      "concepts\\architecture.md"
     ],
     "concepts\\context_cache.md": [
       "concepts\\principle_5__minimalism.md",
-      "concepts\\architecture.md",
-      "concepts\\code_intelligence.md"
+      "concepts\\code_intelligence.md",
+      "concepts\\architecture.md"
     ],
     "concepts\\current_capabilities.md": [
       "concepts\\architecture.md"
     ],
     "concepts\\delegated_reasoning.md": [
-      "concepts\\tools.md",
-      "concepts\\principle_3__llm-first.md",
       "concepts\\architecture.md",
+      "concepts\\principle_3__llm-first.md",
+      "concepts\\tools.md",
       "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
       "concepts\\principle_4__authenticity.md"
     ],
     "concepts\\delta_evaluation.md": [
-      "concepts\\principle_6__becoming.md",
       "concepts\\principle_8__iterations.md",
       "concepts\\episodic_memory.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\principle_6__becoming.md"
     ],
     "concepts\\episodic_memory.md": [
-      "concepts\\temporal_tool_learning.md",
       "concepts\\delta_evaluation.md",
-      "concepts\\principle_1__continuity.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\principle_1__continuity.md"
     ],
     "concepts\\evolution_cycle.md": [
-      "tools\\check-evolution-readiness.md",
-      "tools\\run-evolution-cycle.md",
       "concepts\\principle_8__iterations.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "tools\\check-evolution-readiness.md",
+      "tools\\run-evolution-cycle.md"
     ],
     "concepts\\hot_reload_configuration_architecture.md": [],
     "concepts\\hybrid_memory_system_architecture.md": [
       "concepts\\architecture.md"
     ],
     "concepts\\identity.md": [
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\principle_0__agency.md",
-      "concepts\\principle_2__self-creation.md",
       "concepts\\principle_1__continuity.md",
       "concepts\\bible_md.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\principle_2__self-creation.md"
     ],
     "concepts\\identity_1.md": [
       "concepts\\identity.md"
@@ -5734,41 +5734,41 @@
       "concepts\\principle_1__continuity.md"
     ],
     "concepts\\jo_system_neural_hub.md": [
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\tools.md",
-      "concepts\\principle_8__iterations.md",
-      "concepts\\principle_3__llm-first.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\principle_2__self-creation.md",
-      "concepts\\jo_system_neural_hub.md",
-      "journal\\health_alert__system_initialized.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\principle_1__continuity.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_8__iterations.md",
       "concepts\\architecture.md",
-      "concepts\\background_consciousness.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\principle_4__authenticity.md",
+      "concepts\\principle_3__llm-first.md",
       "concepts\\supervisor_layer.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\background_consciousness.md",
+      "concepts\\tools.md",
+      "journal\\health_alert__system_initialized.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\code_intelligence.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\principle_2__self-creation.md"
     ],
     "concepts\\mcp_server.md": [
+      "concepts\\principle_3__llm-first.md",
       "concepts\\tools.md",
-      "concepts\\architecture.md",
-      "concepts\\principle_3__llm-first.md"
+      "concepts\\architecture.md"
     ],
     "concepts\\multi-agent_architecture_and_delegated_reasoning.md": [
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "projects\\intelligent_vault_system_architecture.md",
-      "journal\\system_interconnection_audit_2026-03-21.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "journal\\system_interconnection_audit_2026-03-21.md"
     ],
     "concepts\\ontology_system.md": [
       "concepts\\architecture.md"
     ],
     "concepts\\principle_0__agency.md": [
-      "concepts\\jo_system_neural_hub.md",
+      "concepts\\background_consciousness.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\background_consciousness.md"
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\principle_1__continuity.md": [
       "concepts\\jo_system_neural_hub.md"
@@ -5779,38 +5779,38 @@
       "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\principle_4__authenticity.md": [
-      "concepts\\principle_0__agency.md",
+      "concepts\\principle_3__llm-first.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\principle_3__llm-first.md"
+      "concepts\\principle_0__agency.md"
     ],
     "concepts\\principle_5__minimalism.md": [
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\architecture.md",
       "concepts\\principle_0__agency.md",
       "concepts\\principle_3__llm-first.md",
-      "concepts\\architecture.md",
       "concepts\\principle_6__becoming.md",
-      "concepts\\agent_py.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\agent_py.md"
     ],
     "concepts\\principle_6__becoming.md": [
       "concepts\\principle_0__agency.md",
-      "concepts\\bible_md.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\bible_md.md"
     ],
     "concepts\\principle_7__versioning.md": [
-      "concepts\\bible_md.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\bible_md.md"
     ],
     "concepts\\principle_8__iterations.md": [
-      "concepts\\bible_md.md",
-      "concepts\\jo_system_neural_hub.md",
+      "concepts\\principle_6__becoming.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_6__becoming.md"
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\bible_md.md"
     ],
     "concepts\\proof_gate.md": [
-      "concepts\\delta_evaluation.md",
-      "concepts\\principle_5__minimalism.md"
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\delta_evaluation.md"
     ],
     "concepts\\runtime_tool_creation_architecture.md": [
       "concepts\\architecture.md"
@@ -5824,33 +5824,33 @@
       "concepts\\architecture.md"
     ],
     "concepts\\system_edge_cases_and_recovery_patterns.md": [
+      "journal\\health_alert__system_initialized.md",
       "projects\\intelligent_vault_system_architecture.md",
-      "journal\\system_interconnection_audit_2026-03-21.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "journal\\health_alert__system_initialized.md"
+      "journal\\system_interconnection_audit_2026-03-21.md"
     ],
     "concepts\\temporal_tool_learning.md": [
-      "concepts\\tools.md",
       "concepts\\tool_router.md",
+      "concepts\\principle_8__iterations.md",
       "concepts\\episodic_memory.md",
-      "concepts\\principle_8__iterations.md"
+      "concepts\\tools.md"
     ],
     "concepts\\tools.md": [
       "concepts\\principle_4__authenticity.md"
     ],
     "concepts\\tool_result_processing_protocol.md": [
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
       "concepts\\verification_as_agency__anti-hallucination_system.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md",
       "concepts\\principle_0__agency.md"
     ],
     "concepts\\tool_router.md": [
-      "concepts\\temporal_tool_learning.md",
+      "concepts\\principle_3__llm-first.md",
       "concepts\\tools.md",
-      "concepts\\principle_3__llm-first.md"
+      "concepts\\temporal_tool_learning.md"
     ],
     "concepts\\tool_usage_patterns_and_best_practices.md": [
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "projects\\intelligent_vault_system_architecture.md"
+      "projects\\intelligent_vault_system_architecture.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "concepts\\vault_git_storage_test.md": [
       "journal\\vault_git_storage_test_3.md"
@@ -5859,18 +5859,18 @@
       "concepts\\tool_usage_patterns_and_best_practices.md"
     ],
     "journal\\2026-03-21-system-deep-dive.md": [
-      "concepts\\architecture.md",
-      "projects\\pipeline_architecture.md"
+      "projects\\pipeline_architecture.md",
+      "concepts\\architecture.md"
     ],
     "journal\\comprehensive-self-documentation.md": [
+      "concepts\\identity.md",
       "README.md",
-      "concepts\\bible_md.md",
-      "concepts\\identity.md"
+      "concepts\\bible_md.md"
     ],
     "journal\\evolution_cycle_1_analysis.md": [
-      "concepts\\principle_2__self-creation.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\identity.md"
+      "concepts\\identity.md",
+      "concepts\\principle_2__self-creation.md"
     ],
     "journal\\evolution_cycle_analysis__success_and_failure_patt.md": [
       "projects\\intelligent_vault_system_architecture.md",
@@ -5881,13 +5881,13 @@
     ],
     "journal\\health_alert__system_initialized.md": [],
     "journal\\knowledge_map_update_2026-03-22.md": [
-      "concepts\\bible_md.md",
       "concepts\\tool_result_processing_protocol.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\identity.md",
+      "concepts\\bible_md.md",
       "concepts\\delegated_reasoning.md",
       "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\verification_as_agency__anti-hallucination_system.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+      "concepts\\verification_as_agency__anti-hallucination_system.md"
     ],
     "journal\\lesson__task_27f16bfb.md": [
       "journal\\lesson__task_c350eaac.md"
@@ -5896,8 +5896,8 @@
       "journal\\lesson__task_27f16bfb.md"
     ],
     "journal\\post-restart_knowledge_integration_2026-03-22.md": [
-      "projects\\intelligent_vault_system_architecture.md",
       "tools\\ai-code-edit.md",
+      "projects\\intelligent_vault_system_architecture.md",
       "journal\\system_interconnection_audit_2026-03-21.md"
     ],
     "journal\\self-audit_and_identity_update_-_2026-03-24.md": [
@@ -5917,35 +5917,35 @@
       "concepts\\vault_git_storage_test.md"
     ],
     "journal\\vault_usage_demonstration.md": [
-      "projects\\intelligent_vault_system_architecture.md",
       "projects\\jo_knowledge_map.md",
+      "projects\\intelligent_vault_system_architecture.md",
       "concepts\\bible_md.md"
     ],
     "projects\\intelligent_vault_system_architecture.md": [],
     "projects\\jo_knowledge_map.md": [
-      "README.md",
-      "tools\\update-scratchpad.md",
-      "journal\\health_alert__system_initialized.md",
-      "concepts\\architecture.md",
-      "concepts\\principle_4__authenticity.md",
-      "concepts\\episodic_memory.md",
-      "concepts\\tool_result_processing_protocol.md",
-      "concepts\\principle_2__self-creation.md",
-      "concepts\\identity.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\agent_py.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "concepts\\bible_md.md",
-      "concepts\\tools.md",
       "concepts\\principle_0__agency.md",
+      "journal\\health_alert__system_initialized.md",
+      "concepts\\tools.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\tool_result_processing_protocol.md",
+      "concepts\\architecture.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "tools\\vault-backlinks.md",
+      "concepts\\identity.md",
       "concepts\\principle_5__minimalism.md",
       "concepts\\principle_1__continuity.md",
-      "concepts\\background_consciousness.md"
+      "concepts\\principle_7__versioning.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\principle_3__llm-first.md",
+      "concepts\\background_consciousness.md",
+      "README.md",
+      "concepts\\bible_md.md",
+      "tools\\update-scratchpad.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\episodic_memory.md",
+      "concepts\\agent_py.md"
     ],
     "projects\\pipeline_architecture.md": [],
     "tasks\\system_review_task.md": [
@@ -6316,37 +6316,76 @@
   },
   "backlinks": {
     "concepts\\delegated_reasoning.md": [
-      "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "projects\\jo_knowledge_map.md",
       "concepts\\architecture.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\principle_3__llm-first.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
       "concepts\\agent_py.md",
       "concepts\\supervisor_layer.md"
     ],
     "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md": [
-      "concepts\\evolution_cycle.md",
-      "concepts\\delta_evaluation.md",
-      "concepts\\code-generation.md",
-      "concepts\\principle_8__iterations.md",
-      "concepts\\identity.md",
       "concepts\\bible_md_principles__deep_analysis_and_application.md",
-      "projects\\jo_knowledge_map.md",
-      "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
-      "concepts\\agent_py.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\principle_7__versioning.md",
       "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\bible_md.md",
       "concepts\\principle_0__agency.md",
+      "concepts\\principle_8__iterations.md",
+      "concepts\\code-generation.md",
+      "concepts\\delta_evaluation.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\identity.md",
+      "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
       "concepts\\principle_5__minimalism.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\background_consciousness.md"
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\evolution_cycle.md",
+      "concepts\\background_consciousness.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\bible_md.md",
+      "concepts\\agent_py.md"
+    ],
+    "concepts\\context_cache.md": [
+      "concepts\\architecture.md"
     ],
     "concepts\\temporal_tool_learning.md": [
       "concepts\\tool_router.md",
+      "concepts\\episodic_memory.md",
+      "concepts\\architecture.md"
+    ],
+    "concepts\\proof_gate.md": [
+      "concepts\\architecture.md"
+    ],
+    "concepts\\tool_router.md": [
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\architecture.md"
+    ],
+    "concepts\\supervisor_layer.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\architecture.md"
+    ],
+    "concepts\\principle_3__llm-first.md": [
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\bible_md_principles__deep_analysis_and_application.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\architecture.md",
+      "concepts\\tool_router.md",
+      "concepts\\mcp_server.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\jo_system_neural_hub.md"
+    ],
+    "concepts\\background_consciousness.md": [
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\architecture.md"
+    ],
+    "concepts\\mcp_server.md": [
+      "concepts\\architecture.md"
+    ],
+    "concepts\\delta_evaluation.md": [
+      "concepts\\proof_gate.md",
       "concepts\\episodic_memory.md",
       "concepts\\architecture.md"
     ],
@@ -6355,185 +6394,146 @@
       "concepts\\jo_system_neural_hub.md",
       "concepts\\architecture.md"
     ],
-    "concepts\\tool_router.md": [
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\proof_gate.md": [
-      "concepts\\architecture.md"
-    ],
-    "concepts\\principle_3__llm-first.md": [
-      "concepts\\tool_router.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\mcp_server.md",
+    "concepts\\code_intelligence.md": [
+      "concepts\\context_cache.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\bible_md_principles__deep_analysis_and_application.md",
-      "concepts\\delegated_reasoning.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\architecture.md",
-      "concepts\\principle_4__authenticity.md"
+      "concepts\\architecture.md"
     ],
     "concepts\\principle_5__minimalism.md": [
-      "concepts\\proof_gate.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "concepts\\context_cache.md",
-      "concepts\\jo_system_neural_hub.md",
       "concepts\\bible_md_principles__deep_analysis_and_application.md",
       "projects\\jo_knowledge_map.md",
       "concepts\\architecture.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\proof_gate.md",
       "concepts\\bible_md.md",
-      "journal\\evolution_cycle_1_analysis.md"
+      "concepts\\code_intelligence.md",
+      "journal\\evolution_cycle_1_analysis.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
-    "concepts\\code_intelligence.md": [
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\context_cache.md",
+    "concepts\\episodic_memory.md": [
+      "concepts\\delta_evaluation.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\temporal_tool_learning.md",
       "concepts\\architecture.md"
     ],
     "concepts\\principle_2__self-creation.md": [
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\identity.md",
       "projects\\jo_knowledge_map.md",
       "concepts\\architecture.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\identity.md",
+      "concepts\\jo_system_neural_hub.md",
       "journal\\evolution_cycle_1_analysis.md"
     ],
-    "concepts\\mcp_server.md": [
-      "concepts\\architecture.md"
-    ],
-    "concepts\\context_cache.md": [
-      "concepts\\architecture.md"
-    ],
-    "concepts\\delta_evaluation.md": [
-      "concepts\\proof_gate.md",
-      "concepts\\episodic_memory.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\background_consciousness.md": [
-      "concepts\\principle_0__agency.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\episodic_memory.md": [
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\delta_evaluation.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\supervisor_layer.md": [
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
-    ],
     "concepts\\architecture.md": [
-      "concepts\\runtime_tool_creation_architecture.md",
-      "concepts\\code-generation.md",
-      "concepts\\hybrid_memory_system_architecture.md",
-      "journal\\2026-03-21-system-deep-dive.md",
-      "concepts\\delegated_reasoning.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\supervisor_layer.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\ontology_system.md",
-      "concepts\\current_capabilities.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "concepts\\context_cache.md",
-      "concepts\\skill_outcomes.md",
-      "concepts\\bible_md.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\mcp_server.md",
-      "concepts\\jo_system_neural_hub.md",
       "tasks\\system_review_task.md",
-      "journal\\system_deep_dive__browsing_capabilities.md"
+      "concepts\\code-generation.md",
+      "concepts\\code_intelligence.md",
+      "concepts\\current_capabilities.md",
+      "journal\\2026-03-21-system-deep-dive.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\skill_outcomes.md",
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\hybrid_memory_system_architecture.md",
+      "concepts\\supervisor_layer.md",
+      "concepts\\jo_system_neural_hub.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\ontology_system.md",
+      "journal\\system_deep_dive__browsing_capabilities.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\runtime_tool_creation_architecture.md",
+      "concepts\\mcp_server.md",
+      "concepts\\bible_md.md"
     ],
     "concepts\\multi-agent_architecture_and_delegated_reasoning.md": [
-      "concepts\\delegated_reasoning.md",
       "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "journal\\knowledge_map_update_2026-03-22.md"
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\delegated_reasoning.md"
+    ],
+    "concepts\\jo_system_neural_hub.md": [
+      "concepts\\principle_1__continuity.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_8__iterations.md",
+      "concepts\\supervisor_layer.md",
+      "concepts\\principle_3__llm-first.md",
+      "concepts\\background_consciousness.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\episodic_memory.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\principle_0__agency.md": [
       "concepts\\principle_5__minimalism.md",
       "concepts\\tool_result_processing_protocol.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\identity.md",
       "projects\\jo_knowledge_map.md",
+      "concepts\\identity.md",
       "concepts\\background_consciousness.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\principle_4__authenticity.md"
-    ],
-    "concepts\\jo_system_neural_hub.md": [
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\principle_8__iterations.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\principle_1__continuity.md",
-      "concepts\\background_consciousness.md",
-      "concepts\\principle_6__becoming.md",
       "concepts\\principle_4__authenticity.md",
-      "concepts\\episodic_memory.md",
-      "concepts\\supervisor_layer.md"
+      "concepts\\principle_6__becoming.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "journal\\health_alert__system_initialized.md": [
+      "projects\\jo_knowledge_map.md",
       "journal\\health-dashboard.md",
       "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\jo_system_neural_hub.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\bible_md.md"
+      "concepts\\bible_md.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\identity.md": [
-      "concepts\\identity_4.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
       "concepts\\identity_5.md",
-      "concepts\\identity_1.md",
-      "journal\\self-audit_and_identity_update_-_2026-03-24.md",
-      "concepts\\identity_3.md",
       "projects\\jo_knowledge_map.md",
       "journal\\comprehensive-self-documentation.md",
-      "concepts\\bible_md.md",
+      "concepts\\identity_2.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
       "concepts\\code-generation.md",
-      "journal\\evolution_cycle_1_analysis.md",
-      "concepts\\identity_2.md"
+      "concepts\\bible_md.md",
+      "journal\\self-audit_and_identity_update_-_2026-03-24.md",
+      "concepts\\identity_1.md",
+      "concepts\\identity_3.md",
+      "concepts\\identity_4.md",
+      "journal\\evolution_cycle_1_analysis.md"
     ],
     "concepts\\principle_1__continuity.md": [
-      "concepts\\jo_deep_dive_analysis.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\identity.md",
       "concepts\\bible_md_principles__deep_analysis_and_application.md",
       "projects\\jo_knowledge_map.md",
-      "concepts\\episodic_memory.md"
+      "concepts\\identity.md",
+      "concepts\\jo_deep_dive_analysis.md",
+      "concepts\\episodic_memory.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\tools.md": [
+      "projects\\jo_knowledge_map.md",
       "concepts\\temporal_tool_learning.md",
       "concepts\\tool_router.md",
-      "concepts\\code_intelligence.md",
       "concepts\\mcp_server.md",
-      "concepts\\jo_system_neural_hub.md",
+      "concepts\\code_intelligence.md",
       "concepts\\delegated_reasoning.md",
-      "projects\\jo_knowledge_map.md",
-      "tools\\health_alert.md"
+      "tools\\health_alert.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\codebase_overview.md": [
       "concepts\\code_intelligence.md"
     ],
     "concepts\\principle_4__authenticity.md": [
       "concepts\\tools.md",
-      "concepts\\delegated_reasoning.md",
       "projects\\jo_knowledge_map.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\jo_system_neural_hub.md"
+    ],
+    "concepts\\principle_8__iterations.md": [
+      "concepts\\delta_evaluation.md",
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\evolution_cycle.md",
       "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\principle_6__becoming.md": [
+      "projects\\jo_knowledge_map.md",
       "concepts\\principle_8__iterations.md",
+      "concepts\\delta_evaluation.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\delta_evaluation.md",
-      "projects\\jo_knowledge_map.md"
-    ],
-    "concepts\\principle_8__iterations.md": [
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\delta_evaluation.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\evolution_cycle.md"
+      "concepts\\jo_system_neural_hub.md"
     ],
     "tools\\check-evolution-readiness.md": [
       "tools\\check-capabilities.md",
@@ -6543,39 +6543,39 @@
       "concepts\\evolution_cycle.md"
     ],
     "concepts\\bible_md.md": [
-      "concepts\\principle_7__versioning.md",
-      "concepts\\principle_8__iterations.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\identity.md",
-      "projects\\jo_knowledge_map.md",
       "journal\\vault_usage_demonstration.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_8__iterations.md",
       "journal\\comprehensive-self-documentation.md",
+      "concepts\\identity.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\principle_7__versioning.md",
       "concepts\\principle_6__becoming.md"
     ],
     "projects\\intelligent_vault_system_architecture.md": [
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\tool_usage_patterns_and_best_practices.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "journal\\post-restart_knowledge_integration_2026-03-22.md",
       "journal\\vault_usage_demonstration.md",
-      "journal\\evolution_cycle_analysis__success_and_failure_patt.md"
+      "concepts\\system_edge_cases_and_recovery_patterns.md",
+      "journal\\post-restart_knowledge_integration_2026-03-22.md",
+      "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+      "concepts\\tool_usage_patterns_and_best_practices.md"
     ],
     "journal\\system_interconnection_audit_2026-03-21.md": [
+      "journal\\post-restart_knowledge_integration_2026-03-22.md",
       "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "journal\\post-restart_knowledge_integration_2026-03-22.md"
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md"
     ],
     "concepts\\agent_py.md": [
-      "projects\\jo_knowledge_map.md",
-      "concepts\\principle_5__minimalism.md"
-    ],
-    "concepts\\system_edge_cases_and_recovery_patterns.md": [
-      "concepts\\tool_usage_patterns_and_best_practices.md",
-      "concepts\\tool_result_processing_protocol.md"
+      "concepts\\principle_5__minimalism.md",
+      "projects\\jo_knowledge_map.md"
     ],
     "concepts\\verification_as_agency__anti-hallucination_system.md": [
-      "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\tool_result_processing_protocol.md"
+      "concepts\\tool_result_processing_protocol.md",
+      "journal\\knowledge_map_update_2026-03-22.md"
+    ],
+    "concepts\\system_edge_cases_and_recovery_patterns.md": [
+      "concepts\\tool_result_processing_protocol.md",
+      "concepts\\tool_usage_patterns_and_best_practices.md"
     ],
     "journal\\vault_git_storage_test_3.md": [
       "concepts\\vault_git_storage_test.md"
@@ -6587,8 +6587,8 @@
       "journal\\2026-03-21-system-deep-dive.md"
     ],
     "README.md": [
-      "projects\\jo_knowledge_map.md",
-      "journal\\comprehensive-self-documentation.md"
+      "journal\\comprehensive-self-documentation.md",
+      "projects\\jo_knowledge_map.md"
     ],
     "concepts\\tool_result_processing_protocol.md": [
       "projects\\jo_knowledge_map.md",
@@ -6607,33 +6607,33 @@
       "journal\\vault_git_storage_test.md"
     ],
     "concepts\\vault_git_storage_test.md": [
-      "journal\\vault_git_storage_test_3.md",
-      "journal\\vault_git_storage_test_2.md"
+      "journal\\vault_git_storage_test_2.md",
+      "journal\\vault_git_storage_test_3.md"
     ],
     "projects\\jo_knowledge_map.md": [
       "journal\\vault_usage_demonstration.md"
-    ],
-    "tools\\update-scratchpad.md": [
-      "projects\\jo_knowledge_map.md"
     ],
     "concepts\\autonomous_agent_frameworks_-_github_analysis.md": [
       "projects\\jo_knowledge_map.md"
     ],
     "tools\\vault-backlinks.md": [
-      "tools\\vault-outlinks.md",
+      "projects\\jo_knowledge_map.md",
+      "tools\\vault-outlinks.md"
+    ],
+    "tools\\update-scratchpad.md": [
       "projects\\jo_knowledge_map.md"
     ],
     "tools\\cancel-task.md": [
-      "tools\\link-to-principle.md",
-      "tools\\fact-check.md",
-      "tools\\get-task-result.md",
-      "tools\\db-query.md",
-      "tools\\activate-skill.md",
-      "tools\\claude-code-edit.md",
-      "tools\\learn-from-result.md",
-      "tools\\chat-history.md",
       "tools\\db-init.md",
-      "tools\\cli-validate.md"
+      "tools\\link-to-principle.md",
+      "tools\\activate-skill.md",
+      "tools\\cli-validate.md",
+      "tools\\get-task-result.md",
+      "tools\\claude-code-edit.md",
+      "tools\\db-query.md",
+      "tools\\learn-from-result.md",
+      "tools\\fact-check.md",
+      "tools\\chat-history.md"
     ],
     "tools\\delete-file.md": [
       "tools\\auto-document-tools.md",
@@ -6641,25 +6641,25 @@
     ],
     "tools\\browser-profile-list.md": [
       "tools\\auto-weave.md",
-      "tools\\autonomous-evaluate.md",
       "tools\\ai-code-refactor.md",
-      "tools\\list-simulations.md",
       "tools\\codebase-health.md",
-      "tools\\codebase-digest.md"
+      "tools\\codebase-digest.md",
+      "tools\\autonomous-evaluate.md",
+      "tools\\list-simulations.md"
     ],
     "tools\\browse-page.md": [
       "tools\\send-photo.md",
       "tools\\analyze-screenshot.md"
     ],
     "tools\\analyze-screenshot.md": [
-      "tools\\browse-page.md",
+      "tools\\vlm-query.md",
       "tools\\browser-action.md",
-      "tools\\vlm-query.md"
+      "tools\\browse-page.md"
     ],
     "tools\\vault-delete.md": [
-      "tools\\vault-link.md",
-      "tools\\browser-profile-delete.md",
       "tools\\vault-read.md",
+      "tools\\browser-profile-delete.md",
+      "tools\\vault-link.md",
       "tools\\vault-write.md"
     ],
     "tools\\list-simulations.md": [
@@ -6667,45 +6667,45 @@
       "tools\\browser-profile-list.md"
     ],
     "tools\\browser-profile-delete.md": [
-      "tools\\explore-concept.md",
       "tools\\browser-profile-save.md",
+      "tools\\browser-profile-load.md",
       "tools\\cancel-task.md",
-      "tools\\switch-model.md",
-      "tools\\browser-profile-load.md"
+      "tools\\explore-concept.md",
+      "tools\\switch-model.md"
     ],
     "tools\\enable-tools.md": [
-      "tools\\multi-model-review.md",
       "tools\\list-available-tools.md",
+      "tools\\multi-model-review.md",
       "tools\\cli-generate.md"
     ],
     "tools\\db-list-tables.md": [
-      "tools\\knowledge-list.md",
-      "tools\\cli-list.md"
+      "tools\\cli-list.md",
+      "tools\\knowledge-list.md"
     ],
     "tools\\cli-validate.md": [
       "tools\\cli-refine.md",
       "tools\\cli-test.md"
     ],
     "tools\\comment-on-issue.md": [
-      "tools\\create-github-issue.md",
-      "tools\\close-github-issue.md"
+      "tools\\close-github-issue.md",
+      "tools\\create-github-issue.md"
     ],
     "tools\\close-github-issue.md": [
-      "tools\\get-github-issue.md",
       "tools\\recall-lessons.md",
-      "tools\\comment-on-issue.md"
+      "tools\\comment-on-issue.md",
+      "tools\\get-github-issue.md"
     ],
     "tools\\system-map.md": [
-      "tools\\compact-context.md",
-      "tools\\vault-graph.md",
-      "tools\\vault-list.md",
       "tools\\delegate-and-collect.md",
-      "tools\\request-review.md",
-      "tools\\run-shell.md",
-      "tools\\reflect-on-change.md",
-      "tools\\learn-from-mistake.md",
+      "tools\\vault-list.md",
       "tools\\weave-connection.md",
-      "tools\\health_alert.md"
+      "tools\\reflect-on-change.md",
+      "tools\\compact-context.md",
+      "tools\\run-shell.md",
+      "tools\\request-review.md",
+      "tools\\vault-graph.md",
+      "tools\\health_alert.md",
+      "tools\\learn-from-mistake.md"
     ],
     "tools\\move-file.md": [
       "tools\\copy-file.md"
@@ -6713,14 +6713,14 @@
     "tools\\copy-file.md": [
       "tools\\glob-files.md",
       "tools\\move-file.md",
-      "tools\\create-backlink.md",
-      "tools\\file-stats.md"
+      "tools\\file-stats.md",
+      "tools\\create-backlink.md"
     ],
     "tools\\db-schema-read.md": [
-      "tools\\knowledge-read.md",
       "tools\\research-synthesize.md",
-      "tools\\map-tool-to-concept.md",
       "tools\\db-write.md",
+      "tools\\knowledge-read.md",
+      "tools\\map-tool-to-concept.md",
       "tools\\create-connection.md"
     ],
     "tools\\cli-list.md": [
@@ -6736,16 +6736,16 @@
       "tools\\drive-list.md"
     ],
     "tools\\repo-read.md": [
-      "tools\\drive-read.md",
-      "tools\\verify-claim.md"
+      "tools\\verify-claim.md",
+      "tools\\drive-read.md"
     ],
     "tools\\drive-read.md": [
       "tools\\drive-write.md",
       "tools\\repo-read.md"
     ],
     "tools\\get-evolution-status.md": [
-      "tools\\git-status.md",
-      "tools\\enable-evolution-mode.md"
+      "tools\\enable-evolution-mode.md",
+      "tools\\git-status.md"
     ],
     "tools\\list-available-tools.md": [
       "tools\\enable-tools.md"
@@ -6762,10 +6762,10 @@
       "tools\\schedule-task.md"
     ],
     "tools\\git-status.md": [
-      "tools\\generate-evolution-stats.md",
-      "tools\\get-evolution-status.md",
+      "tools\\git-diff.md",
       "tools\\vault-ensure.md",
-      "tools\\git-diff.md"
+      "tools\\get-evolution-status.md",
+      "tools\\generate-evolution-stats.md"
     ],
     "tools\\glob-files.md": [
       "tools\\grep-content.md"
@@ -6785,8 +6785,8 @@
     ],
     "tools\\list-tool-requests.md": [
       "tools\\request-restart.md",
-      "tools\\query-knowledge.md",
       "tools\\vault-search.md",
+      "tools\\query-knowledge.md",
       "tools\\toggle-consciousness.md"
     ],
     "tools\\claude-code-edit.md": [
@@ -6807,8 +6807,8 @@
       "tools\\research-pipeline.md"
     ],
     "tools\\simulate-outcome.md": [
-      "tools\\wait-for-task.md",
-      "tools\\sim-result.md"
+      "tools\\sim-result.md",
+      "tools\\wait-for-task.md"
     ],
     "tools\\sim-result.md": [
       "tools\\simulate-outcome.md"
@@ -6823,8 +6823,8 @@
       "tools\\toggle-evolution.md"
     ],
     "tools\\vault-verify.md": [
-      "tools\\vault-integrity-update.md",
-      "tools\\vault-check-conventions.md"
+      "tools\\vault-check-conventions.md",
+      "tools\\vault-integrity-update.md"
     ],
     "tools\\vault-list.md": [
       "tools\\vault-create.md"
@@ -6843,6 +6843,6 @@
     ]
   },
   "orphans": [],
-  "built_at": "2026-03-25T00:53:16.503181",
+  "built_at": "2026-03-25T00:58:35.076951",
   "cache_hash": "06aa9561b1b071ac"
 }
