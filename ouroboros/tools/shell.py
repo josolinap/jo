@@ -144,12 +144,13 @@ def _is_protected_file(path: str) -> bool:
 
     try:
         protected_list = protected_file.read_text(encoding="utf-8").splitlines()
-        # Normalize path for comparison
-        normalized_path = path.replace("\\", "/").strip("./")
+        # Normalize path for comparison (case-insensitive for Windows compatibility)
+        normalized_path = path.replace("\\", "/").strip("./").lower()
         for protected in protected_list:
             protected = protected.strip()
             if protected and not protected.startswith("#"):
-                if normalized_path == protected.replace("\\", "/").strip("./"):
+                protected_normalized = protected.replace("\\", "/").strip("./").lower()
+                if normalized_path == protected_normalized:
                     return True
     except Exception:
         pass
