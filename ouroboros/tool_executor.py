@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -106,6 +107,14 @@ def _execute_single_tool(
                     report = gate.validate_and_report(files_to_write)
                     if "FAILED" in report:
                         log.warning("[ProofGate] %s blocked: %s", fn_name, report[:200])
+                        return {
+                            "tool_call_id": tool_call_id,
+                            "fn_name": fn_name,
+                            "result": f"PROOF GATE BLOCKED: {report[:500]}",
+                            "is_error": True,
+                            "args_for_log": args_for_log,
+                            "is_code_tool": is_code_tool,
+                        }
         except Exception:
             pass
 

@@ -587,7 +587,10 @@ class OuroborosAgent:
                 from ouroboros.episodic_memory import get_episodic_memory
                 from ouroboros.temporal_learning import get_learner
 
-                success = "error" not in text.lower()[:100] and "warning" not in text.lower()[:50]
+                success = "error" not in text.lower()[:100] and "⚠" not in text[:20]
+                if eval_report:
+                    # If eval found quality issues, mark as partial success
+                    success = success and "quality issue" not in eval_report.lower()
                 tools_used = []
                 for tc in llm_trace.get("tool_calls", []):
                     if isinstance(tc, dict):

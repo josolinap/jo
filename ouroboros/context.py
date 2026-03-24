@@ -160,9 +160,10 @@ def _build_vault_context(env: Any, task_text: str) -> str:
 
         # Check cache first (from FACT-inspired caching)
         from ouroboros.context_cache import get_cache
+        import hashlib
 
         cache = get_cache(repo_dir=env.repo_dir)
-        cache_key = f"vault_ctx:{hash(task_text)}"
+        cache_key = f"vault_ctx:{hashlib.md5(task_text.encode()).hexdigest()[:12]}"
         hit, cached = cache.get(cache_key)
         if hit:
             return cached or ""
