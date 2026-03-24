@@ -1,10 +1,10 @@
 {
   "run_shell": {
     "health_check": {
-      "success_count": 10,
+      "success_count": 11,
       "failure_count": 0,
-      "last_used": 1774370032.60542,
-      "avg_rounds": 2.0
+      "last_used": 1774370650.1166313,
+      "avg_rounds": 2.2
     },
     "task": {
       "success_count": 2,
@@ -81,6 +81,12 @@
       "failure_count": 0,
       "last_used": 1774352639.7293983,
       "avg_rounds": 7.880000000000001
+    },
+    "health_check": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774370650.1166365,
+      "avg_rounds": 3
     }
   },
   "enable_tools": {
