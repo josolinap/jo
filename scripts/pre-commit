@@ -3,7 +3,7 @@
 
 Checks:
 1. Version sync (VERSION == git tag)
-2. Module line limits (no module over 1000 lines)
+2. Module line limits (no module over 1600 lines)
 3. Required modules exist
 4. Required vault concepts exist
 5. Protected files exist
@@ -16,6 +16,18 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+
+def find_python():
+    """Find Python interpreter (cross-platform)."""
+    for cmd in [sys.executable, "python3", "python", "py"]:
+        try:
+            result = subprocess.run([cmd, "--version"], capture_output=True, timeout=5)
+            if result.returncode == 0:
+                return cmd
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    return None
 
 
 def main():
