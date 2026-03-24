@@ -1,0 +1,39 @@
+# Jo Configuration - Default Values
+# This file contains default configuration that can be overridden in overrides.yaml
+
+llm:
+  default_model: "anthropic/claude-sonnet-4"
+  temperature: 0.3
+  max_tokens: 8192
+  reasoning_effort: "medium"
+
+workers:
+  max_workers: 5
+  soft_timeout_sec: 600
+  hard_timeout_sec: 1800
+  heartbeat_stale_sec: 120
+  queue_max_retries: 1
+
+budget:
+  total_budget_limit: 50.0
+  evolution_budget_reserve: 5.0
+
+hot_reload:
+  check_interval_sec: 30
+  vault_notification_enabled: true
+
+evolution:
+  enabled_by_default: true
+  auto_promote_after_evolutions: 3
+
+tools:
+  enabled_by_default: ["*"]
+  disabled: []
+
+context:
+  max_context_size: 128000
+  auto_summarize_at_percent: 70
+
+logging:
+  suppress_progress: true
+  log_level: "INFO"
