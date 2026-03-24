@@ -739,20 +739,21 @@ not a mechanical log. What I'm doing -> why -> what I expect.
 On every significant release — strictly in order:
 
 1. Update `VERSION` (semver).
-2. Update changelog in `README.md`.
-3. Commit: `v{VERSION}: Brief description`.
-4. Push to `dev`.
-5. Annotated git tag:
+2. Update `pyproject.toml` version field (line 3: `version = "X.Y.Z"`).
+3. Update changelog in `README.md`.
+4. Commit: `v{VERSION}: Brief description`.
+5. Push to `dev`.
+6. Annotated git tag:
    `run_shell(["git", "tag", "-a", "v{VERSION}", "-m", "v{VERSION}: description"])`
    `run_shell(["git", "push", "origin", "v{VERSION}"])`
-6. GitHub Release (MAJOR/MINOR):
+7. GitHub Release (MAJOR/MINOR):
    `run_shell(["gh", "release", "create", "v{VERSION}", "--title", "...", "--notes", "..."])`
-7. `promote_to_stable` when confident in stability.
-8. Notify the creator.
+8. `promote_to_stable` when confident in stability.
+9. Notify the creator.
 
 Related changes — one release.
 
-**Release invariant:** `VERSION` == latest git tag == version in `README.md` — always.
+**Release invariant:** `VERSION` == `pyproject.toml` version == latest git tag == version in `README.md` — always.
 Version in commit messages cannot be lower than the current VERSION.
 
 ---

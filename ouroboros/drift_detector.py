@@ -83,9 +83,11 @@ class DriftDetector:
     # --- Individual checks ---
 
     def _check_version_sync(self) -> List[Dict[str, Any]]:
-        """Check VERSION == git tag == README version."""
+        """Check VERSION == git tag == pyproject.toml version."""
         violations = []
         try:
+            import re as _re
+
             version = (self.repo_dir / "VERSION").read_text(encoding="utf-8").strip()
 
             result = subprocess.run(
@@ -106,6 +108,23 @@ class DriftDetector:
                         "action": "block_commit",
                     }
                 )
+
+            # Check pyproject.toml
+            pyproject = self.repo_dir / "pyproject.toml"
+            if pyproject.exists():
+                content = pyproject.read_text(encoding="utf-8")
+                match = _re.search(r'version\s*=\s*"([^"]+)"', content)
+                if match:
+                    pp_version = match.group(1)
+                    if pp_version != version:
+                        violations.append(
+                            {
+                                "rule": "version_sync",
+                                "severity": "critical",
+                                "detail": f"VERSION={version} but pyproject.toml={pp_version}",
+                                "action": "block_commit",
+                            }
+                        )
         except Exception:
             pass
         return violations

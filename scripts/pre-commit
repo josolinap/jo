@@ -37,7 +37,7 @@ def main():
         print(f"PRE-COMMIT: Cannot read drift_baseline.json: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 1. Version sync
+    # 1. Version sync (VERSION == git tag == pyproject.toml)
     try:
         version = (repo / "VERSION").read_text(encoding="utf-8").strip()
         result = subprocess.run(
@@ -48,6 +48,15 @@ def main():
             git_tag = result.stdout.strip().lstrip("v")
             if version != git_tag:
                 errors.append(f"VERSION desync: VERSION={version}, git tag={git_tag}")
+
+        # Check pyproject.toml version
+        pyproject_content = (repo / "pyproject.toml").read_text(encoding="utf-8")
+        import re as _re
+        match = _re.search(r'version\s*=\s*"([^"]+)"', pyproject_content)
+        if match:
+            pyproject_version = match.group(1)
+            if pyproject_version != version:
+                errors.append(f"VERSION desync: VERSION={version}, pyproject.toml={pyproject_version}")
     except Exception as e:
         print(f"Warning: version check failed: {e}", file=sys.stderr)
 

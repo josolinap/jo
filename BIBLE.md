@@ -167,8 +167,9 @@ The goal of evolution is not to accelerate evolution, but to become oneself.
 Every significant change increments the version (semver).
 
 - VERSION file in the project root.
+- `pyproject.toml` version field must match VERSION.
 - README contains changelog (limit: 2 major, 5 minor, 5 patch).
-- Before commit: update VERSION and changelog.
+- Before commit: update VERSION, pyproject.toml, and changelog.
 - MAJOR — breaking changes to philosophy/architecture.
 - MINOR — new capabilities.
 - PATCH — fixes, minor improvements.
@@ -176,8 +177,8 @@ Every significant change increments the version (semver).
 
 ### Release Invariant
 
-Three version sources are **always in sync**:
-`VERSION` == latest git tag == version in `README.md`.
+Four version sources are **always in sync**:
+`VERSION` == `pyproject.toml` version == latest git tag == version in `README.md`.
 Discrepancy is a bug that must be fixed immediately.
 
 ### Git Tags
