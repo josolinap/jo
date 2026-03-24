@@ -9,6 +9,8 @@
 # Constitution & Identity
 BIBLE.md
 VERSION
+constitution.json
+drift_baseline.json
 
 # Core System Prompts
 prompts/SYSTEM.md

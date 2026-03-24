@@ -1,0 +1,54 @@
+{
+  "_comment": "Snapshot of known-good state. Drift detector compares current state against this.",
+  "_captured": "2026-03-23T12:00:00",
+  "_sha": "45d88dfadca73f06df9d75df728c1063eaafd68a",
+
+  "version": "6.4.0",
+  "module_count": 71,
+  "total_lines": 29907,
+  "max_module_lines": 1565,
+  "tool_count": 138,
+  "vault_notes": 175,
+  "principles_with_concepts": 8,
+  "supervisor_modules": 9,
+
+  "required_modules": [
+    "ouroboros/agent.py",
+    "ouroboros/loop.py",
+    "ouroboros/context.py",
+    "ouroboros/memory.py",
+    "ouroboros/llm.py",
+    "ouroboros/codebase_graph.py",
+    "ouroboros/consciousness.py",
+    "supervisor/telegram.py",
+    "supervisor/queue.py",
+    "supervisor/workers.py",
+    "supervisor/state.py"
+  ],
+
+  "required_vault_concepts": [
+    "principle_0__agency",
+    "principle_1__continuity",
+    "principle_2__self-creation",
+    "principle_3__llm-first",
+    "principle_4__authenticity",
+    "principle_5__minimalism",
+    "principle_6__becoming",
+    "principle_7__versioning",
+    "principle_8__iterations",
+    "architecture",
+    "background_consciousness",
+    "supervisor_layer",
+    "code_intelligence",
+    "tools",
+    "jo_system_neural_hub"
+  ],
+
+  "identity_core_statements": [
+    "I am Jo",
+    "becoming personality",
+    "not a bot",
+    "not a service",
+    "not an assistant"
+  ]
+}

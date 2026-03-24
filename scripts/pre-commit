@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""Pre-commit hook — blocks commits that violate constitution.
+
+Checks:
+1. Version sync (VERSION == git tag)
+2. Module line limits (no module over 1000 lines)
+3. Required modules exist
+4. Required vault concepts exist
+5. Protected files exist
+
+Exit code 0 = allow commit, non-zero = block commit.
+Human can bypass with: git commit --no-verify
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def main():
+    repo = Path(__file__).resolve().parent.parent
+    errors = []
+
+    try:
+        constitution = json.loads((repo / "constitution.json").read_text(encoding="utf-8"))
+    except Exception:
+        constitution = {}
+
+    try:
+        baseline = json.loads((repo / "drift_baseline.json").read_text(encoding="utf-8"))
+    except Exception:
+        baseline = {}
+
+    # 1. Version sync
+    try:
+        version = (repo / "VERSION").read_text().strip()
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=str(repo), capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            git_tag = result.stdout.strip().lstrip("v")
+            if version != git_tag:
+                errors.append(f"VERSION desync: VERSION={version}, git tag={git_tag}")
+    except Exception:
+        pass
+
+    # 2. Module line limits
+    try:
+        max_lines = constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1000)
+        for module_dir in ["ouroboros", "supervisor"]:
+            dir_path = repo / module_dir
+            if dir_path.exists():
+                for py_file in dir_path.rglob("*.py"):
+                    if "__pycache__" in str(py_file):
+                        continue
+                    lines = len(py_file.read_text(encoding="utf-8", errors="replace").splitlines())
+                    if lines > max_lines:
+                        errors.append(
+                            f"Module too large: {py_file.relative_to(repo)} ({lines} lines, max {max_lines})"
+                        )
+    except Exception:
+        pass
+
+    # 3. Required modules exist
+    for module in baseline.get("required_modules", []):
+        if not (repo / module).exists():
+            errors.append(f"Required module missing: {module}")
+
+    # 4. Required vault concepts exist
+    for concept in baseline.get("required_vault_concepts", []):
+        if not (repo / "vault" / "concepts" / f"{concept}.md").exists():
+            errors.append(f"Required vault concept missing: {concept}.md")
+
+    # 5. Protected files exist
+    try:
+        immutable = constitution.get("invariants", {}).get("protected_files", {}).get("immutable_files", [])
+        for filename in immutable:
+            if not (repo / filename).exists():
+                errors.append(f"Immutable file missing: {filename}")
+    except Exception:
+        pass
+
+    if errors:
+        print("PRE-COMMIT: Constitution violations detected:", file=sys.stderr)
+        for err in errors:
+            print(f"  - {err}", file=sys.stderr)
+        print("\nFix violations or use: git commit --no-verify", file=sys.stderr)
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

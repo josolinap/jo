@@ -515,6 +515,26 @@ def _build_health_invariants(env: Any) -> str:
     except Exception:
         pass
 
+    # 9. Drift detection — check constitution and baseline
+    try:
+        from ouroboros.drift_detector import DriftDetector
+
+        detector = DriftDetector(repo_dir=env.repo_dir, drive_root=env.drive_root)
+        violations = detector.run_all_checks()
+        if violations:
+            critical = [v for v in violations if v["severity"] == "critical"]
+            high = [v for v in violations if v["severity"] == "high"]
+            if critical:
+                checks.append(f"CRITICAL DRIFT: {len(critical)} critical violations. First: {critical[0]['detail']}")
+            if high:
+                checks.append(f"HIGH DRIFT: {len(high)} high violations. First: {high[0]['detail']}")
+            if not critical and not high:
+                checks.append(f"DRIFT: {len(violations)} minor violations detected")
+        else:
+            checks.append("OK: no drift detected (constitution checks pass)")
+    except Exception:
+        pass
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
