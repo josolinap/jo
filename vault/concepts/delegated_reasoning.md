@@ -13,7 +13,7 @@ tags: [delegated reasoning, multi-agent, architecture, Principle 3]
 
 Delegated Reasoning is the core architectural pattern where the orchestrator never writes code directly. It decomposes tasks and delegates to specialized agents. Sub-agents handle the "how" while the orchestrator handles the "what" and the "who".
 
-This pattern embodies [[Principle 3: LLM-First]] and [[Principle 4: Authenticity]] by ensuring the LLM remains the decision-maker while tools extend its capabilities.
+This pattern embodies [[principle_3__llm-first]] and [[principle_4__authenticity]] by ensuring the LLM remains the decision-maker while tools extend its capabilities.
 
 Key components:
 - **Orchestrator**: decomposes tasks, selects agents, synthesizes results

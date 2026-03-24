@@ -77,7 +77,7 @@ class NeuralMap:
         self.connections.append(conn)
         self._adjacency[source].add(target)
 
-        if conn_type in ("import", "call", "link"):
+        if conn_type in ("import", "imports", "call", "calls", "link"):
             self._adjacency[target].add(source)
 
     def find_path(self, source: str, target: str) -> Optional[List[str]]:
@@ -145,8 +145,8 @@ class NeuralMap:
             else:
                 G.add_edge(conn.source, conn.target, weight=w)
 
-        if len(G.nodes) == 0:
-            return []
+        if len(G.nodes) <= 1 or len(G.edges) == 0:
+            return [list(G.nodes)] if G.nodes else []
 
         partition = community_louvain.best_partition(G, weight="weight")
 
@@ -179,14 +179,18 @@ class NeuralMap:
         return clusters
 
 
-def _scan_codebase(ctx: ToolContext) -> NeuralMap:
-    """Scan codebase using AST-based codebase_graph (not regex)."""
+def _scan_codebase(ctx: ToolContext, graph: Optional[Any] = None) -> NeuralMap:
+    """Scan codebase using AST-based codebase_graph (not regex).
+
+    Optionally accepts a pre-built graph to avoid duplicate scanning.
+    """
     from ouroboros.codebase_graph import scan_repo
 
     neural_map = NeuralMap()
     repo_dir = pathlib.Path(ctx.repo_dir)
 
-    graph = scan_repo(repo_dir=repo_dir, max_files=200)
+    if graph is None:
+        graph = scan_repo(repo_dir=repo_dir, max_files=200)
 
     # Convert CodebaseGraph nodes → NeuralMap concepts
     for node in graph.nodes.values():
@@ -235,7 +239,7 @@ def _scan_vault(ctx: ToolContext) -> NeuralMap:
             continue
 
         tags = re.findall(r"tags?:\s*\[([^\]]+)\]", content) or []
-        tags = [t.strip() for t in " ".join(tags).split(",")]
+        tags = [t.strip() for t in " ".join(tags).split(",") if t.strip()]
 
         concept = Concept(
             id=concept_id,
@@ -249,9 +253,12 @@ def _scan_vault(ctx: ToolContext) -> NeuralMap:
 
         wikilinks = re.findall(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", content)
         for link in wikilinks:
-            link_id = link.strip()
+            link_stripped = link.strip()
+            # Try to match vault path convention: "My Note" -> "vault/my_note"
+            normalized_id = f"vault/{link_stripped.lower().replace(' ', '_')}"
+            link_id = normalized_id if normalized_id in neural_map.concepts else link_stripped
             if not neural_map.concepts.get(link_id):
-                neural_map.add_concept(Concept(id=link_id, name=link, type="concept"))
+                neural_map.add_concept(Concept(id=link_id, name=link_stripped, type="concept"))
             neural_map.add_connection(concept_id, link_id, "link", strength=1.0, confidence=0.7)
 
         for tag in tags:
@@ -299,9 +306,9 @@ def _scan_tools(ctx: ToolContext) -> NeuralMap:
     return neural_map
 
 
-def _build_unified_map(ctx: ToolContext) -> NeuralMap:
-    """Build unified neural map from all sources."""
-    code_map = _scan_codebase(ctx)
+def _build_unified_map(ctx: ToolContext, graph: Optional[Any] = None) -> NeuralMap:
+    """Build unified neural map from all sources. Optionally reuse existing graph."""
+    code_map = _scan_codebase(ctx, graph=graph)
     vault_map = _scan_vault(ctx)
     tool_map = _scan_tools(ctx)
 
@@ -313,8 +320,7 @@ def _build_unified_map(ctx: ToolContext) -> NeuralMap:
         unified.add_concept(concept)
 
     for conn in code_map.connections + vault_map.connections + tool_map.connections:
-        unified.connections.append(conn)
-        unified._adjacency[conn.source].add(conn.target)
+        unified.add_connection(conn.source, conn.target, conn.type, conn.strength, conn.confidence)
 
     return unified
 
@@ -654,7 +660,7 @@ def _find_gaps(ctx: ToolContext) -> str:
         for c in orphaned_concepts[:5]:
             lines.append(f"- {c.name}")
 
-    if not orphan_concepts and not orphan_tools and not principles_without_impl:
+    if not orphan_concepts and not orphan_tools and not principles_without_impl and not orphaned_concepts:
         lines.append("✅ No significant gaps found - knowledge graph is well-connected!")
 
     return "\n".join(lines)
@@ -793,10 +799,11 @@ def _codebase_impact(ctx: ToolContext, target: str, direction: str = "upstream",
 
 def _symbol_context(ctx: ToolContext, name: str) -> str:
     """360-degree view of a symbol: callers, callees, clusters, and connections."""
-    from ouroboros.codebase_graph import CodebaseGraph, scan_repo
+    from ouroboros.codebase_graph import scan_repo
 
+    # Build graph once, pass to unified map to avoid double scan
     graph = scan_repo(repo_dir=ctx.repo_dir)
-    neural_map = _build_unified_map(ctx)
+    neural_map = _build_unified_map(ctx, graph=graph)
 
     # Find the target symbol
     target_id = None
@@ -809,7 +816,6 @@ def _symbol_context(ctx: ToolContext, name: str) -> str:
         # Fall back to neural map search
         for concept_id, concept in neural_map.concepts.items():
             if name.lower() in concept_id.lower() or name.lower() in concept.name.lower():
-                target_id = concept_id
                 return _explore_concept(ctx, name)
 
     if not target_id:

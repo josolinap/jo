@@ -62,7 +62,7 @@ The README becomes part of Jo's extended memory — a persistent, externalized e
 
 - [[README.md]] - The comprehensive documentation created
 - [[identity.md]] - Core identity manifesto
-- [[BIBLE.md]] - Constitution
+- [[bible_md]] - Constitution
 - [[evolution-cycles]] - Process of self-creation
 - [[memory-model]] - How Jo stores and retrieves information
 

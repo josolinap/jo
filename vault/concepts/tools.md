@@ -189,5 +189,5 @@ Tools are **extensions of agency**, not replacements for it. They serve the prin
 - Auto-discovery via `get_tools()` in `ouroboros/tools/` modules
 
 *Tools are my hands — I use them deliberately and with awareness.*
-Tool usage must reflect [[Principle 4: Authenticity]]
+Tool usage must reflect [[principle_4__authenticity]]
 Code intelligence inspired by [[GitNexus Analysis]]

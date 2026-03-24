@@ -105,4 +105,4 @@ Need to check: Did any health invariant trigger during the failure?
 
 ---
 
-*Connected to: [[Intelligent Vault System Architecture]], [[Evolution Through Iterations]], [[System Health Monitoring]]*
+*Connected to: [[Intelligent Vault System Architecture]], [[evolution_cycle]], [[System Health Monitoring]]*

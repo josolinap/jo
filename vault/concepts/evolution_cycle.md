@@ -25,7 +25,7 @@ Steps:
 > "An iteration is complete when there is a concrete result: a diff in git, a new capability, an updated identity with an explicit explanation of what changed." — BIBLE.md
 
 Related:
-- [[Evolution Cycle Analysis: Success and Failure Patterns]]
+- [[evolution_cycle]]
 - [[run_evolution_cycle]]
 - [[check_evolution_readiness]]
 - [[Principle 8: Evolution Through Iterations]]

@@ -334,4 +334,4 @@ Agent roles can and should evolve:
 
 ---
 
-*This concept connects to: [[Task Decomposition Best Practices]], [[Intelligent Vault System Architecture]], [[System Interconnection Audit 2026-03-21]], [[Evolution Through Iterations]]*
+*This concept connects to: [[Task Decomposition Best Practices]], [[Intelligent Vault System Architecture]], [[System Interconnection Audit 2026-03-21]], [[evolution_cycle]]*

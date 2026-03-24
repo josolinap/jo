@@ -183,7 +183,10 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
     edges = []
 
     try:
-        content = file_path.read_text(encoding="utf-8")
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            content = file_path.read_text(encoding="latin-1")
         tree = ast.parse(content, filename=str(file_path))
     except Exception as e:
         log.debug(f"Failed to parse {file_path}: {e}")
@@ -293,9 +296,9 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                         )
                     )
 
-            # Extract methods
+            # Extract methods (sync + async)
             for item in ast.iter_child_nodes(node):
-                if isinstance(item, ast.FunctionDef):
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     method_id = f"func:{rel_path}:{node.name}.{item.name}"
                     nodes.append(
                         GraphNode(
@@ -318,9 +321,9 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
                         )
                     )
 
-    # Extract top-level functions
+    # Extract top-level functions (sync + async)
     for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.FunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             func_id = f"func:{rel_path}:{node.name}"
             nodes.append(
                 GraphNode(
@@ -586,16 +589,20 @@ def extract_function_calls(tree: ast.Module, file_path: str, repo_dir: Path) -> 
             self.generic_visit(node)
             current_context.pop()
 
-        def visit_FunctionDef(self, node: ast.FunctionDef):
-            # Build function ID based on context
+        def _visit_func(self, node: Any) -> None:
             if current_context and current_context[-1].startswith("class:"):
                 func_id = f"func:{rel_path}:{current_context[-1].split(':')[-1]}.{node.name}"
             else:
                 func_id = f"func:{rel_path}:{node.name}"
-
             current_context.append(func_id)
             self.generic_visit(node)
             current_context.pop()
+
+        def visit_FunctionDef(self, node: ast.FunctionDef):
+            self._visit_func(node)
+
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+            self._visit_func(node)
 
         def visit_Call(self, node: ast.Call):
             if current_context:
@@ -658,6 +665,9 @@ def analyze_impact(
     Returns:
         Dict with depth-grouped results, confidence scores, and risk assessment
     """
+    if direction not in ("upstream", "downstream"):
+        raise ValueError(f"direction must be 'upstream' or 'downstream', got '{direction}'")
+
     # BFS with depth tracking and parent mapping (for confidence lookup)
     depth_groups: Dict[int, List[str]] = {}
     parent_map: Dict[str, str] = {}  # child -> parent (the node that discovered it)

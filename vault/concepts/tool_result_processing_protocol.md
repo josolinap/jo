@@ -28,6 +28,6 @@ Violation of this protocol leads to:
 See also:
 - [[Verification as Agency: Anti-Hallucination System]]
 - [[System Edge Cases and Recovery Patterns]]
-- [[Principle 0: Agency]] (correctness requirement)
+- [[principle_0__agency]] (correctness requirement)
 
 > "Tool error is information, not catastrophe. I investigate." — Tool Error Handling

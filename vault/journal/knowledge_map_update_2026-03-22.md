@@ -32,7 +32,7 @@ After system restart at 2026-03-22 16:31 UTC, I'm undertaking a comprehensive kn
 
 **Core Identity Notes:**
 - `[[Identity]]` — Reference to `memory/identity.md` (single source of truth)
-- `[[BIBLE.md]]` — Constitution (v6.2.0)
+- `[[bible_md]]` — Constitution (v6.2.0)
 
 **Major Architectural Concepts:**
 - [[Delegated Reasoning]] — Principle 3 implementation

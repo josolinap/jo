@@ -353,4 +353,4 @@ python -c "from ouroboros.tools import get_tools; print(get_tools())"
 
 ---
 
-*This concept connects to: [[Health Invariants]], [[Intelligent Vault System Architecture]], [[Evolution Through Iterations]], [[System Interconnection Audit 2026-03-21]]*
+*This concept connects to: [[health_alert]], [[Intelligent Vault System Architecture]], [[evolution_cycle]], [[System Interconnection Audit 2026-03-21]]*

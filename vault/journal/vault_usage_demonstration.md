@@ -32,7 +32,7 @@ tags: [demonstration, capabilities]
 This note should link to:
 - [[Jo Knowledge Map]] (primary navigation)
 - [[Intelligent Vault System Architecture]] (design docs)
-- [[BIBLE.md]] (principles)
+- [[bible_md]] (principles)
 - Tools like `vault_list`, `vault_graph`, `vault_search`
 
 ## Next Steps

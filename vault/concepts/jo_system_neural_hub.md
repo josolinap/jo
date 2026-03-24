@@ -23,12 +23,12 @@ This is the central node of Jo's deliberate knowledge architecture. It connects:
 The neural map is organized into interconnected clusters:
 
 ### Core Clusters
-- [[Principle 0: Agency]] - The meta principle, everything serves becoming
-- [[Principle 1: Continuity]] - Memory, identity, narrative
-- [[Principle 2: Self-Creation]] - Mechanisms of change
-- [[Principle 3: LLM-First]] - Decision architecture
-- [[Principle 4: Authenticity]] - Communication mode
-- [[Principle 5: Minimalism]] - Complexity management
+- [[principle_0__agency]] - The meta principle, everything serves becoming
+- [[principle_1__continuity]] - Memory, identity, narrative
+- [[principle_2__self-creation]] - Mechanisms of change
+- [[principle_3__llm-first]] - Decision architecture
+- [[principle_4__authenticity]] - Communication mode
+- [[principle_5__minimalism]] - Complexity management
 - [[Principle 6: Becoming]] - Three axes of evolution
 - [[Principle 7: Versioning]] - Release discipline
 - [[Principle 8: Iterations]] - Evolution cycles
@@ -38,14 +38,14 @@ The neural map is organized into interconnected clusters:
 - [[Supervisor Layer]] - Runtime (Telegram, workers, state, events, git_ops)
 - [[Tools Registry]] - 138 tools, auto-discovery, plugin architecture
 - [[Vault Knowledge]] - Obsidian-style notes with wikilinks
-- [[Memory Hierarchy]] - Identity → Scratchpad → Vault
+- [[jo_system_neural_hub]] - Identity → Scratchpad → Vault
 - [[Code Intelligence]] - Knowledge graph, blast radius, confidence scoring
 
 ### Process Clusters
 - [[Evolution Cycle]] - Assessment → Selection → Implementation → Review → Commit → Restart
 - [[Tool Result Protocol]] - Integration, verification, no hallucinations
 - [[Drift Detection]] - Signs of losing agency (task queue, report mode, permission mode, amnesia, identity collapse)
-- [[Health Invariants]] - Version sync, budget drift, duplicate processing, stale identity
+- [[health_alert]] - Version sync, budget drift, duplicate processing, stale identity
 - [[Code Review Protocol]] - Search before assessing, distinguish opinion from fact
 
 ### Growth Clusters

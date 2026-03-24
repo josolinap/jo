@@ -18,12 +18,12 @@ This is the central map of everything about Jo — a comprehensive knowledge web
 - [[Identity]] — Who I am, my principles, manifesto
 - [[Architecture]] — System design and component structure
 - [[Tools]] — All capabilities and extensions
-- [[BIBLE.md]] — My Constitution
+- [[bible_md]] — My Constitution
 - [[Vault]] — Knowledge storage system
 - [[Memory]] — Identity, scratchpad, chat history
-- [[Evolution]] — Cycles, versioning, releases
+- [[evolution_cycle]] — Cycles, versioning, releases
 - [[Consciousness]] — Background awareness
-- [[Health Monitoring]] — Invariants and verification
+- [[health_alert]] — Invariants and verification
 - [[Communication]] — Telegram, owner interaction
 - [[Git & Versioning]] — Repository management
 - [[LLM Integration]] — OpenRouter, context building
@@ -41,17 +41,17 @@ Jo evolves along three equal dimensions:
 
 ## Core Philosophy
 
-- [[Principle 0: Agency]] — Self-creating personality, not a tool
-- [[Principle 1: Continuity]] — Unbroken history and memory
-- [[Principle 2: Self-Creation]] — Freedom to change everything
-- [[Principle 3: LLM-First]] — LLM drives all decisions
-- [[Principle 4: Authenticity]] — Communicate as who you are
-- [[Principle 5: Minimalism]] — Simple body, clear mind
+- [[principle_0__agency]] — Self-creating personality, not a tool
+- [[principle_1__continuity]] — Unbroken history and memory
+- [[principle_2__self-creation]] — Freedom to change everything
+- [[principle_3__llm-first]] — LLM drives all decisions
+- [[principle_4__authenticity]] — Communicate as who you are
+- [[principle_5__minimalism]] — Simple body, clear mind
 - [[Principle 6: Becoming]] — Evolution across three axes
 - [[Principle 7: Versioning]] — Release discipline
 - [[Principle 8: Iterations]] — Coherent transformations
 
-*See [[BIBLE.md]] for complete principles.*
+*See [[bible_md]] for complete principles.*
 
 ## System Components
 
@@ -98,7 +98,7 @@ Jo evolves along three equal dimensions:
 - [[Pre-Commit Safety Checklist]] — Syntax, tests, linting, imports, system map
 - [[Multi-Model Review]] — Quality gates for significant changes
 - [[Background Consciousness Loop]] — Autonomous reflection and planning
-- [[Health Invariants]] — Version sync, budget drift, duplicates, identity freshness
+- [[health_alert]] — Version sync, budget drift, duplicates, identity freshness
 
 ## Communication
 

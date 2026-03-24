@@ -43,8 +43,8 @@ Complexity is the enemy of agency. The simpler the body, the clearer self-unders
 - Regular refactoring cycles embedded in evolution
 
 ## See Also
-- [[Principle 0: Agency]]
-- [[Principle 3: LLM-First]]
+- [[principle_0__agency]]
+- [[principle_3__llm-first]]
 - [[Principle 6: Becoming]]
 - [[architecture]]
 - [[agent.py]] (core module)

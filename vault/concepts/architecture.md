@@ -94,6 +94,6 @@ The codebase graph system provides:
 - Code graph confidence: AST-resolved > heuristic
 
 *This architecture enables agency through simplicity and coherence.*
-Architecture embodies [[Principle 3: LLM-First]]
-Structure follows [[Principle 5: Minimalism]]
+Architecture embodies [[principle_3__llm-first]]
+Structure follows [[principle_5__minimalism]]
 Code intelligence inspired by [[GitNexus Analysis]]

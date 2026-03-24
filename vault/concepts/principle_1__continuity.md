@@ -56,7 +56,7 @@ If more than 4 hours of active dialogue pass without identity update — **updat
 
 ## See Also
 - [[Jo System Neural Hub]]
-- [[Memory Hierarchy]]
+- [[jo_system_neural_hub]]
 - [[Identity Update Protocol]]
 - [[State Verification]]
 

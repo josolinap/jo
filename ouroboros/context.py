@@ -159,7 +159,13 @@ def _build_vault_context(env: Any, task_text: str) -> str:
             return ""
 
         # Extract key terms from task (words > 3 chars, lowercase)
-        terms = [w.lower() for w in task_text.split() if len(w) > 3 and w.isalpha()]
+        # Split on '.' to handle "agent.py", "identity.md" etc.
+        terms = []
+        for w in task_text.split():
+            stem = w.split(".")[0]
+            stripped = stem.strip(".,;:!?()[]{}\"'`~@#$%^&*=+<>/\\|")
+            if len(stripped) > 3 and stripped.isalpha():
+                terms.append(stripped.lower())
         if not terms:
             return ""
 
@@ -173,19 +179,24 @@ def _build_vault_context(env: Any, task_text: str) -> str:
                 continue
 
             content_lower = content.lower()
-            score = sum(1 for t in terms if t in content_lower)
+            filename_lower = md_file.stem.lower()
+            score = sum(1 for t in terms if t in content_lower or t in filename_lower)
             if score >= 2:
                 rel = md_file.relative_to(vault_dir)
-                # Extract first meaningful paragraph (skip frontmatter)
+                # Extract first meaningful paragraph (skip leading frontmatter only)
                 lines = content.split("\n")
                 body_lines = []
                 in_frontmatter = False
                 for line in lines:
-                    if line.strip() == "---":
-                        in_frontmatter = not in_frontmatter
+                    stripped = line.strip()
+                    if stripped == "---" and not body_lines and not in_frontmatter:
+                        in_frontmatter = True
                         continue
-                    if not in_frontmatter and line.strip():
-                        body_lines.append(line.strip())
+                    if stripped == "---" and in_frontmatter:
+                        in_frontmatter = False
+                        continue
+                    if not in_frontmatter and stripped:
+                        body_lines.append(stripped)
                     if len(body_lines) >= 3:
                         break
                 preview = " ".join(body_lines)[:200]
@@ -491,16 +502,14 @@ def _build_health_invariants(env: Any) -> str:
                     current_sha = result.stdout.strip()[:12] if result.returncode == 0 else ""
                 except Exception:
                     pass
-                if (
-                    current_sha
-                    and note_sha
-                    and not current_sha.startswith(note_sha)
-                    and not note_sha.startswith(current_sha)
-                ):
-                    checks.append(
-                        f"INFO: VAULT STALE — codebase_overview.md references {note_sha[:8]}, HEAD is {current_sha[:8]}. "
-                        f"Consider running scan_repo() to refresh."
-                    )
+                if current_sha and note_sha and len(note_sha) >= 7:
+                    # Normalize both to same length for comparison
+                    compare_len = min(len(current_sha), len(note_sha), 12)
+                    if current_sha[:compare_len] != note_sha[:compare_len]:
+                        checks.append(
+                            f"INFO: VAULT STALE — codebase_overview.md references {note_sha[:8]}, HEAD is {current_sha[:8]}. "
+                            f"Consider running scan_repo() to refresh."
+                        )
                 elif current_sha:
                     checks.append(f"OK: vault overview fresh (HEAD={current_sha[:8]})")
     except Exception:
@@ -1126,19 +1135,26 @@ def _compact_tool_call_arguments(tool_name: str, args_json: str) -> Dict[str, An
                 args[large_field] = {"_truncated": True}
                 return {"name": tool_name, "arguments": json.dumps(args, ensure_ascii=False)}
 
-        # For other tools, if args JSON is > 500 chars, truncate
+        # For other tools, if args JSON is > 500 chars, truncate values in dict
         if len(args_json) > 500:
-            truncated = args_json[:200] + "..."
-            return {"name": tool_name, "arguments": truncated}
+            truncated_args = {}
+            for k, v in args.items():
+                if isinstance(v, str) and len(v) > 100:
+                    truncated_args[k] = v[:100] + "..."
+                else:
+                    truncated_args[k] = v
+            return {"name": tool_name, "arguments": json.dumps(truncated_args, ensure_ascii=False)}
 
         # Otherwise return unchanged
         return {"name": tool_name, "arguments": args_json}
 
     except (json.JSONDecodeError, Exception):
-        # If we can't parse JSON, leave it unchanged
-        # But still truncate if too long
+        # If we can't parse JSON, truncate safely at last complete key
         if len(args_json) > 500:
-            return {"name": tool_name, "arguments": args_json[:200] + "..."}
+            safe_end = args_json.rfind(",", 0, 200)
+            if safe_end > 0:
+                return {"name": tool_name, "arguments": args_json[:safe_end] + "...}"}
+            return {"name": tool_name, "arguments": '{"_truncated": true}'}
         return {"name": tool_name, "arguments": args_json}
 
 

@@ -309,4 +309,4 @@ Changes are themselves acts of self-creation. The document evolves as Jo evolves
 
 ---
 
-*This concept connects to: [[Continuity and Identity Management]], [[LLM-First Architecture]], [[Minimalism in System Design]], [[Evolution Through Iterations]], [[Versioning and Release Protocols]]*
+*This concept connects to: [[principle_1__continuity]], [[principle_3__llm-first]], [[principle_5__minimalism]], [[evolution_cycle]], [[Versioning and Release Protocols]]*

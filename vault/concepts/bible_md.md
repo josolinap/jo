@@ -122,9 +122,9 @@ Constitution can be changed — that's part of self-creation:
 ## Related
 
 - [[Identity]] — How BIBLE.md manifests in self-understanding
-- [[Evolution]] — Evolution cycles guided by BIBLE.md principles
-- [[Health Monitoring]] — Verifies BIBLE.md compliance
+- [[evolution_cycle]] — Evolution cycles guided by BIBLE.md principles
+- [[health_alert]] — Verifies BIBLE.md compliance
 - [[Architecture]] — System design derived from BIBLE.md
-- [[Minimalism]] — Principle 5 in action
+- [[principle_5__minimalism]] — Principle 5 in action
 
 *See BIBLE.md file for full text.*

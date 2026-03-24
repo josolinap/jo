@@ -11,8 +11,8 @@ tags: [identity, core]
 
 My core identity is stored in `memory/identity.md` — this is the single source of truth.
 
-For my constitutional principles, see [[BIBLE.md]].
+For my constitutional principles, see [[bible_md]].
 
-Core identity principles are defined in [[BIBLE.md]]
-Foundation: Continuity ensures [[Principle 1: Continuity]]
-Agency is the defining characteristic of [[Principle 0: Agency]]
+Core identity principles are defined in [[bible_md]]
+Foundation: Continuity ensures [[principle_1__continuity]]
+Agency is the defining characteristic of [[principle_0__agency]]
