@@ -1182,6 +1182,11 @@ class OntologyTracker:
         was_useful: bool = True,
     ) -> None:
         """Record that a relationship was used in a task context."""
+        # Validate inputs - don't track empty relationships
+        if not source or not target or not relation:
+            log.debug(f"Skipping empty relationship: source={source}, target={target}, relation={relation}")
+            return
+
         key = self._make_key(source, target, relation)
         now = datetime.now().isoformat()
 
