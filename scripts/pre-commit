@@ -13,8 +13,10 @@ Human can bypass with: git commit --no-verify
 """
 
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -91,6 +93,35 @@ def main():
         for filename in immutable:
             if not (repo / filename).exists():
                 errors.append(f"Immutable file missing: {filename}")
+    except Exception:
+        pass
+
+    # 6. Identity core statements intact
+    try:
+        core_statements = baseline.get("identity_core_statements", [])
+        identity_path = repo / "memory" / "identity.md"
+        if identity_path.exists():
+            content = identity_path.read_text(encoding="utf-8", errors="ignore").lower()
+            for statement in core_statements:
+                if statement.lower() not in content:
+                    errors.append(f"Identity core statement missing: \"{statement}\"")
+    except Exception:
+        pass
+
+    # 7. Module growth within threshold
+    try:
+        thresholds = constitution.get("drift_thresholds", {})
+        max_growth_pct = thresholds.get("max_module_growth_pct", 20)
+        baseline_count = baseline.get("module_count", 0)
+        current_count = 0
+        for module_dir in ["ouroboros", "supervisor"]:
+            dir_path = repo / module_dir
+            if dir_path.exists():
+                current_count += len([f for f in dir_path.rglob("*.py") if "__pycache__" not in str(f)])
+        if baseline_count > 0:
+            growth_pct = ((current_count - baseline_count) / baseline_count) * 100
+            if growth_pct > max_growth_pct:
+                errors.append(f"Module count grew {growth_pct:.0f}% ({baseline_count} -> {current_count}, max {max_growth_pct}%)")
     except Exception:
         pass
 

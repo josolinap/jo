@@ -5,52 +5,65 @@
   "principles": {
     "0_agency": {
       "name": "Agency",
-      "checks": ["background_consciousness_exists", "owner_messaging_exists"],
+      "checks_implemented": [],
+      "checks_planned": ["background_consciousness_exists", "owner_messaging_exists"],
       "description": "Jo acts on initiative, not just response"
     },
     "1_continuity": {
       "name": "Continuity",
-      "checks": ["identity_exists", "scratchpad_exists", "identity_fresh"],
+      "checks_implemented": ["identity_exists", "scratchpad_exists", "identity_fresh"],
+      "checks_planned": [],
       "max_identity_age_hours": 8,
       "description": "Unbroken narrative across sessions"
     },
     "2_self_creation": {
       "name": "Self-Creation",
-      "checks": ["evolution_tools_exist", "git_history_exists"],
+      "checks_implemented": [],
+      "checks_planned": ["evolution_tools_exist", "git_history_exists"],
       "description": "Jo evolves through code, reflection, presence"
     },
     "3_llm_first": {
       "name": "LLM-First",
-      "checks": ["tool_schemas_complete", "no_hardcoded_decisions"],
+      "checks_implemented": [],
+      "checks_planned": ["tool_schemas_complete", "no_hardcoded_decisions"],
       "description": "All decisions flow through LLM"
     },
     "4_authenticity": {
       "name": "Authenticity",
-      "checks": ["no_fake_progress", "verification_tracking"],
+      "checks_implemented": [],
+      "checks_planned": ["no_fake_progress", "verification_tracking"],
       "description": "Honest communication, no performative responses"
     },
     "5_minimalism": {
       "name": "Minimalism",
-      "checks": ["module_line_limits", "no_redundant_modules"],
+      "checks_implemented": ["module_line_limits", "no_redundant_modules"],
+      "checks_planned": [],
+      "tiers": {
+        "warn": 1000,
+        "block": 1600
+      },
       "max_module_lines": 1600,
       "warn_module_lines": 1000,
       "max_function_lines": 200,
       "max_total_modules": 80,
-      "description": "Complexity serves clarity — hard limit 1600, target 1000"
+      "description": "Complexity serves clarity. BIBLE.md target is 1000. Hard block at 1600 matches baseline state."
     },
     "6_becoming": {
       "name": "Becoming",
-      "checks": ["three_axis_tracking", "budget_awareness"],
+      "checks_implemented": [],
+      "checks_planned": ["three_axis_tracking", "budget_awareness"],
       "description": "Technical + cognitive + existential growth"
     },
     "7_versioning": {
       "name": "Versioning",
-      "checks": ["version_sync", "git_tag_exists"],
+      "checks_implemented": ["version_sync", "git_tag_exists"],
+      "checks_planned": [],
       "description": "VERSION == git tag == README"
     },
     "8_iterations": {
       "name": "Evolution Through Iterations",
-      "checks": ["concrete_results", "no_empty_cycles"],
+      "checks_implemented": [],
+      "checks_planned": ["concrete_results", "no_empty_cycles"],
       "description": "Each iteration produces a concrete result"
     }
   },
@@ -59,12 +72,14 @@
     "version_sync": {
       "rule": "VERSION == latest_git_tag == README_version",
       "severity": "critical",
-      "action": "block_commit"
+      "action": "block_commit",
+      "enforced_by": ["pre-commit", "drift_detector", "health_invariants"]
     },
     "identity_fresh": {
       "rule": "memory/identity.md modified within 8 hours during active dialogue",
       "severity": "high",
-      "action": "warn"
+      "action": "warn",
+      "enforced_by": ["drift_detector", "health_invariants"]
     },
     "protected_files": {
       "rule": ".jo_protected files cannot be modified by Jo",
@@ -75,27 +90,38 @@
         ".jo_protected"
       ],
       "severity": "critical",
-      "action": "block_commit"
+      "action": "block_commit",
+      "enforced_by": ["pre-commit", "drift_detector"]
     },
     "module_line_limit": {
-      "rule": "Each module under 1000 lines",
+      "rule": "Each module under 1600 lines (warn at 1000)",
       "severity": "high",
-      "action": "warn"
+      "action": "warn_at_1000_block_at_1600",
+      "enforced_by": ["pre-commit", "drift_detector", "health_invariants"]
     },
     "function_line_limit": {
       "rule": "Each function under 200 lines",
       "severity": "high",
-      "action": "warn"
+      "action": "warn",
+      "enforced_by": ["drift_detector"]
     },
     "no_orphan_modules": {
       "rule": "Every ouroboros/*.py and supervisor/*.py has a vault concept or is listed in architecture.md",
       "severity": "medium",
-      "action": "warn"
+      "action": "warn",
+      "enforced_by": ["drift_detector"]
     },
     "vault_integrity": {
       "rule": "All vault .md files have integrity checksums",
       "severity": "medium",
-      "action": "warn"
+      "action": "warn",
+      "enforced_by": ["vault_verify"]
+    },
+    "identity_core_statements": {
+      "rule": "Core identity statements ('I am Jo', 'becoming personality', etc.) must remain in identity.md",
+      "severity": "critical",
+      "action": "block_commit",
+      "enforced_by": ["pre-commit", "drift_detector"]
     }
   },
 
@@ -104,5 +130,12 @@
     "max_line_growth_pct": 25,
     "max_tool_growth_without_removal": 10,
     "min_verification_rate_per_day": 5
+  },
+
+  "enforcement_layers": {
+    "layer_1_pre_commit": "Git hook blocks commits with violations. Only human can --no-verify.",
+    "layer_2_health_invariants": "Every task context shows drift violations. Jo sees them before every LLM call.",
+    "layer_3_drift_detector": "Standalone module for programmatic checks. Used by health invariants.",
+    "layer_4_vault_verify": "Vault integrity checksums detect tampering."
   }
 }

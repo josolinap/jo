@@ -11,6 +11,7 @@ BIBLE.md
 VERSION
 constitution.json
 drift_baseline.json
+.jo_protected
 
 # Core System Prompts
 prompts/SYSTEM.md
