@@ -62,6 +62,15 @@ tags: [architecture, system-design]
 - New: `codebase_impact` (blast radius), `symbol_context` (360-degree view)
 - Confidence scoring on all graph relationships
 
+### Intelligence Layer (from ruvnet ecosystem)
+- [[delta_evaluation]] — Formal quality measurement of evolution cycles
+- [[context_cache]] — Multi-tier caching, reduces repeated scans from 60ms to <1ms
+- [[temporal_tool_learning]] — Track which tool sequences succeed, reinforce patterns
+- [[proof_gate]] — Validate against constitution before writing
+- [[episodic_memory]] — Decision/action/outcome tracking
+- [[mcp_server]] — Expose tools via Model Context Protocol
+- [[tool_router]] — Semantic task classification and tool routing
+
 ## Design Principles
 
 1. **LLM-First**: All decisions flow through LLM; code is transport
