@@ -1,0 +1,247 @@
+"""Semantic Tool Routing — Learn optimal tool selection per task type.
+
+Inspired by RuVector's SONA (Self-Optimizing Neural Architecture):
+- Routes tasks to the best tools based on learned patterns
+- Uses temporal learning data for scoring
+- Integrates with cache-first context for performance
+- Adapts in real-time as tool patterns evolve
+
+Architecture:
+    Task → Classify → Score Tools → Route → Execute
+              ↑            ↑
+         Task Type    Temporal Learning
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+log = logging.getLogger(__name__)
+
+# Task type classification keywords
+_TASK_KEYWORDS = {
+    "code": [
+        "code",
+        "file",
+        "function",
+        "class",
+        "implement",
+        "edit",
+        "fix",
+        "refactor",
+        "module",
+        "import",
+        "error",
+        "bug",
+        "compile",
+        "test",
+        "python",
+        "script",
+        "program",
+        "develop",
+        "patch",
+    ],
+    "research": [
+        "research",
+        "search",
+        "find",
+        "look up",
+        "investigate",
+        "analyze",
+        "compare",
+        "evaluate",
+        "understand",
+        "explain",
+        "study",
+        "explore",
+    ],
+    "vault": [
+        "vault",
+        "note",
+        "concept",
+        "wiki",
+        "knowledge",
+        "document",
+        "journal",
+        "identity",
+        "memory",
+        "learn",
+        "remember",
+    ],
+    "git": [
+        "git",
+        "commit",
+        "push",
+        "pull",
+        "branch",
+        "merge",
+        "diff",
+        "status",
+        "log",
+        "tag",
+        "rebase",
+        "cherry-pick",
+    ],
+    "web": [
+        "web",
+        "url",
+        "fetch",
+        "browse",
+        "scrape",
+        "download",
+        "http",
+        "website",
+        "page",
+        "link",
+        "search web",
+    ],
+    "system": [
+        "health",
+        "status",
+        "system",
+        "config",
+        "setting",
+        "monitor",
+        "performance",
+        "drift",
+        "version",
+        "budget",
+        "cost",
+    ],
+}
+
+
+def classify_task(task_text: str) -> str:
+    """Classify a task into a task type based on keywords."""
+    text_lower = task_text.lower()
+    scores: Dict[str, int] = {}
+
+    for task_type, keywords in _TASK_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in text_lower)
+        if score > 0:
+            scores[task_type] = score
+
+    if not scores:
+        return "general"
+
+    return max(scores, key=scores.get)
+
+
+def get_default_tool_order(task_type: str) -> List[str]:
+    """Get default tool ordering for a task type (before learning kicks in)."""
+    defaults = {
+        "code": [
+            "codebase_impact",
+            "symbol_context",
+            "code_edit",
+            "repo_read",
+            "run_shell",
+            "repo_commit_push",
+        ],
+        "research": [
+            "web_search",
+            "web_fetch",
+            "query_knowledge",
+            "vault_search",
+            "find_connections",
+        ],
+        "vault": [
+            "vault_read",
+            "vault_write",
+            "vault_search",
+            "vault_link",
+            "vault_backlinks",
+            "vault_graph",
+        ],
+        "git": [
+            "git_status",
+            "git_diff",
+            "repo_commit_push",
+            "git_graph",
+            "list_github_issues",
+        ],
+        "web": [
+            "web_search",
+            "web_fetch",
+            "browse_page",
+            "browser_action",
+            "analyze_screenshot",
+        ],
+        "system": [
+            "codebase_health",
+            "drift_detector",
+            "health_alert",
+            "get_evolution_status",
+            "system_map",
+        ],
+        "general": [
+            "repo_read",
+            "query_knowledge",
+            "web_search",
+            "symbol_context",
+            "vault_search",
+        ],
+    }
+    return defaults.get(task_type, defaults["general"])
+
+
+def route_tools(
+    task_text: str,
+    available_tools: List[str],
+    learner: Optional[Any] = None,
+    top_n: int = 5,
+) -> Tuple[str, List[str]]:
+    """Route tools for a task using semantic classification + learned patterns.
+
+    Args:
+        task_text: The task description
+        available_tools: List of available tool names
+        learner: TemporalToolLearner instance (optional)
+        top_n: Number of tools to return
+
+    Returns:
+        Tuple of (task_type, ordered_tool_list)
+    """
+    task_type = classify_task(task_text)
+
+    if learner:
+        try:
+            from ouroboros.temporal_learning import TemporalToolLearner
+
+            if isinstance(learner, TemporalToolLearner):
+                suggested = learner.suggest_tools(task_type, available_tools, top_n=top_n)
+                if suggested and len(suggested) >= 2:
+                    return task_type, suggested
+        except Exception:
+            pass
+
+    # Fallback to default ordering
+    defaults = get_default_tool_order(task_type)
+    ordered = [t for t in defaults if t in available_tools]
+
+    # Fill remaining slots with any available tools not yet included
+    remaining = [t for t in available_tools if t not in ordered]
+    ordered.extend(remaining)
+
+    return task_type, ordered[:top_n]
+
+
+def get_routing_report(task_text: str, available_tools: List[str]) -> str:
+    """Get human-readable routing report for a task."""
+    task_type = classify_task(task_text)
+    defaults = get_default_tool_order(task_type)
+
+    lines = [
+        f"## Tool Routing: {task_type}",
+        "",
+        f"**Task:** {task_text[:100]}",
+        f"**Classified as:** {task_type}",
+        f"**Default tool order:**",
+    ]
+    for i, tool in enumerate(defaults[:8], 1):
+        available = "✅" if tool in available_tools else "❌"
+        lines.append(f"  {i}. {available} {tool}")
+
+    return "\n".join(lines)
