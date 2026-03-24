@@ -234,13 +234,13 @@ jobs:
           fi
           echo "=== End cache debug ==="
           
-          # Initialize vault structure in local cache
-          mkdir -p /home/runner/.jo_data/vault/{concepts,projects,tools,journal}
-          mkdir -p /home/runner/.jo_data/vault/.vault
+          # Initialize runtime directories in ~/.jo_data/ (cache/runtime only)
+          mkdir -p /home/runner/.jo_data/{cache,tmp,locks,task_results,index,archive}
+          echo "Runtime directories ready (cache, tmp, locks, task_results, index, archive)"
           
-          # Ensure vault/ exists in repo workspace (for git persistence)
+          # Ensure vault/ exists in repo workspace (git-tracked, NOT in ~/.jo_data/)
           mkdir -p ${{ github.workspace }}/vault/{concepts,projects,tools,journal}
-          echo "Vault structure ready"
+          echo "Vault structure ready (in repo, git-tracked)"
 
       # -----------------------------------------------------------------------
       # 5.2 Auto-register owner on startup
