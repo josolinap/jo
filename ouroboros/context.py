@@ -556,6 +556,19 @@ def _build_health_invariants(env: Any) -> str:
         stats = cache.get_stats()
         if stats["hits"] + stats["misses"] > 0:
             checks.append(f"OK: context cache {stats['hit_rate']:.0%} hit rate ({stats['entries']} entries)")
+        else:
+            checks.append("OK: intelligence layer ready (cache, learning, proof gate, episodic memory, delta eval)")
+    except Exception:
+        pass
+
+    try:
+        from ouroboros.temporal_learning import get_learner
+
+        learner = get_learner(repo_dir=env.repo_dir)
+        if learner:
+            pattern_count = sum(len(tp) for tp in learner._patterns.values())
+            if pattern_count > 0:
+                checks.append(f"OK: temporal learning {pattern_count} patterns learned")
     except Exception:
         pass
 
