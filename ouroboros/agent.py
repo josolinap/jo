@@ -494,6 +494,21 @@ class OuroborosAgent:
                 pipeline.run_diagnose(pipeline_ctx)
                 pipeline.run_plan(pipeline_ctx)
 
+            # --- Semantic tool routing (from RuVector SONA) ---
+            try:
+                from ouroboros.tool_router import classify_task
+                from ouroboros.temporal_learning import get_learner
+
+                routed_task_type = classify_task(task_text)
+                learner = get_learner(repo_dir=self.env.repo_dir)
+                if learner:
+                    available = [s["function"]["name"] for s in self.tools.schemas()]
+                    suggested = learner.suggest_tools(routed_task_type, available, top_n=5)
+                    if suggested:
+                        log.info("[Router] Task type: %s, suggested tools: %s", routed_task_type, suggested[:3])
+            except Exception:
+                pass
+
             # --- LLM loop (delegated to loop.py) ---
             usage: Dict[str, Any] = {}
             llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
@@ -566,6 +581,67 @@ class OuroborosAgent:
             # Auto-update scratchpad for evolution/review tasks
             if task.get("type") in ("evolution", "review"):
                 self._auto_update_scratchpad_after_task(task, text, llm_trace)
+
+            # Record episodic memory and temporal learning outcome
+            try:
+                from ouroboros.episodic_memory import get_episodic_memory
+                from ouroboros.temporal_learning import get_learner
+
+                success = "error" not in text.lower()[:100] and "warning" not in text.lower()[:50]
+                tools_used = []
+                for tc in llm_trace.get("tool_calls", []):
+                    if isinstance(tc, dict):
+                        name = tc.get("name", tc.get("function", {}).get("name", ""))
+                        if name:
+                            tools_used.append(name)
+
+                # Episodic memory
+                em = get_episodic_memory(repo_dir=self.env.repo_dir)
+                em.record(
+                    decision=task_text[:200],
+                    action=f"Used {len(tools_used)} tools in {len(llm_trace.get('assistant_notes', []))} rounds",
+                    outcome=text[:200],
+                    context=task_type_str or "general",
+                    success=success,
+                    tools_used=tools_used,
+                )
+
+                # Temporal learning outcome
+                learner = get_learner(repo_dir=self.env.repo_dir)
+                if learner:
+                    learner.record_sequence_outcome(
+                        success=success,
+                        task_type=task_type_str or "general",
+                        round_count=len(llm_trace.get("assistant_notes", [])),
+                    )
+            except Exception:
+                pass
+
+            # Delta evaluation for evolution tasks
+            if task.get("type") in ("evolution", "review"):
+                try:
+                    from ouroboros.delta_eval import DeltaEvaluator
+
+                    evaluator = DeltaEvaluator(
+                        history_path=self.env.drive_path("delta_history.json") if self.env.drive_root else None
+                    )
+                    from ouroboros.eval import evaluate_task as _eval_task
+
+                    eval_report = _eval_task(task_text, text, changed_files, self.env.repo_dir)
+                    quality = 0.9 if eval_report is None else 0.7
+                    result = evaluator.evaluate_change(
+                        lines_added=sum(1 for f in changed_files if True),
+                        lines_removed=0,
+                        tests_passing=1 if "passed" in text.lower() else 0,
+                        tests_failing=1 if "failed" in text.lower() or "error" in text.lower() else 0,
+                        tools_added=0,
+                        tools_removed=0,
+                        context=task_text[:100],
+                    )
+                    if not result.is_improvement:
+                        log.info("[Delta] Evolution quality: %.4f (not improving)", result.total_delta)
+                except Exception:
+                    pass
 
             return list(self._pending_events)
 

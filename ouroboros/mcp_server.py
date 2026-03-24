@@ -177,3 +177,12 @@ class MCPServer:
             desc = tool["description"][:80] if tool["description"] else "No description"
             lines.append(f"- **{name}**: {desc}")
         return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    import os
+
+    repo_dir = Path(os.environ.get("REPO_DIR", "."))
+    logging.basicConfig(level=logging.INFO)
+    server = MCPServer(repo_dir=repo_dir)
+    server.run_stdio()

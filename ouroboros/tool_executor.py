@@ -86,6 +86,29 @@ def _execute_single_tool(
 
     args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
 
+    # Proof gate: check for violations before file writes
+    if fn_name in ("repo_write_commit", "repo_commit_push", "code_edit", "vault_write", "vault_create"):
+        try:
+            from ouroboros.proof_gate import get_gate
+
+            files_to_write = []
+            if isinstance(args, dict):
+                for key in ("file_path", "path", "files"):
+                    val = args.get(key, "")
+                    if isinstance(val, str) and val:
+                        files_to_write.append(val)
+                    elif isinstance(val, list):
+                        files_to_write.extend(val)
+
+            if files_to_write:
+                gate = get_gate(repo_dir=Path(os.environ.get("REPO_DIR", ".")))
+                if gate:
+                    report = gate.validate_and_report(files_to_write)
+                    if "FAILED" in report:
+                        log.warning("[ProofGate] %s blocked: %s", fn_name, report[:200])
+        except Exception:
+            pass
+
     tool_ok = True
     error_msg = None
     try:

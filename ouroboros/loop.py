@@ -880,6 +880,20 @@ Version: {skill.version}
                 traceability,
             )
 
+            # Record tool calls for temporal learning
+            try:
+                from ouroboros.temporal_learning import get_learner
+
+                learner = get_learner(repo_dir=drive_root) if drive_root else None
+                if learner:
+                    for tc in tool_calls:
+                        fn = tc.get("function", {})
+                        name = fn.get("name", "")
+                        if name:
+                            learner.record_tool_call(name)
+            except Exception:
+                pass
+
             # Track files changed during this round (from tool calls)
             files_changed_this_round = []
             for tc in tool_calls:

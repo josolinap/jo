@@ -158,6 +158,15 @@ def _build_vault_context(env: Any, task_text: str) -> str:
         if not vault_dir.exists():
             return ""
 
+        # Check cache first (from FACT-inspired caching)
+        from ouroboros.context_cache import get_cache
+
+        cache = get_cache(repo_dir=env.repo_dir)
+        cache_key = f"vault_ctx:{hash(task_text)}"
+        hit, cached = cache.get(cache_key)
+        if hit:
+            return cached or ""
+
         # Extract key terms from task (words > 3 chars, lowercase)
         # Split on '.' to handle "agent.py", "identity.md" etc.
         terms = []
@@ -203,13 +212,16 @@ def _build_vault_context(env: Any, task_text: str) -> str:
                 matches.append((score, str(rel).replace("\\", "/"), preview))
 
         if not matches:
+            cache.set(cache_key, "", ttl=cache.TTL_DYNAMIC)
             return ""
 
         matches.sort(reverse=True, key=lambda x: x[0])
         parts = ["## Relevant Vault Notes\n"]
         for score, path, preview in matches[:3]:
             parts.append(f"- **{path}**: {preview}")
-        return "\n".join(parts)
+        result = "\n".join(parts)
+        cache.set(cache_key, result, ttl=cache.TTL_DYNAMIC)
+        return result
     except Exception:
         return ""
 
