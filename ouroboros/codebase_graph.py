@@ -53,6 +53,7 @@ class CodebaseGraph:
     edges: List[GraphEdge] = field(default_factory=list)
     scanned_at: str = ""
     repo_dir: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def add_node(self, node: GraphNode) -> None:
         """Add a node to the graph."""
@@ -1012,3 +1013,343 @@ def generate_insights(graph: CodebaseGraph) -> str:
     )
 
     return "\n".join(lines)
+
+
+# ============================================================================
+# ONTOLOGY STRUCTURING - Inspired by TrustGraph's precision retrieval
+# ============================================================================
+
+
+@dataclass
+class OntologyDefinition:
+    """Defines what a task type requires and produces."""
+
+    task_type: str  # "debug", "review", "evolve", "refactor", "test"
+    requires: List[str]  # What's needed: ["error_message", "file_context"]
+    produces: List[str]  # What's output: ["fix", "test", "verification"]
+    typical_tools: List[str]  # Tools typically used: ["repo_read", "run_tests"]
+    relationships: List[str]  # Relationship types used: ["imports", "calls"]
+    description: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "task_type": self.task_type,
+            "requires": self.requires,
+            "produces": self.produces,
+            "typical_tools": self.typical_tools,
+            "relationships": self.relationships,
+            "description": self.description,
+        }
+
+
+# Task ontology definitions for precision task understanding
+TASK_ONTOLOGY: Dict[str, OntologyDefinition] = {
+    "debug": OntologyDefinition(
+        task_type="debug",
+        requires=["error_message", "file_context", "stack_trace"],
+        produces=["fix", "test", "verification"],
+        typical_tools=["repo_read", "run_shell", "run_tests"],
+        relationships=["calls", "imports", "contains"],
+        description="Find and fix bugs in code",
+    ),
+    "review": OntologyDefinition(
+        task_type="review",
+        requires=["code", "requirements", "context"],
+        produces=["feedback", "suggestions", "improvements"],
+        typical_tools=["repo_read", "grep", "git_diff"],
+        relationships=["imports", "calls", "inherits", "contains"],
+        description="Review code for quality and correctness",
+    ),
+    "evolve": OntologyDefinition(
+        task_type="evolve",
+        requires=["goal", "current_state", "verification_criteria"],
+        produces=["changes", "tests", "verification"],
+        typical_tools=["repo_read", "code_edit", "run_tests"],
+        relationships=["imports", "calls", "contains"],
+        description="Evolve codebase toward a goal",
+    ),
+    "refactor": OntologyDefinition(
+        task_type="refactor",
+        requires=["target_code", "refactoring_goal"],
+        produces=["refactored_code", "tests", "verification"],
+        typical_tools=["repo_read", "code_edit_lines", "run_tests"],
+        relationships=["imports", "calls", "contains", "inherits"],
+        description="Improve code structure without changing behavior",
+    ),
+    "test": OntologyDefinition(
+        task_type="test",
+        requires=["target_code", "test_requirements"],
+        produces=["test_code", "test_results", "coverage"],
+        typical_tools=["repo_read", "code_edit", "run_tests"],
+        relationships=["imports", "calls", "contains"],
+        description="Create or improve tests",
+    ),
+    "implement": OntologyDefinition(
+        task_type="implement",
+        requires=["specification", "existing_code", "constraints"],
+        produces=["new_code", "tests", "documentation"],
+        typical_tools=["repo_read", "code_edit", "run_tests"],
+        relationships=["imports", "calls", "contains"],
+        description="Implement new features",
+    ),
+    "analyze": OntologyDefinition(
+        task_type="analyze",
+        requires=["target_code", "analysis_goal"],
+        produces=["analysis_report", "insights", "recommendations"],
+        typical_tools=["repo_read", "grep", "extraction"],
+        relationships=["imports", "calls", "inherits", "contains"],
+        description="Analyze code structure and behavior",
+    ),
+}
+
+
+@dataclass
+class RelationshipStrength:
+    """Tracks the strength and usefulness of a relationship."""
+
+    source: str
+    target: str
+    relation: str
+    strength: float = 1.0  # 0.0-1.0
+    usage_count: int = 0  # How often this relationship was useful
+    last_used: str = ""  # When it was last used
+    context: str = ""  # What task context it was useful in
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source": self.source,
+            "target": self.target,
+            "relation": self.relation,
+            "strength": self.strength,
+            "usage_count": self.usage_count,
+            "last_used": self.last_used,
+            "context": self.context,
+        }
+
+
+class OntologyTracker:
+    """Tracks relationship strength and usefulness over time.
+
+    Inspired by TrustGraph's approach to precision retrieval:
+    - Tracks which relationships are most useful
+    - Strengthens useful relationships
+    - Weakens unused relationships
+    - Provides insights for task routing
+    """
+
+    def __init__(self, storage_path: Optional[Path] = None):
+        self._storage_path = storage_path or Path(os.environ.get("REPO_DIR", ".")) / "ontology_tracker.json"
+        self._relationships: Dict[str, RelationshipStrength] = {}
+        self._load()
+
+    def _load(self) -> None:
+        """Load relationship tracking data."""
+        if self._storage_path.exists():
+            try:
+                data = json.loads(self._storage_path.read_text(encoding="utf-8"))
+                for key, val in data.items():
+                    self._relationships[key] = RelationshipStrength(
+                        source=val.get("source", ""),
+                        target=val.get("target", ""),
+                        relation=val.get("relation", ""),
+                        strength=val.get("strength", 1.0),
+                        usage_count=val.get("usage_count", 0),
+                        last_used=val.get("last_used", ""),
+                        context=val.get("context", ""),
+                    )
+            except Exception as e:
+                log.warning(f"Failed to load ontology tracker: {e}")
+
+    def _save(self) -> None:
+        """Save relationship tracking data."""
+        try:
+            self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+            data = {k: v.to_dict() for k, v in self._relationships.items()}
+            self._storage_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            log.warning(f"Failed to save ontology tracker: {e}")
+
+    def _make_key(self, source: str, target: str, relation: str) -> str:
+        """Create a unique key for a relationship."""
+        return f"{source}|{target}|{relation}"
+
+    def record_usage(
+        self,
+        source: str,
+        target: str,
+        relation: str,
+        context: str,
+        was_useful: bool = True,
+    ) -> None:
+        """Record that a relationship was used in a task context."""
+        key = self._make_key(source, target, relation)
+        now = datetime.now().isoformat()
+
+        if key not in self._relationships:
+            self._relationships[key] = RelationshipStrength(
+                source=source,
+                target=target,
+                relation=relation,
+                strength=1.0,
+            )
+
+        rel = self._relationships[key]
+        rel.usage_count += 1
+        rel.last_used = now
+        rel.context = context
+
+        # Adjust strength based on usefulness
+        if was_useful:
+            rel.strength = min(1.0, rel.strength + 0.1)
+        else:
+            rel.strength = max(0.1, rel.strength - 0.1)
+
+        self._save()
+
+    def get_strength(self, source: str, target: str, relation: str) -> float:
+        """Get the strength of a relationship."""
+        key = self._make_key(source, target, relation)
+        rel = self._relationships.get(key)
+        return rel.strength if rel else 1.0
+
+    def get_useful_relationships(
+        self,
+        task_type: Optional[str] = None,
+        min_strength: float = 0.5,
+        limit: int = 10,
+    ) -> List[RelationshipStrength]:
+        """Get most useful relationships, optionally filtered by task type."""
+        relationships = list(self._relationships.values())
+
+        # Filter by strength
+        relationships = [r for r in relationships if r.strength >= min_strength]
+
+        # Filter by task context if provided
+        if task_type:
+            relationships = [r for r in relationships if task_type.lower() in r.context.lower()]
+
+        # Sort by strength and usage count
+        relationships.sort(key=lambda r: (r.strength, r.usage_count), reverse=True)
+
+        return relationships[:limit]
+
+    def get_insights(self) -> Dict[str, Any]:
+        """Get insights about relationship usage patterns."""
+        if not self._relationships:
+            return {"total_relationships": 0, "insights": []}
+
+        total = len(self._relationships)
+        avg_strength = sum(r.strength for r in self._relationships.values()) / total
+        most_used = max(self._relationships.values(), key=lambda r: r.usage_count)
+        strongest = max(self._relationships.values(), key=lambda r: r.strength)
+
+        # Group by relation type
+        by_relation: Dict[str, int] = {}
+        for rel in self._relationships.values():
+            by_relation[rel.relation] = by_relation.get(rel.relation, 0) + 1
+
+        return {
+            "total_relationships": total,
+            "average_strength": round(avg_strength, 2),
+            "most_used": {
+                "source": most_used.source,
+                "target": most_used.target,
+                "relation": most_used.relation,
+                "usage_count": most_used.usage_count,
+            },
+            "strongest": {
+                "source": strongest.source,
+                "target": strongest.target,
+                "relation": strongest.relation,
+                "strength": strongest.strength,
+            },
+            "by_relation_type": by_relation,
+        }
+
+
+def classify_task_ontology(task: str) -> Optional[OntologyDefinition]:
+    """Classify a task into an ontology type based on keywords.
+
+    Returns the matching ontology definition or None.
+    """
+    task_lower = task.lower()
+
+    # Score each ontology type
+    scores: Dict[str, int] = {}
+    for task_type, ontology in TASK_ONTOLOGY.items():
+        score = 0
+        # Check task type name
+        if task_type in task_lower:
+            score += 10
+        # Check description keywords
+        for word in ontology.description.lower().split():
+            if word in task_lower:
+                score += 2
+        # Check requires keywords
+        for req in ontology.requires:
+            if req.replace("_", " ") in task_lower:
+                score += 1
+        scores[task_type] = score
+
+    # Return highest scoring ontology
+    if scores:
+        best_type = max(scores.items(), key=lambda x: x[1])
+        if best_type[1] > 0:
+            return TASK_ONTOLOGY.get(best_type[0])
+
+    return None
+
+
+def get_ontology_for_task(task: str) -> Dict[str, Any]:
+    """Get ontology information for a task.
+
+    Returns task requirements, expected outputs, and relevant relationships.
+    """
+    ontology = classify_task_ontology(task)
+
+    if ontology:
+        return {
+            "task_type": ontology.task_type,
+            "requires": ontology.requires,
+            "produces": ontology.produces,
+            "typical_tools": ontology.typical_tools,
+            "relationships": ontology.relationships,
+            "description": ontology.description,
+        }
+
+    # Default ontology for unknown tasks
+    return {
+        "task_type": "general",
+        "requires": ["context", "goal"],
+        "produces": ["result", "verification"],
+        "typical_tools": ["repo_read", "code_edit", "run_tests"],
+        "relationships": ["imports", "calls", "contains"],
+        "description": "General-purpose task",
+    }
+
+
+def enhance_graph_with_ontology(
+    graph: CodebaseGraph,
+    task: str,
+    tracker: Optional[OntologyTracker] = None,
+) -> CodebaseGraph:
+    """Enhance a codebase graph with ontology information.
+
+    Adds task context and relationship strength to graph.
+    """
+    ontology = get_ontology_for_task(task)
+
+    # Add ontology metadata to graph
+    graph.metadata = {
+        "task_type": ontology["task_type"],
+        "requires": ontology["requires"],
+        "produces": ontology["produces"],
+        "typical_tools": ontology["typical_tools"],
+    }
+
+    # If tracker provided, add relationship strengths
+    if tracker:
+        for edge in graph.edges:
+            edge.metadata["strength"] = tracker.get_strength(edge.source, edge.target, edge.relation)
+
+    return graph
