@@ -444,6 +444,13 @@ class BackgroundConsciousness:
             "vault_backlinks",
             "vault_outlinks",
             "vault_graph",
+            # Intelligence tools (codebase analysis)
+            "codebase_analyze",
+            "codebase_impact",
+            "extract_from_code",
+            "extract_from_text",
+            "blind_validate",
+            "get_task_ontology",
             # Read-only tools for awareness
             "web_search",
             "repo_read",
@@ -460,6 +467,9 @@ class BackgroundConsciousness:
             "code_quality",
             # Shell for running self_check.py
             "run_shell",
+            # Code editing for autonomous improvements
+            "code_edit",
+            "code_edit_lines",
             # Autonomy tools (neural map, evolution, learning)
             "neural_map",
             "learn_from_result",
