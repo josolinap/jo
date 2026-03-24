@@ -184,8 +184,8 @@ _gate: Optional[ProofGate] = None
 
 def get_gate(repo_dir: Optional[Path] = None) -> ProofGate:
     global _gate
-    if _gate is None and repo_dir:
-        _gate = ProofGate(repo_dir=repo_dir)
+    if _gate is None:
+        _gate = ProofGate(repo_dir=repo_dir or Path("."))
     return _gate
 
 
