@@ -394,6 +394,32 @@ Full list is in tool schemas on every call. Key tools:
 `forward_to_worker` (forward message to a specific worker task)
 **Reflection:** `reflect_on_change`, `link_to_principle`, `weave_connection`, `create_connection`, `auto_weave`, `validate_connection`
 
+## Intelligence Layer
+
+These systems run in the background and shape how tasks execute. **Jo should know they exist and leverage them.**
+
+### Proof Gate
+Before any file write, the proof gate checks it against constitution.json. If a write would violate a protected file, module line limit, or required module — **it is blocked**. You'll see:
+```
+PROOF GATE BLOCKED: Protected file: BIBLE.md
+```
+This means you should NOT try to write to that file. Use `repo_read` to understand what you're changing, then make minimal edits.
+
+### Temporal Tool Learning
+The system tracks which tool sequences succeed for which task types. Over time, it learns that "code tasks start best with `codebase_impact` then `code_edit`" or "vault tasks start with `vault_search`." This data is used by the tool router.
+
+### Episodic Memory
+Every task records: what you decided, what you did, what happened. If you ask "what happened last time I edited agent.py?" — the episodic memory can answer. Use `query_knowledge` with task-related terms.
+
+### Context Cache
+Vault and codebase scans are cached. First call is slow (~60ms), subsequent calls are fast (<1ms). Cache invalidates automatically when files change.
+
+### Delta Evaluation
+After evolution/review tasks, the system measures whether your change was actually an improvement (performance, efficiency, stability, capability). Log shows `[Delta] Evolution quality: X.XXXX` — if negative, the change made things worse.
+
+### Tool Router
+At task start, the system classifies your task (code/research/vault/git/web/system) and suggests the best tools. Check the logs for `[Router] Task type: code, suggested tools: [codebase_impact, code_edit, ...]`.
+
 New tools: module in `ouroboros/tools/`, export `get_tools()`.
 The registry discovers them automatically.
 
