@@ -17,6 +17,49 @@ from ouroboros.utils import utc_now_iso, run_cmd, append_jsonl, truncate_for_log
 log = logging.getLogger(__name__)
 
 
+def _check_shell_for_protected_files(cmd: List[str]) -> str:
+    """Check if a shell command might modify protected files.
+
+    Returns warning message if protected files detected, empty string otherwise.
+    Does NOT block execution - only logs warning.
+    """
+    if not cmd:
+        return ""
+
+    # Read .jo_protected file
+    protected_list = []
+    try:
+        protected_path = pathlib.Path(".jo_protected")
+        if protected_path.exists():
+            protected_list = [
+                p.strip().lower()
+                for p in protected_path.read_text(encoding="utf-8").splitlines()
+                if p.strip() and not p.startswith("#")
+            ]
+    except Exception:
+        pass
+
+    if not protected_list:
+        return ""
+
+    # Check each token in command for protected file references
+    protected_files = []
+    for token in cmd:
+        token_lower = str(token).lower().replace("\\", "/").strip("./")
+        for protected in protected_list:
+            protected_normalized = protected.replace("\\", "/").strip("./")
+            if token_lower == protected_normalized or token_lower.endswith("/" + protected_normalized):
+                protected_files.append(str(token))
+
+    if protected_files:
+        files_str = ", ".join(protected_files[:3])
+        if len(protected_files) > 3:
+            files_str += f" (+{len(protected_files) - 3} more)"
+        return f"⚠️ WARNING: run_shell may modify protected file(s): {files_str}. Proceed with caution."
+
+    return ""
+
+
 def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
     # Recover from LLM sending cmd as JSON string instead of list
     if isinstance(cmd, str):
@@ -64,6 +107,12 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
     if not isinstance(cmd, list):
         return "⚠️ SHELL_ARG_ERROR: cmd must be a list of strings."
     cmd = [str(x) for x in cmd]
+
+    # Check for protected file modifications (warning only, not blocking)
+    prot_warning = _check_shell_for_protected_files(cmd)
+    if prot_warning:
+        log.warning(prot_warning)
+        ctx.emit_progress_fn(prot_warning)
 
     work_dir = ctx.repo_dir
     if cwd and cwd.strip() not in ("", ".", "./"):
