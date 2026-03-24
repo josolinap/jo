@@ -73,6 +73,98 @@ Git + Filesystem (state persistence)
 
 ---
 
+## Model-Independent Design
+
+Jo is designed to be **good regardless of which model** it uses.
+
+### The Core Principle
+
+```
+Bad design:  Jo's quality depends on the LLM
+Good design: Jo's tools make it good regardless of LLM
+```
+
+### How Tools Make Jo Model-Independent
+
+| Tool | What It Does | Why It's Model-Independent |
+|------|--------------|---------------------------|
+| `codebase_analyze` | Understands code structure | LLM gets structured data, not raw text |
+| `extract_from_code` | Extracts functions/classes | AST parsing, not LLM guessing |
+| `blind_validate` | Validates without bias | Checks are deterministic, not opinionated |
+| `get_task_ontology` | Classifies tasks | Keyword-based, not LLM-based |
+| `vault_search` | Finds relevant knowledge | Search, not hallucination |
+| `codebase_impact` | Shows dependencies | Graph traversal, not LLM reasoning |
+| `skill_learning` | Tracks what works | Data-driven, not model-dependent |
+
+### Intelligence Tools (JSON Output)
+
+All intelligence tools return structured JSON for Jo to parse:
+
+```python
+# Codebase analysis
+codebase_analyze(max_files=30)
+→ {"nodes": 585, "edges": 4233, "files": 30, "classes": 50, "functions": 352}
+
+# Task classification
+get_task_ontology(task="Fix bug")
+→ {"task_type": "debug", "requires": ["error_message", "file_context"], ...}
+
+# Quality validation
+blind_validate(task="Fix", result="Fixed", code="...")
+→ {"passed": true, "score": 1.0, "findings": [], "checked_items": [...]}
+
+# Impact analysis
+codebase_impact(node_id="file:loop.py")
+→ Directly affected, indirectly affected, risk_level
+
+# Information extraction
+extract_from_code(file_path="loop.py")
+→ {"extractions": [...], "total": 27, "file": "loop.py"}
+```
+
+### What This Means
+
+**With a weak model (GPT-3.5, Llama 7B):**
+- `codebase_analyze` → Still gives accurate 585 nodes, 4233 edges
+- `extract_from_code` → Still extracts functions with correct line numbers
+- `blind_validate` → Still catches bare except:pass
+- `get_task_ontology` → Still classifies debug vs review vs evolve
+- `vault_search` → Still finds relevant notes
+
+**Jo's quality comes from TOOLS, not from the LLM.**
+
+### The Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     JO (Model-Agnostic)                 │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Tools (Deterministic)     │  LLM (Variable)            │
+│  ─────────────────────     │  ──────────────            │
+│  • codebase_analyze        │  • Any model works         │
+│  • extract_from_code       │  • Tools provide facts     │
+│  • blind_validate          │  • Not dependent on LLM    │
+│  • vault_search            │  • Quality is guaranteed   │
+│  • get_task_ontology       │                             │
+│  • codebase_impact         │                             │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Inspiration Sources
+
+Jo's tools are inspired by:
+- **TrustGraph**: Ontology structuring for precision retrieval
+- **LangExtract**: Information extraction with source grounding
+- **Zeroshot**: Blind validation to prevent confirmation bias
+- **pi-mono**: Differential context to reduce token usage
+- **724-Office**: Runtime tool creation
+- **VikaasLoop**: Skill learning and outcome tracking
+- **Understand-Anything**: Knowledge graph approach
+
+---
+
 ## How Jo Works
 
 ### Decision Flow
@@ -136,10 +228,11 @@ Jo's memory is **narrative, not database**:
 
 **Version:** 6.4.0  
 **Git branch:** dev  
-**Last commit:** 659ad63f8bfce3a8a4ebd350354b5c617d4c9af8  
+**Last commit:** 78ccf4f  
 **Budget:** $50.00 (unspent)  
-**Tools:** 138 available (101 core + 37 extras)  
-**Vault:** 183 notes initialized  
+**Tools:** 143 available  
+**Vault:** 193 notes initialized  
+**Ontology:** 7 task types (debug, review, evolve, refactor, test, implement, analyze)  
 **Background consciousness:** active  
 **Evolution mode:** disabled (available on request)
 
