@@ -102,8 +102,8 @@ class CostTracker:
         self.record(
             model=model,
             provider=provider,
-            input_tokens=int(usage.get("tokens_used", {}).get("prompt_tokens", 0)),
-            output_tokens=int(usage.get("tokens_used", {}).get("completion_tokens", 0)),
+            input_tokens=int(usage.get("prompt_tokens", usage.get("tokens_used", {}).get("prompt_tokens", 0))),
+            output_tokens=int(usage.get("completion_tokens", usage.get("tokens_used", {}).get("completion_tokens", 0))),
             cost_usd=float(usage.get("cost", 0)),
             task_id=task_id,
             task_type=task_type,

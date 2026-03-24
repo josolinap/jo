@@ -35,19 +35,19 @@ AGENT_ROLES = {
     },
     "architect": {
         "description": "System design, technical decisions, trade-offs",
-        "tools": ["repo_read", "repo_list", "grep", "glob_files"],
+        "tools": ["repo_read", "repo_list", "grep_content", "glob_files"],
     },
     "coder": {
         "description": "Write and modify code, implement features",
-        "tools": ["repo_write_commit", "repo_commit_push", "repo_read", "shell_run"],
+        "tools": ["repo_write_commit", "repo_commit_push", "repo_read", "run_shell"],
     },
     "researcher": {
         "description": "Investigate, gather information, analyze patterns",
-        "tools": ["repo_read", "glob_files", "grep", "web_search", "codesearch", "chat_history"],
+        "tools": ["repo_read", "glob_files", "grep_content", "web_search", "codesearch", "chat_history"],
     },
     "tester": {
         "description": "Write tests, verify implementations, QA",
-        "tools": ["repo_read", "shell_run", "glob_files"],
+        "tools": ["repo_read", "run_shell", "glob_files"],
     },
     "reviewer": {
         "description": "Code review, security, best practices",
@@ -55,7 +55,7 @@ AGENT_ROLES = {
     },
     "executor": {
         "description": "Run commands, deployments, operations",
-        "tools": ["shell_run", "repo_read"],
+        "tools": ["run_shell", "repo_read"],
     },
 }
 

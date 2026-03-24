@@ -53,7 +53,17 @@ def atomic_write_text(path: pathlib.Path, content: str) -> None:
         os.fsync(fd)
     finally:
         os.close(fd)
-    os.replace(str(tmp), str(path))
+
+    # Retry os.replace for Windows where target may be open
+    for attempt in range(3):
+        try:
+            os.replace(str(tmp), str(path))
+            return
+        except PermissionError:
+            if attempt < 2:
+                time.sleep(0.1 * (attempt + 1))
+            else:
+                raise
 
 
 def json_load_file(path: pathlib.Path) -> Optional[Dict[str, Any]]:

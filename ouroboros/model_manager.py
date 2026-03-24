@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class ModelHealth:
     """Health status for a single model."""
+
     model_id: str
     status: str  # "healthy", "rate_limited", "error", "exhausted"
     last_check: float
@@ -33,6 +34,7 @@ class ModelHealth:
 @dataclass
 class ModelDiscovery:
     """Results from model discovery."""
+
     models: List[Dict[str, any]]
     providers: List[str]
     last_update: float
@@ -54,12 +56,16 @@ class ModelManager:
         """Load model configuration from environment."""
         return {
             "primary": os.environ.get("OUROBOROS_MODEL", "openrouter/free"),
-            "fallbacks": os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST", "").split(",") if os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST") else [],
-            "preferred_free": os.environ.get("PREFERRED_FREE_MODELS", "").split(",") if os.environ.get("PREFERRED_FREE_MODELS") else [],
+            "fallbacks": os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST", "").split(",")
+            if os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST")
+            else [],
+            "preferred_free": os.environ.get("PREFERRED_FREE_MODELS", "").split(",")
+            if os.environ.get("PREFERRED_FREE_MODELS")
+            else [],
             "max_fallbacks": int(os.environ.get("MAX_MODEL_FALLBACKS", "5")),
         }
 
-    def get_best_available_model(self, task_type: str = "general") -> str:
+    def get_best_available_model(self, task_type: str = "general", _retry_count: int = 0) -> str:
         """Select the best available model based on health and task requirements."""
         candidates = self._build_candidate_list(task_type)
 
@@ -73,12 +79,12 @@ class ModelManager:
                 # rate_limited might still work with lower rate limit
                 return model_id
 
-        # No healthy models found — try to discover new ones
-        log.warning("No healthy models in current pool, attempting discovery")
-        new_models = self.discover_models()
-        if new_models:
-            # Retry with newly discovered models
-            return self.get_best_available_model(task_type)
+        # No healthy models found — try to discover new ones (max 1 retry)
+        if _retry_count < 1:
+            log.warning("No healthy models in current pool, attempting discovery")
+            new_models = self.discover_models()
+            if new_models:
+                return self.get_best_available_model(task_type, _retry_count=_retry_count + 1)
 
         # As last resort, try local model if available
         local_model = os.environ.get("OUROBOROS_MODEL", "")
@@ -181,19 +187,18 @@ class ModelManager:
                 completion_price = float(pricing.get("completion", 0)) * 1_000_000
 
                 if prompt_price < 0.01 and completion_price < 0.01:
-                    model['_effective_price'] = (prompt_price, completion_price)
+                    model["_effective_price"] = (prompt_price, completion_price)
                     free_models.append(model)
 
             # Sort by some heuristic (context length, capabilities)
-            free_models.sort(key=lambda m: (
-                m.get("context_length", 0),
-                -float(m.get("pricing", {}).get("prompt", 0))
-            ), reverse=True)
+            free_models.sort(
+                key=lambda m: (m.get("context_length", 0), -float(m.get("pricing", {}).get("prompt", 0))), reverse=True
+            )
 
             self.discovery = ModelDiscovery(
                 models=free_models,
                 providers=list(set(m.get("provider", "unknown") for m in free_models)),
-                last_update=time.time()
+                last_update=time.time(),
             )
 
             log.info(f"Discovered {len(free_models)} free/low-cost models")
@@ -233,7 +238,7 @@ class ModelManager:
             fallbacks.append(local_model)
 
         log.info(f"Generated fallback chain for {failed_model}: {fallbacks[:5]}")
-        return fallbacks[:self.config["max_fallbacks"]]
+        return fallbacks[: self.config["max_fallbacks"]]
 
     def should_retry_model(self, model_id: str) -> bool:
         """Decide if we should retry a model that recently failed."""
@@ -277,6 +282,6 @@ class ModelManager:
                     "last_error": m.last_error,
                 }
                 for m in sorted(self.health.values(), key=lambda x: x.consecutive_failures, reverse=True)[:10]
-            ]
+            ],
         }
         return report

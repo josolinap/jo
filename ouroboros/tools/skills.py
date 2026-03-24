@@ -476,7 +476,7 @@ Ask yourself:
 
 Don't take requests literally. Challenge assumptions. Think bigger.
 This is Brian Chesky mode - product taste, user empathy, long time horizon.""",
-        enabled_tools=["repo_read", "grep", "glob_files", "chat_history", "web_search", "codesearch"],
+        enabled_tools=["repo_read", "grep_content", "glob_files", "chat_history", "web_search", "codesearch"],
         pre_task_prompt="Before analyzing: Read the codebase to understand the current state. What's already built? What's the architecture?",
         post_task_prompt="""Now provide your founding-mode analysis:
 
@@ -516,7 +516,7 @@ You MUST produce:
 
 Think: What could still break? What would cause incidents?
 This is paranoid technical planning - make it buildable, not just pretty.""",
-        enabled_tools=["repo_read", "grep", "git_diff", "repo_list", "glob_files"],
+        enabled_tools=["repo_read", "grep_content", "git_diff", "repo_list", "glob_files"],
         pre_task_prompt="Before planning: Read the relevant code and understand current architecture.",
         post_task_prompt="""Now provide your engineering analysis:
 
@@ -559,7 +559,7 @@ This is NOT style review. This is production-incident prevention.
 Ask: What could still break in production?
 
 Be harsh. Find real bugs. Don't be nice.""",
-        enabled_tools=["repo_read", "git_diff", "grep", "repo_list"],
+        enabled_tools=["repo_read", "git_diff", "grep_content", "repo_list"],
         pre_task_prompt="Before reviewing: Read the full diff and understand what changed.",
         post_task_prompt="""Now provide your paranoid review:
 
@@ -597,7 +597,7 @@ Your job:
 
 You want momentum. Don't let branches die in review.
 This is discipline, not ideation.""",
-        enabled_tools=["repo_read", "repo_write_commit", "repo_commit_push", "shell_run", "git_diff", "git_status"],
+        enabled_tools=["repo_read", "repo_write_commit", "repo_commit_push", "run_shell", "git_diff", "git_status"],
         pre_task_prompt="Before shipping: Verify the branch state. Run tests locally first.",
         post_task_prompt="""Now execute the release:
 
@@ -637,7 +637,7 @@ After testing, provide a health score (0-100) with:
 - Issues fixed
 - Pages tested
 - Overall assessment""",
-        enabled_tools=["repo_read", "grep", "glob_files", "shell_run"],
+        enabled_tools=["repo_read", "grep_content", "glob_files", "run_shell"],
         pre_task_prompt="Before QA: Identify what pages/routes were changed. Determine test strategy.",
         post_task_prompt="""Now provide your QA report:
 
@@ -675,7 +675,7 @@ Analyze the team's work over a time period. Provide:
 - Patterns and trends
 
 This is data-driven feedback, not vibes.""",
-        enabled_tools=["repo_read", "grep", "git_log", "shell_run"],
+        enabled_tools=["repo_read", "grep_content", "git_log", "run_shell"],
         pre_task_prompt="Before retro: Gather git history, commit stats, and contributor info.",
         post_task_prompt="""Now provide the retro:
 
@@ -727,7 +727,7 @@ After completion, provide:
 2. Commands generated
 3. Test coverage
 4. Installation instructions""",
-        enabled_tools=["cli_generate", "cli_refine", "cli_validate", "cli_test", "cli_list", "repo_read", "shell_run"],
+        enabled_tools=["cli_generate", "cli_refine", "cli_validate", "cli_test", "cli_list", "repo_read", "run_shell"],
         pre_task_prompt="Before building: Analyze the software structure, identify CLI-able actions.",
         post_task_prompt="""Now provide your CLI build report:
 
@@ -837,7 +837,7 @@ Anti-Patterns:
 - ❌ Ignoring stack traces
 - ❌ Fixing symptoms only
 - ❌ No regression test""",
-        enabled_tools=["repo_read", "grep", "git_log", "shell_run", "glob_files"],
+        enabled_tools=["repo_read", "grep_content", "git_log", "run_shell", "glob_files"],
         pre_task_prompt="Before debugging: Gather error messages, reproduction steps, and recent changes.",
         post_task_prompt="""Now provide your debug report:
 
@@ -931,7 +931,7 @@ Think like an attacker, defend like an expert.
 - ❌ Alert on every CVE (prioritize by exploitability)
 - ❌ Fix symptoms (address root causes)
 - ❌ Trust third-party blindly""",
-        enabled_tools=["repo_read", "grep", "glob_files", "shell_run"],
+        enabled_tools=["repo_read", "grep_content", "glob_files", "run_shell"],
         pre_task_prompt="Before security audit: Identify the attack surface, data flows, and trust boundaries.",
         post_task_prompt="""Now provide your security report:
 

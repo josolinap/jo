@@ -362,11 +362,11 @@ class VaultManager:
         graph = self.get_graph_data()
         lines = ["digraph vault {"]
         for node in graph["nodes"]:
-            node_id = node["id"].replace('"', '"')
+            node_id = node["id"].replace('"', '\\"')
             lines.append(f'    "{node_id}" [label="{node_id}"];')
         for link in graph["links"]:
-            source = link["source"].replace('"', '"')
-            target = link["target"].replace('"', '"')
+            source = link["source"].replace('"', '\\"')
+            target = link["target"].replace('"', '\\"')
             lines.append(f'    "{source}" -> "{target}";')
         lines.append("}")
         return "\n".join(lines)

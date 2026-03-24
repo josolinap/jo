@@ -278,7 +278,7 @@ def _enable_evolution_mode(ctx: ToolContext) -> str:
 
     from ouroboros.tools.control import _toggle_evolution
 
-    return _toggle_evolution(ctx, enabled="true")
+    return _toggle_evolution(ctx, enabled=True)
 
 
 def _get_evolution_status(ctx: ToolContext) -> str:

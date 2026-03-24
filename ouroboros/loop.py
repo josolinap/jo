@@ -654,7 +654,7 @@ def run_llm_loop(
 
             _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
 
-            if round_idx == 0 and drive_root is not None:
+            if round_idx == 1 and drive_root is not None:
                 context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
                 messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
                 if summarize_info.get("auto_summarized"):

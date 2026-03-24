@@ -7,10 +7,21 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sqlite3
 from typing import Any, List, Optional
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
+
+# SQL identifier pattern: alphanumeric + underscore, not starting with digit
+_SQL_IDENT_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _validate_ident(name: str, kind: str = "identifier") -> str:
+    """Validate a SQL identifier to prevent injection."""
+    if not name or not _SQL_IDENT_RE.match(name):
+        raise ValueError(f"Invalid SQL {kind}: {name!r} (must match [a-zA-Z_][a-zA-Z0-9_]*)")
+    return name
 
 
 def _get_db_path(ctx: ToolContext) -> pathlib.Path:
@@ -72,6 +83,13 @@ def _db_write(ctx: ToolContext, table: str, data: str, key_field: str = "id") ->
         conn = sqlite3.connect(str(db_path))
         cur = conn.cursor()
 
+        # Validate identifiers to prevent SQL injection
+        try:
+            table = _validate_ident(table, "table name")
+            key_field = _validate_ident(key_field, "key field name")
+        except ValueError as e:
+            return f"⚠️ {e}"
+
         # Get existing columns
         cur.execute(f"PRAGMA table_info({table})")
         columns = {row[1] for row in cur.fetchall()}
@@ -128,6 +146,14 @@ def _db_init(ctx: ToolContext, schema: str) -> str:
         cur = conn.cursor()
 
         for table_name, columns in schema_obj.items():
+            # Validate table and column names to prevent SQL injection
+            try:
+                table_name = _validate_ident(table_name, "table name")
+                for col_name in columns:
+                    _validate_ident(col_name, f"column name in {table_name}")
+            except ValueError as e:
+                return f"⚠️ {e}"
+
             # Build CREATE TABLE statement
             col_defs = []
             for col_name, col_type in columns.items():
@@ -177,6 +203,11 @@ def _db_schema_read(ctx: ToolContext, table: str) -> str:
         return "⚠️ Database not initialized."
 
     try:
+        try:
+            table = _validate_ident(table, "table name")
+        except ValueError as e:
+            return f"⚠️ {e}"
+
         conn = sqlite3.connect(str(db_path))
         cur = conn.cursor()
         cur.execute(f"PRAGMA table_info({table})")
