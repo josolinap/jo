@@ -792,6 +792,28 @@ Version: {skill.version}
                     repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
                     messages = enrich_messages(messages, task_text, task_type_detected, repo_dir)
 
+            # ONTOLOGY INTEGRATION: Classify task and inject ontology context
+            task_ontology_info = None
+            if round_idx == 1:  # Only on first round
+                from ouroboros.codebase_graph import get_ontology_for_task
+
+                task_text = ""
+                for m in messages:
+                    if m.get("role") == "user":
+                        task_text = m.get("content", "")
+                        break
+
+                if task_text:
+                    task_ontology_info = get_ontology_for_task(task_text)
+                    # Inject ontology context as system message
+                    ontology_msg = (
+                        f"[Ontology] Task type: {task_ontology_info['task_type']}\n"
+                        f"Requires: {', '.join(task_ontology_info['requires'][:3])}\n"
+                        f"Produces: {', '.join(task_ontology_info['produces'][:3])}\n"
+                        f"Typical tools: {', '.join(task_ontology_info['typical_tools'][:3])}"
+                    )
+                    messages.append({"role": "system", "content": ontology_msg})
+
             msg, cost = _call_llm_with_retry(
                 llm,
                 messages,

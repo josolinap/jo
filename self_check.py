@@ -280,6 +280,31 @@ def check_pipeline_features() -> dict:
         return {"error": str(e)}
 
 
+def check_ontology() -> dict:
+    """Check ontology system status."""
+    try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        sys.path.insert(0, str(repo_dir))
+
+        from ouroboros.codebase_graph import TASK_ONTOLOGY, OntologyTracker
+
+        # Check task ontology types
+        ontology_types = list(TASK_ONTOLOGY.keys())
+
+        # Check tracker
+        tracker = OntologyTracker()
+        insights = tracker.get_insights()
+
+        return {
+            "ontology_types": ontology_types,
+            "total_types": len(ontology_types),
+            "tracker_relationships": insights.get("total_relationships", 0),
+            "avg_strength": insights.get("average_strength", 0),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def run_self_check() -> dict:
     """Run all self-checks and return report."""
     report = {
@@ -295,6 +320,7 @@ def run_self_check() -> dict:
         "skills": check_skills(),
         "pi_prompts": check_pi_prompts(),
         "pipeline_features": check_pipeline_features(),
+        "ontology": check_ontology(),
     }
     return report
 
@@ -396,6 +422,18 @@ def main():
     else:
         active = [k for k, v in pipeline.items() if v is True]
         print(f"[*] Pipeline: {len(active)} features enabled ({', '.join(active) if active else 'none'})")
+
+    # Ontology (NEW)
+    ontology = report.get("ontology", {})
+    if ontology.get("error"):
+        print(f"[WARN] Ontology: {ontology['error']}")
+    else:
+        total_types = ontology.get("total_types", 0)
+        tracker_rels = ontology.get("tracker_relationships", 0)
+        avg_strength = ontology.get("avg_strength", 0)
+        print(
+            f"[*] Ontology: {total_types} task types, {tracker_rels} tracked relationships (avg strength: {avg_strength:.2f})"
+        )
 
     print("\n" + "=" * 40)
 
