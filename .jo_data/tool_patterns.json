@@ -1,0 +1,118 @@
+{
+  "run_shell": {
+    "health_check": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351623.9173827,
+      "avg_rounds": 2
+    },
+    "task": {
+      "success_count": 2,
+      "failure_count": 0,
+      "last_used": 1774352639.7293968,
+      "avg_rounds": 7.4
+    }
+  },
+  "repo_list": {
+    "health_check": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351623.9173849,
+      "avg_rounds": 2
+    },
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774352266.627895,
+      "avg_rounds": 10
+    }
+  },
+  "git_status": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.005059,
+      "avg_rounds": 7
+    }
+  },
+  "codebase_impact": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.0050614,
+      "avg_rounds": 7
+    }
+  },
+  "drive_read": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.005063,
+      "avg_rounds": 7
+    }
+  },
+  "list_available_tools": {
+    "task": {
+      "success_count": 2,
+      "failure_count": 0,
+      "last_used": 1774352266.6278913,
+      "avg_rounds": 7.6000000000000005
+    }
+  },
+  "code_quality": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.005066,
+      "avg_rounds": 7
+    }
+  },
+  "vault_list": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.005069,
+      "avg_rounds": 7
+    }
+  },
+  "repo_read": {
+    "task": {
+      "success_count": 3,
+      "failure_count": 0,
+      "last_used": 1774352639.7293983,
+      "avg_rounds": 7.880000000000001
+    }
+  },
+  "enable_tools": {
+    "task": {
+      "success_count": 2,
+      "failure_count": 0,
+      "last_used": 1774352266.6278958,
+      "avg_rounds": 7.6000000000000005
+    }
+  },
+  "symbol_context": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774351985.005076,
+      "avg_rounds": 7
+    }
+  },
+  "grep_content": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774352266.6278863,
+      "avg_rounds": 10
+    }
+  },
+  "find_callers": {
+    "task": {
+      "success_count": 1,
+      "failure_count": 0,
+      "last_used": 1774352266.6278896,
+      "avg_rounds": 10
+    }
+  }
+}
