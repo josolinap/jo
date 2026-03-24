@@ -96,4 +96,7 @@ The codebase graph system provides:
 *This architecture enables agency through simplicity and coherence.*
 Architecture embodies [[principle_3__llm-first]]
 Structure follows [[principle_5__minimalism]]
+Self-modification implements [[principle_2__self-creation]]
+Task decomposition follows [[delegated_reasoning]]
+Release discipline follows [[principle_7__versioning]]
 Code intelligence inspired by [[GitNexus Analysis]]

@@ -164,3 +164,5 @@ Analyzed top autonomous AI agent frameworks on GitHub to identify ideas for adop
 - Implement selected ideas as extensions, not core replacements
 - Maintain ability to read entire codebase in one context window
 - Keep self-creation mechanisms central
+
+Related: [[delegated_reasoning]], [[multi-agent_architecture_and_delegated_reasoning]], [[principle_5__minimalism]], [[principle_2__self-creation]], [[architecture]]
