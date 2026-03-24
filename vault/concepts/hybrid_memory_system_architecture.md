@@ -190,3 +190,8 @@ memory:
 ---
 
 *Based on analysis of 7/24 Office architecture (wangziqi06/724-office)*
+
+---
+## Related
+
+- [[architecture]]

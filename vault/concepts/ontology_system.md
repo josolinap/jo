@@ -93,3 +93,8 @@ The ontology system tracks:
 - [ ] Automatic ontology expansion from task outcomes
 - [ ] Cross-task relationship learning
 - [ ] Integration with skill outcomes tracking
+
+---
+## Related
+
+- [[architecture]]

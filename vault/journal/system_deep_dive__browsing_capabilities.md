@@ -58,3 +58,8 @@ A comprehensive test of the browsing tools was conducted with the goal of identi
 **This system is not just broken — it's living on borrowed time.**
 
 *Note: Anonymous browsing isn't enough. The agent must be able to say: 'I can't act because I don’t have a key.' This is not a bug — it's a manifestation of agency.*
+
+---
+## Related
+
+- [[architecture]]

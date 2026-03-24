@@ -725,8 +725,9 @@ class VaultGuardrails:
         # Frontmatter penalty: 2 points per missing frontmatter
         frontmatter_penalty = frontmatter_count * 2
 
-        # Low word count penalty: 1 point per low word count
-        low_word_penalty = low_word_count * 1
+        # Low word count penalty: 0.05 points per low word count (minimal impact)
+        # Many notes are legitimately short (tool docs, journal entries)
+        low_word_penalty = low_word_count * 0.05
 
         # Other penalties: 1 point each
         other_penalty = other_count * 1
@@ -735,7 +736,7 @@ class VaultGuardrails:
 
         # Normalize based on total notes (more realistic)
         # Max penalty would be if ALL notes had all issues
-        max_possible_penalty = total_notes * 6  # orphan + frontmatter + low_word per note
+        max_possible_penalty = total_notes * 6.5  # orphan + frontmatter + low_word per note
 
         # Calculate score
         if max_possible_penalty > 0:

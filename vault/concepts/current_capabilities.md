@@ -56,3 +56,8 @@ tags:  []
 - pi-mono: Differential context
 - 724-Office: Runtime tool creation
 - VikaasLoop: Skill learning
+
+---
+## Related
+
+- [[architecture]]
