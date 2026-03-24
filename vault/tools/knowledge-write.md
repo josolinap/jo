@@ -1,3 +1,11 @@
+---
+title: knowledge_write
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # knowledge_write
 
 **Type:** Tool
@@ -20,3 +28,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[knowledge_read]]

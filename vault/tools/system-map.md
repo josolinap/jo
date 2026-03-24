@@ -1,3 +1,11 @@
+---
+title: system_map
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # system_map
 
 **Type:** Tool

@@ -1,3 +1,11 @@
+---
+title: copy_file
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # copy_file
 
 **Type:** Tool

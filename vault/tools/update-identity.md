@@ -1,3 +1,11 @@
+---
+title: update_identity
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # update_identity
 
 **Type:** Tool

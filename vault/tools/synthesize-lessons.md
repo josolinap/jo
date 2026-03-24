@@ -1,3 +1,11 @@
+---
+title: synthesize_lessons
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # synthesize_lessons
 
 **Type:** Tool
@@ -18,3 +26,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[vault_ensure]]

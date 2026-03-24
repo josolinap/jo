@@ -25,3 +25,8 @@ This note tests that:
 - [ ] Verify git status shows change
 - [ ] Commit manually to test
 - [ ] Verify note is readable after commit
+
+---
+## Related
+
+- [[Vault Git Storage Test]]

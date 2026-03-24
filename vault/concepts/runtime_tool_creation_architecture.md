@@ -59,3 +59,8 @@ Enable dynamic tool generation at runtime based on task requirements, similar to
 - Implement cleanup and lifecycle management
 - Add API endpoints for tool introspection
 - Create tool templates for common patterns
+
+---
+## Related
+
+- [[architecture]]

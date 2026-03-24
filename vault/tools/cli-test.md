@@ -1,3 +1,11 @@
+---
+title: cli_test
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # cli_test
 
 **Type:** Tool
@@ -19,3 +27,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[cli_validate]]

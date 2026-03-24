@@ -1,3 +1,11 @@
+---
+title: Kong-Inspired Pipeline Architecture
+created: 2026-03-25
+category: projects
+tags:  []
+
+---
+
 # Kong-Inspired Pipeline Architecture
 
 ## Overview

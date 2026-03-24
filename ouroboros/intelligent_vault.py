@@ -698,18 +698,50 @@ class VaultGuardrails:
 
         return all_violations
 
-    def calculate_quality_score(self, violations: List[QualityViolation]) -> float:
-        """Calculate overall vault quality score (0-100)."""
+    def calculate_quality_score(self, violations: List[QualityViolation], total_notes: int = 0) -> float:
+        """Calculate overall vault quality score (0-100).
+
+        More realistic scoring based on:
+        - Percentage of notes with issues
+        - Severity weighting
+        - Diminishing returns for many violations
+        """
         if not violations:
             return 100.0
 
-        # Weight violations by severity
-        weights = {"error": 10, "warning": 5, "info": 1}
-        total_penalty = sum(weights.get(v.severity, 1) for v in violations)
+        if total_notes == 0:
+            total_notes = len(set(v.note_path for v in violations))
 
-        # Normalize to 0-100 scale
-        max_penalty = len(violations) * 10  # Worst case: all errors
-        score = max(0, 100 - (total_penalty / max(max_penalty, 1) * 100))
+        # Count violations by type
+        orphan_count = sum(1 for v in violations if v.violation_type == "orphan")
+        frontmatter_count = sum(1 for v in violations if v.violation_type == "missing_frontmatter")
+        low_word_count = sum(1 for v in violations if v.violation_type == "low_word_count")
+        other_count = len(violations) - orphan_count - frontmatter_count - low_word_count
+
+        # Calculate penalties (lower = better score)
+        # Orphan penalty: 3 points per orphan (most impactful)
+        orphan_penalty = orphan_count * 3
+
+        # Frontmatter penalty: 2 points per missing frontmatter
+        frontmatter_penalty = frontmatter_count * 2
+
+        # Low word count penalty: 1 point per low word count
+        low_word_penalty = low_word_count * 1
+
+        # Other penalties: 1 point each
+        other_penalty = other_count * 1
+
+        total_penalty = orphan_penalty + frontmatter_penalty + low_word_penalty + other_penalty
+
+        # Normalize based on total notes (more realistic)
+        # Max penalty would be if ALL notes had all issues
+        max_possible_penalty = total_notes * 6  # orphan + frontmatter + low_word per note
+
+        # Calculate score
+        if max_possible_penalty > 0:
+            score = max(0, 100 - (total_penalty / max_possible_penalty * 100))
+        else:
+            score = 100.0
 
         return score
 
@@ -850,7 +882,7 @@ def get_vault_health_report(vault_dir: Optional[Path] = None) -> VaultHealthRepo
     link_suggestions = linker.suggest_links_for_orphans(max_per_note=2)
 
     # Calculate quality score
-    quality_score = guardrails.calculate_quality_score(violations)
+    quality_score = guardrails.calculate_quality_score(violations, total_notes=metrics.total_notes)
 
     # Generate improvement actions
     actions = []

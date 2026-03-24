@@ -25,3 +25,8 @@ I'll call the `auto_document_tools` function with the correct boolean parameter 
 
 ## Lesson
 _What was learned from this task execution._
+
+---
+## Related
+
+- [[Lesson: Task c350eaac]]

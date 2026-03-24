@@ -34,3 +34,8 @@ Git-tracked vault ensures:
 - Collaboration potential
 
 *Test note - can be deleted after verification*
+
+---
+## Related
+
+- [[Vault Git Storage Test 3]]

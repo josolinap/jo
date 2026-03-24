@@ -27,3 +27,8 @@ This is a test note to verify that vault notes are properly stored in git.
 - Test retrieval via vault_read
 
 If this works, the vault is properly integrated with git storage.
+
+---
+## Related
+
+- [[Vault Git Storage Test 2]]

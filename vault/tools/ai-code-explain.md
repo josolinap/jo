@@ -1,3 +1,11 @@
+---
+title: ai_code_explain
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # ai_code_explain
 
 **Type:** Tool
@@ -19,3 +27,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[delete_file]]

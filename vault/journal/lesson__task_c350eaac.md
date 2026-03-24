@@ -23,3 +23,8 @@ The expansion research is being stopped as requested.
 
 ## Lesson
 _What was learned from this task execution._
+
+---
+## Related
+
+- [[Lesson: Task 27f16bfb]]

@@ -1,3 +1,11 @@
+---
+title: learn_from_mistake
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # learn_from_mistake
 
 **Type:** Tool
@@ -20,3 +28,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[system_map]]

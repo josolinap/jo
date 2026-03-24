@@ -1,3 +1,11 @@
+---
+title: summarize_dialogue
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # summarize_dialogue
 
 **Type:** Tool
@@ -18,3 +26,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[get_github_issue]]

@@ -1,3 +1,11 @@
+---
+title: autonomous_evaluate
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # autonomous_evaluate
 
 **Type:** Tool
@@ -18,3 +26,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[browser_profile_list]]

@@ -12,3 +12,8 @@ tags: [test, git, verification]
 Testing that vault files are properly git-tracked. Created at 2026-03-21 11:31 UTC.
 
 If this appears in git status and can be committed, the system works.
+
+---
+## Related
+
+- [[Vault Git Storage Test]]

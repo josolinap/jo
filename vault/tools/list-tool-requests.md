@@ -1,3 +1,11 @@
+---
+title: list_tool_requests
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # list_tool_requests
 
 **Type:** Tool
@@ -18,3 +26,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[request_restart]]

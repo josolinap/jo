@@ -1,3 +1,11 @@
+---
+title: check_evolution_readiness
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # check_evolution_readiness
 
 **Type:** Tool

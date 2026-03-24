@@ -288,3 +288,8 @@ The system is ready for the next phase: deeper knowledge integration and proacti
 ---
 
 *Review completed: 2026-03-21 via self-analysis. No code modified per task constraints.*
+
+---
+## Related
+
+- [[architecture]]

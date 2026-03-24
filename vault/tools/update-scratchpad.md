@@ -1,3 +1,11 @@
+---
+title: update_scratchpad
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # update_scratchpad
 
 **Type:** Tool

@@ -1,3 +1,11 @@
+---
+title: file_stats
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # file_stats
 
 **Type:** Tool
@@ -18,3 +26,8 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+
+---
+## Related
+
+- [[copy_file]]

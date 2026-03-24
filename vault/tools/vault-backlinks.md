@@ -1,3 +1,11 @@
+---
+title: vault_backlinks
+created: 2026-03-25
+category: tools
+tags:  []
+
+---
+
 # vault_backlinks
 
 **Type:** Tool
