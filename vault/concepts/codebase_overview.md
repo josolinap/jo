@@ -1,39 +1,38 @@
----
-title: Codebase Overview
-created: 2026-03-25
-category: concepts
-tags:  []
-
----
-
 # Codebase Overview
 
-Generated: 2026-03-24 21:13 (git: 061d5b2c8d51)
-Repository: C:\Users\JO\OneDrive\Desktop\jo
+Generated: 2026-03-25 12:14 (git: 90836e422e06)
+Repository: C:\Users\S\Desktop\jo
 
-> Freshness: This note reflects the codebase at commit `061d5b2c8d51`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
+> Freshness: This note reflects the codebase at commit `90836e422e06`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
 
 ## Summary
 
-- **Total Nodes:** 585
-- **Total Edges:** 4233
-- **Files:** 30
-- **Classes:** 50
-- **Functions:** 352
+- **Total Nodes:** 1863
+- **Total Edges:** 14171
+- **Files:** 111
+- **Classes:** 158
+- **Functions:** 1314
 
 ## Architecture Layers
 
-### Core (50 nodes)
+### Core (79 nodes)
 
-- **ouroboros\agent.py** (49 items)
-  - `datetime` (line 11)
-  - `ouroboros.utils.safe_relpath` (line 26)
+- **ouroboros\agent.py** (39 items)
   - `ouroboros.utils.sanitize_task_for_event` (line 26)
-  - `ouroboros.llm.add_usage` (line 35)
   - `ouroboros.tools.ToolRegistry` (line 36)
-  - ... and 44 more
+  - `ouroboros.context.build_llm_messages` (line 39)
+  - `ouroboros.loop.run_llm_loop` (line 40)
+  - `ouroboros.pipeline.get_pipeline` (line 41)
+  - ... and 34 more
+- **ouroboros\loop.py** (38 items)
+  - `ouroboros.llm.add_usage` (line 21)
+  - `ouroboros.context.compact_tool_history` (line 23)
+  - `ouroboros.context.compact_tool_history_llm` (line 23)
+  - `ouroboros.context.auto_summarize_if_needed` (line 23)
+  - `ouroboros.context.smart_context_optimize` (line 23)
+  - ... and 33 more
 
-### Module (530 nodes)
+### Module (1134 nodes)
 
 - **archive\deprecated\full_startup.py** (7 items)
   - `git_orchestrator.GitOrchestrator` (line 19)
@@ -42,13 +41,13 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `FullStartup.start` (line 45)
   - `FullStartup.start_launcher` (line 68)
   - ... and 2 more
-- **archive\deprecated\git_orchestrator.py** (36 items)
+- **archive\deprecated\git_orchestrator.py** (37 items)
+  - `datetime.timedelta` (line 15)
   - `GitLock` (line 36)
   - `GitLock.__init__` (line 39)
   - `GitLock.acquire` (line 43)
   - `GitLock.release` (line 77)
-  - `GitLock.get_instance_id` (line 82)
-  - ... and 31 more
+  - ... and 32 more
 - **archive\deprecated\git_state_manager.py** (10 items)
   - `GitStateManager` (line 14)
   - `GitStateManager.__init__` (line 17)
@@ -63,47 +62,50 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `InstanceIdentifier.__init__` (line 16)
   - `InstanceIdentifier._load_or_create_id` (line 25)
   - ... and 3 more
-- **archive\deprecated\integrated_orchestrator.py** (10 items)
+- **archive\deprecated\integrated_orchestrator.py** (12 items)
+  - `dataclasses.field` (line 13)
+  - `typing.Callable` (line 14)
   - `model_orchestrator.ModelStatus` (line 22)
   - `AgentRole` (line 27)
   - `AgentInstance` (line 38)
-  - `IntegratedOrchestrator` (line 49)
-  - `IntegratedOrchestrator.__init__` (line 54)
-  - ... and 5 more
-- **archive\deprecated\model_orchestrator.py** (13 items)
+  - ... and 7 more
+- **archive\deprecated\model_orchestrator.py** (15 items)
   - `random` (line 10)
+  - `typing.Tuple` (line 11)
+  - `dataclasses.dataclass` (line 12)
   - `enum.Enum` (line 13)
   - `requests` (line 15)
-  - `dotenv.load_dotenv` (line 16)
-  - `ModelStatus` (line 23)
-  - ... and 8 more
-- **archive\deprecated\monitor.py** (9 items)
+  - ... and 10 more
+- **archive\deprecated\monitor.py** (10 items)
+  - `pathlib` (line 9)
   - `signal` (line 12)
   - `OuroborosMonitor` (line 29)
   - `OuroborosMonitor.__init__` (line 32)
   - `OuroborosMonitor.sync_git_state` (line 56)
-  - `OuroborosMonitor.start_launcher` (line 78)
-  - ... and 4 more
-- **archive\deprecated\ouroboros_system.py** (17 items)
+  - ... and 5 more
+- **archive\deprecated\ouroboros_system.py** (25 items)
+  - `json` (line 8)
+  - `os` (line 10)
+  - `time` (line 12)
   - `uuid` (line 13)
-  - `instance_id.InstanceIdentifier` (line 21)
-  - `git_state_manager.GitStateManager` (line 22)
-  - `model_orchestrator.ModelOrchestrator` (line 23)
-  - `TaskQueue` (line 28)
-  - ... and 12 more
-- **archive\deprecated\service_setup.py** (2 items)
+  - `typing.Any` (line 15)
+  - ... and 20 more
+- **archive\deprecated\service_setup.py** (3 items)
+  - `subprocess` (line 7)
   - `setup_systemd_service` (line 11)
   - `setup_cron_job` (line 50)
-- **archive\deprecated\start_ouroboros.py** (2 items)
+- **archive\deprecated\start_ouroboros.py** (4 items)
+  - `logging` (line 8)
+  - `pathlib.Path` (line 10)
   - `ouroboros_system.OuroborosSystem` (line 15)
   - `main` (line 29)
-- **colab_launcher.py** (52 items)
+- **colab_launcher.py** (47 items)
   - `install_launcher_deps` (line 20)
   - `ensure_claude_code_cli` (line 29)
   - `ouroboros.apply_patch.install` (line 54)
   - `google.colab.userdata` (line 64)
   - `google.colab.drive` (line 65)
-  - ... and 47 more
+  - ... and 42 more
 - **debug_check.py** (4 items)
   - `check_imports` (line 8)
   - `check_version_sync` (line 39)
@@ -118,13 +120,13 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `AwarenessSystem._get_git_info` (line 99)
   - `AwarenessSystem._is_git_clean` (line 130)
   - ... and 7 more
-- **ouroboros\codebase_graph.py** (40 items)
-  - `typing.Set` (line 18)
+- **ouroboros\codebase_graph.py** (28 items)
   - `GraphNode` (line 24)
   - `GraphEdge` (line 38)
   - `CodebaseGraph` (line 49)
-  - `CodebaseGraph.add_node` (line 58)
-  - ... and 35 more
+  - `CodebaseGraph.add_node` (line 57)
+  - `CodebaseGraph.add_edge` (line 61)
+  - ... and 23 more
 - **ouroboros\config_manager.py** (23 items)
   - `yaml` (line 21)
   - `ConfigSchema` (line 27)
@@ -132,27 +134,27 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `ConfigurationManager.get_instance` (line 100)
   - `ConfigurationManager.__init__` (line 109)
   - ... and 18 more
-- **ouroboros\consciousness.py** (32 items)
-  - `concurrent.futures` (line 19)
-  - `queue` (line 24)
-  - `threading` (line 25)
-  - `traceback` (line 27)
-  - `ouroboros.utils.append_jsonl` (line 30)
-  - ... and 27 more
-- **ouroboros\context.py** (42 items)
+- **ouroboros\consciousness.py** (21 items)
+  - `BackgroundConsciousness` (line 44)
+  - `BackgroundConsciousness.__init__` (line 49)
+  - `ouroboros.awareness.AwarenessSystem` (line 78)
+  - `BackgroundConsciousness.is_running` (line 91)
+  - `BackgroundConsciousness._model` (line 95)
+  - ... and 16 more
+- **ouroboros\context.py** (33 items)
   - `copy` (line 10)
-  - `ouroboros.utils.read_text` (line 18)
-  - `ouroboros.utils.clip_text` (line 18)
-  - `ouroboros.utils.estimate_tokens` (line 18)
   - `_build_user_content` (line 30)
-  - ... and 37 more
-- **ouroboros\context_cache.py** (17 items)
-  - `hashlib` (line 13)
+  - `_build_runtime_section` (line 61)
+  - `_build_memory_sections` (line 98)
+  - `_build_recent_sections` (line 118)
+  - ... and 28 more
+- **ouroboros\context_cache.py** (16 items)
   - `CacheEntry` (line 25)
   - `CacheEntry.is_expired` (line 36)
   - `CacheEntry.age_seconds` (line 40)
   - `ContextCache` (line 44)
-  - ... and 12 more
+  - `ContextCache.__init__` (line 64)
+  - ... and 11 more
 - **ouroboros\context_enricher.py** (17 items)
   - `ContextEnricher` (line 15)
   - `ContextEnricher.__init__` (line 18)
@@ -160,8 +162,7 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `ContextEnricher.enrich_for_task` (line 30)
   - `ContextEnricher.build_enrichment_text` (line 61)
   - ... and 12 more
-- **ouroboros\context_runtime.py** (4 items)
-  - `ouroboros.utils.utc_now_iso` (line 10)
+- **ouroboros\context_runtime.py** (3 items)
   - `ouroboros.utils.get_git_info` (line 10)
   - `build_runtime_section` (line 15)
   - `_safe_read` (line 52)
@@ -186,27 +187,184 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `DriftDetector.run_all_checks` (line 43)
   - `DriftDetector.get_report` (line 56)
   - ... and 9 more
-- **ouroboros\episodic_memory.py** (17 items)
-  - `time` (line 18)
+- **ouroboros\episodic_memory.py** (14 items)
   - `Episode` (line 27)
   - `Episode.to_dict` (line 40)
   - `Episode.from_dict` (line 54)
   - `EpisodicMemory` (line 68)
-  - ... and 12 more
-- **ouroboros\eval.py** (21 items)
-  - `subprocess` (line 8)
-  - `typing.Callable` (line 11)
+  - `EpisodicMemory.__init__` (line 75)
+  - ... and 9 more
+- **ouroboros\eval.py** (19 items)
   - `EvalResult` (line 17)
   - `EvalReport` (line 25)
   - `TaskEvaluator` (line 32)
-  - ... and 16 more
-- **ouroboros\extraction.py** (32 items)
-  - `__future__.annotations` (line 16)
-  - `json` (line 18)
-  - `logging` (line 19)
-  - `os` (line 20)
-  - `re` (line 21)
-  - ... and 27 more
+  - `TaskEvaluator.__init__` (line 35)
+  - `TaskEvaluator.is_enabled` (line 47)
+  - ... and 14 more
+- **ouroboros\extraction.py** (18 items)
+  - `Extraction` (line 30)
+  - `Extraction.to_dict` (line 44)
+  - `Extraction.from_dict` (line 58)
+  - `ExampleData` (line 73)
+  - `ExampleData.to_prompt_format` (line 79)
+  - ... and 13 more
+- **ouroboros\health_auto_fix.py** (13 items)
+  - `HealthAutoFix` (line 15)
+  - `HealthAutoFix.__init__` (line 18)
+  - `HealthAutoFix.check_and_fix_all` (line 22)
+  - `HealthAutoFix._should_fix` (line 58)
+  - `HealthAutoFix._fix_version_sync` (line 66)
+  - ... and 8 more
+- **ouroboros\hot_reload.py** (11 items)
+  - `get_changed_files_since_sha` (line 42)
+  - `classify_changes` (line 59)
+  - `notify_model_of_changes` (line 81)
+  - `HotReloadManager` (line 106)
+  - `HotReloadManager.__init__` (line 109)
+  - ... and 6 more
+- **ouroboros\intelligent_vault.py** (78 items)
+  - `VaultNote` (line 30)
+  - `VaultNote.is_orphan` (line 46)
+  - `VaultNote.is_stale` (line 51)
+  - `VaultNote.to_dict` (line 62)
+  - `VaultGraph` (line 78)
+  - ... and 73 more
+- **ouroboros\llm.py** (24 items)
+  - `normalize_reasoning_effort` (line 20)
+  - `reasoning_rank` (line 26)
+  - `add_usage` (line 31)
+  - `fetch_openrouter_pricing` (line 39)
+  - `LocalLLMClient` (line 108)
+  - ... and 19 more
+- **ouroboros\mcp_server.py** (10 items)
+  - `MCPServer` (line 23)
+  - `MCPServer.__init__` (line 33)
+  - `MCPServer._load_tools` (line 40)
+  - `MCPServer.handle_request` (line 58)
+  - `MCPServer._handle_tool_call` (line 87)
+  - ... and 5 more
+- **ouroboros\memory.py** (31 items)
+  - `datetime.timezone` (line 13)
+  - `collections.Counter` (line 19)
+  - `ouroboros.utils.short` (line 22)
+  - `_acquire_file_lock` (line 30)
+  - `_release_file_lock` (line 62)
+  - ... and 26 more
+- **ouroboros\model_manager.py** (15 items)
+  - `ModelHealth` (line 23)
+  - `ModelDiscovery` (line 35)
+  - `ModelManager` (line 43)
+  - `ModelManager.__init__` (line 46)
+  - `ModelManager._load_config` (line 55)
+  - ... and 10 more
+- **ouroboros\normalizer.py** (19 items)
+  - `CodeNormalizer` (line 10)
+  - `CodeNormalizer.__init__` (line 13)
+  - `CodeNormalizer.is_enabled` (line 17)
+  - `CodeNormalizer.normalize` (line 20)
+  - `CodeNormalizer.normalize_python` (line 36)
+  - ... and 14 more
+- **ouroboros\owner_inject.py** (5 items)
+  - `_mailbox_path` (line 24)
+  - `get_pending_path` (line 28)
+  - `write_owner_message` (line 33)
+  - `drain_owner_messages` (line 54)
+  - `cleanup_task_mailbox` (line 96)
+- **ouroboros\pi_prompts.py** (13 items)
+  - `load_pi_prompt` (line 24)
+  - `extract_prompt_content` (line 52)
+  - `extract_frontmatter` (line 78)
+  - `get_pr_review_prompt` (line 113)
+  - `get_changelog_prompt` (line 119)
+  - ... and 8 more
+- **ouroboros\pipeline.py** (46 items)
+  - `ouroboros.task_graph.decompose_into_graph` (line 11)
+  - `ouroboros.task_graph.TaskGraph` (line 11)
+  - `ouroboros.task_graph.set_active_graph` (line 11)
+  - `PipelinePhase` (line 16)
+  - `PhaseResult` (line 25)
+  - ... and 41 more
+- **ouroboros\proof_gate.py** (12 items)
+  - `ProofResult` (line 26)
+  - `ProofResult.to_dict` (line 37)
+  - `ProofGate` (line 48)
+  - `ProofGate.__init__` (line 55)
+  - `ProofGate.validate_write` (line 62)
+  - ... and 7 more
+- **ouroboros\response_analyzer.py** (16 items)
+  - `QualityIssue` (line 19)
+  - `ResponseAnalysis` (line 30)
+  - `ResponseAnalyzer` (line 42)
+  - `ResponseAnalyzer.__init__` (line 45)
+  - `ResponseAnalyzer.analyze` (line 49)
+  - ... and 11 more
+- **ouroboros\review.py** (6 items)
+  - `ouroboros.utils.clip_text` (line 14)
+  - `ouroboros.utils.estimate_tokens` (line 14)
+  - `compute_complexity_metrics` (line 29)
+  - `format_metrics` (line 106)
+  - `collect_sections` (line 122)
+  - ... and 1 more
+- **ouroboros\spice.py** (10 items)
+  - `_get_spice_path` (line 67)
+  - `load_spices` (line 72)
+  - `save_spices` (line 83)
+  - `get_random_spice` (line 90)
+  - `get_spice_for_round` (line 120)
+  - ... and 5 more
+- **ouroboros\synthesis.py** (16 items)
+  - `SynthesisIssue` (line 16)
+  - `SynthesisReport` (line 26)
+  - `SemanticSynthesizer` (line 32)
+  - `SemanticSynthesizer.__init__` (line 35)
+  - `SemanticSynthesizer.is_enabled` (line 46)
+  - ... and 11 more
+- **ouroboros\task_graph.py** (19 items)
+  - `TaskStatus` (line 16)
+  - `TaskNode` (line 25)
+  - `TaskGraphResult` (line 37)
+  - `TaskGraph` (line 46)
+  - `TaskGraph.__init__` (line 49)
+  - ... and 14 more
+- **ouroboros\temporal_learning.py** (13 items)
+  - `ToolSequence` (line 29)
+  - `PatternScore` (line 41)
+  - `PatternScore.score` (line 52)
+  - `TemporalToolLearner` (line 63)
+  - `TemporalToolLearner.__init__` (line 70)
+  - ... and 8 more
+- **ouroboros\traceability.py** (19 items)
+  - `TraceabilityLayer` (line 29)
+  - `TraceabilityLayer.__init__` (line 36)
+  - `TraceabilityLayer.on_tool_invoked` (line 41)
+  - `TraceabilityLayer.on_task_completed` (line 54)
+  - `TraceabilityLayer.on_code_committed` (line 64)
+  - ... and 14 more
+- **ouroboros\vault.py** (3 items)
+  - `vault_parser.Heading` (line 9)
+  - `vault_parser.BlockId` (line 9)
+  - `vault_manager.VaultManager` (line 10)
+- **ouroboros\vault_manager.py** (38 items)
+  - `vault_parser.WikilinkParser` (line 13)
+  - `vault_parser.Wikilink` (line 13)
+  - `vault_parser.ParsedNote` (line 13)
+  - `_update_fm_field` (line 18)
+  - `VaultManager` (line 27)
+  - ... and 33 more
+- **ouroboros\vault_models.py** (20 items)
+  - `hashlib` (line 5)
+  - `VaultNote` (line 14)
+  - `VaultNote.is_orphan` (line 30)
+  - `VaultNote.is_stale` (line 35)
+  - `VaultNote.is_stale_since` (line 46)
+  - ... and 15 more
+- **ouroboros\vault_parser.py** (23 items)
+  - `Wikilink` (line 21)
+  - `Wikilink.note_name` (line 29)
+  - `Wikilink.has_heading` (line 34)
+  - `Wikilink.has_block_ref` (line 38)
+  - `Wikilink.resolved_path` (line 41)
+  - ... and 18 more
 - **self_check.py** (30 items)
   - `check_git_status` (line 20)
   - `check_git_diff` (line 49)
@@ -214,27 +372,373 @@ Repository: C:\Users\JO\OneDrive\Desktop\jo
   - `check_python_syntax` (line 80)
   - `check_requirements` (line 101)
   - ... and 25 more
+- **supervisor\events.py** (17 items)
+  - `_handle_llm_usage` (line 21)
+  - `_handle_task_heartbeat` (line 46)
+  - `_handle_typing_start` (line 57)
+  - `_handle_send_message` (line 67)
+  - `_handle_task_done` (line 90)
+  - ... and 12 more
+- **supervisor\git_ops.py** (13 items)
+  - `import_test` (line 15)
+  - `init` (line 57)
+  - `ensure_repo_present` (line 67)
+  - `checkout_and_reset` (line 71)
+  - `sync_runtime_dependencies` (line 75)
+  - ... and 8 more
+- **supervisor\github_api.py** (17 items)
+  - `urllib.parse.urljoin` (line 5)
+  - `GitHubAPI` (line 11)
+  - `GitHubAPI.__init__` (line 12)
+  - `GitHubAPI.get` (line 22)
+  - `GitHubAPI.post` (line 32)
+  - ... and 12 more
+- **supervisor\queue.py** (22 items)
+  - `supervisor.state.atomic_write_text` (line 18)
+  - `supervisor.state.QUEUE_SNAPSHOT_PATH` (line 18)
+  - `supervisor.state.budget_pct` (line 18)
+  - `supervisor.state.TOTAL_BUDGET_LIMIT` (line 18)
+  - `init` (line 44)
+  - ... and 17 more
+- **supervisor\state.py** (23 items)
+  - `init` (line 31)
+  - `atomic_write_text` (line 46)
+  - `json_load_file` (line 69)
+  - `acquire_file_lock` (line 85)
+  - `release_file_lock` (line 118)
+  - ... and 18 more
+- **supervisor\states.py** (1 items)
+  - `load_state` (line 9)
+- **supervisor\telegram.py** (21 items)
+  - `supervisor.state.save_state` (line 16)
+  - `init` (line 30)
+  - `get_tg` (line 39)
+  - `TelegramClient` (line 48)
+  - `TelegramClient.__init__` (line 49)
+  - ... and 16 more
+- **supervisor\workers.py** (34 items)
+  - `multiprocessing` (line 15)
+  - `typing.Union` (line 23)
+  - `supervisor.state.load_state` (line 25)
+  - `supervisor.state.append_jsonl` (line 25)
+  - `supervisor.git_ops` (line 26)
+  - ... and 29 more
+- **system_awareness\config.py** (2 items)
+  - `AwarenessConfig` (line 8)
+  - `AwarenessConfig.__post_init__` (line 17)
 
-### Test (5 nodes)
+### Test (158 nodes)
 
 - **archive\deprecated\test_orchestrator.py** (4 items)
   - `asyncio` (line 4)
   - `sys` (line 5)
   - `integrated_orchestrator.IntegratedOrchestrator` (line 8)
   - `test` (line 10)
+- **tests\test_code_awareness.py** (43 items)
+  - `temp_repo` (line 11)
+  - `temp_drive` (line 57)
+  - `registry` (line 66)
+  - `TestFindCallers` (line 71)
+  - `TestFindCallers.test_find_callers_basic` (line 74)
+  - ... and 38 more
+- **tests\test_concurrent_git.py** (7 items)
+  - `run_git` (line 29)
+  - `ensure_clean_working_tree` (line 46)
+  - `get_current_branch` (line 58)
+  - `create_test_file` (line 66)
+  - `worker_simulation` (line 78)
+  - ... and 2 more
+- **tests\test_git_sha_fixes.py** (17 items)
+  - `TestGetCurrentSha` (line 30)
+  - `TestGetCurrentSha.test_returns_string` (line 33)
+  - `TestGetCurrentSha.test_valid_sha_in_real_repo` (line 39)
+  - `TestGetCurrentSha.test_non_repo_dir_returns_empty` (line 50)
+  - `TestGetCurrentSha.test_missing_dir_returns_empty` (line 58)
+  - ... and 12 more
+- **tests\test_message_routing.py** (14 items)
+  - `TestOwnerInjectPerTask` (line 18)
+  - `TestOwnerInjectPerTask.setUp` (line 21)
+  - `TestOwnerInjectPerTask.tearDown` (line 25)
+  - `TestOwnerInjectPerTask.test_write_creates_per_task_file` (line 28)
+  - `TestOwnerInjectPerTask.test_drain_reads_only_own_task` (line 38)
+  - ... and 9 more
+- **tests\test_registry.py** (10 items)
+  - `registry` (line 7)
+  - `TestToolValidation` (line 11)
+  - `TestToolValidation.test_valid_args` (line 12)
+  - `TestToolValidation.test_unknown_argument` (line 16)
+  - `TestToolValidation.test_missing_required` (line 21)
+  - ... and 5 more
+- **tests\test_smoke.py** (1 items)
+  - `test_smoke` (line 3)
+- **tests\test_vault.py** (31 items)
+  - `tempfile` (line 7)
+  - `pytest` (line 9)
+  - `ouroboros.vault_parser.WikilinkParser` (line 11)
+  - `ouroboros.vault_parser.Wikilink` (line 11)
+  - `temp_vault` (line 16)
+  - ... and 26 more
+- **tests\test_vision.py** (21 items)
+  - `unittest` (line 5)
+  - `unittest.mock.MagicMock` (line 6)
+  - `unittest.mock.patch` (line 6)
+  - `unittest.mock.PropertyMock` (line 6)
+  - `TestLLMVisionQuery` (line 13)
+  - ... and 16 more
+
+### Tools (476 nodes)
+
+- **ouroboros\runtime_tool_creator.py** (16 items)
+  - `inspect` (line 20)
+  - `textwrap` (line 24)
+  - `ToolSpec` (line 81)
+  - `ToolSpec.to_dict` (line 93)
+  - `ToolSpec.from_dict` (line 106)
+  - ... and 11 more
+- **ouroboros\tool_executor.py** (15 items)
+  - `ouroboros.utils.sanitize_tool_result_for_log` (line 18)
+  - `ouroboros.utils.sanitize_tool_args_for_log` (line 18)
+  - `_truncate_tool_result` (line 44)
+  - `_execute_single_tool` (line 64)
+  - `ouroboros.proof_gate.get_gate` (line 93)
+  - ... and 10 more
+- **ouroboros\tool_router.py** (5 items)
+  - `classify_task` (line 116)
+  - `get_default_tool_order` (line 132)
+  - `route_tools` (line 190)
+  - `ouroboros.temporal_learning.TemporalToolLearner` (line 211)
+  - `get_routing_report` (line 231)
+- **ouroboros\tools\__init__.py** (3 items)
+  - `ouroboros.tools.registry.ToolRegistry` (line 8)
+  - `ouroboros.tools.registry.ToolContext` (line 8)
+  - `ouroboros.tools.registry.ToolEntry` (line 8)
+- **ouroboros\tools\agent_coordinator.py** (17 items)
+  - `queue` (line 16)
+  - `concurrent.futures.ThreadPoolExecutor` (line 20)
+  - `concurrent.futures.as_completed` (line 20)
+  - `SubAgentTask` (line 64)
+  - `AgentDecomposition` (line 79)
+  - ... and 12 more
+- **ouroboros\tools\ai_code.py** (10 items)
+  - `_is_protected_file` (line 27)
+  - `_call_jo_llm` (line 80)
+  - `_read_file_context` (line 105)
+  - `_generate_code_edit` (line 120)
+  - `_parse_and_apply` (line 160)
+  - ... and 5 more
+- **ouroboros\tools\browser.py** (22 items)
+  - `threading` (line 27)
+  - `playwright_stealth.Stealth` (line 32)
+  - `_ensure_playwright_installed` (line 74)
+  - `playwright` (line 81)
+  - `_reset_playwright_greenlet` (line 100)
+  - ... and 17 more
+- **ouroboros\tools\cli_anything.py** (7 items)
+  - `CLIPipeline` (line 26)
+  - `get_tools` (line 50)
+  - `_cli_generate_handler` (line 157)
+  - `_cli_refine_handler` (line 216)
+  - `_cli_validate_handler` (line 259)
+  - ... and 2 more
+- **ouroboros\tools\compact_context.py** (2 items)
+  - `_compact_context` (line 22)
+  - `get_tools` (line 53)
+- **ouroboros\tools\connection_weavers.py** (12 items)
+  - `_weave_code_knowledge_connection` (line 24)
+  - `_reflect_on_change` (line 66)
+  - `_learn_from_result` (line 94)
+  - `_link_decision_to_principle` (line 130)
+  - `_create_backlink` (line 152)
+  - ... and 7 more
+- **ouroboros\tools\control.py** (21 items)
+  - `_get_changed_files_since_last_push` (line 21)
+  - `_needs_restart` (line 39)
+  - `_request_restart` (line 74)
+  - `_promote_to_stable` (line 111)
+  - `_schedule_task` (line 116)
+  - ... and 16 more
+- **ouroboros\tools\core.py** (19 items)
+  - `ouroboros.utils.read_text` (line 14)
+  - `_list_dir` (line 19)
+  - `_repo_read` (line 38)
+  - `ouroboros.normalizer.get_normalizer` (line 42)
+  - `_auto_track_verification` (line 55)
+  - ... and 14 more
+- **ouroboros\tools\database.py** (9 items)
+  - `sqlite3` (line 11)
+  - `_validate_ident` (line 20)
+  - `_get_db_path` (line 27)
+  - `_db_query` (line 34)
+  - `_db_write` (line 70)
+  - ... and 4 more
+- **ouroboros\tools\evolution_loop.py** (15 items)
+  - `EvolutionCycle` (line 27)
+  - `EvolutionLoop` (line 38)
+  - `EvolutionLoop.__init__` (line 41)
+  - `EvolutionLoop.identify_issues` (line 46)
+  - `EvolutionLoop.plan_improvements` (line 75)
+  - ... and 10 more
+- **ouroboros\tools\evolution_stats.py** (9 items)
+  - `_git` (line 198)
+  - `_count_py_lines` (line 214)
+  - `_get_file_bytes` (line 225)
+  - `_extract_version` (line 234)
+  - `_collect_data` (line 239)
+  - ... and 4 more
+- **ouroboros\tools\file_ops.py** (12 items)
+  - `_glob_files` (line 16)
+  - `_grep_content` (line 28)
+  - `fnmatch` (line 32)
+  - `_file_stats` (line 59)
+  - `_copy_file` (line 91)
+  - ... and 7 more
+- **ouroboros\tools\git.py** (13 items)
+  - `ouroboros.utils.write_text` (line 13)
+  - `_acquire_git_lock` (line 21)
+  - `_release_git_lock` (line 48)
+  - `_run_pre_push_tests` (line 60)
+  - `_git_push_with_tests` (line 102)
+  - ... and 8 more
+- **ouroboros\tools\github.py** (8 items)
+  - `_gh_cmd` (line 19)
+  - `_get_repo_slug` (line 44)
+  - `_list_issues` (line 67)
+  - `_get_issue` (line 107)
+  - `_comment_on_issue` (line 151)
+  - ... and 3 more
+- **ouroboros\tools\health.py** (4 items)
+  - `_codebase_health` (line 13)
+  - `ouroboros.review.collect_sections` (line 16)
+  - `ouroboros.review.compute_complexity_metrics` (line 16)
+  - `get_tools` (line 72)
+- **ouroboros\tools\intelligence_tools.py** (12 items)
+  - `_codebase_analyze` (line 24)
+  - `ouroboros.codebase_graph.get_code_metrics` (line 41)
+  - `_codebase_impact` (line 64)
+  - `_extract_from_code` (line 88)
+  - `ouroboros.extraction.extract_from_code` (line 104)
+  - ... and 7 more
+- **ouroboros\tools\knowledge.py** (10 items)
+  - `_sanitize_topic` (line 25)
+  - `_safe_path` (line 48)
+  - `_ensure_dir` (line 74)
+  - `_extract_summary` (line 79)
+  - `_rebuild_index` (line 104)
+  - ... and 5 more
+- **ouroboros\tools\neural_map.py** (33 items)
+  - `Concept` (line 31)
+  - `Connection` (line 44)
+  - `NeuralMap` (line 54)
+  - `NeuralMap.__init__` (line 57)
+  - `NeuralMap.add_concept` (line 62)
+  - ... and 28 more
+- **ouroboros\tools\registry.py** (23 items)
+  - `BrowserState` (line 19)
+  - `ToolContext` (line 29)
+  - `ToolContext.repo_path` (line 58)
+  - `ToolContext.drive_path` (line 61)
+  - `ToolContext.drive_logs` (line 64)
+  - ... and 18 more
+- **ouroboros\tools\request_tools.py** (6 items)
+  - `_log_tool_request` (line 26)
+  - `_request_capability` (line 50)
+  - `_request_api_key` (line 93)
+  - `_list_tool_requests` (line 154)
+  - `_check_capabilities` (line 205)
+  - ... and 1 more
+- **ouroboros\tools\review.py** (8 items)
+  - `httpx` (line 11)
+  - `get_tools` (line 27)
+  - `_handle_multi_model_review` (line 68)
+  - `concurrent.futures` (line 75)
+  - `_query_model` (line 89)
+  - ... and 3 more
+- **ouroboros\tools\runtime_tools.py** (4 items)
+  - `_get_runtime_tools_dir` (line 22)
+  - `_load_runtime_tool_spec` (line 29)
+  - `_create_tool_handler` (line 38)
+  - `get_tools` (line 103)
+- **ouroboros\tools\search.py** (3 items)
+  - `_web_search` (line 12)
+  - `openai.OpenAI` (line 17)
+  - `get_tools` (line 37)
+- **ouroboros\tools\shell.py** (14 items)
+  - `shlex` (line 9)
+  - `shutil` (line 10)
+  - `ouroboros.utils.utc_now_iso` (line 15)
+  - `ouroboros.utils.append_jsonl` (line 15)
+  - `ouroboros.utils.safe_relpath` (line 15)
+  - ... and 9 more
+- **ouroboros\tools\simulation.py** (9 items)
+  - `datetime` (line 9)
+  - `_simulate_outcome` (line 18)
+  - `_run_simulation_analysis` (line 75)
+  - `_sim_result` (line 122)
+  - `_list_simulations` (line 155)
+  - ... and 4 more
+- **ouroboros\tools\skills.py** (27 items)
+  - `typing.Set` (line 31)
+  - `_get_skill_log_path` (line 41)
+  - `log_skill_activation` (line 46)
+  - `log_skill_outcome` (line 91)
+  - `get_skill_success_rates` (line 145)
+  - ... and 22 more
+- **ouroboros\tools\system_map.py** (12 items)
+  - `ouroboros.tools.registry.CORE_TOOL_NAMES` (line 16)
+  - `_categorize_tool` (line 96)
+  - `_get_registry_tools` (line 114)
+  - `_check_path_exists` (line 136)
+  - `_check_env_vars` (line 149)
+  - ... and 7 more
+- **ouroboros\tools\tool_discovery.py** (5 items)
+  - `typing.TYPE_CHECKING` (line 6)
+  - `set_registry` (line 19)
+  - `_list_available_tools` (line 24)
+  - `_enable_tools` (line 43)
+  - `get_tools` (line 86)
+- **ouroboros\tools\vault.py** (20 items)
+  - `ouroboros.vault_manager.VaultManager` (line 11)
+  - `_vault_path` (line 16)
+  - `_get_vault` (line 20)
+  - `_sync_vault_to_repo` (line 25)
+  - `ouroboros.tools.git._repo_commit_push` (line 35)
+  - ... and 15 more
+- **ouroboros\tools\vision.py** (7 items)
+  - `_get_vlm_model` (line 26)
+  - `_get_llm_client` (line 31)
+  - `ouroboros.llm.LLMClient` (line 33)
+  - `_analyze_screenshot` (line 37)
+  - `_vlm_query` (line 71)
+  - ... and 2 more
+- **ouroboros\tools\web_research.py** (29 items)
+  - `__future__.annotations` (line 20)
+  - `re` (line 27)
+  - `ouroboros.utils.run_cmd` (line 33)
+  - `SearchResult` (line 76)
+  - `ResearchSource` (line 89)
+  - ... and 24 more
+
+### Utils (16 nodes)
+
+- **ouroboros\utils.py** (15 items)
+  - `utc_now_iso` (line 28)
+  - `sha256_text` (line 37)
+  - `read_text` (line 46)
+  - `write_text` (line 50)
+  - `append_jsonl` (line 55)
+  - ... and 10 more
 
 ## Most Connected Nodes
 
 - **main** (function) - 174 connections
+- **run_llm_loop** (function) - 156 connections
 - **_build_health_invariants** (function) - 136 connections
-- **OuroborosAgent.handle_task** (function) - 87 connections
+- **OuroborosAgent.handle_task** (function) - 105 connections
+- **status_text** (function) - 101 connections
 - **main** (function) - 84 connections
-- **colab_launcher.py** (file) - 75 connections
-- **OuroborosAgent._emit_task_results** (function) - 73 connections
-- **context.py** (file) - 67 connections
-- **agent.py** (file) - 57 connections
-- **compact_tool_history_llm** (function) - 53 connections
-- **AwarenessSystem.scan** (function) - 51 connections
+- **logging** (import) - 82 connections
+- **typing.Dict** (import) - 80 connections
+- **typing.List** (import) - 80 connections
 
 ---
 *Auto-generated by Jo's codebase graph system*
