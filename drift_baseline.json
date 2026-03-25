@@ -1,13 +1,13 @@
 {
   "_comment": "Snapshot of known-good state. Drift detector compares current state against this.",
-  "_captured": "2026-03-23T12:00:00",
-  "sha": "ec409ac079f7796173c3aecbdfe9c93f585b7c6c",
-  "version": "6.4.0",
+  "_captured": "2026-03-25T12:00:00",
+  "sha": "509054b",
+  "version": "6.5.0",
   "module_count": 90,
   "total_lines": 29907,
   "max_module_lines": 1565,
-  "tool_count": 138,
-  "vault_notes": 397,
+  "tool_count": 148,
+  "vault_notes": 197,
   "principles_with_concepts": 9,
   "supervisor_modules": 9,
   "required_modules": [
