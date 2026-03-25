@@ -3,6 +3,7 @@
     "README.md": "f6368a1aa3843a6a0bcb2ed59e6c8038ca2dc34972fd984c8dca8d3c594834da",
     "projects/jo_knowledge_map.md": "e50432fc2d8fad451892279b1a633d00b1158140eefffab9ae8c3893767f32bc",
     "projects/pipeline_architecture.md": "f4c56cedbd2b1be7bf4f6712314b6469298cdd17012e09ec8cb3c0ff915df51e",
+    "projects/performance_optimization_analysis.md": "a9bf31c573c4145f23a15b078ba0cdb5993aa2ecd5260653ed0af3d9f5a119a4",
     "projects/intelligent_vault_system_architecture.md": "f7e2be0b22087cfb965894536fc3d37581b459220050898466147ba77354c3c8",
     "concepts/delegated_reasoning.md": "83f08e7c4376a3bcb4c4a60c59e6d7f174347925e097792b4267d988cfa1d205",
     "concepts/bible_md_principles__deep_analysis_and_application.md": "689e34eb92af1d47b10e2a9d58586e598bb653636f3e2e73b16e9e6791278c66",
@@ -136,6 +137,7 @@
     "tools/compact-context.md": "cf50b5acd243111219937b409e99afb0c1053245ece0b21c25fbff3227897d0a",
     "tools/drive-list.md": "589e7aa98a3be63d2990b70c6883def32db6cf990cb24fd73aec4aa245aa26cb",
     "tools/check-capabilities.md": "4238f892b7cfe582b0e0fefd050a5553698b099676921e1eb1845d6ebfad2650",
+    "tools/browse_page.md": "83d7af2776d34c0fb568092dca59612412fc19de697a9fa45c9d638d0efa2abf",
     "tools/learn-from-result.md": "a8c0dd2f689392d18df696b113601674d39273d0fe1ed29ee38769e321bda576",
     "tools/sim-result.md": "245bbb58ac9ae411609b30a1c4341c7b075a06a246d65f2e4c4eb6a5c029690d",
     "tools/copy-file.md": "9d17e9a15a1001b57231eef9c0ba81e8163b3de25ecc1a933e13b31d5a05e55b",
@@ -170,6 +172,7 @@
     "tools/web-search.md": "f1250cb71564457dfb3f8cf59550d0178a77a54d4910ca1d8eab58a13591bbf6",
     "tools/list-skills.md": "34a17cb5a23f2930eaa72560a6b7df8f7b33d186cb40ecdc85d0892817160a58",
     "tools/query-knowledge.md": "a6ce52cb6747b685065caa38e9954e49a861c37ae04d994251fdf0a7d67b100e",
+    "tools/file_ops.md": "34520f550efd8bb9bd8abd30a3b2da1ae0b3201f02ae3a57acda95a5d2bc3dbf",
     "tools/web-fetch.md": "d947c51ab383421ca47b899142fa01540264a96403e2e81fd2801ae7d2e9365c",
     "tools/request-capability.md": "70a932f13265fd36086394928a5a3d0ce949b701a4d1cd8c38d6bcbff8358d4d",
     "tools/synthesize-lessons.md": "b3d00b5b1c3d0f3b4059d9382bc95b799685d60657bf000120be03f0fbd351f2",
@@ -206,5 +209,5 @@
     "tools/wait-for-task.md": "d93f9355657ed5d3db18915ee7a09698342e8f4d4f752ccf33517bca9cbfa111",
     "tools/ai-code-edit.md": "a4145e278d61d447bdc7b78474095acd0d3b58274fdef3c940dd2fdea655c8b7"
   },
-  "last_updated": "2026-03-25T08:48:57.452504+00:00"
+  "last_updated": "2026-03-25T09:30:02.005225+00:00"
 }
