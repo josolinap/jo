@@ -79,4 +79,4 @@ Evolution should focus on **coherence over complexity**. The vault consolidation
 
 ---
 
-**Related Notes**: [[identity]], [[narrative_continuity]], [[minimalism]], [[self-creation]]
+**Related Notes**: [[identity]], [[narrative_continuity]], [[minimalism]], [[self-creation]] [[evolution_cycle_documentation_index]]
