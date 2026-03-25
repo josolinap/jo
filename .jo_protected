@@ -13,6 +13,10 @@ constitution.json
 drift_baseline.json
 .jo_protected
 
+# Core Modules (directory prefix protection)
+ouroboros/
+supervisor/
+
 # Core System Prompts
 prompts/SYSTEM.md
 prompts/CONSCIOUSNESS.md
@@ -32,3 +36,6 @@ LICENSE
 
 # Agent Configuration
 AGENTS.md
+
+# Scripts
+scripts/pre-commit

@@ -199,7 +199,11 @@ def _is_protected_file(path: str) -> bool:
             protected = protected.strip()
             if protected and not protected.startswith("#"):
                 protected_normalized = protected.replace("\\", "/").strip("./").lower()
+                # Exact match
                 if normalized_path == protected_normalized:
+                    return True
+                # Directory prefix match (e.g., "ouroboros/" protects "ouroboros/loop.py")
+                if protected_normalized.endswith("/") and normalized_path.startswith(protected_normalized):
                     return True
     except Exception:
         pass

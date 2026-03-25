@@ -96,14 +96,25 @@ def main():
     # 6. .jo_protected enforcement — block commits that modify protected files
     try:
         protected_lines = (repo / ".jo_protected").read_text(encoding="utf-8").splitlines()
-        protected_files = {l.strip() for l in protected_lines if l.strip() and not l.startswith("#")}
+        protected_files = {l.strip().lower() for l in protected_lines if l.strip() and not l.startswith("#")}
+        protected_dirs = {p.rstrip("/").lower() for p in protected_files if p.endswith("/")}
+        protected_exact = {p for p in protected_files if not p.endswith("/")}
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
             cwd=str(repo), capture_output=True, text=True, timeout=10,
         )
         if result.returncode == 0:
-            staged = set(result.stdout.strip().splitlines()) if result.stdout.strip() else set()
-            violations = staged & protected_files
+            staged = result.stdout.strip().splitlines() if result.stdout.strip() else []
+            violations = set()
+            for f in staged:
+                f_lower = f.lower()
+                if f_lower in protected_exact:
+                    violations.add(f)
+                else:
+                    for d in protected_dirs:
+                        if f_lower.startswith(d + "/") or f_lower.startswith(d):
+                            violations.add(f)
+                            break
             if violations:
                 errors.append(f"Protected files modified: {', '.join(sorted(violations))}")
     except Exception as e:
