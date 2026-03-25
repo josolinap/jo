@@ -35,4 +35,11 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[vault_list]]
+- [[tools]] - main tool categorization and architecture
+- [[vault_list]] - list vault notes
+- [[vault_read]] - read vault notes
+- [[vault_write]] - write to vault notes
+- [[vault_search]] - search vault content
+- [[vault_link]] - create connections between notes
+- [[vault_graph]] - visualize knowledge graph
+- [[Code Intelligence]] - knowledge organization and retrieval
