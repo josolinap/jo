@@ -225,20 +225,102 @@ class AgentCoordinator:
         return results
 
     def _execute_role(self, role: str, description: str, context: str) -> Dict[str, Any]:
-        """Execute a single role's task.
+        """Execute a single role's task with real sub-agent.
 
-        In a full implementation, this would spawn actual sub-agents.
-        For now, returns the task specification for the role.
+        Spawns a sub-agent with constrained toolpacks based on role.
+        Each sub-agent runs with isolated context and role-specific tools.
         """
         role_info = AGENT_ROLES.get(role, {})
+        available_tools = role_info.get("tools", [])
 
-        return {
-            "output": f"[{role.upper()}] Task: {description}\nContext: {context}\nAvailable tools: {role_info.get('tools', ['all'])}",
-            "error": None,
-            "status": "completed",
-            "role": role,
-            "definition_of_done": self._get_dof_for_role(role),
-        }
+        # Build system prompt for this role
+        system_prompt = f"""You are a specialized {role} agent.
+
+Role: {role_info.get("description", "General task execution")}
+Task: {description}
+
+Available tools: {", ".join(available_tools) if available_tools else "all"}
+
+Instructions:
+1. Focus ONLY on your role's responsibilities
+2. Use only the tools available to your role
+3. Provide clear, actionable output
+4. If you need tools outside your role, note it in your output
+
+Context: {context}"""
+
+        try:
+            # Import LLM client
+            from ouroboros.llm import LLMClient
+
+            llm = LLMClient()
+
+            # Build messages
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Execute your role for this task: {description}"},
+            ]
+
+            # Get tool schemas for this role
+            from ouroboros.tools.registry import ToolRegistry
+            import os
+
+            repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+            drive_root = pathlib.Path(os.environ.get("DATA_ROOT", "~/.jo_data"))
+
+            registry = ToolRegistry(repo_dir=repo_dir, drive_root=drive_root)
+            all_schemas = registry.schemas()
+
+            # Filter schemas to only include tools available for this role
+            if available_tools and available_tools != ["all"]:
+                tool_schemas = [s for s in all_schemas if s.get("function", {}).get("name") in available_tools]
+            else:
+                tool_schemas = all_schemas
+
+            # Call LLM with constrained tools
+            msg, usage = llm.chat(
+                messages=messages,
+                model=os.environ.get("OUROBOROS_MODEL_LIGHT", ""),
+                tools=tool_schemas[:5] if tool_schemas else [],  # Limit tools
+                reasoning_effort="low",
+                max_tokens=1024,
+            )
+
+            # Execute tool calls if any
+            result_output = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+
+            if tool_calls:
+                # Execute up to 3 tool calls
+                for tc in tool_calls[:3]:
+                    try:
+                        tool_name = tc.get("function", {}).get("name", "")
+                        tool_args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+
+                        if tool_name in available_tools or not available_tools:
+                            tool_result = registry.execute(tool_name, tool_args)
+                            result_output += f"\n\n[{tool_name}]: {tool_result[:500]}"
+                    except Exception as e:
+                        result_output += f"\n\n[Tool Error]: {e}"
+
+            return {
+                "output": result_output,
+                "error": None,
+                "status": "completed",
+                "role": role,
+                "definition_of_done": self._get_dof_for_role(role),
+                "usage": usage,
+            }
+
+        except Exception as e:
+            log.error(f"Failed to execute role {role}: {e}")
+            return {
+                "output": f"[{role.upper()}] Error: {e}",
+                "error": str(e),
+                "status": "failed",
+                "role": role,
+                "definition_of_done": self._get_dof_for_role(role),
+            }
 
     def _get_dof_for_role(self, role: str) -> str:
         """Get Definition of Done for a role."""
