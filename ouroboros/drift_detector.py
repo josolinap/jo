@@ -134,7 +134,10 @@ class DriftDetector:
         violations = []
         try:
             max_age = self.constitution.get("principles", {}).get("1_continuity", {}).get("max_identity_age_hours", 8)
-            identity_path = self.drive_root / "memory" / "identity.md"
+            # Check repo_dir first (where identity.md actually lives), then drive_root
+            identity_path = self.repo_dir / "memory" / "identity.md"
+            if not identity_path.exists():
+                identity_path = self.drive_root / "memory" / "identity.md"
             if identity_path.exists():
                 age_hours = (time.time() - identity_path.stat().st_mtime) / 3600
                 if age_hours > max_age:
@@ -161,7 +164,9 @@ class DriftDetector:
         """Check that identity core statements haven't been removed."""
         violations = []
         try:
-            identity_path = self.drive_root / "memory" / "identity.md"
+            identity_path = self.repo_dir / "memory" / "identity.md"
+            if not identity_path.exists():
+                identity_path = self.drive_root / "memory" / "identity.md"
             if not identity_path.exists():
                 return violations
 
