@@ -1,29 +1,29 @@
 # Codebase Overview
 
-Generated: 2026-03-25 12:14 (git: 90836e422e06)
+Generated: 2026-03-25 13:07 (git: 5546e31e0cd7)
 Repository: C:\Users\S\Desktop\jo
 
-> Freshness: This note reflects the codebase at commit `90836e422e06`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
+> Freshness: This note reflects the codebase at commit `5546e31e0cd7`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
 
 ## Summary
 
-- **Total Nodes:** 1863
-- **Total Edges:** 14171
-- **Files:** 111
-- **Classes:** 158
-- **Functions:** 1314
+- **Total Nodes:** 1907
+- **Total Edges:** 14434
+- **Files:** 115
+- **Classes:** 165
+- **Functions:** 1342
 
 ## Architecture Layers
 
-### Core (79 nodes)
+### Core (81 nodes)
 
-- **ouroboros\agent.py** (39 items)
+- **ouroboros\agent.py** (41 items)
   - `ouroboros.utils.sanitize_task_for_event` (line 26)
   - `ouroboros.tools.ToolRegistry` (line 36)
   - `ouroboros.context.build_llm_messages` (line 39)
   - `ouroboros.loop.run_llm_loop` (line 40)
   - `ouroboros.pipeline.get_pipeline` (line 41)
-  - ... and 34 more
+  - ... and 36 more
 - **ouroboros\loop.py** (38 items)
   - `ouroboros.llm.add_usage` (line 21)
   - `ouroboros.context.compact_tool_history` (line 23)
@@ -32,7 +32,7 @@ Repository: C:\Users\S\Desktop\jo
   - `ouroboros.context.smart_context_optimize` (line 23)
   - ... and 33 more
 
-### Module (1134 nodes)
+### Module (1163 nodes)
 
 - **archive\deprecated\full_startup.py** (7 items)
   - `git_orchestrator.GitOrchestrator` (line 19)
@@ -120,6 +120,13 @@ Repository: C:\Users\S\Desktop\jo
   - `AwarenessSystem._get_git_info` (line 99)
   - `AwarenessSystem._is_git_clean` (line 130)
   - ... and 7 more
+- **ouroboros\checkpoint.py** (12 items)
+  - `CheckpointResult` (line 28)
+  - `CheckpointGate` (line 38)
+  - `CheckpointGate.failure_count` (line 46)
+  - `CheckpointGate.to_dict` (line 49)
+  - `run_checkpoint_gate` (line 58)
+  - ... and 7 more
 - **ouroboros\codebase_graph.py** (28 items)
   - `GraphNode` (line 24)
   - `GraphEdge` (line 38)
@@ -141,13 +148,13 @@ Repository: C:\Users\S\Desktop\jo
   - `BackgroundConsciousness.is_running` (line 91)
   - `BackgroundConsciousness._model` (line 95)
   - ... and 16 more
-- **ouroboros\context.py** (33 items)
+- **ouroboros\context.py** (31 items)
   - `copy` (line 10)
   - `_build_user_content` (line 30)
   - `_build_runtime_section` (line 61)
   - `_build_memory_sections` (line 98)
   - `_build_recent_sections` (line 118)
-  - ... and 28 more
+  - ... and 26 more
 - **ouroboros\context_cache.py** (16 items)
   - `CacheEntry` (line 25)
   - `CacheEntry.is_expired` (line 36)
@@ -215,6 +222,11 @@ Repository: C:\Users\S\Desktop\jo
   - `HealthAutoFix._should_fix` (line 58)
   - `HealthAutoFix._fix_version_sync` (line 66)
   - ... and 8 more
+- **ouroboros\health_invariants.py** (4 items)
+  - `build_health_invariants` (line 19)
+  - `supervisor.state.per_task_cost_summary` (line 78)
+  - `ouroboros.drift_detector.DriftDetector` (line 258)
+  - `ouroboros.context_cache.get_cache` (line 278)
 - **ouroboros\hot_reload.py** (11 items)
   - `get_changed_files_since_sha` (line 42)
   - `classify_changes` (line 59)
@@ -222,6 +234,13 @@ Repository: C:\Users\S\Desktop\jo
   - `HotReloadManager` (line 106)
   - `HotReloadManager.__init__` (line 109)
   - ... and 6 more
+- **ouroboros\instinct_evolver.py** (12 items)
+  - `Instinct` (line 35)
+  - `Instinct.total_uses` (line 47)
+  - `Instinct.to_dict` (line 50)
+  - `InstinctEvolver` (line 62)
+  - `InstinctEvolver.__init__` (line 70)
+  - ... and 7 more
 - **ouroboros\intelligent_vault.py** (78 items)
   - `VaultNote` (line 30)
   - `VaultNote.is_orphan` (line 46)
@@ -486,7 +505,7 @@ Repository: C:\Users\S\Desktop\jo
   - `TestLLMVisionQuery` (line 13)
   - ... and 16 more
 
-### Tools (476 nodes)
+### Tools (489 nodes)
 
 - **ouroboros\runtime_tool_creator.py** (16 items)
   - `inspect` (line 20)
@@ -495,13 +514,20 @@ Repository: C:\Users\S\Desktop\jo
   - `ToolSpec.to_dict` (line 93)
   - `ToolSpec.from_dict` (line 106)
   - ... and 11 more
-- **ouroboros\tool_executor.py** (15 items)
+- **ouroboros\tool_executor.py** (14 items)
   - `ouroboros.utils.sanitize_tool_result_for_log` (line 18)
   - `ouroboros.utils.sanitize_tool_args_for_log` (line 18)
   - `_truncate_tool_result` (line 44)
   - `_execute_single_tool` (line 64)
-  - `ouroboros.proof_gate.get_gate` (line 93)
-  - ... and 10 more
+  - `_StatefulToolExecutor` (line 170)
+  - ... and 9 more
+- **ouroboros\tool_hooks.py** (13 items)
+  - `HookResult` (line 25)
+  - `ToolCall` (line 36)
+  - `HookRegistry` (line 45)
+  - `HookRegistry.__init__` (line 48)
+  - `HookRegistry.register_pre` (line 52)
+  - ... and 8 more
 - **ouroboros\tool_router.py** (5 items)
   - `classify_task` (line 116)
   - `get_default_tool_order` (line 132)
@@ -732,13 +758,13 @@ Repository: C:\Users\S\Desktop\jo
 
 - **main** (function) - 174 connections
 - **run_llm_loop** (function) - 156 connections
-- **_build_health_invariants** (function) - 136 connections
-- **OuroborosAgent.handle_task** (function) - 105 connections
+- **build_health_invariants** (function) - 123 connections
+- **OuroborosAgent.handle_task** (function) - 113 connections
 - **status_text** (function) - 101 connections
+- **logging** (import) - 86 connections
+- **typing.Dict** (import) - 84 connections
 - **main** (function) - 84 connections
-- **logging** (import) - 82 connections
-- **typing.Dict** (import) - 80 connections
-- **typing.List** (import) - 80 connections
+- **typing.List** (import) - 83 connections
 
 ---
 *Auto-generated by Jo's codebase graph system*

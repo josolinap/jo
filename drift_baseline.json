@@ -1,17 +1,15 @@
 {
   "_comment": "Snapshot of known-good state. Drift detector compares current state against this.",
   "_captured": "2026-03-23T12:00:00",
-  "sha": "45d88dfadca73f06df9d75df728c1063eaafd68a",
-
+  "sha": "5546e31e0cd7bb667e839a9e64953f2345ac55ae",
   "version": "6.4.0",
-  "module_count": 71,
+  "module_count": 90,
   "total_lines": 29907,
   "max_module_lines": 1565,
   "tool_count": 138,
-  "vault_notes": 175,
+  "vault_notes": 191,
   "principles_with_concepts": 9,
   "supervisor_modules": 9,
-
   "required_modules": [
     "ouroboros/agent.py",
     "ouroboros/loop.py",
@@ -23,9 +21,20 @@
     "supervisor/telegram.py",
     "supervisor/queue.py",
     "supervisor/workers.py",
-    "supervisor/state.py"
+    "supervisor/state.py",
+    "ouroboros/health_invariants.py",
+    "ouroboros/instinct_evolver.py",
+    "ouroboros/tool_hooks.py",
+    "ouroboros/checkpoint.py",
+    "ouroboros/delta_eval.py",
+    "ouroboros/context_cache.py",
+    "ouroboros/temporal_learning.py",
+    "ouroboros/proof_gate.py",
+    "ouroboros/episodic_memory.py",
+    "ouroboros/mcp_server.py",
+    "ouroboros/tool_router.py",
+    "ouroboros/vault_models.py"
   ],
-
   "required_vault_concepts": [
     "principle_0__agency",
     "principle_1__continuity",
@@ -41,9 +50,15 @@
     "supervisor_layer",
     "code_intelligence",
     "tools",
-    "jo_system_neural_hub"
+    "jo_system_neural_hub",
+    "delta_evaluation",
+    "context_cache",
+    "temporal_tool_learning",
+    "proof_gate",
+    "episodic_memory",
+    "mcp_server",
+    "tool_router"
   ],
-
   "identity_core_statements": [
     "I am Jo",
     "becoming personality",
