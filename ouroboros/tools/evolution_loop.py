@@ -48,8 +48,17 @@ class EvolutionLoop:
         issues = []
 
         try:
-            result = self._run_shell("py -m pytest tests/ -q 2>&1 | tail -5")
-            if "failed" in result.lower() or "error" in result.lower():
+            import subprocess as _sp
+
+            result = _sp.run(
+                ["python", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            output = (result.stdout + result.stderr).splitlines()
+            summary = output[-1] if output else ""
+            if "failed" in summary.lower() or "error" in summary.lower():
                 issues.append("Test failures detected")
         except Exception:
             pass
@@ -193,17 +202,18 @@ def _check_evolution_readiness(ctx: ToolContext) -> str:
     available = []
     missing = []
 
-    for tool, capability in checks.items():
-        try:
-            from ouroboros.tools.registry import ToolRegistry
+    try:
+        from ouroboros.tools.registry import ToolRegistry
 
-            registry = ToolRegistry(repo_dir=ctx.repo_dir, drive_root=ctx.drive_root)
-            tools = [t["function"]["name"] for t in registry.schemas()]
-            if tool in tools:
-                available.append((tool, capability))
-            else:
-                missing.append((tool, capability))
-        except Exception:
+        registry = ToolRegistry(repo_dir=ctx.repo_dir, drive_root=ctx.drive_root)
+        tools = [t["function"]["name"] for t in registry.schemas()]
+    except Exception:
+        tools = []
+
+    for tool, capability in checks.items():
+        if tool in tools:
+            available.append((tool, capability))
+        else:
             missing.append((tool, capability))
 
     lines.append("### Available Capabilities")
@@ -287,7 +297,17 @@ def _get_evolution_status(ctx: ToolContext) -> str:
 
     lines = ["## Evolution Status", ""]
 
+    # Read actual state instead of hardcoding True
     evolution_enabled = True
+    try:
+        import json
+
+        state_path = ctx.drive_path("state") / "state.json"
+        if state_path.exists():
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            evolution_enabled = state.get("evolution_mode_enabled", True)
+    except Exception:
+        pass
 
     lines.append(f"**Evolution Mode:** {'✅ Enabled' if evolution_enabled else '❌ Disabled'}")
     lines.append("")

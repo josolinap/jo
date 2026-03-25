@@ -72,11 +72,19 @@ class ProofGate:
         warnings = []
         checks_run = 0
 
-        # Check 1: Protected files
+        # Check 1: Protected files (exact + directory prefix match)
         protected = self._get_protected_files()
+        protected_dirs = {p.rstrip("/").lower() for p in protected if p.endswith("/")}
+        protected_exact = {p.lower() for p in protected if not p.endswith("/")}
         for f in files:
-            if f in protected:
+            f_lower = f.lower()
+            if f_lower in protected_exact:
                 violations.append(f"Protected file: {f}")
+            else:
+                for d in protected_dirs:
+                    if f_lower.startswith(d + "/") or f_lower.startswith(d):
+                        violations.append(f"Protected file (in {d}/): {f}")
+                        break
             checks_run += 1
 
         # Check 2: Module line limits (if writing Python)

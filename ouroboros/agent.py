@@ -628,21 +628,66 @@ class OuroborosAgent:
                     evaluator = DeltaEvaluator(
                         history_path=self.env.drive_path("delta_history.json") if self.env.drive_root else None
                     )
-                    from ouroboros.eval import evaluate_task as _eval_task
 
-                    eval_report = _eval_task(task_text, text, changed_files, self.env.repo_dir)
-                    quality = 0.9 if eval_report is None else 0.7
+                    # Get actual line counts from git diff
+                    lines_added = 0
+                    lines_removed = 0
+                    try:
+                        import subprocess as _sp
+
+                        diff_result = _sp.run(
+                            ["git", "diff", "--stat", "HEAD~1"],
+                            cwd=str(self.env.repo_dir),
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                        )
+                        if diff_result.returncode == 0:
+                            for dline in diff_result.stdout.split("\n"):
+                                if "insertion" in dline:
+                                    parts = dline.strip().split(",")
+                                    for p in parts:
+                                        p = p.strip()
+                                        if "insertion" in p:
+                                            lines_added = int("".join(c for c in p if c.isdigit()) or "0")
+                                        if "deletion" in p:
+                                            lines_removed = int("".join(c for c in p if c.isdigit()) or "0")
+                    except Exception:
+                        pass
+
+                    # Run actual tests to get real pass/fail count
+                    tests_passing = 0
+                    tests_failing = 0
+                    try:
+                        import subprocess as _sp2
+
+                        test_result = _sp2.run(
+                            ["python", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                            cwd=str(self.env.repo_dir),
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                        )
+                        output = test_result.stdout + test_result.stderr
+                        for tline in output.split("\n"):
+                            if " passed" in tline:
+                                tests_passing = int("".join(c for c in tline.split(" passed")[0] if c.isdigit()) or "0")
+                            if " failed" in tline:
+                                tests_failing = int("".join(c for c in tline.split(" failed")[0] if c.isdigit()) or "0")
+                    except Exception:
+                        pass
+
                     result = evaluator.evaluate_change(
-                        lines_added=sum(1 for f in changed_files if True),
-                        lines_removed=0,
-                        tests_passing=1 if "passed" in text.lower() else 0,
-                        tests_failing=1 if "failed" in text.lower() or "error" in text.lower() else 0,
+                        lines_added=lines_added,
+                        lines_removed=lines_removed,
+                        tests_passing=tests_passing,
+                        tests_failing=tests_failing,
                         tools_added=0,
                         tools_removed=0,
                         context=task_text[:100],
                     )
                     if not result.is_improvement:
-                        log.info("[Delta] Evolution quality: %.4f (not improving)", result.total_delta)
+                        log.warning("[Delta] Evolution quality: %.4f (not improving)", result.total_delta)
                 except Exception:
                     pass
 
