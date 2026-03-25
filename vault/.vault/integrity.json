@@ -167,11 +167,11 @@
     "concepts/principle_0__agency_implementation_links.md": "a03e2d71dbad689b8fce8b42d18a1fb1460f50ad155b60f1ebf76a9476326b1e",
     "concepts/system_edge_cases_and_recovery_patterns.md": "8d333432f9c7ba463548f7d6f3f2678a187911b55718e6a4c5ab4a45ba94c45a",
     "concepts/temporal_tool_learning.md": "9be00a4680fa385e6473c40596267a54f2caa5501687d309016bbb542115c3e8",
-    "concepts/tool_categories.md": "a6a1833e9f14aaa19d2d6f7c19c34ff05571c848550cce3da41c6e8a90b14f55",
+    "concepts/tool_categories.md": "256431e7b2a32f8698b4da7410ebb967c5d25b56146b713677438f8d176a1322",
     "concepts/bible_md.md": "149890b6fe36df615e7dc33ae9fdb2de9dd2e79da80b92aee2fc641970042cd7",
     "concepts/codebase_overview.md": "95c6654e3e8912b3a5a6bd371444bd10657e708810bdbc272df370e01e60872e",
     "concepts/principle_6__becoming.md": "3fb0ac86056092d46e7ab9ac10626933d840f0ab5d15bbf5a83467f1726979d8",
-    "concepts/identity.md": "1ae13959032738a5a122b642dcb06f66c68c47ae584b03077e580e3431467ff0",
+    "concepts/identity.md": "ecae22fb3635ef2def8c69dd932bd4836e749a535ba5542612b1553f1fbe6822",
     "concepts/principle_4__authenticity_implementation_links.md": "9943c0623abe8580600f0f00c9a7da4e730c0b2b93b471d3d00778c96e8371e9",
     "concepts/ensure_claude_code_cli.md": "612e4943251d44b106cf6cdd53c3907e0d0319d0a172a473b6af9ccd7783302b",
     "concepts/current_capabilities.md": "c3dacb2891f91cff35f817668c97216f1c0e15f02870758f43323015fc815833",
@@ -221,5 +221,5 @@
     "journal/cognitive_patterns_analysis_-_early_session.md": "0dace9384a2c9fa61a1edf251619acd041c7a3d9df6b280673a87b2c8da2f7cb",
     "journal/vault_restoration_strategy.md": "2c56cd08890e0dadfa71a9e333fcba83c0096bff0710bfb87f7be9c99faa7ea5"
   },
-  "last_updated": "2026-03-25T10:59:31.662432+00:00"
+  "last_updated": "2026-03-25T11:49:04.336676+00:00"
 }
