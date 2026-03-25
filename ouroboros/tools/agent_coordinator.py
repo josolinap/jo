@@ -92,9 +92,10 @@ class AgentCoordinator:
     tasks and delegates to specialized agents.
     """
 
-    def __init__(self, repo_dir: pathlib.Path, drive_root: pathlib.Path):
+    def __init__(self, repo_dir: pathlib.Path, drive_root: pathlib.Path, agent=None):
         self.repo_dir = repo_dir
         self.drive_root = drive_root
+        self.agent = agent  # Reference to main agent for scheduling
         self._results: Dict[str, SubAgentTask] = {}
         self._lock = threading.Lock()
 
