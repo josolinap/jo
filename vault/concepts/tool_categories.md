@@ -1,15 +1,5 @@
 ---
 title: Tool Categories
-created: 2026-03-25T08:03:18.888603+00:00
-modified: 2026-03-25T08:03:18.888603+00:00
-type: reference
-status: active
-tags: [tools, organization, hub, categories]
----
-
-
----
-title: Tool Categories
 type: reference
 status: active
 tags: [tools, organization, hub, categories]
@@ -60,24 +50,25 @@ Tools for system management:
 - `schedule_task`, `wait_for_task`, `get_task_result`
 - `switch_model`, `enable_tools`
 - `system_map`, `list_available_tools`
+- `request_capability`
+
+### Connection Tools
+Tools for creating relationships:
+- `weave_connection`
+- `create_connection`
+- `find_connections`
+- `create_backlink`
+
+### Shell Tools
+Tools for command execution:
+- `run_shell`
+- `cli_generate`
+- `cli_list`, `cli_test`, `cli_validate`
 
 ### Knowledge Tools
 Tools for accessing external knowledge:
 - `knowledge_read`, `knowledge_write`
 - `run_shell` (for system commands)
-
-## Orphaned Tools Needing Connections
-This section tracks tools that exist but aren't linked to any category:
-- file_ops
-- browse_page (likely should link to Web Tools)
-- request_capability
-- weave_connection
-- control
-- shell
-- cli_generate
-- core
-- plan
-- database
 
 ## See Also
 - [[Tool Documentation]]
@@ -85,6 +76,7 @@ This section tracks tools that exist but aren't linked to any category:
 - [[API Reference]]
 - [[Tool Router]]
 - [[Tool Categories]]
+- [[browse_page]] [[request_capability]] [[ai_code_edit]] [[ai_code_explain]] [[ai_code_refactor]] [[analyze_screenshot]] [[weave_connection]] [[cli_generate]] [[system_map]] [[list_available_tools]] [[enable_tools]] [[get_task_result]] [[wait_for_task]]
 
 ---
 *This hub is maintained by Jo to organize tool functionality.*
