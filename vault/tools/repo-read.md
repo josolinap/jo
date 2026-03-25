@@ -30,4 +30,8 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[drive_read]]
+- [[tools]] - main tool categorization and architecture
+- [[drive_read]] - read from local storage
+- [[repo_list]] - list files in repository
+- [[code_edit]] - edit files in repository
+- [[repo_commit_push]] - commit and push changes
