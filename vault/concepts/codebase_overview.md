@@ -1,9 +1,9 @@
 # Codebase Overview
 
-Generated: 2026-03-25 14:35 (git: ec409ac079f7)
+Generated: 2026-03-25 14:54 (git: 018df41ac10f)
 Repository: C:\Users\S\Desktop\jo
 
-> Freshness: This note reflects the codebase at commit `ec409ac079f7`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
+> Freshness: This note reflects the codebase at commit `018df41ac10f`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
 
 ## Summary
 
