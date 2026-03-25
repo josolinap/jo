@@ -76,4 +76,4 @@ This section tracks tools that exist but aren't linked to any category:
 ## See Also
 - [[Tool Documentation]]
 - [[System Architecture]]
-- [[API Reference]] [[browse_page]] [[file_ops]] [[request_capability]]
+- [[API Reference]] [[browse_page]] [[file_ops]] [[request_capability]] [[ai_code_edit]] [[ai_code_explain]] [[ai_code_refactor]] [[analyze_screenshot]] [[ai_code_refactor]] [[weave_connection]] [[request_capability]] [[browse_page]] [[cli_generate]] [[system_map]]
