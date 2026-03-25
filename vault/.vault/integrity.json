@@ -7,6 +7,7 @@
     "concepts/delegated_reasoning.md": "83f08e7c4376a3bcb4c4a60c59e6d7f174347925e097792b4267d988cfa1d205",
     "concepts/bible_md_principles__deep_analysis_and_application.md": "689e34eb92af1d47b10e2a9d58586e598bb653636f3e2e73b16e9e6791278c66",
     "concepts/tool_router.md": "901d7f27228df29320149cb5577f0177934efa164b147ad01c2c5a4e6a830a7e",
+    "concepts/principle_3__llm-first_1.md": "07d8bbbcb827c7375d3a5409035e51f010e48d412db3c375a25f41534108d78b",
     "concepts/principle_6__becoming.md": "04c41cdc9fedeed9e0adab182bdae40ebcefa74a2c86f0fc08452ce3fa9770c9",
     "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
     "concepts/episodic_memory.md": "9d3540e601096f0386c4ee91c6edd62dbfe43f4eb4de8f274275857be65191d4",
@@ -32,6 +33,7 @@
     "concepts/hybrid_memory_system_architecture.md": "e59542e94ad26600870b6b8273b8b27eb93ad964a8ddf19d1a0f53f825ee3e9d",
     "concepts/principle_3__llm-first.md": "cdf135beb8331c7cfbe61dcaf2959aea8d49aa852e2879112b4f41a7f8f926b4",
     "concepts/bible_md.md": "149890b6fe36df615e7dc33ae9fdb2de9dd2e79da80b92aee2fc641970042cd7",
+    "concepts/principle_8__evolution_through_iterations.md": "48bf9c32a8ad4a9f40cde44242325744f10917d718f3c4cd56b31cff82611d7d",
     "concepts/principle_0__agency.md": "c8c518cae4f23533d9a39856c63184372ebc6d770fb7517368de69088898bb27",
     "concepts/supervisor_layer.md": "8984fca99286d666cc21a7e0be1fc22b85d302e467788c9369499d03affb58c5",
     "concepts/context_cache.md": "e60abf152bfb538fb4ed5cf7382cd6367fa5d5ff518ee722e4a487484934bb09",
@@ -198,5 +200,5 @@
     "tools/wait-for-task.md": "d93f9355657ed5d3db18915ee7a09698342e8f4d4f752ccf33517bca9cbfa111",
     "tools/ai-code-edit.md": "a4145e278d61d447bdc7b78474095acd0d3b58274fdef3c940dd2fdea655c8b7"
   },
-  "last_updated": "2026-03-25T07:43:42.249746+00:00"
+  "last_updated": "2026-03-25T07:50:39.041006+00:00"
 }
