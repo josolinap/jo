@@ -1,14 +1,14 @@
 # Codebase Overview
 
-Generated: 2026-03-25 13:07 (git: 5546e31e0cd7)
+Generated: 2026-03-25 14:35 (git: ec409ac079f7)
 Repository: C:\Users\S\Desktop\jo
 
-> Freshness: This note reflects the codebase at commit `5546e31e0cd7`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
+> Freshness: This note reflects the codebase at commit `ec409ac079f7`. If HEAD has moved since generation, run `codebase_graph.scan_repo()` to refresh.
 
 ## Summary
 
 - **Total Nodes:** 1907
-- **Total Edges:** 14434
+- **Total Edges:** 14436
 - **Files:** 115
 - **Classes:** 165
 - **Functions:** 1342
