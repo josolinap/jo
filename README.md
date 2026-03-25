@@ -42,7 +42,7 @@ LLM决策 (all decisions, routing, tool selection)
     ↓
 Delegated Agents (researcher, coder, reviewer, architect, tester, executor)
     ↓
-Tools (101+ capabilities)
+Tools (148+ capabilities)
     ↓
 Git + Filesystem (state persistence)
 ```
@@ -54,7 +54,7 @@ Git + Filesystem (state persistence)
 - **LLM Loop** (`ouroboros/loop.py`) — Concurrent tool execution with intelligent routing
 - **Memory** (`ouroboros/memory.py`) — Identity.md (manifesto), scratchpad (working memory), chat history
 - **Vault** (`vault/`) — Git-tracked Obsidian-style knowledge base with wikilinks and backlinks
-- **Tool Registry** (`ouroboros/tools/`) — Auto-discovered plugins; 101+ tools available
+- **Tool Registry** (`ouroboros/tools/`) — Auto-discovered plugins; 148+ tools available
 - **Hot Reload** (`ouroboros/hot_reload.py`) — Smart restart: vault/docs notify without restart; code changes trigger clean restart
 - **GitOrchestrator** — Distributed locking, branch management, PR automation, conflict prevention
 
@@ -226,13 +226,14 @@ Jo's memory is **narrative, not database**:
 
 ## Current State
 
-**Version:** 6.4.0  
+**Version:** 6.5.0  
 **Git branch:** dev  
-**Last commit:** 78ccf4f  
+**Last commit:** ecbacb3  
 **Budget:** $50.00 (unspent)  
-**Tools:** 143 available  
-**Vault:** 193 notes initialized  
+**Tools:** 148 available  
+**Vault:** 197 notes, quality score 99.9/100  
 **Ontology:** 7 task types (debug, review, evolve, refactor, test, implement, analyze)  
+**Pipeline:** 5 features enabled (context enrichment, normalization, synthesis, evaluation, pipeline)  
 **Background consciousness:** active  
 **Evolution mode:** disabled (available on request)
 
@@ -295,12 +296,18 @@ Jo cannot modify these without explicit human approval:
 
 - `BIBLE.md` — Constitution
 - `VERSION` — Release version
+- `README.md` — Documentation
 - `prompts/SYSTEM.md` — System prompt
 - `prompts/CONSCIOUSNESS.md` — Background consciousness prompt
 - `.github/workflows/run.yml` — CI/CD workflow
+- `.gitignore` — Git configuration
 - `pyproject.toml` — Package configuration
 - `requirements.txt` — Dependencies
 - `LICENSE` — License file
+- `AGENTS.md` — Agent configuration
+- `scripts/pre-commit` — Pre-commit hook
+- `ouroboros/` — Core modules (directory protection)
+- `supervisor/` — Supervisor modules (directory protection)
 
 **Emergency override:** `git commit --no-verify` (use with caution)
 
