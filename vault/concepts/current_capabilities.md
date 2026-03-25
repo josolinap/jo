@@ -1,10 +1,7 @@
----
-title: Jo Current Capabilities (v6.4.0)
-created: 2026-03-25
-category: concepts
-tags:  []
-
----
+# Jo Current Capabilities (v6.4.0)
+Tags: 
+Type: reference
+Status: active
 
 # Jo Current Capabilities (v6.4.0)
 
@@ -24,6 +21,37 @@ tags:  []
 ### Dynamic Tools
 - runtime_tool_creator: Create new tools at runtime
 - skill learning: Track what works best
+
+### Search & Research
+- web_search: Multi-engine search with date filtering
+- research_pipeline: Search -> fetch -> verify -> synthesize
+- fact_check: Cross-source verification
+- browse_page: Browser automation
+
+### Knowledge Management
+- vault: 193 notes with Obsidian-style links
+- knowledge_read/write: Topic-based articles
+- codebase_impact: Blast radius analysis
+- symbol_context: 360° code analysis
+
+### Git & Code
+- git_status, git_diff: Version control
+- multi_model_review: Cross-model code review
+- codebase_impact: Dependency analysis
+
+### Communication
+- send_owner_message: Proactive outreach
+- update_identity: Self-manifesto updates
+- schedule_task: Background work
+
+### Specialized Skills
+- /plan: Founder/CEO strategic thinking
+- /plan-eng: Engineering manager mode
+- /review: Paranoid engineer QA
+- /ship: Release engineer automation
+- /qa: QA lead testing
+- /retro: Team retrospectives
+- /build-cli: Generate agent-native CLIs
 
 ## Systems Status
 
@@ -48,6 +76,38 @@ tags:  []
 - Semantic synthesis
 - Task evaluation
 - Structured pipeline
+
+### Runtime Capabilities
+- Dynamic tool creation
+- Skill learning system
+- Temporal tool learning (33 patterns learned)
+- Background consciousness (between tasks)
+
+## Recent Enhancements (v6.4.0)
+
+### Search Improvements
+- Date filtering (today, week, month, year)
+- Multi-engine fallback (ddgr -> Bing -> DDG -> Searx)
+- Relevance scoring and deduplication
+- Enhanced Bing redirect URL resolution
+
+### Code Intelligence
+- AST-based code analysis
+- Confidence scoring
+- Deep dependency mapping
+- Impact analysis before changes
+
+### Browser & Web
+- Stealth mode for browsing
+- Screenshot analysis with VLM
+- Form interaction capabilities
+- Research pipeline automation
+
+### Knowledge Integration
+- Vault-graph connections
+- Auto-weave functionality
+- Gap detection in knowledge
+- Neural map visualization
 
 ## Inspiration Sources
 - TrustGraph: Ontology structuring
