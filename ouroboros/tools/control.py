@@ -219,6 +219,8 @@ def _update_identity(ctx: ToolContext, content: str, commit: bool = False) -> st
     - memory/identity.md (traditional, for backward compatibility)
     - vault/concepts/identity.md (structured, with wikilinks)
 
+    Uses upsert_note to avoid creating duplicate identity files.
+
     If commit=True, also commits to GitHub (triggers restart).
     """
     from ouroboros.memory import Memory
@@ -230,7 +232,7 @@ def _update_identity(ctx: ToolContext, content: str, commit: bool = False) -> st
 
     vault = VaultManager(ctx.repo_path("vault"))
     vault.ensure_vault_structure()
-    vault.create_note(
+    vault.upsert_note(
         title="Identity",
         folder="concepts",
         content=content,

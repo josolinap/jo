@@ -15,6 +15,15 @@ from .vault_parser import WikilinkParser, ParsedNote, Wikilink
 log = logging.getLogger(__name__)
 
 
+def _update_fm_field(frontmatter: str, field: str, value: str) -> str:
+    """Update a single field in YAML frontmatter."""
+    import re
+
+    pattern = rf"^({field}:).*"
+    replacement = rf"\1 {value}"
+    return re.sub(pattern, replacement, frontmatter, count=1, flags=re.MULTILINE)
+
+
 class VaultManager:
     """Manages Jo's Obsidian-style vault with wikilinks and backlinks."""
 
@@ -117,6 +126,65 @@ class VaultManager:
         path.write_text(full_content, encoding="utf-8")
         self.invalidate_cache()
         return str(path)
+
+    def upsert_note(
+        self,
+        title: str,
+        folder: str = "concepts",
+        content: str = "",
+        tags: Optional[List[str]] = None,
+        type: str = "reference",
+        status: str = "active",
+    ) -> str:
+        """Create note if missing, update if exists (no duplicate files)."""
+        self.ensure_vault_structure()
+        safe_title = self._sanitize_filename(title)
+        path = self.vault_root / folder / f"{safe_title}.md"
+        now = utc_now_iso()
+
+        if path.exists():
+            # Update existing: preserve frontmatter, replace body
+            existing = path.read_text(encoding="utf-8")
+            if existing.startswith("---"):
+                fm_end = existing.find("\n---\n")
+                if fm_end > 0:
+                    fm = existing[: fm_end + 5]
+                    # Update modified timestamp in frontmatter
+                    fm = _update_fm_field(fm, "modified", now)
+                    new_content = fm + f"\n\n# {title}\n\n{content}"
+                else:
+                    new_content = self._build_note_content(title, content, tags, type, status, now)
+            else:
+                new_content = self._build_note_content(title, content, tags, type, status, now)
+        else:
+            new_content = self._build_note_content(title, content, tags, type, status, now)
+
+        path.write_text(new_content, encoding="utf-8")
+        self.invalidate_cache()
+        return str(path)
+
+    def _build_note_content(
+        self,
+        title: str,
+        content: str,
+        tags: Optional[List[str]],
+        type: str,
+        status: str,
+        now: str,
+    ) -> str:
+        """Build note content with frontmatter."""
+        frontmatter = [
+            "---",
+            f"title: {title}",
+            f"created: {now}",
+            f"modified: {now}",
+            f"type: {type}",
+            f"status: {status}",
+        ]
+        if tags:
+            frontmatter.append(f"tags: [{', '.join(tags)}]")
+        frontmatter.append("---")
+        return "\n".join(frontmatter) + f"\n\n# {title}\n\n{content}"
 
     def write_note(
         self,
