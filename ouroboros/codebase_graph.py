@@ -1090,3 +1090,57 @@ def get_ontology_for_task(task_text: str) -> Dict[str, Any]:
         "produces": defaults["produces"],
         "typical_tools": defaults["typical_tools"],
     }
+
+
+# Public ontology exports (used by self_check.py and other modules)
+TASK_ONTOLOGY: Dict[str, Any] = {
+    task_type: {
+        "keywords": keywords,
+        "requires": _ONTOLOGY_DEFAULTS.get(task_type, {}).get("requires", []),
+        "produces": _ONTOLOGY_DEFAULTS.get(task_type, {}).get("produces", []),
+        "typical_tools": _ONTOLOGY_DEFAULTS.get(task_type, {}).get("typical_tools", []),
+    }
+    for task_type, keywords in _ONTOLOGY_KEYWORDS.items()
+}
+
+
+class OntologyTracker:
+    """Tracks ontology relationships and their strengths."""
+
+    def __init__(self) -> None:
+        self._relationships: List[Dict[str, Any]] = []
+
+    def add_relationship(
+        self,
+        source: str,
+        target: str,
+        relation: str,
+        strength: float = 1.0,
+    ) -> None:
+        self._relationships.append(
+            {
+                "source": source,
+                "target": target,
+                "relation": relation,
+                "strength": strength,
+            }
+        )
+
+    def get_insights(self) -> Dict[str, Any]:
+        """Get insights about tracked relationships."""
+        if not self._relationships:
+            return {"total_relationships": 0, "average_strength": 0.0}
+
+        total = len(self._relationships)
+        avg_strength = sum(r["strength"] for r in self._relationships) / total
+
+        relation_counts: Dict[str, int] = {}
+        for r in self._relationships:
+            rel = r["relation"]
+            relation_counts[rel] = relation_counts.get(rel, 0) + 1
+
+        return {
+            "total_relationships": total,
+            "average_strength": round(avg_strength, 2),
+            "relation_counts": relation_counts,
+        }
