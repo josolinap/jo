@@ -79,3 +79,4 @@ But misses critical variables:
 - Must schedule as multi-step evolution due to size
 
 **Continuous**: Maintain verification discipline - every claim must be checked
+Related to vault organization and knowledge management improvements [[vault_knowledge_index_and_navigation_guide]]
