@@ -33,4 +33,8 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[analyze_screenshot]]
+- [[tools]] - main tool categorization and architecture
+- [[analyze_screenshot]] - analyze browser screenshots
+- [[browser_action]] - perform actions on browser pages
+- [[web_search]] - search the web for information
+- [[web_fetch]] - fetch full content from URLs
