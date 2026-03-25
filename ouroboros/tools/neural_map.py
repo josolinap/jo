@@ -130,7 +130,7 @@ class NeuralMap:
             import networkx as nx
 
             return self._get_clusters_louvain(community_louvain, nx)
-        except ImportError:
+        except Exception:
             return self._get_clusters_dfs()
 
     def _get_clusters_louvain(self, community_louvain: Any, nx: Any) -> List[List[str]]:
@@ -345,7 +345,7 @@ def _neural_map(ctx: ToolContext, depth: int = 2) -> str:
         import networkx as _n  # noqa: F401
 
         lines.append("**Clustering:** Louvain community detection (weighted)")
-    except ImportError:
+    except Exception:
         lines.append("**Clustering:** DFS connected components (install python-louvain + networkx for Louvain)")
     lines.append("")
 

@@ -40,3 +40,6 @@ Thumbs.db
 # awareness.jsonl - not tracked (runtime logs)
 memory/knowledge/
 memory/awareness.jsonl
+
+# Jo runtime data (cache, episodes, patterns, delta history)
+.jo_data/

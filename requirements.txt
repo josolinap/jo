@@ -1,6 +1,7 @@
 
 openai>=1.0.0
 requests
+httpx
 playwright
 playwright-stealth
 pytest

@@ -49,8 +49,9 @@ class VaultManager:
 
     def resolve_path(self, note_name_or_path: str) -> Optional[pathlib.Path]:
         """Resolve a note name or path to an absolute path."""
-        if pathlib.Path(note_name_or_path).exists():
-            return pathlib.Path(note_name_or_path)
+        p = pathlib.Path(note_name_or_path)
+        if p.exists() and p.is_file():
+            return p
         name = note_name_or_path.rstrip(".md")
         name_lower = name.lower()
         for md_file in self.vault_root.rglob("*.md"):
@@ -69,7 +70,7 @@ class VaultManager:
         if note_name in self._index:
             return self._index[note_name]
         path = self.resolve_path(note_name)
-        if not path:
+        if not path or not path.is_file():
             return None
         try:
             content = path.read_text(encoding="utf-8")
