@@ -13,6 +13,9 @@ constitution.json
 drift_baseline.json
 .jo_protected
 
+# Documentation
+README.md
+
 # Core Modules (directory prefix protection)
 ouroboros/
 supervisor/
