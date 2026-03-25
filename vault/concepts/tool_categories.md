@@ -76,4 +76,4 @@ This section tracks tools that exist but aren't linked to any category:
 ## See Also
 - [[Tool Documentation]]
 - [[System Architecture]]
-- [[API Reference]]
+- [[API Reference]] [[browse_page]] [[file_ops]] [[request_capability]]
