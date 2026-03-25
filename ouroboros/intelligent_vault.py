@@ -249,23 +249,17 @@ class VaultGraphEngine:
     def _get_note_title(self, path: Path, content: str) -> str:
         """Get note title from first heading or filename."""
         # Try first heading
-        for line in content.split('\n'):
-            line = line.strip()
-            if line.startswith('# '):
-                return line[2:].strip()
-            elif line.startswith('## '):
-                return line[3:].strip()
-            elif line.startswith('### '):
-                return line[4:].strip()
-        
-        # Fall back to filename
-        return path.stem.replace('_', ' ').replace('-', ' ').title()line in content.split("\n"):
+        for line in content.split("\n"):
             line = line.strip()
             if line.startswith("# "):
                 return line[2:].strip()
+            elif line.startswith("## "):
+                return line[3:].strip()
+            elif line.startswith("### "):
+                return line[4:].strip()
 
-        # Fallback to filename
-        return path.stem
+        # Fall back to filename
+        return path.stem.replace("_", " ").replace("-", " ").title()
 
     def build_graph(self, use_cache: bool = True) -> VaultGraph:
         """Build the vault knowledge graph."""

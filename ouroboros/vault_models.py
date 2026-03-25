@@ -32,8 +32,19 @@ class VaultNote:
         return len(self.links) == 0 and len(self.backlinks) == 0
 
     @property
-    def is_stale(self, days: int = 30) -> bool:
-        """Note hasn't been modified in a long time."""
+    def is_stale(self) -> bool:
+        """Note hasn't been modified in 30+ days."""
+        if not self.last_modified:
+            return True
+        try:
+            modified = datetime.fromisoformat(self.last_modified.replace("Z", "+00:00"))
+            now = datetime.now(modified.tzinfo)
+            return (now - modified).days > 30
+        except Exception:
+            return True
+
+    def is_stale_since(self, days: int = 30) -> bool:
+        """Check if note hasn't been modified in N days."""
         if not self.last_modified:
             return True
         try:
