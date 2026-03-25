@@ -617,8 +617,33 @@ class OuroborosAgent:
                         task_type=task_type_str or "general",
                         round_count=len(llm_trace.get("assistant_notes", [])),
                     )
+
+                    # Evolve confirmed patterns into vault skills
+                    try:
+                        from ouroboros.instinct_evolver import get_evolver
+
+                        evolver = get_evolver(repo_dir=self.env.repo_dir)
+                        evolved = evolver.evolve_from_learner(learner, self.env.repo_dir)
+                        if evolved:
+                            log.info("[Instinct] Evolved %d patterns: %s", len(evolved), evolved)
+                    except Exception:
+                        pass
             except Exception:
                 pass
+
+            # Checkpoint verification for evolution tasks
+            if task.get("type") in ("evolution", "review") and changed_files:
+                try:
+                    from ouroboros.checkpoint import run_checkpoint_gate, checkpoint_report
+
+                    gate = run_checkpoint_gate(self.env.repo_dir, changed_files)
+                    if not gate.passed:
+                        report = checkpoint_report(gate)
+                        log.warning("[Checkpoint] Evolution gate FAILED: %s", report[:200])
+                        # Append checkpoint report to response
+                        text = text + "\n\n" + report
+                except Exception:
+                    pass
 
             # Delta evaluation for evolution tasks
             if task.get("type") in ("evolution", "review"):
