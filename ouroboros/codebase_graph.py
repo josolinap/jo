@@ -1012,3 +1012,81 @@ def generate_insights(graph: CodebaseGraph) -> str:
     )
 
     return "\n".join(lines)
+
+
+# --- Task Ontology Classification ---
+
+_ONTOLOGY_KEYWORDS = {
+    "code": ["code", "file", "function", "class", "implement", "edit", "fix", "refactor", "bug", "test", "python"],
+    "research": ["research", "search", "find", "investigate", "analyze", "compare", "understand", "explain"],
+    "vault": ["vault", "note", "concept", "wiki", "knowledge", "document", "journal", "identity"],
+    "git": ["git", "commit", "push", "pull", "branch", "merge", "diff", "status", "log", "tag"],
+    "web": ["web", "url", "fetch", "browse", "scrape", "download", "http", "website"],
+    "system": ["health", "status", "config", "setting", "monitor", "performance", "drift", "version"],
+}
+
+_ONTOLOGY_DEFAULTS = {
+    "code": {
+        "requires": ["repository access", "tool schemas", "codebase graph"],
+        "produces": ["code changes", "commit", "test results"],
+        "typical_tools": ["codebase_impact", "symbol_context", "code_edit", "repo_commit_push"],
+    },
+    "research": {
+        "requires": ["web access", "knowledge base"],
+        "produces": ["analysis", "summary", "recommendations"],
+        "typical_tools": ["web_search", "web_fetch", "query_knowledge", "vault_search"],
+    },
+    "vault": {
+        "requires": ["vault access", "wikilink parser"],
+        "produces": ["vault notes", "connections", "knowledge updates"],
+        "typical_tools": ["vault_read", "vault_write", "vault_search", "vault_link"],
+    },
+    "git": {
+        "requires": ["git repository", "github API"],
+        "produces": ["commits", "branches", "releases"],
+        "typical_tools": ["git_status", "git_diff", "repo_commit_push"],
+    },
+    "web": {
+        "requires": ["browser", "HTTP client"],
+        "produces": ["scraped content", "screenshots", "analysis"],
+        "typical_tools": ["web_search", "web_fetch", "browse_page", "browser_action"],
+    },
+    "system": {
+        "requires": ["health monitor", "drift detector"],
+        "produces": ["health reports", "diagnostics"],
+        "typical_tools": ["codebase_health", "drift_detector", "system_map"],
+    },
+    "general": {
+        "requires": ["LLM access", "tool schemas"],
+        "produces": ["response", "tool results"],
+        "typical_tools": ["repo_read", "query_knowledge", "web_search"],
+    },
+}
+
+
+def get_ontology_for_task(task_text: str) -> Dict[str, Any]:
+    """Classify a task and return ontology information.
+
+    Returns dict with: task_type, requires, produces, typical_tools
+    """
+    text_lower = task_text.lower()
+    scores: Dict[str, int] = {}
+
+    for task_type, keywords in _ONTOLOGY_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in text_lower)
+        if score > 0:
+            scores[task_type] = score
+
+    if scores:
+        task_type = max(scores, key=scores.get)
+    else:
+        task_type = "general"
+
+    defaults = _ONTOLOGY_DEFAULTS.get(task_type, _ONTOLOGY_DEFAULTS["general"])
+
+    return {
+        "task_type": task_type,
+        "requires": defaults["requires"],
+        "produces": defaults["produces"],
+        "typical_tools": defaults["typical_tools"],
+    }
