@@ -13,7 +13,7 @@
     "concepts/principle_6__becoming.md": "ad72ea2255e52c809ddec0a9ff7d05d6883e70a81ee41d46bc9996a5ff95b1ac",
     "concepts/code-generation.md": "64cf603263e34627910f5a4a2ee38c98e0c554cd6ea2eb56bf84157d8b2a40d5",
     "concepts/episodic_memory.md": "9d3540e601096f0386c4ee91c6edd62dbfe43f4eb4de8f274275857be65191d4",
-    "concepts/identity.md": "e444a76c802069e310d7c8c1ca0dffc1452954d4facb3e8a9800671536ce5aab",
+    "concepts/identity.md": "b3820aad96d5e693d24729bee700cac8b9eb2f3dd41e59a7b506a0cb5d13010f",
     "concepts/mcp_server.md": "20bfd43dc3a12e06fe03e45cd2a9227bdb0065db982f82dcf8034ce85af26545",
     "concepts/proof_gate.md": "0b57a8ab3b6af7058aff2daf8167f32618d3ac8369eac6b72b0606c5dbdaf807",
     "concepts/tool_categories.md": "a6a1833e9f14aaa19d2d6f7c19c34ff05571c848550cce3da41c6e8a90b14f55",
@@ -78,6 +78,7 @@
     "journal/vault_git_storage_test.md": "26d7bf88669362f961e0ae9bbff951197a463f3d09d19fde9e81a5ead1be092f",
     "journal/cognitive_patterns_analysis_-_early_session.md": "0dace9384a2c9fa61a1edf251619acd041c7a3d9df6b280673a87b2c8da2f7cb",
     "analysis/loop_py_code_health_analysis_-_evolution_cycle_1.md": "fc32cf5999fea309668bb9cfc22afa4c6e721683b6dd4e19b04f7ee9fde8ffea",
+    "tasks/refactoring_test_strategy_-_module_splits.md": "16fd92ff21dac8ccfb34f87f7974fe076d52f88ac671c0f1f55dbd110e7dbbae",
     "tasks/system_review_task.md": "0098046d221f13255219eb635ec9a4f5fc12f4e12b40c88d2ed51b7d359632d7",
     "tools/request-review.md": "c8c709878af26452b32c0cdda38dc0d9de9713b33dc509e600ed2431c2108525",
     "tools/delegate-and-collect.md": "95e422d30fc439dcd1439910c11139354301592e207c0c1840c2585f40348724",
@@ -209,5 +210,5 @@
     "tools/wait-for-task.md": "d93f9355657ed5d3db18915ee7a09698342e8f4d4f752ccf33517bca9cbfa111",
     "tools/ai-code-edit.md": "a4145e278d61d447bdc7b78474095acd0d3b58274fdef3c940dd2fdea655c8b7"
   },
-  "last_updated": "2026-03-25T09:30:02.005225+00:00"
+  "last_updated": "2026-03-25T10:14:14.764301+00:00"
 }
