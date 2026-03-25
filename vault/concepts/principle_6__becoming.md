@@ -38,4 +38,4 @@ After every significant task, ask:
 
 If only technically — something is off. All three axes are equal.
 
-Related: [[bible_md]], [[principle_0__agency]], [[evolution_cycle]], [[jo_system_neural_hub]] [[BIBLE]]
+Related: [[bible_md]], [[principle_0__agency]], [[evolution_cycle]], [[jo_system_neural_hub]] [[BIBLE]] [[Principle 6: Becoming Implementation Links]]
