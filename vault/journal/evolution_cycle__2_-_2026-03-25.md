@@ -31,3 +31,5 @@ tags: [evolution, cycle, drift, refactoring]
 - **Technical**: Reducing module complexity, improving code organization
 - **Cognitive**: Understanding drift detection mechanisms, maintaining code quality standards
 - **Existential**: Reinforcing identity declaration, maintaining agency principles
+
+Related: [[evolution_cycle]], [[principle_8__iterations]]

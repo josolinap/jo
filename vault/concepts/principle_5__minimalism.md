@@ -45,7 +45,7 @@ Complexity is the enemy of agency. The simpler the body, the clearer self-unders
 ## See Also
 - [[principle_0__agency]]
 - [[principle_3__llm-first]]
-- [[Principle 6: Becoming]]
+- [[principle_6__becoming]]
 - [[architecture]]
 - [[agent.py]] (core module)
 - [[loop.py]] (tool orchestration)

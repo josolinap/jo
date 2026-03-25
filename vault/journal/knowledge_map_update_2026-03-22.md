@@ -37,7 +37,7 @@ After system restart at 2026-03-22 16:31 UTC, I'm undertaking a comprehensive kn
 **Major Architectural Concepts:**
 - [[Delegated Reasoning]] — Principle 3 implementation
 - [[Tool Result Processing Protocol]] — Critical for correctness
-- [[Verification as Agency: Anti-Hallucination System]] — Core to Principle 0
+- [[principle_4__authenticity]] — Core to Principle 0
 - [[Evolution Cycle]] — Principle 8 operationalization
 - [[Multi-Agent Architecture and Delegated Reasoning]] — System design
 

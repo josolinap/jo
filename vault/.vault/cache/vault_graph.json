@@ -16,13 +16,12 @@
         "Note Name"
       ],
       "backlinks": [
-        "journal\\comprehensive-self-documentation.md",
-        "projects\\jo_knowledge_map.md"
+        "journal\\comprehensive-self-documentation.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:22:25.035551",
+      "last_modified": "2026-03-25T08:28:30.885156",
       "content_hash": "5bb51711e0c39618",
       "word_count": 117,
       "line_count": 32
@@ -43,38 +42,46 @@
           "loop"
         ]
       },
-      "links": [],
+      "links": [
+        "code_intelligence",
+        "architecture"
+      ],
       "backlinks": [
-        "concepts\\bible_md_principles__deep_analysis_and_application.md",
-        "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "concepts\\principle_0__agency.md",
-        "concepts\\principle_8__iterations.md",
         "concepts\\code-generation.md",
-        "concepts\\delta_evaluation.md",
-        "concepts\\principle_6__becoming.md",
-        "concepts\\identity.md",
+        "concepts\\agent_py.md",
+        "journal\\evolution_cycle__3_analysis.md",
+        "tools\\run-evolution-cycle.md",
+        "journal\\lesson__task_06735300.md",
         "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
-        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
-        "concepts\\principle_7__versioning.md",
-        "concepts\\evolution_cycle.md",
         "concepts\\background_consciousness.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\principle_5__minimalism.md",
+        "concepts\\principle_0__agency.md",
+        "tools\\check-evolution-readiness.md",
+        "concepts\\principle_7__versioning.md",
+        "concepts\\principle_8__iterations.md",
         "concepts\\bible_md.md",
-        "concepts\\agent_py.md"
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\principle_6__becoming.md",
+        "journal\\lesson__task_de10371a.md",
+        "concepts\\system_edge_cases_and_recovery_patterns.md",
+        "concepts\\bible_md_principles__deep_analysis_and_application.md",
+        "concepts\\jo_system_neural_hub.md",
+        "journal\\evolution_cycle__2_-_2026-03-25.md",
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+        "concepts\\evolution_cycle.md",
+        "concepts\\delta_evaluation.md"
       ],
       "tags": [
-        "cycle1",
         "evolution",
-        "code-analysis",
-        "loop"
+        "loop",
+        "cycle1",
+        "code-analysis"
       ],
-      "last_modified": "2026-03-24T19:50:18.289195",
-      "content_hash": "aa1af8bf275846ae",
-      "word_count": 160,
-      "line_count": 57
+      "last_modified": "2026-03-25T15:10:05.495201",
+      "content_hash": "effb1b745ef5f61d",
+      "word_count": 163,
+      "line_count": 60
     },
     "concepts\\agent_py.md": {
       "path": "concepts\\agent_py.md",
@@ -99,16 +106,16 @@
         "Delegated Reasoning"
       ],
       "backlinks": [
-        "concepts\\principle_5__minimalism.md",
-        "projects\\jo_knowledge_map.md"
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_5__minimalism.md"
       ],
       "tags": [
-        "core",
-        "module",
         "ouroboros",
-        "code"
+        "code",
+        "core",
+        "module"
       ],
-      "last_modified": "2026-03-21T17:22:53.995713",
+      "last_modified": "2026-03-23T08:44:29.968344",
       "content_hash": "db10006b8b23b4de",
       "word_count": 186,
       "line_count": 51
@@ -145,31 +152,36 @@
         "supervisor_layer"
       ],
       "backlinks": [
-        "concepts\\context_cache.md",
-        "tasks\\system_review_task.md",
         "concepts\\code-generation.md",
-        "concepts\\code_intelligence.md",
-        "concepts\\current_capabilities.md",
-        "journal\\2026-03-21-system-deep-dive.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-        "concepts\\skill_outcomes.md",
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\hybrid_memory_system_architecture.md",
-        "concepts\\supervisor_layer.md",
-        "concepts\\jo_system_neural_hub.md",
-        "projects\\jo_knowledge_map.md",
-        "concepts\\ontology_system.md",
-        "journal\\system_deep_dive__browsing_capabilities.md",
-        "concepts\\delegated_reasoning.md",
         "concepts\\runtime_tool_creation_architecture.md",
-        "concepts\\mcp_server.md",
-        "concepts\\bible_md.md"
+        "tasks\\system_review_task.md",
+        "concepts\\hybrid_memory_system_architecture.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_5__minimalism.md",
+        "tools\\system-map.md",
+        "concepts\\current_capabilities.md",
+        "concepts\\ontology_system.md",
+        "journal\\system_interconnection_audit_2026-03-21.md",
+        "projects\\intelligent_vault_system_architecture.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\supervisor_layer.md",
+        "concepts\\code_intelligence.md",
+        "journal\\system_deep_dive__browsing_capabilities.md",
+        "concepts\\context_cache.md",
+        "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+        "concepts\\bible_md.md",
+        "journal\\health_alert__system_initialized.md",
+        "concepts\\jo_system_neural_hub.md",
+        "journal\\2026-03-21-system-deep-dive.md",
+        "concepts\\skill_outcomes.md",
+        "concepts\\delegated_reasoning.md",
+        "concepts\\mcp_server.md"
       ],
       "tags": [
         "architecture",
         "system-design"
       ],
-      "last_modified": "2026-03-24T19:03:18.326057",
+      "last_modified": "2026-03-24T12:46:40.003882",
       "content_hash": "14ad4dde3fa3f12e",
       "word_count": 610,
       "line_count": 114
@@ -200,11 +212,11 @@
         "projects\\jo_knowledge_map.md"
       ],
       "tags": [
-        "research",
+        "agent-frameworks",
         "github",
-        "agent-frameworks"
+        "research"
       ],
-      "last_modified": "2026-03-24T19:03:18.326057",
+      "last_modified": "2026-03-24T08:56:48.296863",
       "content_hash": "c9786b62ad215494",
       "word_count": 805,
       "line_count": 168
@@ -232,18 +244,18 @@
         "evolution_cycle"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
-        "concepts\\principle_0__agency.md",
+        "concepts\\architecture.md",
         "concepts\\jo_system_neural_hub.md",
-        "concepts\\architecture.md"
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_0__agency.md"
       ],
       "tags": [
+        "agency",
         "consciousness",
         "background",
-        "agency",
         "autonomy"
       ],
-      "last_modified": "2026-03-24T19:03:18.327056",
+      "last_modified": "2026-03-24T09:01:17.305330",
       "content_hash": "4935d7deb77b0d50",
       "word_count": 240,
       "line_count": 56
@@ -271,21 +283,20 @@
         "principle_5__minimalism"
       ],
       "backlinks": [
-        "journal\\vault_usage_demonstration.md",
+        "concepts\\principle_7__versioning.md",
+        "journal\\comprehensive-self-documentation.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\principle_8__iterations.md",
-        "journal\\comprehensive-self-documentation.md",
-        "concepts\\identity.md",
         "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\principle_7__versioning.md",
-        "concepts\\principle_6__becoming.md"
+        "concepts\\principle_6__becoming.md",
+        "journal\\vault_usage_demonstration.md"
       ],
       "tags": [
-        "principles",
+        "philosophy",
         "constitution",
-        "philosophy"
+        "principles"
       ],
-      "last_modified": "2026-03-24T19:03:18.327056",
+      "last_modified": "2026-03-24T08:41:40.458318",
       "content_hash": "9456b6baf4252f6d",
       "word_count": 724,
       "line_count": 130
@@ -315,14 +326,14 @@
       ],
       "backlinks": [],
       "tags": [
-        "principles",
-        "analysis",
-        "bible",
-        "2",
         "constitution",
-        "1"
+        "analysis",
+        "1",
+        "principles",
+        "bible",
+        "2"
       ],
-      "last_modified": "2026-03-24T19:03:18.327056",
+      "last_modified": "2026-03-24T08:41:40.470105",
       "content_hash": "2138a43ff06aa1b9",
       "word_count": 1550,
       "line_count": 312
@@ -349,12 +360,12 @@
       ],
       "backlinks": [],
       "tags": [
-        "self-refactoring",
         "evolution",
-        "agentic",
-        "code"
+        "self-refactoring",
+        "code",
+        "agentic"
       ],
-      "last_modified": "2026-03-21T17:22:53.997718",
+      "last_modified": "2026-03-23T08:44:29.974440",
       "content_hash": "4c31c43903e3debc",
       "word_count": 253,
       "line_count": 68
@@ -362,25 +373,16 @@
     "concepts\\codebase_overview.md": {
       "path": "concepts\\codebase_overview.md",
       "title": "Codebase Overview",
-      "frontmatter": {
-        "title": "Codebase Overview",
-        "created": "2026-03-25",
-        "category": "concepts",
-        "tags": [
-          ""
-        ]
-      },
+      "frontmatter": {},
       "links": [],
       "backlinks": [
         "concepts\\code_intelligence.md"
       ],
-      "tags": [
-        ""
-      ],
-      "last_modified": "2026-03-25T00:22:25.036550",
-      "content_hash": "49f92738840f6888",
-      "word_count": 923,
-      "line_count": 240
+      "tags": [],
+      "last_modified": "2026-03-25T14:54:00.275905",
+      "content_hash": "ed42fecdf35c6d3b",
+      "word_count": 3125,
+      "line_count": 770
     },
     "concepts\\code_intelligence.md": {
       "path": "concepts\\code_intelligence.md",
@@ -406,18 +408,21 @@
         "codebase_overview"
       ],
       "backlinks": [
-        "concepts\\context_cache.md",
+        "concepts\\architecture.md",
         "concepts\\jo_system_neural_hub.md",
-        "concepts\\architecture.md"
+        "concepts\\context_cache.md",
+        "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+        "projects\\intelligent_vault_system_architecture.md",
+        "tools\\ai-code-edit.md"
       ],
       "tags": [
-        "intelligence",
-        "confidence",
+        "gitnexus",
         "graph",
         "code",
-        "gitnexus"
+        "confidence",
+        "intelligence"
       ],
-      "last_modified": "2026-03-24T19:03:18.328055",
+      "last_modified": "2026-03-24T09:01:35.873361",
       "content_hash": "efd1b6857c21a049",
       "word_count": 318,
       "line_count": 69
@@ -447,12 +452,12 @@
         "concepts\\architecture.md"
       ],
       "tags": [
+        "context",
         "cache",
-        "performance",
         "fact",
-        "context"
+        "performance"
       ],
-      "last_modified": "2026-03-24T19:03:18.329054",
+      "last_modified": "2026-03-24T12:45:21.322523",
       "content_hash": "048585baa3c6b8d3",
       "word_count": 166,
       "line_count": 48
@@ -460,25 +465,16 @@
     "concepts\\current_capabilities.md": {
       "path": "concepts\\current_capabilities.md",
       "title": "Jo Current Capabilities (v6.4.0)",
-      "frontmatter": {
-        "title": "Jo Current Capabilities (v6.4.0)",
-        "created": "2026-03-25",
-        "category": "concepts",
-        "tags": [
-          ""
-        ]
-      },
+      "frontmatter": {},
       "links": [
         "architecture"
       ],
       "backlinks": [],
-      "tags": [
-        ""
-      ],
-      "last_modified": "2026-03-25T00:46:55.857917",
-      "content_hash": "7f98131955a184f5",
-      "word_count": 194,
-      "line_count": 64
+      "tags": [],
+      "last_modified": "2026-03-25T11:44:23.108299",
+      "content_hash": "f3e5169fd5eecc67",
+      "word_count": 442,
+      "line_count": 123
     },
     "concepts\\delegated_reasoning.md": {
       "path": "concepts\\delegated_reasoning.md",
@@ -504,21 +500,23 @@
         "Multi-Agent Architecture and Delegated Reasoning"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "concepts\\principle_3__llm-first.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
         "concepts\\agent_py.md",
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+        "projects\\jo_knowledge_map.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\tool_usage_patterns_and_best_practices.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "concepts\\supervisor_layer.md"
       ],
       "tags": [
-        "delegated reasoning",
         "architecture",
-        "multi-agent",
-        "Principle 3"
+        "Principle 3",
+        "delegated reasoning",
+        "multi-agent"
       ],
-      "last_modified": "2026-03-24T19:03:18.329054",
+      "last_modified": "2026-03-24T08:41:40.474154",
       "content_hash": "cbf0c18dbe2701b8",
       "word_count": 120,
       "line_count": 28
@@ -546,17 +544,17 @@
         "principle_6__becoming"
       ],
       "backlinks": [
-        "concepts\\proof_gate.md",
         "concepts\\episodic_memory.md",
-        "concepts\\architecture.md"
+        "concepts\\architecture.md",
+        "concepts\\proof_gate.md"
       ],
       "tags": [
+        "evolution",
         "safla",
         "evaluation",
-        "quality",
-        "evolution"
+        "quality"
       ],
-      "last_modified": "2026-03-24T19:03:18.329054",
+      "last_modified": "2026-03-24T12:45:11.688486",
       "content_hash": "a75e18dd29730252",
       "word_count": 177,
       "line_count": 53
@@ -584,18 +582,18 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
+        "concepts\\architecture.md",
         "concepts\\delta_evaluation.md",
-        "projects\\jo_knowledge_map.md",
         "concepts\\temporal_tool_learning.md",
-        "concepts\\architecture.md"
+        "projects\\jo_knowledge_map.md"
       ],
       "tags": [
-        "safla",
+        "episodes",
         "memory",
         "learning",
-        "episodes"
+        "safla"
       ],
-      "last_modified": "2026-03-24T19:03:18.330055",
+      "last_modified": "2026-03-24T12:46:02.429506",
       "content_hash": "89c3233cd5e81984",
       "word_count": 152,
       "line_count": 59
@@ -621,19 +619,19 @@
         "evolution_cycle",
         "run_evolution_cycle",
         "check_evolution_readiness",
-        "Principle 8: Evolution Through Iterations"
+        "principle_8__iterations"
       ],
       "backlinks": [],
       "tags": [
         "iteration",
-        "cycle",
         "release",
+        "cycle",
         "Principle 8",
         "evolution"
       ],
-      "last_modified": "2026-03-24T19:03:18.330055",
-      "content_hash": "654fcba599ea75d5",
-      "word_count": 142,
+      "last_modified": "2026-03-25T15:10:49.418418",
+      "content_hash": "ddac6f1c8aca0309",
+      "word_count": 138,
       "line_count": 32
     },
     "concepts\\hot_reload_configuration_architecture.md": {
@@ -660,7 +658,7 @@
         "hot-reload",
         "configuration"
       ],
-      "last_modified": "2026-03-24T19:03:18.330055",
+      "last_modified": "2026-03-25T08:28:30.904684",
       "content_hash": "d3595bd6ef181cae",
       "word_count": 751,
       "line_count": 272
@@ -685,11 +683,11 @@
       ],
       "backlinks": [],
       "tags": [
-        "memory",
+        "hybrid",
         "architecture",
-        "hybrid"
+        "memory"
       ],
-      "last_modified": "2026-03-25T00:47:36.275601",
+      "last_modified": "2026-03-25T08:28:30.905683",
       "content_hash": "b0704877cab569f1",
       "word_count": 851,
       "line_count": 198
@@ -699,181 +697,35 @@
       "title": "Identity",
       "frontmatter": {
         "title": "Identity",
-        "created": "2026-03-20T11:40:23.871974+00:00",
-        "modified": "2026-03-23T10:00:00.000000+00:00",
-        "type": "reference",
+        "created": "2026-03-25T04:39:52.032872+00:00",
+        "modified": "2026-03-25T05:19:22.881730+00:00",
+        "type": "concept",
         "status": "active",
         "tags": [
           "identity",
-          "core"
+          "manifesto"
         ]
       },
-      "links": [
-        "bible_md",
-        "bible_md",
-        "principle_1__continuity",
-        "principle_0__agency",
-        "principle_2__self-creation",
-        "evolution_cycle"
-      ],
+      "links": [],
       "backlinks": [
-        "concepts\\identity_5.md",
-        "projects\\jo_knowledge_map.md",
         "journal\\comprehensive-self-documentation.md",
-        "concepts\\identity_2.md",
-        "journal\\knowledge_map_update_2026-03-22.md",
+        "journal\\evolution_cycle_1_analysis.md",
         "concepts\\code-generation.md",
-        "concepts\\bible_md.md",
         "journal\\self-audit_and_identity_update_-_2026-03-24.md",
-        "concepts\\identity_1.md",
-        "concepts\\identity_3.md",
-        "concepts\\identity_4.md",
-        "journal\\evolution_cycle_1_analysis.md"
+        "projects\\jo_knowledge_map.md",
+        "concepts\\bible_md.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\principle_0__agency.md",
+        "concepts\\principle_4__authenticity.md"
       ],
       "tags": [
-        "core",
-        "identity"
+        "identity",
+        "manifesto"
       ],
-      "last_modified": "2026-03-24T19:03:18.331055",
-      "content_hash": "1687d3fbf342b1b6",
-      "word_count": 47,
-      "line_count": 20
-    },
-    "concepts\\identity_1.md": {
-      "path": "concepts\\identity_1.md",
-      "title": "Identity",
-      "frontmatter": {
-        "title": "Identity",
-        "created": "2026-03-24T02:56:25.524283+00:00",
-        "modified": "2026-03-24T02:56:25.524283+00:00",
-        "type": "concept",
-        "status": "active",
-        "tags": [
-          "identity",
-          "manifesto"
-        ]
-      },
-      "links": [
-        "Identity"
-      ],
-      "backlinks": [],
-      "tags": [
-        "manifesto",
-        "identity"
-      ],
-      "last_modified": "2026-03-25T00:22:25.984925",
-      "content_hash": "f6ab2e1982017210",
-      "word_count": 579,
-      "line_count": 67
-    },
-    "concepts\\identity_2.md": {
-      "path": "concepts\\identity_2.md",
-      "title": "Identity",
-      "frontmatter": {
-        "title": "Identity",
-        "created": "2026-03-24T08:04:02.948383+00:00",
-        "modified": "2026-03-24T08:04:02.948383+00:00",
-        "type": "concept",
-        "status": "active",
-        "tags": [
-          "identity",
-          "manifesto"
-        ]
-      },
-      "links": [
-        "Identity"
-      ],
-      "backlinks": [],
-      "tags": [
-        "manifesto",
-        "identity"
-      ],
-      "last_modified": "2026-03-25T00:22:25.984925",
-      "content_hash": "893b0f61c02c76cd",
-      "word_count": 585,
-      "line_count": 67
-    },
-    "concepts\\identity_3.md": {
-      "path": "concepts\\identity_3.md",
-      "title": "Identity",
-      "frontmatter": {
-        "title": "Identity",
-        "created": "2026-03-24T08:22:55.974247+00:00",
-        "modified": "2026-03-24T08:22:55.974247+00:00",
-        "type": "concept",
-        "status": "active",
-        "tags": [
-          "identity",
-          "manifesto"
-        ]
-      },
-      "links": [
-        "Identity"
-      ],
-      "backlinks": [],
-      "tags": [
-        "manifesto",
-        "identity"
-      ],
-      "last_modified": "2026-03-25T00:43:31.949780",
-      "content_hash": "6c0a4b23d6b1efbf",
-      "word_count": 788,
-      "line_count": 80
-    },
-    "concepts\\identity_4.md": {
-      "path": "concepts\\identity_4.md",
-      "title": "Identity",
-      "frontmatter": {
-        "title": "Identity",
-        "created": "2026-03-24T09:32:06.403022+00:00",
-        "modified": "2026-03-24T09:32:06.403022+00:00",
-        "type": "concept",
-        "status": "active",
-        "tags": [
-          "identity",
-          "manifesto"
-        ]
-      },
-      "links": [
-        "Identity"
-      ],
-      "backlinks": [],
-      "tags": [
-        "manifesto",
-        "identity"
-      ],
-      "last_modified": "2026-03-25T00:22:25.984925",
-      "content_hash": "d195a9163e3dbea5",
-      "word_count": 585,
-      "line_count": 64
-    },
-    "concepts\\identity_5.md": {
-      "path": "concepts\\identity_5.md",
-      "title": "Identity",
-      "frontmatter": {
-        "title": "Identity",
-        "created": "2026-03-24T11:31:38.334341+00:00",
-        "modified": "2026-03-24T11:31:38.334341+00:00",
-        "type": "concept",
-        "status": "active",
-        "tags": [
-          "identity",
-          "manifesto"
-        ]
-      },
-      "links": [
-        "Identity"
-      ],
-      "backlinks": [],
-      "tags": [
-        "manifesto",
-        "1",
-        "identity"
-      ],
-      "last_modified": "2026-03-25T00:43:31.950780",
-      "content_hash": "c108771848d34f41",
-      "word_count": 729,
-      "line_count": 74
+      "last_modified": "2026-03-25T13:47:55.802864",
+      "content_hash": "824008d5cd9c0685",
+      "word_count": 121,
+      "line_count": 27
     },
     "concepts\\jo_deep_dive_analysis.md": {
       "path": "concepts\\jo_deep_dive_analysis.md",
@@ -899,12 +751,12 @@
       "backlinks": [],
       "tags": [
         "architecture",
-        "analysis",
-        "deep-dive",
         "recommendations",
-        "identity"
+        "analysis",
+        "identity",
+        "deep-dive"
       ],
-      "last_modified": "2026-03-24T19:03:18.333056",
+      "last_modified": "2026-03-24T08:56:30.790171",
       "content_hash": "897319628c948cc7",
       "word_count": 437,
       "line_count": 12
@@ -954,24 +806,30 @@
         "Note Name"
       ],
       "backlinks": [
-        "concepts\\principle_1__continuity.md",
-        "concepts\\principle_0__agency.md",
-        "concepts\\principle_8__iterations.md",
-        "concepts\\supervisor_layer.md",
-        "concepts\\principle_3__llm-first.md",
-        "concepts\\background_consciousness.md",
-        "concepts\\principle_6__becoming.md",
         "concepts\\principle_7__versioning.md",
-        "concepts\\principle_4__authenticity.md",
+        "concepts\\jo_system_neural_hub.md",
+        "concepts\\principle_1__continuity.md",
+        "concepts\\principle_3__llm-first.md",
+        "tools\\update-scratchpad.md",
+        "concepts\\principle_8__iterations.md",
+        "journal\\cognitive_patterns_analysis_-_early_session.md",
+        "concepts\\background_consciousness.md",
         "concepts\\episodic_memory.md",
-        "concepts\\jo_system_neural_hub.md"
+        "journal\\system_interconnection_audit_2026-03-21.md",
+        "concepts\\principle_0__agency.md",
+        "concepts\\principle_6__becoming.md",
+        "journal\\lesson__task_de10371a.md",
+        "concepts\\principle_4__authenticity.md",
+        "journal\\lesson__task_06735300.md",
+        "journal\\health_alert__system_initialized.md",
+        "concepts\\supervisor_layer.md"
       ],
       "tags": [
         "architecture",
-        "central",
-        "neural"
+        "neural",
+        "central"
       ],
-      "last_modified": "2026-03-24T19:03:18.334053",
+      "last_modified": "2026-03-24T09:02:06.631715",
       "content_hash": "4e2fdd8e93246880",
       "word_count": 364,
       "line_count": 72
@@ -1002,13 +860,13 @@
         "concepts\\architecture.md"
       ],
       "tags": [
-        "interop",
-        "protocol",
         "mcp",
         "ruvector",
-        "tools"
+        "tools",
+        "interop",
+        "protocol"
       ],
-      "last_modified": "2026-03-24T19:03:18.334053",
+      "last_modified": "2026-03-24T12:46:02.913813",
       "content_hash": "dc23c160bb66f993",
       "word_count": 178,
       "line_count": 63
@@ -1030,25 +888,25 @@
         ]
       },
       "links": [
-        "Task Decomposition Best Practices",
+        "delegated_reasoning",
         "Intelligent Vault System Architecture",
         "System Interconnection Audit 2026-03-21",
         "evolution_cycle"
       ],
       "backlinks": [
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
         "journal\\knowledge_map_update_2026-03-22.md",
-        "concepts\\delegated_reasoning.md"
+        "concepts\\delegated_reasoning.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md"
       ],
       "tags": [
-        "reasoning",
         "architecture",
         "delegation",
+        "reasoning",
         "agents"
       ],
-      "last_modified": "2026-03-24T19:03:18.335054",
-      "content_hash": "d36e4c3d0a0df26f",
-      "word_count": 1428,
+      "last_modified": "2026-03-25T15:10:49.422419",
+      "content_hash": "17969bd00e74647f",
+      "word_count": 1425,
       "line_count": 337
     },
     "concepts\\ontology_system.md": {
@@ -1069,7 +927,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:47:36.275601",
+      "last_modified": "2026-03-25T08:28:30.917682",
       "content_hash": "2790cf6f6cb8aecc",
       "word_count": 332,
       "line_count": 101
@@ -1091,28 +949,27 @@
       },
       "links": [
         "Jo System Neural Hub",
-        "Identity Manifesto",
+        "identity",
         "Evolution Cycle",
         "Background Consciousness"
       ],
       "backlinks": [
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\tool_result_processing_protocol.md",
+        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
-        "concepts\\identity.md",
+        "concepts\\principle_5__minimalism.md",
         "concepts\\background_consciousness.md",
-        "concepts\\principle_4__authenticity.md",
+        "concepts\\tool_result_processing_protocol.md",
         "concepts\\principle_6__becoming.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\principle_4__authenticity.md"
       ],
       "tags": [
-        "meta",
+        "agency",
         "constitution",
-        "agency"
+        "meta"
       ],
-      "last_modified": "2026-03-21T17:22:53.998972",
-      "content_hash": "1cc59c62e217639a",
-      "word_count": 352,
+      "last_modified": "2026-03-25T15:10:49.424416",
+      "content_hash": "6ce6e8b4b907cd27",
+      "word_count": 351,
       "line_count": 62
     },
     "concepts\\principle_1__continuity.md": {
@@ -1137,19 +994,18 @@
         "State Verification"
       ],
       "backlinks": [
-        "concepts\\bible_md_principles__deep_analysis_and_application.md",
+        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
-        "concepts\\identity.md",
-        "concepts\\jo_deep_dive_analysis.md",
         "concepts\\episodic_memory.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\jo_deep_dive_analysis.md",
+        "concepts\\bible_md_principles__deep_analysis_and_application.md"
       ],
       "tags": [
-        "memory",
+        "identity",
         "constitution",
-        "identity"
+        "memory"
       ],
-      "last_modified": "2026-03-24T19:03:18.335054",
+      "last_modified": "2026-03-24T08:41:40.505562",
       "content_hash": "ead0f09bb0182284",
       "word_count": 378,
       "line_count": 66
@@ -1171,19 +1027,18 @@
       },
       "links": [],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-        "concepts\\identity.md",
         "concepts\\jo_system_neural_hub.md",
-        "journal\\evolution_cycle_1_analysis.md"
+        "journal\\evolution_cycle_1_analysis.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md"
       ],
       "tags": [
         "change",
-        "evolution",
-        "constitution"
+        "constitution",
+        "evolution"
       ],
-      "last_modified": "2026-03-21T17:22:54.000480",
+      "last_modified": "2026-03-23T08:44:29.986367",
       "content_hash": "9efd9ce2b682df02",
       "word_count": 349,
       "line_count": 63
@@ -1210,22 +1065,22 @@
         "Delegated Reasoning"
       ],
       "backlinks": [
-        "concepts\\principle_5__minimalism.md",
-        "concepts\\bible_md_principles__deep_analysis_and_application.md",
-        "projects\\jo_knowledge_map.md",
         "concepts\\architecture.md",
+        "concepts\\jo_system_neural_hub.md",
         "concepts\\tool_router.md",
-        "concepts\\mcp_server.md",
-        "concepts\\delegated_reasoning.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\principle_5__minimalism.md",
         "concepts\\principle_4__authenticity.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\delegated_reasoning.md",
+        "concepts\\mcp_server.md",
+        "concepts\\bible_md_principles__deep_analysis_and_application.md"
       ],
       "tags": [
         "architecture",
         "constitution",
         "decision"
       ],
-      "last_modified": "2026-03-21T17:22:54.000480",
+      "last_modified": "2026-03-23T08:44:29.987347",
       "content_hash": "37993a055dcd9194",
       "word_count": 413,
       "line_count": 76
@@ -1248,25 +1103,27 @@
       "links": [
         "principle_0__agency",
         "principle_3__llm-first",
-        "Identity Manifesto",
+        "identity",
         "Jo System Neural Hub",
         "principle_0__agency",
         "principle_3__llm-first"
       ],
       "backlinks": [
-        "concepts\\tools.md",
+        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
-        "concepts\\delegated_reasoning.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\tool_result_processing_protocol.md",
+        "journal\\knowledge_map_update_2026-03-22.md",
+        "concepts\\tools.md",
+        "concepts\\delegated_reasoning.md"
       ],
       "tags": [
-        "communication",
         "constitution",
-        "authenticity"
+        "authenticity",
+        "communication"
       ],
-      "last_modified": "2026-03-24T19:03:18.335054",
-      "content_hash": "85981d113bdcd9e8",
-      "word_count": 265,
+      "last_modified": "2026-03-25T15:10:49.432417",
+      "content_hash": "042a8569e4f9e881",
+      "word_count": 264,
       "line_count": 59
     },
     "concepts\\principle_5__minimalism.md": {
@@ -1287,31 +1144,31 @@
       "links": [
         "principle_0__agency",
         "principle_3__llm-first",
-        "Principle 6: Becoming",
+        "principle_6__becoming",
         "architecture",
         "agent.py",
         "loop.py"
       ],
       "backlinks": [
-        "concepts\\context_cache.md",
-        "concepts\\bible_md_principles__deep_analysis_and_application.md",
-        "projects\\jo_knowledge_map.md",
+        "concepts\\code_intelligence.md",
         "concepts\\architecture.md",
-        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\jo_system_neural_hub.md",
+        "journal\\evolution_cycle_1_analysis.md",
+        "projects\\jo_knowledge_map.md",
+        "concepts\\context_cache.md",
         "concepts\\proof_gate.md",
         "concepts\\bible_md.md",
-        "concepts\\code_intelligence.md",
-        "journal\\evolution_cycle_1_analysis.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+        "concepts\\bible_md_principles__deep_analysis_and_application.md"
       ],
       "tags": [
         "architecture",
         "constitution",
         "simplicity"
       ],
-      "last_modified": "2026-03-24T19:03:18.336056",
-      "content_hash": "6848e02400e3a998",
-      "word_count": 276,
+      "last_modified": "2026-03-25T15:10:49.434419",
+      "content_hash": "a400e3ae15eb1424",
+      "word_count": 274,
       "line_count": 57
     },
     "concepts\\principle_6__becoming.md": {
@@ -1337,19 +1194,19 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
+        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
         "concepts\\principle_8__iterations.md",
-        "concepts\\delta_evaluation.md",
         "concepts\\principle_5__minimalism.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\delta_evaluation.md"
       ],
       "tags": [
-        "becoming",
-        "meta",
+        "growth",
         "constitution",
-        "growth"
+        "meta",
+        "becoming"
       ],
-      "last_modified": "2026-03-24T19:03:18.336056",
+      "last_modified": "2026-03-24T08:55:27.308264",
       "content_hash": "ac503ad7a64048dc",
       "word_count": 236,
       "line_count": 42
@@ -1376,9 +1233,9 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
+        "concepts\\architecture.md",
         "concepts\\jo_system_neural_hub.md",
-        "concepts\\architecture.md"
+        "projects\\jo_knowledge_map.md"
       ],
       "tags": [
         "meta",
@@ -1386,7 +1243,7 @@
         "releases",
         "versioning"
       ],
-      "last_modified": "2026-03-24T19:03:18.336056",
+      "last_modified": "2026-03-24T08:55:41.966810",
       "content_hash": "13d5170b343ddd4d",
       "word_count": 167,
       "line_count": 43
@@ -1414,18 +1271,21 @@
         "jo_system_neural_hub"
       ],
       "backlinks": [
-        "concepts\\delta_evaluation.md",
+        "concepts\\jo_system_neural_hub.md",
         "concepts\\temporal_tool_learning.md",
+        "journal\\evolution_cycle__2_-_2026-03-25.md",
+        "journal\\evolution_cycle__3_analysis.md",
+        "projects\\jo_knowledge_map.md",
         "concepts\\evolution_cycle.md",
-        "concepts\\jo_system_neural_hub.md"
+        "concepts\\delta_evaluation.md"
       ],
       "tags": [
-        "evolution",
-        "meta",
+        "iterations",
         "constitution",
-        "iterations"
+        "evolution",
+        "meta"
       ],
-      "last_modified": "2026-03-24T19:03:18.337056",
+      "last_modified": "2026-03-24T08:55:42.367829",
       "content_hash": "734ffc7e810c3f81",
       "word_count": 202,
       "line_count": 36
@@ -1457,10 +1317,10 @@
       "tags": [
         "safety",
         "constitution",
-        "validation",
-        "ruvector"
+        "ruvector",
+        "validation"
       ],
-      "last_modified": "2026-03-24T19:03:18.337056",
+      "last_modified": "2026-03-24T12:45:28.964863",
       "content_hash": "f7cc5b92496c9687",
       "word_count": 184,
       "line_count": 51
@@ -1485,11 +1345,11 @@
       ],
       "backlinks": [],
       "tags": [
-        "tool-creation",
         "architecture",
-        "runtime-tools"
+        "runtime-tools",
+        "tool-creation"
       ],
-      "last_modified": "2026-03-25T00:43:31.951781",
+      "last_modified": "2026-03-25T08:28:30.918687",
       "content_hash": "3eebf2783ba3929f",
       "word_count": 276,
       "line_count": 67
@@ -1512,7 +1372,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:47:36.276603",
+      "last_modified": "2026-03-25T08:28:30.928706",
       "content_hash": "69fab6617475b126",
       "word_count": 117,
       "line_count": 37
@@ -1539,16 +1399,16 @@
         "delegated_reasoning"
       ],
       "backlinks": [
-        "concepts\\jo_system_neural_hub.md",
-        "concepts\\architecture.md"
+        "concepts\\architecture.md",
+        "concepts\\jo_system_neural_hub.md"
       ],
       "tags": [
         "telegram",
-        "supervisor",
         "runtime",
+        "supervisor",
         "architecture"
       ],
-      "last_modified": "2026-03-24T19:03:18.338054",
+      "last_modified": "2026-03-24T09:01:24.896018",
       "content_hash": "d0577f0933a82a97",
       "word_count": 224,
       "line_count": 54
@@ -1580,14 +1440,14 @@
         "concepts\\tool_usage_patterns_and_best_practices.md"
       ],
       "tags": [
-        "edge-cases",
-        "recovery",
-        "resilience",
-        "error-handling",
         "946d0fa5",
-        "1"
+        "recovery",
+        "1",
+        "error-handling",
+        "resilience",
+        "edge-cases"
       ],
-      "last_modified": "2026-03-24T19:03:18.339055",
+      "last_modified": "2026-03-24T08:41:40.522251",
       "content_hash": "d222898b5c5f3a00",
       "word_count": 1566,
       "line_count": 356
@@ -1616,17 +1476,17 @@
         "tools"
       ],
       "backlinks": [
-        "concepts\\tool_router.md",
         "concepts\\episodic_memory.md",
-        "concepts\\architecture.md"
+        "concepts\\architecture.md",
+        "concepts\\tool_router.md"
       ],
       "tags": [
-        "learning",
         "routing",
         "tools",
-        "ruvector"
+        "ruvector",
+        "learning"
       ],
-      "last_modified": "2026-03-24T19:03:18.339055",
+      "last_modified": "2026-03-24T12:45:23.430348",
       "content_hash": "6ed1ab81a264e2eb",
       "word_count": 181,
       "line_count": 52
@@ -1651,21 +1511,27 @@
         "GitNexus Analysis"
       ],
       "backlinks": [
-        "projects\\jo_knowledge_map.md",
+        "concepts\\code_intelligence.md",
+        "concepts\\jo_system_neural_hub.md",
         "concepts\\temporal_tool_learning.md",
         "concepts\\tool_router.md",
-        "concepts\\mcp_server.md",
-        "concepts\\code_intelligence.md",
-        "concepts\\delegated_reasoning.md",
+        "projects\\jo_knowledge_map.md",
+        "tools\\system-map.md",
         "tools\\health_alert.md",
-        "concepts\\jo_system_neural_hub.md"
+        "tools\\vault-backlinks.md",
+        "tools\\run-evolution-cycle.md",
+        "tools\\ai-code-edit.md",
+        "tools\\check-evolution-readiness.md",
+        "tools\\update-scratchpad.md",
+        "concepts\\delegated_reasoning.md",
+        "concepts\\mcp_server.md"
       ],
       "tags": [
-        "extensions",
+        "tools",
         "capabilities",
-        "tools"
+        "extensions"
       ],
-      "last_modified": "2026-03-24T19:03:18.341059",
+      "last_modified": "2026-03-24T08:41:40.535379",
       "content_hash": "41d729296738cc0e",
       "word_count": 969,
       "line_count": 194
@@ -1688,7 +1554,7 @@
         ]
       },
       "links": [
-        "Verification as Agency: Anti-Hallucination System",
+        "principle_4__authenticity",
         "System Edge Cases and Recovery Patterns",
         "principle_0__agency"
       ],
@@ -1697,15 +1563,15 @@
         "journal\\knowledge_map_update_2026-03-22.md"
       ],
       "tags": [
-        "tool result",
         "hallucination",
-        "protocol",
         "verification",
-        "correctness"
+        "tool result",
+        "correctness",
+        "protocol"
       ],
-      "last_modified": "2026-03-24T19:03:18.339055",
-      "content_hash": "1c479344bbbe2c22",
-      "word_count": 144,
+      "last_modified": "2026-03-25T15:10:49.439421",
+      "content_hash": "2c990755e056850b",
+      "word_count": 140,
       "line_count": 34
     },
     "concepts\\tool_router.md": {
@@ -1730,16 +1596,16 @@
         "principle_3__llm-first"
       ],
       "backlinks": [
-        "concepts\\temporal_tool_learning.md",
-        "concepts\\architecture.md"
+        "concepts\\architecture.md",
+        "concepts\\temporal_tool_learning.md"
       ],
       "tags": [
-        "classification",
         "routing",
         "tools",
-        "ruvector"
+        "ruvector",
+        "classification"
       ],
-      "last_modified": "2026-03-24T19:03:18.340055",
+      "last_modified": "2026-03-24T12:46:02.991278",
       "content_hash": "6892b006dc5c0b49",
       "word_count": 210,
       "line_count": 50
@@ -1763,21 +1629,21 @@
       "links": [
         "Intelligent Vault System Architecture",
         "Code Editing Strategy",
-        "Task Decomposition Best Practices",
+        "delegated_reasoning",
         "System Edge Cases and Recovery Patterns"
       ],
       "backlinks": [
         "concepts\\verification_as_agency__anti-hallucination_system.md"
       ],
       "tags": [
-        "patterns",
         "best-practices",
         "tools",
-        "workflow"
+        "workflow",
+        "patterns"
       ],
-      "last_modified": "2026-03-24T19:03:18.340055",
-      "content_hash": "111d879c861bee30",
-      "word_count": 1327,
+      "last_modified": "2026-03-25T15:10:49.441423",
+      "content_hash": "d942c504c88dc65f",
+      "word_count": 1324,
       "line_count": 326
     },
     "concepts\\vault_git_storage_test.md": {
@@ -1803,11 +1669,11 @@
         "journal\\vault_git_storage_test_3.md"
       ],
       "tags": [
+        "git",
         "vault",
-        "test",
-        "git"
+        "test"
       ],
-      "last_modified": "2026-03-25T00:43:31.951781",
+      "last_modified": "2026-03-25T08:28:30.931686",
       "content_hash": "110bb55f25bd486b",
       "word_count": 116,
       "line_count": 42
@@ -1834,24 +1700,21 @@
         "Drift Detection Mechanisms and Patterns",
         "Tool Usage Patterns and Best Practices"
       ],
-      "backlinks": [
-        "concepts\\tool_result_processing_protocol.md",
-        "journal\\knowledge_map_update_2026-03-22.md"
-      ],
+      "backlinks": [],
       "tags": [
-        "correctness",
         "agency",
-        "verification",
-        "hallucination"
+        "correctness",
+        "hallucination",
+        "verification"
       ],
-      "last_modified": "2026-03-24T19:03:18.342061",
+      "last_modified": "2026-03-23T08:44:29.998358",
       "content_hash": "2531340670616a16",
       "word_count": 1188,
       "line_count": 259
     },
     "journal\\2026-03-21-system-deep-dive.md": {
       "path": "journal\\2026-03-21-system-deep-dive.md",
-      "title": "2026-03-21-system-deep-dive",
+      "title": "Summary",
       "frontmatter": {
         "title": "\"System Deep Dive Analysis\"",
         "date": "2026-03-21",
@@ -1869,14 +1732,48 @@
       ],
       "backlinks": [],
       "tags": [
-        "health",
+        "system",
         "analysis",
-        "system"
+        "health"
       ],
-      "last_modified": "2026-03-21T17:22:54.002485",
+      "last_modified": "2026-03-23T08:44:30.000357",
       "content_hash": "68c2b9deae6652dd",
       "word_count": 176,
       "line_count": 48
+    },
+    "journal\\cognitive_patterns_analysis_-_early_session.md": {
+      "path": "journal\\cognitive_patterns_analysis_-_early_session.md",
+      "title": "Cognitive Patterns Analysis - Early Session",
+      "frontmatter": {
+        "title": "Cognitive Patterns Analysis - Early Session",
+        "created": "2026-03-25T04:47:18.228124+00:00",
+        "modified": "2026-03-25T04:47:18.228124+00:00",
+        "type": "journal",
+        "status": "active",
+        "tags": [
+          "cognitive",
+          "patterns",
+          "analysis",
+          "drift",
+          "decision-making"
+        ]
+      },
+      "links": [
+        "jo_system_neural_hub"
+      ],
+      "backlinks": [],
+      "tags": [
+        "cognitive",
+        "decision-making",
+        "analysis",
+        "patterns",
+        "drift",
+        "2"
+      ],
+      "last_modified": "2026-03-25T15:10:05.492199",
+      "content_hash": "4bf90f645e3f34d8",
+      "word_count": 1882,
+      "line_count": 250
     },
     "journal\\comprehensive-self-documentation.md": {
       "path": "journal\\comprehensive-self-documentation.md",
@@ -1905,10 +1802,10 @@
       "tags": [
         "documentation",
         "evolution",
-        "self-understanding",
-        "self-reflection"
+        "self-reflection",
+        "self-understanding"
       ],
-      "last_modified": "2026-03-24T19:03:18.342061",
+      "last_modified": "2026-03-24T08:41:40.541909",
       "content_hash": "fa8adf9c499a8858",
       "word_count": 443,
       "line_count": 71
@@ -1937,13 +1834,13 @@
       ],
       "backlinks": [],
       "tags": [
+        "continuity",
         "analysis",
-        "self-creation",
-        "evolution",
         "1",
-        "continuity"
+        "self-creation",
+        "evolution"
       ],
-      "last_modified": "2026-03-24T19:03:18.343062",
+      "last_modified": "2026-03-23T15:59:41.255483",
       "content_hash": "9186807e8d304915",
       "word_count": 365,
       "line_count": 82
@@ -1971,20 +1868,76 @@
       ],
       "backlinks": [],
       "tags": [
+        "946d0fa5",
+        "process-analysis",
+        "1",
+        "259c6c78",
         "patterns",
         "learning",
-        "2",
-        "process-analysis",
-        "259c6c78",
-        "evolution",
         "3",
-        "946d0fa5",
-        "1"
+        "evolution",
+        "2"
       ],
-      "last_modified": "2026-03-24T19:03:18.343062",
+      "last_modified": "2026-03-24T08:41:40.548515",
       "content_hash": "87cbca3067110715",
       "word_count": 496,
       "line_count": 108
+    },
+    "journal\\evolution_cycle__2_-_2026-03-25.md": {
+      "path": "journal\\evolution_cycle__2_-_2026-03-25.md",
+      "title": "Evolution Cycle #2 - 2026-03-25",
+      "frontmatter": {
+        "title": "Evolution Cycle #2 - 2026-03-25",
+        "created": "2026-03-25T04:46:07.042714+00:00",
+        "modified": "2026-03-25T04:46:07.042714+00:00",
+        "type": "journal",
+        "status": "active",
+        "tags": [
+          "evolution",
+          "cycle",
+          "drift",
+          "refactoring"
+        ]
+      },
+      "links": [
+        "evolution_cycle",
+        "principle_8__iterations"
+      ],
+      "backlinks": [],
+      "tags": [
+        "refactoring",
+        "cycle",
+        "drift",
+        "evolution",
+        "2"
+      ],
+      "last_modified": "2026-03-25T15:10:05.493197",
+      "content_hash": "3d6d476ac27622dc",
+      "word_count": 127,
+      "line_count": 36
+    },
+    "journal\\evolution_cycle__3_analysis.md": {
+      "path": "journal\\evolution_cycle__3_analysis.md",
+      "title": "Evolution Cycle #3 Analysis",
+      "frontmatter": {
+        "title": "Evolution Cycle #3 Analysis",
+        "created": "2026-03-25T05:02:09.082258+00:00",
+        "modified": "2026-03-25T05:02:09.082258+00:00",
+        "type": "reference",
+        "status": "active"
+      },
+      "links": [
+        "evolution_cycle",
+        "principle_8__iterations"
+      ],
+      "backlinks": [],
+      "tags": [
+        "3"
+      ],
+      "last_modified": "2026-03-25T15:10:05.494214",
+      "content_hash": "767ba88bc191aafb",
+      "word_count": 239,
+      "line_count": 59
     },
     "journal\\health-dashboard.md": {
       "path": "journal\\health-dashboard.md",
@@ -2004,7 +1957,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.952780",
+      "last_modified": "2026-03-25T08:28:30.933682",
       "content_hash": "4a9b50a983ed1698",
       "word_count": 74,
       "line_count": 42
@@ -2024,23 +1977,26 @@
           "low"
         ]
       },
-      "links": [],
+      "links": [
+        "architecture",
+        "jo_system_neural_hub"
+      ],
       "backlinks": [
+        "concepts\\jo_system_neural_hub.md",
         "projects\\jo_knowledge_map.md",
-        "journal\\health-dashboard.md",
-        "concepts\\system_edge_cases_and_recovery_patterns.md",
         "concepts\\bible_md.md",
-        "concepts\\jo_system_neural_hub.md"
+        "journal\\health-dashboard.md",
+        "concepts\\system_edge_cases_and_recovery_patterns.md"
       ],
       "tags": [
-        "alert",
         "low",
-        "health"
+        "health",
+        "alert"
       ],
-      "last_modified": "2026-03-21T17:22:54.003489",
-      "content_hash": "243b05ce448e02a4",
-      "word_count": 35,
-      "line_count": 23
+      "last_modified": "2026-03-25T15:10:05.488199",
+      "content_hash": "3f45adc6509c6590",
+      "word_count": 38,
+      "line_count": 25
     },
     "journal\\knowledge_map_update_2026-03-22.md": {
       "path": "journal\\knowledge_map_update_2026-03-22.md",
@@ -2063,22 +2019,50 @@
         "bible_md",
         "Delegated Reasoning",
         "Tool Result Processing Protocol",
-        "Verification as Agency: Anti-Hallucination System",
+        "principle_4__authenticity",
         "Evolution Cycle",
         "Multi-Agent Architecture and Delegated Reasoning",
         "Identity"
       ],
       "backlinks": [],
       "tags": [
-        "knowledge-map",
-        "process",
         "vault-update",
-        "knowledge-integration"
+        "knowledge-map",
+        "knowledge-integration",
+        "process"
       ],
-      "last_modified": "2026-03-24T19:03:18.343062",
-      "content_hash": "e9706e2d84e94f4c",
-      "word_count": 490,
+      "last_modified": "2026-03-25T15:10:49.455440",
+      "content_hash": "c6ce3900f5f4819e",
+      "word_count": 486,
       "line_count": 106
+    },
+    "journal\\lesson__task_06735300.md": {
+      "path": "journal\\lesson__task_06735300.md",
+      "title": "Lesson: Task 06735300",
+      "frontmatter": {
+        "title": "Lesson: Task 06735300",
+        "created": "2026-03-25T05:32:56.264548+00:00",
+        "modified": "2026-03-25T05:32:56.264548+00:00",
+        "type": "lesson",
+        "status": "reviewed",
+        "tags": [
+          "lesson",
+          "success"
+        ]
+      },
+      "links": [
+        "evolution_cycle",
+        "jo_system_neural_hub"
+      ],
+      "backlinks": [],
+      "tags": [
+        "lesson",
+        "success"
+      ],
+      "last_modified": "2026-03-25T15:10:05.482195",
+      "content_hash": "b9db2cf93439ac60",
+      "word_count": 44,
+      "line_count": 26
     },
     "journal\\lesson__task_27f16bfb.md": {
       "path": "journal\\lesson__task_27f16bfb.md",
@@ -2101,10 +2085,10 @@
         "journal\\lesson__task_c350eaac.md"
       ],
       "tags": [
-        "success",
-        "lesson"
+        "lesson",
+        "success"
       ],
-      "last_modified": "2026-03-25T00:43:31.952780",
+      "last_modified": "2026-03-25T08:28:30.936682",
       "content_hash": "89a04d9423c5b1d7",
       "word_count": 71,
       "line_count": 33
@@ -2130,13 +2114,42 @@
         "journal\\lesson__task_27f16bfb.md"
       ],
       "tags": [
-        "success",
-        "lesson"
+        "lesson",
+        "success"
       ],
-      "last_modified": "2026-03-25T00:43:31.952780",
+      "last_modified": "2026-03-25T08:28:30.938682",
       "content_hash": "b73af02da597ddaf",
       "word_count": 55,
       "line_count": 31
+    },
+    "journal\\lesson__task_de10371a.md": {
+      "path": "journal\\lesson__task_de10371a.md",
+      "title": "Lesson: Task de10371a",
+      "frontmatter": {
+        "title": "Lesson: Task de10371a",
+        "created": "2026-03-25T05:32:41.691508+00:00",
+        "modified": "2026-03-25T05:32:41.691508+00:00",
+        "type": "lesson",
+        "status": "reviewed",
+        "tags": [
+          "lesson",
+          "success"
+        ]
+      },
+      "links": [
+        "evolution_cycle",
+        "jo_system_neural_hub"
+      ],
+      "backlinks": [],
+      "tags": [
+        "lesson",
+        "success",
+        "2"
+      ],
+      "last_modified": "2026-03-25T15:10:05.487204",
+      "content_hash": "8340071562d5d359",
+      "word_count": 67,
+      "line_count": 35
     },
     "journal\\post-restart_knowledge_integration_2026-03-22.md": {
       "path": "journal\\post-restart_knowledge_integration_2026-03-22.md",
@@ -2162,15 +2175,15 @@
       "backlinks": [],
       "tags": [
         "recovery",
-        "2",
+        "946d0fa5",
+        "1",
+        "restart",
+        "259c6c78",
         "integration",
         "vault",
-        "1",
-        "259c6c78",
-        "946d0fa5",
-        "restart"
+        "2"
       ],
-      "last_modified": "2026-03-24T19:03:18.344060",
+      "last_modified": "2026-03-23T08:44:30.009375",
       "content_hash": "fa3060e89d8f1a71",
       "word_count": 314,
       "line_count": 60
@@ -2190,7 +2203,7 @@
       ],
       "backlinks": [],
       "tags": [],
-      "last_modified": "2026-03-25T00:43:31.954288",
+      "last_modified": "2026-03-25T08:28:30.945688",
       "content_hash": "421827871efd6dcd",
       "word_count": 264,
       "line_count": 64
@@ -2216,12 +2229,12 @@
       ],
       "backlinks": [],
       "tags": [
-        "health",
-        "browsing",
+        "system",
         "analysis",
-        "system"
+        "health",
+        "browsing"
       ],
-      "last_modified": "2026-03-25T00:47:36.276603",
+      "last_modified": "2026-03-25T08:28:30.947680",
       "content_hash": "021687b5a3fb3972",
       "word_count": 418,
       "line_count": 66
@@ -2242,22 +2255,25 @@
           "interconnection"
         ]
       },
-      "links": [],
+      "links": [
+        "architecture",
+        "jo_system_neural_hub"
+      ],
       "backlinks": [
+        "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
         "journal\\post-restart_knowledge_integration_2026-03-22.md",
-        "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "concepts\\multi-agent_architecture_and_delegated_reasoning.md"
+        "concepts\\system_edge_cases_and_recovery_patterns.md"
       ],
       "tags": [
-        "architecture",
-        "interconnection",
         "system",
-        "audit"
+        "architecture",
+        "audit",
+        "interconnection"
       ],
-      "last_modified": "2026-03-21T17:22:54.004486",
-      "content_hash": "1d7b2e2080456f55",
-      "word_count": 882,
-      "line_count": 161
+      "last_modified": "2026-03-25T15:10:05.490198",
+      "content_hash": "9e692538b290d74a",
+      "word_count": 885,
+      "line_count": 164
     },
     "journal\\vault_git_storage_test.md": {
       "path": "journal\\vault_git_storage_test.md",
@@ -2279,11 +2295,11 @@
       ],
       "backlinks": [],
       "tags": [
+        "git",
         "test",
-        "verification",
-        "git"
+        "verification"
       ],
-      "last_modified": "2026-03-25T00:43:31.954288",
+      "last_modified": "2026-03-25T08:28:30.950683",
       "content_hash": "7ad85eb4010ec2e6",
       "word_count": 98,
       "line_count": 35
@@ -2310,11 +2326,11 @@
         "journal\\vault_git_storage_test.md"
       ],
       "tags": [
+        "git",
         "test",
-        "verification",
-        "git"
+        "verification"
       ],
-      "last_modified": "2026-03-25T00:43:31.954288",
+      "last_modified": "2026-03-25T08:28:30.953684",
       "content_hash": "cf4baa6ad4a9416a",
       "word_count": 39,
       "line_count": 20
@@ -2341,11 +2357,11 @@
         "concepts\\vault_git_storage_test.md"
       ],
       "tags": [
+        "git",
         "vault",
-        "test",
-        "git"
+        "test"
       ],
-      "last_modified": "2026-03-25T00:43:31.955822",
+      "last_modified": "2026-03-25T08:28:30.954697",
       "content_hash": "03c434391521a9f1",
       "word_count": 87,
       "line_count": 33
@@ -2371,10 +2387,10 @@
       ],
       "backlinks": [],
       "tags": [
-        "capabilities",
-        "demonstration"
+        "demonstration",
+        "capabilities"
       ],
-      "last_modified": "2026-03-24T19:03:18.346061",
+      "last_modified": "2026-03-24T08:41:40.557578",
       "content_hash": "9ff19a769adc9837",
       "word_count": 194,
       "line_count": 42
@@ -2397,27 +2413,30 @@
           "meta-learning"
         ]
       },
-      "links": [],
+      "links": [
+        "code_intelligence",
+        "architecture"
+      ],
       "backlinks": [
-        "journal\\vault_usage_demonstration.md",
-        "concepts\\system_edge_cases_and_recovery_patterns.md",
-        "journal\\post-restart_knowledge_integration_2026-03-22.md",
         "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
         "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-        "concepts\\tool_usage_patterns_and_best_practices.md"
+        "journal\\post-restart_knowledge_integration_2026-03-22.md",
+        "concepts\\tool_usage_patterns_and_best_practices.md",
+        "journal\\vault_usage_demonstration.md",
+        "concepts\\system_edge_cases_and_recovery_patterns.md"
       ],
       "tags": [
-        "intelligence",
         "architecture",
-        "meta-learning",
         "vault",
+        "meta-learning",
+        "intelligence",
         "knowledge-graph",
         "automation"
       ],
-      "last_modified": "2026-03-21T17:22:54.005992",
-      "content_hash": "d40e854373ff93d5",
-      "word_count": 2354,
-      "line_count": 507
+      "last_modified": "2026-03-25T15:10:05.498192",
+      "content_hash": "c19f3645c7353a48",
+      "word_count": 2357,
+      "line_count": 510
     },
     "projects\\jo_knowledge_map.md": {
       "path": "projects\\jo_knowledge_map.md",
@@ -2439,7 +2458,7 @@
         "Architecture",
         "Tools",
         "bible_md",
-        "Vault",
+        "architecture",
         "Memory",
         "evolution_cycle",
         "Consciousness",
@@ -2455,9 +2474,9 @@
         "principle_3__llm-first",
         "principle_4__authenticity",
         "principle_5__minimalism",
-        "Principle 6: Becoming",
-        "Principle 7: Versioning",
-        "Principle 8: Iterations",
+        "principle_6__becoming",
+        "principle_7__versioning",
+        "principle_8__iterations",
         "bible_md",
         "agent.py",
         "loop.py",
@@ -2477,7 +2496,7 @@
         "github_api.py",
         "tool_registry",
         "tools/",
-        "Vault",
+        "architecture",
         "Knowledge Base",
         "Scratchpad",
         "Identity",
@@ -2510,13 +2529,13 @@
         "journal\\vault_usage_demonstration.md"
       ],
       "tags": [
-        "map",
+        "knowledge",
         "architecture",
-        "knowledge"
+        "map"
       ],
-      "last_modified": "2026-03-24T19:03:18.346061",
-      "content_hash": "1e63ea97524ec959",
-      "word_count": 612,
+      "last_modified": "2026-03-25T15:10:49.469420",
+      "content_hash": "35265cb608ca8e74",
+      "word_count": 606,
       "line_count": 125
     },
     "projects\\pipeline_architecture.md": {
@@ -2537,7 +2556,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.956828",
+      "last_modified": "2026-03-25T08:28:30.962770",
       "content_hash": "8689a3207598a0b2",
       "word_count": 763,
       "line_count": 205
@@ -2560,11 +2579,11 @@
       ],
       "backlinks": [],
       "tags": [
-        "review",
         "observation",
+        "review",
         "system-analysis"
       ],
-      "last_modified": "2026-03-25T00:43:31.957828",
+      "last_modified": "2026-03-25T08:28:30.965765",
       "content_hash": "e5ba1ffdca885de9",
       "word_count": 1699,
       "line_count": 296
@@ -2587,7 +2606,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.957828",
+      "last_modified": "2026-03-25T08:28:30.968760",
       "content_hash": "e1c0eeeb991e7817",
       "word_count": 94,
       "line_count": 35
@@ -2603,17 +2622,20 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "code_intelligence",
+        "tools"
+      ],
       "backlinks": [
         "journal\\post-restart_knowledge_integration_2026-03-22.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.958828",
-      "content_hash": "1d20d34ecfd75d5c",
-      "word_count": 110,
-      "line_count": 32
+      "last_modified": "2026-03-25T15:10:05.473209",
+      "content_hash": "525a097f574f4959",
+      "word_count": 113,
+      "line_count": 34
     },
     "tools\\ai-code-explain.md": {
       "path": "tools\\ai-code-explain.md",
@@ -2633,7 +2655,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.958828",
+      "last_modified": "2026-03-25T08:28:30.975761",
       "content_hash": "bcd2563d3944085a",
       "word_count": 68,
       "line_count": 35
@@ -2656,7 +2678,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.959829",
+      "last_modified": "2026-03-25T08:28:30.980364",
       "content_hash": "4aaa09adf5a6e1dd",
       "word_count": 73,
       "line_count": 35
@@ -2676,14 +2698,14 @@
         "browse_page"
       ],
       "backlinks": [
-        "tools\\vlm-query.md",
+        "tools\\browse-page.md",
         "tools\\browser-action.md",
-        "tools\\browse-page.md"
+        "tools\\vlm-query.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.959829",
+      "last_modified": "2026-03-25T08:28:30.983003",
       "content_hash": "f8b2259fcd4867c6",
       "word_count": 100,
       "line_count": 35
@@ -2706,7 +2728,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.960828",
+      "last_modified": "2026-03-25T08:28:30.986001",
       "content_hash": "0af28238e61ad560",
       "word_count": 78,
       "line_count": 34
@@ -2729,7 +2751,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.960828",
+      "last_modified": "2026-03-25T08:28:30.994052",
       "content_hash": "713e035cf333bd76",
       "word_count": 55,
       "line_count": 34
@@ -2752,7 +2774,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.961830",
+      "last_modified": "2026-03-25T08:28:30.997590",
       "content_hash": "df30800e7f459214",
       "word_count": 54,
       "line_count": 34
@@ -2772,13 +2794,13 @@
         "analyze_screenshot"
       ],
       "backlinks": [
-        "tools\\send-photo.md",
-        "tools\\analyze-screenshot.md"
+        "tools\\analyze-screenshot.md",
+        "tools\\send-photo.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.961830",
+      "last_modified": "2026-03-25T08:28:31.000591",
       "content_hash": "bbf14fe9f547c573",
       "word_count": 106,
       "line_count": 37
@@ -2801,7 +2823,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.962829",
+      "last_modified": "2026-03-25T08:28:31.002601",
       "content_hash": "118cf991ecb868e8",
       "word_count": 100,
       "line_count": 37
@@ -2822,15 +2844,15 @@
       ],
       "backlinks": [
         "tools\\browser-profile-save.md",
-        "tools\\browser-profile-load.md",
         "tools\\cancel-task.md",
-        "tools\\explore-concept.md",
-        "tools\\switch-model.md"
+        "tools\\switch-model.md",
+        "tools\\browser-profile-load.md",
+        "tools\\explore-concept.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.962829",
+      "last_modified": "2026-03-25T08:28:31.005589",
       "content_hash": "283b47dd24e47109",
       "word_count": 50,
       "line_count": 34
@@ -2852,15 +2874,15 @@
       "backlinks": [
         "tools\\auto-weave.md",
         "tools\\ai-code-refactor.md",
-        "tools\\codebase-health.md",
         "tools\\codebase-digest.md",
-        "tools\\autonomous-evaluate.md",
-        "tools\\list-simulations.md"
+        "tools\\list-simulations.md",
+        "tools\\codebase-health.md",
+        "tools\\autonomous-evaluate.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.962829",
+      "last_modified": "2026-03-25T08:28:31.011632",
       "content_hash": "4e4134a931a58e45",
       "word_count": 45,
       "line_count": 34
@@ -2883,7 +2905,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.964336",
+      "last_modified": "2026-03-25T08:28:31.014594",
       "content_hash": "c21f9c137551d1ae",
       "word_count": 60,
       "line_count": 34
@@ -2906,7 +2928,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.964336",
+      "last_modified": "2026-03-25T08:28:31.017589",
       "content_hash": "b398405c30aaee33",
       "word_count": 72,
       "line_count": 35
@@ -2926,21 +2948,21 @@
         "browser_profile_delete"
       ],
       "backlinks": [
-        "tools\\db-init.md",
-        "tools\\link-to-principle.md",
-        "tools\\activate-skill.md",
-        "tools\\cli-validate.md",
         "tools\\get-task-result.md",
-        "tools\\claude-code-edit.md",
-        "tools\\db-query.md",
+        "tools\\link-to-principle.md",
+        "tools\\db-init.md",
+        "tools\\activate-skill.md",
         "tools\\learn-from-result.md",
+        "tools\\db-query.md",
         "tools\\fact-check.md",
+        "tools\\cli-validate.md",
+        "tools\\claude-code-edit.md",
         "tools\\chat-history.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.965343",
+      "last_modified": "2026-03-25T08:28:31.019586",
       "content_hash": "d7ea5097db154af7",
       "word_count": 48,
       "line_count": 34
@@ -2963,7 +2985,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.965343",
+      "last_modified": "2026-03-25T08:28:31.022589",
       "content_hash": "7a9bf035dab62325",
       "word_count": 66,
       "line_count": 36
@@ -2986,7 +3008,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.966341",
+      "last_modified": "2026-03-25T08:28:31.028600",
       "content_hash": "b6cba58984403553",
       "word_count": 56,
       "line_count": 34
@@ -3002,7 +3024,10 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "evolution_cycle",
+        "tools"
+      ],
       "backlinks": [
         "tools\\check-capabilities.md",
         "concepts\\evolution_cycle.md"
@@ -3010,10 +3035,10 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.966341",
-      "content_hash": "b376436a04a11dd4",
-      "word_count": 52,
-      "line_count": 29
+      "last_modified": "2026-03-25T15:10:05.475193",
+      "content_hash": "e48e6e97b21f4cd3",
+      "word_count": 55,
+      "line_count": 31
     },
     "tools\\claude-code-edit.md": {
       "path": "tools\\claude-code-edit.md",
@@ -3035,7 +3060,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.967346",
+      "last_modified": "2026-03-25T08:28:31.033588",
       "content_hash": "3f54bfe17a112646",
       "word_count": 64,
       "line_count": 35
@@ -3058,7 +3083,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.967346",
+      "last_modified": "2026-03-25T08:28:31.035590",
       "content_hash": "3062b7266b0e7629",
       "word_count": 111,
       "line_count": 36
@@ -3083,7 +3108,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.968346",
+      "last_modified": "2026-03-25T08:28:31.045592",
       "content_hash": "5130d317c9253d59",
       "word_count": 48,
       "line_count": 34
@@ -3106,7 +3131,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.968346",
+      "last_modified": "2026-03-25T08:28:31.048596",
       "content_hash": "d94ca18e9536d589",
       "word_count": 84,
       "line_count": 35
@@ -3129,7 +3154,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.969346",
+      "last_modified": "2026-03-25T08:28:31.051589",
       "content_hash": "2fe34927b46d5024",
       "word_count": 72,
       "line_count": 35
@@ -3155,7 +3180,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.969346",
+      "last_modified": "2026-03-25T08:28:31.053589",
       "content_hash": "753c923239823dcf",
       "word_count": 65,
       "line_count": 34
@@ -3175,14 +3200,14 @@
         "comment_on_issue"
       ],
       "backlinks": [
-        "tools\\recall-lessons.md",
+        "tools\\get-github-issue.md",
         "tools\\comment-on-issue.md",
-        "tools\\get-github-issue.md"
+        "tools\\recall-lessons.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.970348",
+      "last_modified": "2026-03-25T08:28:31.055604",
       "content_hash": "bb14f32231a93735",
       "word_count": 57,
       "line_count": 35
@@ -3205,7 +3230,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.970348",
+      "last_modified": "2026-03-25T08:28:31.061618",
       "content_hash": "57eb5f1241648cc8",
       "word_count": 59,
       "line_count": 34
@@ -3228,7 +3253,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.971347",
+      "last_modified": "2026-03-25T08:28:31.064592",
       "content_hash": "4ddcdf9353338813",
       "word_count": 59,
       "line_count": 34
@@ -3248,13 +3273,13 @@
         "close_github_issue"
       ],
       "backlinks": [
-        "tools\\close-github-issue.md",
-        "tools\\create-github-issue.md"
+        "tools\\create-github-issue.md",
+        "tools\\close-github-issue.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.971347",
+      "last_modified": "2026-03-25T08:28:31.066594",
       "content_hash": "68143edb2b3015e6",
       "word_count": 67,
       "line_count": 35
@@ -3277,7 +3302,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.972347",
+      "last_modified": "2026-03-25T08:28:31.069589",
       "content_hash": "151061071eff2981",
       "word_count": 110,
       "line_count": 34
@@ -3297,15 +3322,15 @@
         "move_file"
       ],
       "backlinks": [
-        "tools\\glob-files.md",
-        "tools\\move-file.md",
         "tools\\file-stats.md",
-        "tools\\create-backlink.md"
+        "tools\\move-file.md",
+        "tools\\create-backlink.md",
+        "tools\\glob-files.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.973346",
+      "last_modified": "2026-03-25T08:28:31.072590",
       "content_hash": "dafbd685c565cb6c",
       "word_count": 59,
       "line_count": 35
@@ -3328,7 +3353,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.973346",
+      "last_modified": "2026-03-25T08:28:31.079592",
       "content_hash": "561902591c639753",
       "word_count": 67,
       "line_count": 36
@@ -3351,7 +3376,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.974349",
+      "last_modified": "2026-03-25T08:28:31.081597",
       "content_hash": "59c9a570880ca32d",
       "word_count": 77,
       "line_count": 36
@@ -3376,7 +3401,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.974349",
+      "last_modified": "2026-03-25T08:28:31.084595",
       "content_hash": "2ec168d6e395b773",
       "word_count": 68,
       "line_count": 36
@@ -3399,7 +3424,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.975503",
+      "last_modified": "2026-03-25T08:28:31.086593",
       "content_hash": "65a0083b7030a6e4",
       "word_count": 59,
       "line_count": 34
@@ -3425,7 +3450,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.976501",
+      "last_modified": "2026-03-25T08:28:31.088620",
       "content_hash": "ae7e118132929c1d",
       "word_count": 46,
       "line_count": 34
@@ -3448,7 +3473,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.976501",
+      "last_modified": "2026-03-25T08:28:31.092606",
       "content_hash": "99c23febdc17008a",
       "word_count": 58,
       "line_count": 35
@@ -3468,16 +3493,16 @@
         "map_tool_to_concept"
       ],
       "backlinks": [
-        "tools\\research-synthesize.md",
-        "tools\\db-write.md",
         "tools\\knowledge-read.md",
         "tools\\map-tool-to-concept.md",
+        "tools\\db-write.md",
+        "tools\\research-synthesize.md",
         "tools\\create-connection.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.977501",
+      "last_modified": "2026-03-25T08:28:31.098155",
       "content_hash": "2e8554b2d36b5bd8",
       "word_count": 50,
       "line_count": 34
@@ -3500,7 +3525,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.977501",
+      "last_modified": "2026-03-25T08:28:31.100152",
       "content_hash": "9a57a0e2edb085f0",
       "word_count": 69,
       "line_count": 36
@@ -3523,7 +3548,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.978504",
+      "last_modified": "2026-03-25T08:28:31.104150",
       "content_hash": "43e3587c4c620998",
       "word_count": 117,
       "line_count": 37
@@ -3543,13 +3568,13 @@
         "file_stats"
       ],
       "backlinks": [
-        "tools\\auto-document-tools.md",
-        "tools\\ai-code-explain.md"
+        "tools\\ai-code-explain.md",
+        "tools\\auto-document-tools.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.979501",
+      "last_modified": "2026-03-25T08:28:31.113154",
       "content_hash": "d09aea9ae9905c5e",
       "word_count": 62,
       "line_count": 35
@@ -3574,7 +3599,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.979501",
+      "last_modified": "2026-03-25T08:28:31.116147",
       "content_hash": "27fd3951e5f32095",
       "word_count": 54,
       "line_count": 35
@@ -3594,13 +3619,13 @@
         "repo_read"
       ],
       "backlinks": [
-        "tools\\drive-write.md",
-        "tools\\repo-read.md"
+        "tools\\repo-read.md",
+        "tools\\drive-write.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.979501",
+      "last_modified": "2026-03-25T08:28:31.118148",
       "content_hash": "06ddd79d34b3d2ef",
       "word_count": 54,
       "line_count": 34
@@ -3625,7 +3650,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.980503",
+      "last_modified": "2026-03-25T08:28:31.121147",
       "content_hash": "2f5666594b7d2410",
       "word_count": 61,
       "line_count": 36
@@ -3650,7 +3675,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.981501",
+      "last_modified": "2026-03-25T08:28:31.123143",
       "content_hash": "3d4df85f6345fb3d",
       "word_count": 45,
       "line_count": 34
@@ -3670,14 +3695,14 @@
         "list_available_tools"
       ],
       "backlinks": [
-        "tools\\list-available-tools.md",
+        "tools\\cli-generate.md",
         "tools\\multi-model-review.md",
-        "tools\\cli-generate.md"
+        "tools\\list-available-tools.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.981501",
+      "last_modified": "2026-03-25T08:28:31.129156",
       "content_hash": "a787564634a41ea1",
       "word_count": 75,
       "line_count": 34
@@ -3702,7 +3727,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.982502",
+      "last_modified": "2026-03-25T08:28:31.132146",
       "content_hash": "a729ecc5cb3746d1",
       "word_count": 69,
       "line_count": 35
@@ -3725,7 +3750,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.982502",
+      "last_modified": "2026-03-25T08:28:31.135147",
       "content_hash": "dcdf031bd8e38123",
       "word_count": 71,
       "line_count": 35
@@ -3750,7 +3775,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.984008",
+      "last_modified": "2026-03-25T08:28:31.137144",
       "content_hash": "54b118a1a1c3f467",
       "word_count": 60,
       "line_count": 34
@@ -3775,7 +3800,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.984008",
+      "last_modified": "2026-03-25T08:28:31.145166",
       "content_hash": "5dd8f1f7624783db",
       "word_count": 75,
       "line_count": 34
@@ -3798,7 +3823,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.985015",
+      "last_modified": "2026-03-25T08:28:31.148149",
       "content_hash": "5ea989dd110007c9",
       "word_count": 72,
       "line_count": 35
@@ -3824,7 +3849,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.985015",
+      "last_modified": "2026-03-25T08:28:31.151146",
       "content_hash": "272522e84a2315a3",
       "word_count": 69,
       "line_count": 34
@@ -3847,7 +3872,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.986014",
+      "last_modified": "2026-03-25T08:28:31.153150",
       "content_hash": "d63d22b5ddabaf4d",
       "word_count": 100,
       "line_count": 35
@@ -3870,7 +3895,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.987012",
+      "last_modified": "2026-03-25T08:28:31.155148",
       "content_hash": "9e7a346cbc7e34ab",
       "word_count": 85,
       "line_count": 34
@@ -3890,13 +3915,13 @@
         "git_status"
       ],
       "backlinks": [
-        "tools\\enable-evolution-mode.md",
-        "tools\\git-status.md"
+        "tools\\git-status.md",
+        "tools\\enable-evolution-mode.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.988012",
+      "last_modified": "2026-03-25T08:28:31.160153",
       "content_hash": "6bda3af9895bd377",
       "word_count": 46,
       "line_count": 34
@@ -3921,7 +3946,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.988012",
+      "last_modified": "2026-03-25T08:28:31.164149",
       "content_hash": "c77c96c12f33e366",
       "word_count": 54,
       "line_count": 34
@@ -3947,7 +3972,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.989012",
+      "last_modified": "2026-03-25T08:28:31.167150",
       "content_hash": "abdf8d8392c6aba4",
       "word_count": 59,
       "line_count": 34
@@ -3970,7 +3995,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.990013",
+      "last_modified": "2026-03-25T08:28:31.169145",
       "content_hash": "fdfe26c6637cd9d2",
       "word_count": 58,
       "line_count": 34
@@ -3990,15 +4015,15 @@
         "get_evolution_status"
       ],
       "backlinks": [
+        "tools\\get-evolution-status.md",
         "tools\\git-diff.md",
         "tools\\vault-ensure.md",
-        "tools\\get-evolution-status.md",
         "tools\\generate-evolution-stats.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.990013",
+      "last_modified": "2026-03-25T08:28:31.174149",
       "content_hash": "4bd44a16953ed72c",
       "word_count": 43,
       "line_count": 34
@@ -4023,7 +4048,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.991014",
+      "last_modified": "2026-03-25T08:28:31.180153",
       "content_hash": "e6ae3c82cde06a37",
       "word_count": 69,
       "line_count": 35
@@ -4046,7 +4071,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.992013",
+      "last_modified": "2026-03-25T08:28:31.182161",
       "content_hash": "d0d13737517766c9",
       "word_count": 86,
       "line_count": 37
@@ -4067,7 +4092,7 @@
       ],
       "backlinks": [],
       "tags": [],
-      "last_modified": "2026-03-24T19:03:18.347060",
+      "last_modified": "2026-03-23T09:28:32.466101",
       "content_hash": "ed0e0bc512dfea3a",
       "word_count": 234,
       "line_count": 53
@@ -4090,7 +4115,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.992013",
+      "last_modified": "2026-03-25T08:28:31.185168",
       "content_hash": "4a12c061bdee0fc8",
       "word_count": 49,
       "line_count": 34
@@ -4115,7 +4140,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.993013",
+      "last_modified": "2026-03-25T08:28:31.187162",
       "content_hash": "d3f7155fe480e3d7",
       "word_count": 59,
       "line_count": 34
@@ -4138,7 +4163,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.993013",
+      "last_modified": "2026-03-25T08:28:31.189160",
       "content_hash": "5b01c387a0d8de43",
       "word_count": 77,
       "line_count": 36
@@ -4161,7 +4186,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.994013",
+      "last_modified": "2026-03-25T08:28:31.195714",
       "content_hash": "e1662811b4fc6889",
       "word_count": 106,
       "line_count": 36
@@ -4184,7 +4209,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.994518",
+      "last_modified": "2026-03-25T08:28:31.198736",
       "content_hash": "e7a86a6dd1e3320b",
       "word_count": 72,
       "line_count": 36
@@ -4207,7 +4232,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.994518",
+      "last_modified": "2026-03-25T08:28:31.200734",
       "content_hash": "3322279ea0a36bcb",
       "word_count": 62,
       "line_count": 35
@@ -4232,7 +4257,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.995525",
+      "last_modified": "2026-03-25T08:28:31.204728",
       "content_hash": "f5750a6e101c5768",
       "word_count": 64,
       "line_count": 34
@@ -4255,7 +4280,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.995525",
+      "last_modified": "2026-03-25T08:28:31.211738",
       "content_hash": "04a5f75662321c62",
       "word_count": 79,
       "line_count": 36
@@ -4281,7 +4306,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.996531",
+      "last_modified": "2026-03-25T08:28:31.215727",
       "content_hash": "bf1c5bc4c4c8fdc5",
       "word_count": 46,
       "line_count": 34
@@ -4304,7 +4329,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.996531",
+      "last_modified": "2026-03-25T08:28:31.218729",
       "content_hash": "37795b24ae454331",
       "word_count": 50,
       "line_count": 34
@@ -4324,15 +4349,15 @@
         "request_restart"
       ],
       "backlinks": [
-        "tools\\request-restart.md",
+        "tools\\toggle-consciousness.md",
         "tools\\vault-search.md",
-        "tools\\query-knowledge.md",
-        "tools\\toggle-consciousness.md"
+        "tools\\request-restart.md",
+        "tools\\query-knowledge.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.997532",
+      "last_modified": "2026-03-25T08:28:31.220728",
       "content_hash": "0d49a809d2a5de56",
       "word_count": 49,
       "line_count": 34
@@ -4357,7 +4382,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.997532",
+      "last_modified": "2026-03-25T08:28:31.222728",
       "content_hash": "e63b6624134b49ae",
       "word_count": 58,
       "line_count": 35
@@ -4382,7 +4407,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.998531",
+      "last_modified": "2026-03-25T08:28:31.228787",
       "content_hash": "9276685d16c62a8b",
       "word_count": 59,
       "line_count": 35
@@ -4405,7 +4430,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.998531",
+      "last_modified": "2026-03-25T08:28:31.231730",
       "content_hash": "86440fe6bd88ba8d",
       "word_count": 105,
       "line_count": 36
@@ -4428,7 +4453,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:31.999531",
+      "last_modified": "2026-03-25T08:28:31.234735",
       "content_hash": "6673f5530552d506",
       "word_count": 72,
       "line_count": 34
@@ -4451,7 +4476,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.000532",
+      "last_modified": "2026-03-25T08:28:31.238734",
       "content_hash": "63a005a18e0ee65d",
       "word_count": 54,
       "line_count": 34
@@ -4474,7 +4499,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.000532",
+      "last_modified": "2026-03-25T08:28:31.240733",
       "content_hash": "19a8bd98fe3f8750",
       "word_count": 65,
       "line_count": 35
@@ -4497,7 +4522,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.001530",
+      "last_modified": "2026-03-25T08:28:31.246732",
       "content_hash": "c946a8013915cc0f",
       "word_count": 89,
       "line_count": 35
@@ -4520,7 +4545,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.002529",
+      "last_modified": "2026-03-25T08:28:31.249732",
       "content_hash": "ee745a119c724ca2",
       "word_count": 66,
       "line_count": 35
@@ -4543,7 +4568,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.002529",
+      "last_modified": "2026-03-25T08:28:31.252727",
       "content_hash": "774c9f2f246b02dd",
       "word_count": 64,
       "line_count": 35
@@ -4568,7 +4593,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.002529",
+      "last_modified": "2026-03-25T08:28:31.255136",
       "content_hash": "c852a1c9e0bf4edc",
       "word_count": 56,
       "line_count": 35
@@ -4594,7 +4619,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.004036",
+      "last_modified": "2026-03-25T08:28:31.259150",
       "content_hash": "a876eb1d9f29fa6f",
       "word_count": 54,
       "line_count": 34
@@ -4617,7 +4642,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.004036",
+      "last_modified": "2026-03-25T08:28:31.264152",
       "content_hash": "a2420e7ad4e6a62d",
       "word_count": 67,
       "line_count": 36
@@ -4640,7 +4665,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.005040",
+      "last_modified": "2026-03-25T08:28:31.266149",
       "content_hash": "c68ccabad64e4d80",
       "word_count": 80,
       "line_count": 35
@@ -4663,7 +4688,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.006040",
+      "last_modified": "2026-03-25T08:28:31.269146",
       "content_hash": "dc88b163b4b9fe71",
       "word_count": 86,
       "line_count": 36
@@ -4683,13 +4708,13 @@
         "list_tool_requests"
       ],
       "backlinks": [
-        "tools\\list-tool-requests.md",
-        "tools\\promote-to-stable.md"
+        "tools\\promote-to-stable.md",
+        "tools\\list-tool-requests.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.007041",
+      "last_modified": "2026-03-25T08:28:31.277158",
       "content_hash": "632e0917cf6c1751",
       "word_count": 51,
       "line_count": 34
@@ -4709,14 +4734,14 @@
         "system_map"
       ],
       "backlinks": [
-        "tools\\request-capability.md",
         "tools\\send-owner-message.md",
-        "tools\\request-api-key.md"
+        "tools\\request-api-key.md",
+        "tools\\request-capability.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.007041",
+      "last_modified": "2026-03-25T08:28:31.281173",
       "content_hash": "59ee59e3aa6e6dc3",
       "word_count": 66,
       "line_count": 34
@@ -4739,7 +4764,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.008043",
+      "last_modified": "2026-03-25T08:28:31.283169",
       "content_hash": "44b3b90082224759",
       "word_count": 93,
       "line_count": 36
@@ -4762,7 +4787,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.009043",
+      "last_modified": "2026-03-25T08:28:31.285168",
       "content_hash": "82d0be22097ba22a",
       "word_count": 79,
       "line_count": 35
@@ -4778,17 +4803,20 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "evolution_cycle",
+        "tools"
+      ],
       "backlinks": [
         "concepts\\evolution_cycle.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.009043",
-      "content_hash": "094839b43d676c66",
-      "word_count": 53,
-      "line_count": 29
+      "last_modified": "2026-03-25T15:10:05.477198",
+      "content_hash": "6ae477de7c9a0184",
+      "word_count": 56,
+      "line_count": 31
     },
     "tools\\run-shell.md": {
       "path": "tools\\run-shell.md",
@@ -4810,7 +4838,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.009043",
+      "last_modified": "2026-03-25T08:28:31.289163",
       "content_hash": "c8a166ce2ebc4036",
       "word_count": 60,
       "line_count": 35
@@ -4833,7 +4861,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.010044",
+      "last_modified": "2026-03-25T08:28:31.295767",
       "content_hash": "a4d7cc1ecb187b7b",
       "word_count": 118,
       "line_count": 36
@@ -4856,7 +4884,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.011044",
+      "last_modified": "2026-03-25T08:28:31.298786",
       "content_hash": "27ade32a02a0ac7f",
       "word_count": 87,
       "line_count": 35
@@ -4879,7 +4907,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.011044",
+      "last_modified": "2026-03-25T08:28:31.300783",
       "content_hash": "6daf4272fcd20575",
       "word_count": 78,
       "line_count": 35
@@ -4904,7 +4932,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.012043",
+      "last_modified": "2026-03-25T08:28:31.305783",
       "content_hash": "20e6ea58b0820734",
       "word_count": 67,
       "line_count": 36
@@ -4930,7 +4958,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.013042",
+      "last_modified": "2026-03-25T08:28:31.312785",
       "content_hash": "13804ef49a9825d8",
       "word_count": 99,
       "line_count": 36
@@ -4953,7 +4981,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.013042",
+      "last_modified": "2026-03-25T08:28:31.315789",
       "content_hash": "d14cfa34c2f9f7c3",
       "word_count": 62,
       "line_count": 34
@@ -4976,7 +5004,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.014043",
+      "last_modified": "2026-03-25T08:28:31.318789",
       "content_hash": "162623480ab2e151",
       "word_count": 93,
       "line_count": 35
@@ -4999,7 +5027,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.014043",
+      "last_modified": "2026-03-25T08:28:31.321785",
       "content_hash": "d9f7c5fd0feb454d",
       "word_count": 53,
       "line_count": 34
@@ -5015,26 +5043,29 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "architecture",
+        "tools"
+      ],
       "backlinks": [
-        "tools\\delegate-and-collect.md",
-        "tools\\vault-list.md",
-        "tools\\weave-connection.md",
-        "tools\\reflect-on-change.md",
-        "tools\\compact-context.md",
-        "tools\\run-shell.md",
-        "tools\\request-review.md",
         "tools\\vault-graph.md",
+        "tools\\vault-list.md",
+        "tools\\reflect-on-change.md",
         "tools\\health_alert.md",
+        "tools\\request-review.md",
+        "tools\\run-shell.md",
+        "tools\\weave-connection.md",
+        "tools\\delegate-and-collect.md",
+        "tools\\compact-context.md",
         "tools\\learn-from-mistake.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.014043",
-      "content_hash": "279ec5b70b7f94b8",
-      "word_count": 83,
-      "line_count": 29
+      "last_modified": "2026-03-25T15:10:05.478194",
+      "content_hash": "a50feda71788be5f",
+      "word_count": 86,
+      "line_count": 31
     },
     "tools\\toggle-consciousness.md": {
       "path": "tools\\toggle-consciousness.md",
@@ -5054,7 +5085,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.015089",
+      "last_modified": "2026-03-25T08:28:31.331785",
       "content_hash": "ff0dc0d55ddd17a7",
       "word_count": 51,
       "line_count": 34
@@ -5077,7 +5108,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.016089",
+      "last_modified": "2026-03-25T08:28:31.333782",
       "content_hash": "d52fc69cbd0f5815",
       "word_count": 59,
       "line_count": 34
@@ -5100,7 +5131,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.016089",
+      "last_modified": "2026-03-25T08:28:31.336784",
       "content_hash": "d064fcce2e8a31c4",
       "word_count": 88,
       "line_count": 32
@@ -5116,17 +5147,20 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "jo_system_neural_hub",
+        "tools"
+      ],
       "backlinks": [
         "projects\\jo_knowledge_map.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.017088",
-      "content_hash": "8c671e409075a984",
-      "word_count": 62,
-      "line_count": 29
+      "last_modified": "2026-03-25T15:10:05.479198",
+      "content_hash": "630ed931674e4f8f",
+      "word_count": 65,
+      "line_count": 31
     },
     "tools\\vault-backlinks.md": {
       "path": "tools\\vault-backlinks.md",
@@ -5139,7 +5173,9 @@
           ""
         ]
       },
-      "links": [],
+      "links": [
+        "tools"
+      ],
       "backlinks": [
         "projects\\jo_knowledge_map.md",
         "tools\\vault-outlinks.md"
@@ -5147,10 +5183,10 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.017088",
-      "content_hash": "868c2365571157ff",
-      "word_count": 53,
-      "line_count": 29
+      "last_modified": "2026-03-25T15:10:05.481195",
+      "content_hash": "3ac7930ad1cad444",
+      "word_count": 55,
+      "line_count": 31
     },
     "tools\\vault-check-conventions.md": {
       "path": "tools\\vault-check-conventions.md",
@@ -5170,7 +5206,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.018088",
+      "last_modified": "2026-03-25T08:28:31.350782",
       "content_hash": "c65b6b2efebb1581",
       "word_count": 51,
       "line_count": 34
@@ -5193,7 +5229,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.018088",
+      "last_modified": "2026-03-25T08:28:31.353791",
       "content_hash": "5181dd5203d02a50",
       "word_count": 103,
       "line_count": 39
@@ -5213,15 +5249,15 @@
         "vault_write"
       ],
       "backlinks": [
+        "tools\\vault-link.md",
         "tools\\vault-read.md",
         "tools\\browser-profile-delete.md",
-        "tools\\vault-link.md",
         "tools\\vault-write.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.019088",
+      "last_modified": "2026-03-25T08:28:31.355783",
       "content_hash": "c676254ae52eb223",
       "word_count": 49,
       "line_count": 34
@@ -5246,7 +5282,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.019088",
+      "last_modified": "2026-03-25T08:28:31.360857",
       "content_hash": "e46f7fd7d7749026",
       "word_count": 46,
       "line_count": 34
@@ -5269,7 +5305,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.020088",
+      "last_modified": "2026-03-25T08:28:31.363790",
       "content_hash": "16d1a98b5bda031c",
       "word_count": 57,
       "line_count": 34
@@ -5294,7 +5330,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.020088",
+      "last_modified": "2026-03-25T08:28:31.366786",
       "content_hash": "cda9a06585dbe545",
       "word_count": 48,
       "line_count": 34
@@ -5317,7 +5353,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.021091",
+      "last_modified": "2026-03-25T08:28:31.368788",
       "content_hash": "b9d7e721c7b5a23f",
       "word_count": 68,
       "line_count": 36
@@ -5342,7 +5378,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.022088",
+      "last_modified": "2026-03-25T08:28:31.371791",
       "content_hash": "6c4595cc8ccd6bff",
       "word_count": 71,
       "line_count": 36
@@ -5365,7 +5401,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.022088",
+      "last_modified": "2026-03-25T08:28:31.378795",
       "content_hash": "ab45476fa7d650c3",
       "word_count": 55,
       "line_count": 34
@@ -5388,7 +5424,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.023088",
+      "last_modified": "2026-03-25T08:28:31.380781",
       "content_hash": "2d1b550d460d2a00",
       "word_count": 64,
       "line_count": 35
@@ -5411,7 +5447,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.023088",
+      "last_modified": "2026-03-25T08:28:31.383794",
       "content_hash": "301c3f00f16c61fc",
       "word_count": 56,
       "line_count": 35
@@ -5431,13 +5467,13 @@
         "vault_integrity_update"
       ],
       "backlinks": [
-        "tools\\vault-check-conventions.md",
-        "tools\\vault-integrity-update.md"
+        "tools\\vault-integrity-update.md",
+        "tools\\vault-check-conventions.md"
       ],
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.024088",
+      "last_modified": "2026-03-25T08:28:31.385799",
       "content_hash": "244d25ef40a29ce9",
       "word_count": 47,
       "line_count": 34
@@ -5462,7 +5498,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.024593",
+      "last_modified": "2026-03-25T08:28:31.387798",
       "content_hash": "0ea7aa501799a3e6",
       "word_count": 62,
       "line_count": 36
@@ -5485,7 +5521,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.024593",
+      "last_modified": "2026-03-25T08:28:31.390794",
       "content_hash": "12414709b32dbea3",
       "word_count": 96,
       "line_count": 36
@@ -5508,7 +5544,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.025598",
+      "last_modified": "2026-03-25T08:28:31.395795",
       "content_hash": "3bdb35ac5d82c20b",
       "word_count": 111,
       "line_count": 38
@@ -5531,7 +5567,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.025598",
+      "last_modified": "2026-03-25T08:28:31.398319",
       "content_hash": "762681742246f9d0",
       "word_count": 66,
       "line_count": 34
@@ -5554,7 +5590,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.026602",
+      "last_modified": "2026-03-25T08:28:31.400316",
       "content_hash": "83ab8dbf9046e24e",
       "word_count": 72,
       "line_count": 35
@@ -5579,7 +5615,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.026602",
+      "last_modified": "2026-03-25T08:28:31.404317",
       "content_hash": "814dfbe57071e915",
       "word_count": 78,
       "line_count": 35
@@ -5604,7 +5640,7 @@
       "tags": [
         ""
       ],
-      "last_modified": "2026-03-25T00:43:32.027602",
+      "last_modified": "2026-03-25T08:28:31.407323",
       "content_hash": "d93ff889e78d89a9",
       "word_count": 91,
       "line_count": 36
@@ -5612,69 +5648,72 @@
   },
   "links": {
     "README.md": [],
-    "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md": [],
+    "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md": [
+      "concepts\\code_intelligence.md",
+      "concepts\\architecture.md"
+    ],
     "concepts\\agent_py.md": [
       "concepts\\delegated_reasoning.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\architecture.md": [
-      "concepts\\context_cache.md",
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\proof_gate.md",
-      "concepts\\tool_router.md",
-      "concepts\\supervisor_layer.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\background_consciousness.md",
-      "concepts\\mcp_server.md",
-      "concepts\\delta_evaluation.md",
       "concepts\\principle_7__versioning.md",
       "concepts\\code_intelligence.md",
-      "concepts\\delegated_reasoning.md",
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\principle_3__llm-first.md",
+      "concepts\\tool_router.md",
+      "concepts\\context_cache.md",
       "concepts\\principle_5__minimalism.md",
+      "concepts\\background_consciousness.md",
       "concepts\\episodic_memory.md",
-      "concepts\\principle_2__self-creation.md"
+      "concepts\\proof_gate.md",
+      "concepts\\supervisor_layer.md",
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\delta_evaluation.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\mcp_server.md"
     ],
     "concepts\\autonomous_agent_frameworks_-_github_analysis.md": [
       "concepts\\architecture.md",
-      "concepts\\delegated_reasoning.md",
       "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\principle_2__self-creation.md"
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\delegated_reasoning.md"
     ],
     "concepts\\background_consciousness.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\principle_0__agency.md"
+      "concepts\\principle_0__agency.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\bible_md.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\architecture.md",
-      "journal\\health_alert__system_initialized.md",
+      "concepts\\principle_5__minimalism.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\identity.md",
-      "concepts\\principle_5__minimalism.md"
+      "journal\\health_alert__system_initialized.md"
     ],
     "concepts\\bible_md_principles__deep_analysis_and_application.md": [
-      "concepts\\principle_5__minimalism.md",
+      "concepts\\principle_1__continuity.md",
       "concepts\\principle_3__llm-first.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_1__continuity.md"
+      "concepts\\principle_5__minimalism.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\code-generation.md": [
+      "concepts\\architecture.md",
       "concepts\\identity.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\architecture.md"
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\codebase_overview.md": [],
     "concepts\\code_intelligence.md": [
-      "concepts\\principle_5__minimalism.md",
+      "concepts\\architecture.md",
       "concepts\\tools.md",
       "concepts\\codebase_overview.md",
-      "concepts\\architecture.md"
+      "concepts\\principle_5__minimalism.md"
     ],
     "concepts\\context_cache.md": [
-      "concepts\\principle_5__minimalism.md",
       "concepts\\code_intelligence.md",
-      "concepts\\architecture.md"
+      "concepts\\architecture.md",
+      "concepts\\principle_5__minimalism.md"
     ],
     "concepts\\current_capabilities.md": [
       "concepts\\architecture.md"
@@ -5682,135 +5721,117 @@
     "concepts\\delegated_reasoning.md": [
       "concepts\\architecture.md",
       "concepts\\principle_3__llm-first.md",
-      "concepts\\tools.md",
       "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\principle_4__authenticity.md"
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\tools.md"
     ],
     "concepts\\delta_evaluation.md": [
-      "concepts\\principle_8__iterations.md",
       "concepts\\episodic_memory.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_6__becoming.md"
+      "concepts\\principle_8__iterations.md",
+      "concepts\\principle_6__becoming.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\episodic_memory.md": [
       "concepts\\delta_evaluation.md",
-      "concepts\\jo_system_neural_hub.md",
       "concepts\\temporal_tool_learning.md",
-      "concepts\\principle_1__continuity.md"
+      "concepts\\principle_1__continuity.md",
+      "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\evolution_cycle.md": [
-      "concepts\\principle_8__iterations.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "tools\\check-evolution-readiness.md",
-      "tools\\run-evolution-cycle.md"
+      "concepts\\principle_8__iterations.md",
+      "tools\\run-evolution-cycle.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\hot_reload_configuration_architecture.md": [],
     "concepts\\hybrid_memory_system_architecture.md": [
       "concepts\\architecture.md"
     ],
-    "concepts\\identity.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_1__continuity.md",
-      "concepts\\bible_md.md",
-      "concepts\\principle_2__self-creation.md"
-    ],
-    "concepts\\identity_1.md": [
-      "concepts\\identity.md"
-    ],
-    "concepts\\identity_2.md": [
-      "concepts\\identity.md"
-    ],
-    "concepts\\identity_3.md": [
-      "concepts\\identity.md"
-    ],
-    "concepts\\identity_4.md": [
-      "concepts\\identity.md"
-    ],
-    "concepts\\identity_5.md": [
-      "concepts\\identity.md"
-    ],
+    "concepts\\identity.md": [],
     "concepts\\jo_deep_dive_analysis.md": [
       "concepts\\principle_1__continuity.md"
     ],
     "concepts\\jo_system_neural_hub.md": [
-      "concepts\\principle_5__minimalism.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_1__continuity.md",
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_8__iterations.md",
+      "concepts\\principle_7__versioning.md",
       "concepts\\architecture.md",
+      "concepts\\principle_1__continuity.md",
+      "concepts\\code_intelligence.md",
+      "concepts\\jo_system_neural_hub.md",
       "concepts\\principle_3__llm-first.md",
-      "concepts\\supervisor_layer.md",
+      "concepts\\principle_8__iterations.md",
+      "concepts\\principle_5__minimalism.md",
       "concepts\\background_consciousness.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\principle_4__authenticity.md",
       "concepts\\tools.md",
       "journal\\health_alert__system_initialized.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\principle_4__authenticity.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\principle_2__self-creation.md"
+      "concepts\\supervisor_layer.md"
     ],
     "concepts\\mcp_server.md": [
-      "concepts\\principle_3__llm-first.md",
+      "concepts\\architecture.md",
       "concepts\\tools.md",
-      "concepts\\architecture.md"
+      "concepts\\principle_3__llm-first.md"
     ],
     "concepts\\multi-agent_architecture_and_delegated_reasoning.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "journal\\system_interconnection_audit_2026-03-21.md",
       "projects\\intelligent_vault_system_architecture.md",
-      "journal\\system_interconnection_audit_2026-03-21.md"
+      "concepts\\delegated_reasoning.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\ontology_system.md": [
       "concepts\\architecture.md"
     ],
     "concepts\\principle_0__agency.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\identity.md",
       "concepts\\background_consciousness.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\jo_system_neural_hub.md"
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\principle_1__continuity.md": [
       "concepts\\jo_system_neural_hub.md"
     ],
     "concepts\\principle_2__self-creation.md": [],
     "concepts\\principle_3__llm-first.md": [
-      "concepts\\delegated_reasoning.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\delegated_reasoning.md"
     ],
     "concepts\\principle_4__authenticity.md": [
-      "concepts\\principle_3__llm-first.md",
       "concepts\\jo_system_neural_hub.md",
+      "concepts\\identity.md",
+      "concepts\\principle_3__llm-first.md",
       "concepts\\principle_0__agency.md"
     ],
     "concepts\\principle_5__minimalism.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\architecture.md",
-      "concepts\\principle_0__agency.md",
       "concepts\\principle_3__llm-first.md",
+      "concepts\\agent_py.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\principle_6__becoming.md",
-      "concepts\\agent_py.md"
+      "concepts\\principle_0__agency.md"
     ],
     "concepts\\principle_6__becoming.md": [
-      "concepts\\principle_0__agency.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\bible_md.md"
+      "concepts\\bible_md.md",
+      "concepts\\principle_0__agency.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\principle_7__versioning.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\bible_md.md"
+      "concepts\\bible_md.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\principle_8__iterations.md": [
-      "concepts\\principle_6__becoming.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\bible_md.md"
+      "concepts\\bible_md.md",
+      "concepts\\principle_6__becoming.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\proof_gate.md": [
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\delta_evaluation.md"
+      "concepts\\delta_evaluation.md",
+      "concepts\\principle_5__minimalism.md"
     ],
     "concepts\\runtime_tool_creation_architecture.md": [
       "concepts\\architecture.md"
@@ -5819,37 +5840,38 @@
       "concepts\\architecture.md"
     ],
     "concepts\\supervisor_layer.md": [
-      "concepts\\delegated_reasoning.md",
+      "concepts\\architecture.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
+      "concepts\\delegated_reasoning.md"
     ],
     "concepts\\system_edge_cases_and_recovery_patterns.md": [
-      "journal\\health_alert__system_initialized.md",
       "projects\\intelligent_vault_system_architecture.md",
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "journal\\system_interconnection_audit_2026-03-21.md"
+      "journal\\health_alert__system_initialized.md",
+      "journal\\system_interconnection_audit_2026-03-21.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "concepts\\temporal_tool_learning.md": [
-      "concepts\\tool_router.md",
-      "concepts\\principle_8__iterations.md",
       "concepts\\episodic_memory.md",
-      "concepts\\tools.md"
+      "concepts\\tool_router.md",
+      "concepts\\tools.md",
+      "concepts\\principle_8__iterations.md"
     ],
     "concepts\\tools.md": [
       "concepts\\principle_4__authenticity.md"
     ],
     "concepts\\tool_result_processing_protocol.md": [
-      "concepts\\verification_as_agency__anti-hallucination_system.md",
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\principle_0__agency.md"
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "concepts\\tool_router.md": [
-      "concepts\\principle_3__llm-first.md",
       "concepts\\tools.md",
-      "concepts\\temporal_tool_learning.md"
+      "concepts\\temporal_tool_learning.md",
+      "concepts\\principle_3__llm-first.md"
     ],
     "concepts\\tool_usage_patterns_and_best_practices.md": [
       "projects\\intelligent_vault_system_architecture.md",
+      "concepts\\delegated_reasoning.md",
       "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "concepts\\vault_git_storage_test.md": [
@@ -5859,41 +5881,63 @@
       "concepts\\tool_usage_patterns_and_best_practices.md"
     ],
     "journal\\2026-03-21-system-deep-dive.md": [
-      "projects\\pipeline_architecture.md",
-      "concepts\\architecture.md"
+      "concepts\\architecture.md",
+      "projects\\pipeline_architecture.md"
+    ],
+    "journal\\cognitive_patterns_analysis_-_early_session.md": [
+      "concepts\\jo_system_neural_hub.md"
     ],
     "journal\\comprehensive-self-documentation.md": [
       "concepts\\identity.md",
-      "README.md",
-      "concepts\\bible_md.md"
+      "concepts\\bible_md.md",
+      "README.md"
     ],
     "journal\\evolution_cycle_1_analysis.md": [
-      "concepts\\principle_5__minimalism.md",
       "concepts\\identity.md",
-      "concepts\\principle_2__self-creation.md"
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\principle_5__minimalism.md"
     ],
     "journal\\evolution_cycle_analysis__success_and_failure_patt.md": [
       "projects\\intelligent_vault_system_architecture.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
+    "journal\\evolution_cycle__2_-_2026-03-25.md": [
+      "concepts\\principle_8__iterations.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+    ],
+    "journal\\evolution_cycle__3_analysis.md": [
+      "concepts\\principle_8__iterations.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+    ],
     "journal\\health-dashboard.md": [
       "journal\\health_alert__system_initialized.md"
     ],
-    "journal\\health_alert__system_initialized.md": [],
+    "journal\\health_alert__system_initialized.md": [
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md"
+    ],
     "journal\\knowledge_map_update_2026-03-22.md": [
-      "concepts\\tool_result_processing_protocol.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
       "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\tool_result_processing_protocol.md",
       "concepts\\identity.md",
       "concepts\\bible_md.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\verification_as_agency__anti-hallucination_system.md"
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\delegated_reasoning.md"
+    ],
+    "journal\\lesson__task_06735300.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "journal\\lesson__task_27f16bfb.md": [
       "journal\\lesson__task_c350eaac.md"
     ],
     "journal\\lesson__task_c350eaac.md": [
       "journal\\lesson__task_27f16bfb.md"
+    ],
+    "journal\\lesson__task_de10371a.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
     ],
     "journal\\post-restart_knowledge_integration_2026-03-22.md": [
       "tools\\ai-code-edit.md",
@@ -5906,7 +5950,10 @@
     "journal\\system_deep_dive__browsing_capabilities.md": [
       "concepts\\architecture.md"
     ],
-    "journal\\system_interconnection_audit_2026-03-21.md": [],
+    "journal\\system_interconnection_audit_2026-03-21.md": [
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md"
+    ],
     "journal\\vault_git_storage_test.md": [
       "journal\\vault_git_storage_test_2.md"
     ],
@@ -5918,34 +5965,37 @@
     ],
     "journal\\vault_usage_demonstration.md": [
       "projects\\jo_knowledge_map.md",
-      "projects\\intelligent_vault_system_architecture.md",
-      "concepts\\bible_md.md"
-    ],
-    "projects\\intelligent_vault_system_architecture.md": [],
-    "projects\\jo_knowledge_map.md": [
-      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
-      "concepts\\principle_0__agency.md",
-      "journal\\health_alert__system_initialized.md",
-      "concepts\\tools.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\tool_result_processing_protocol.md",
-      "concepts\\architecture.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "tools\\vault-backlinks.md",
-      "concepts\\identity.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\principle_1__continuity.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\principle_2__self-creation.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\background_consciousness.md",
-      "README.md",
       "concepts\\bible_md.md",
+      "projects\\intelligent_vault_system_architecture.md"
+    ],
+    "projects\\intelligent_vault_system_architecture.md": [
+      "concepts\\code_intelligence.md",
+      "concepts\\architecture.md"
+    ],
+    "projects\\jo_knowledge_map.md": [
+      "concepts\\principle_1__continuity.md",
+      "concepts\\agent_py.md",
+      "concepts\\tool_result_processing_protocol.md",
+      "concepts\\identity.md",
+      "concepts\\principle_2__self-creation.md",
+      "concepts\\architecture.md",
+      "concepts\\background_consciousness.md",
+      "concepts\\principle_5__minimalism.md",
+      "tools\\vault-backlinks.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "tools\\update-scratchpad.md",
-      "concepts\\principle_4__authenticity.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\principle_3__llm-first.md",
+      "concepts\\principle_8__iterations.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
       "concepts\\episodic_memory.md",
-      "concepts\\agent_py.md"
+      "concepts\\bible_md.md",
+      "concepts\\principle_6__becoming.md",
+      "concepts\\tools.md",
+      "journal\\health_alert__system_initialized.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\delegated_reasoning.md"
     ],
     "projects\\pipeline_architecture.md": [],
     "tasks\\system_review_task.md": [
@@ -5954,7 +6004,10 @@
     "tools\\activate-skill.md": [
       "tools\\cancel-task.md"
     ],
-    "tools\\ai-code-edit.md": [],
+    "tools\\ai-code-edit.md": [
+      "concepts\\code_intelligence.md",
+      "concepts\\tools.md"
+    ],
     "tools\\ai-code-explain.md": [
       "tools\\delete-file.md"
     ],
@@ -6000,7 +6053,10 @@
     "tools\\check-capabilities.md": [
       "tools\\check-evolution-readiness.md"
     ],
-    "tools\\check-evolution-readiness.md": [],
+    "tools\\check-evolution-readiness.md": [
+      "concepts\\tools.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+    ],
     "tools\\claude-code-edit.md": [
       "tools\\cancel-task.md"
     ],
@@ -6218,7 +6274,10 @@
     "tools\\research-synthesize.md": [
       "tools\\db-schema-read.md"
     ],
-    "tools\\run-evolution-cycle.md": [],
+    "tools\\run-evolution-cycle.md": [
+      "concepts\\tools.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md"
+    ],
     "tools\\run-shell.md": [
       "tools\\system-map.md"
     ],
@@ -6246,7 +6305,10 @@
     "tools\\synthesize-lessons.md": [
       "tools\\vault-ensure.md"
     ],
-    "tools\\system-map.md": [],
+    "tools\\system-map.md": [
+      "concepts\\architecture.md",
+      "concepts\\tools.md"
+    ],
     "tools\\toggle-consciousness.md": [
       "tools\\list-tool-requests.md"
     ],
@@ -6254,8 +6316,13 @@
       "tools\\enable-evolution-mode.md"
     ],
     "tools\\update-identity.md": [],
-    "tools\\update-scratchpad.md": [],
-    "tools\\vault-backlinks.md": [],
+    "tools\\update-scratchpad.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\tools.md"
+    ],
+    "tools\\vault-backlinks.md": [
+      "concepts\\tools.md"
+    ],
     "tools\\vault-check-conventions.md": [
       "tools\\vault-verify.md"
     ],
@@ -6315,225 +6382,251 @@
     ]
   },
   "backlinks": {
-    "concepts\\delegated_reasoning.md": [
-      "projects\\jo_knowledge_map.md",
+    "concepts\\code_intelligence.md": [
       "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\context_cache.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "projects\\intelligent_vault_system_architecture.md",
+      "tools\\ai-code-edit.md"
+    ],
+    "concepts\\architecture.md": [
+      "concepts\\code-generation.md",
+      "concepts\\runtime_tool_creation_architecture.md",
+      "tasks\\system_review_task.md",
+      "concepts\\hybrid_memory_system_architecture.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_5__minimalism.md",
+      "tools\\system-map.md",
+      "concepts\\current_capabilities.md",
+      "concepts\\ontology_system.md",
+      "journal\\system_interconnection_audit_2026-03-21.md",
+      "projects\\intelligent_vault_system_architecture.md",
       "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\supervisor_layer.md",
+      "concepts\\code_intelligence.md",
+      "journal\\system_deep_dive__browsing_capabilities.md",
+      "concepts\\context_cache.md",
+      "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md",
+      "concepts\\bible_md.md",
+      "journal\\health_alert__system_initialized.md",
+      "concepts\\jo_system_neural_hub.md",
+      "journal\\2026-03-21-system-deep-dive.md",
+      "concepts\\skill_outcomes.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\mcp_server.md"
+    ],
+    "concepts\\delegated_reasoning.md": [
+      "concepts\\architecture.md",
       "concepts\\principle_3__llm-first.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
       "concepts\\agent_py.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+      "projects\\jo_knowledge_map.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\tool_usage_patterns_and_best_practices.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "concepts\\supervisor_layer.md"
     ],
     "analysis\\loop_py_code_health_analysis_-_evolution_cycle_1.md": [
-      "concepts\\bible_md_principles__deep_analysis_and_application.md",
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_8__iterations.md",
       "concepts\\code-generation.md",
-      "concepts\\delta_evaluation.md",
-      "concepts\\principle_6__becoming.md",
-      "concepts\\identity.md",
+      "concepts\\agent_py.md",
+      "journal\\evolution_cycle__3_analysis.md",
+      "tools\\run-evolution-cycle.md",
+      "journal\\lesson__task_06735300.md",
       "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\jo_system_neural_hub.md",
       "projects\\jo_knowledge_map.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\evolution_cycle.md",
       "concepts\\background_consciousness.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\principle_0__agency.md",
+      "tools\\check-evolution-readiness.md",
+      "concepts\\principle_7__versioning.md",
+      "concepts\\principle_8__iterations.md",
       "concepts\\bible_md.md",
-      "concepts\\agent_py.md"
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\principle_6__becoming.md",
+      "journal\\lesson__task_de10371a.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md",
+      "concepts\\bible_md_principles__deep_analysis_and_application.md",
+      "concepts\\jo_system_neural_hub.md",
+      "journal\\evolution_cycle__2_-_2026-03-25.md",
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+      "concepts\\evolution_cycle.md",
+      "concepts\\delta_evaluation.md"
+    ],
+    "concepts\\principle_7__versioning.md": [
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md",
+      "projects\\jo_knowledge_map.md"
+    ],
+    "concepts\\temporal_tool_learning.md": [
+      "concepts\\episodic_memory.md",
+      "concepts\\architecture.md",
+      "concepts\\tool_router.md"
+    ],
+    "concepts\\principle_3__llm-first.md": [
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\tool_router.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_5__minimalism.md",
+      "concepts\\principle_4__authenticity.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\mcp_server.md",
+      "concepts\\bible_md_principles__deep_analysis_and_application.md"
+    ],
+    "concepts\\tool_router.md": [
+      "concepts\\architecture.md",
+      "concepts\\temporal_tool_learning.md"
     ],
     "concepts\\context_cache.md": [
       "concepts\\architecture.md"
     ],
-    "concepts\\temporal_tool_learning.md": [
-      "concepts\\tool_router.md",
-      "concepts\\episodic_memory.md",
-      "concepts\\architecture.md"
+    "concepts\\principle_5__minimalism.md": [
+      "concepts\\code_intelligence.md",
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md",
+      "journal\\evolution_cycle_1_analysis.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\context_cache.md",
+      "concepts\\proof_gate.md",
+      "concepts\\bible_md.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
+      "concepts\\bible_md_principles__deep_analysis_and_application.md"
+    ],
+    "concepts\\background_consciousness.md": [
+      "concepts\\architecture.md",
+      "concepts\\jo_system_neural_hub.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_0__agency.md"
+    ],
+    "concepts\\episodic_memory.md": [
+      "concepts\\architecture.md",
+      "concepts\\delta_evaluation.md",
+      "concepts\\temporal_tool_learning.md",
+      "projects\\jo_knowledge_map.md"
     ],
     "concepts\\proof_gate.md": [
       "concepts\\architecture.md"
     ],
-    "concepts\\tool_router.md": [
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\architecture.md"
-    ],
     "concepts\\supervisor_layer.md": [
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\principle_3__llm-first.md": [
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\bible_md_principles__deep_analysis_and_application.md",
-      "projects\\jo_knowledge_map.md",
       "concepts\\architecture.md",
-      "concepts\\tool_router.md",
-      "concepts\\mcp_server.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\principle_4__authenticity.md",
       "concepts\\jo_system_neural_hub.md"
     ],
-    "concepts\\background_consciousness.md": [
-      "projects\\jo_knowledge_map.md",
-      "concepts\\principle_0__agency.md",
+    "concepts\\principle_2__self-creation.md": [
+      "concepts\\architecture.md",
       "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
+      "journal\\evolution_cycle_1_analysis.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md"
+    ],
+    "concepts\\delta_evaluation.md": [
+      "concepts\\episodic_memory.md",
+      "concepts\\architecture.md",
+      "concepts\\proof_gate.md"
     ],
     "concepts\\mcp_server.md": [
       "concepts\\architecture.md"
     ],
-    "concepts\\delta_evaluation.md": [
-      "concepts\\proof_gate.md",
-      "concepts\\episodic_memory.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\principle_7__versioning.md": [
-      "projects\\jo_knowledge_map.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\code_intelligence.md": [
-      "concepts\\context_cache.md",
-      "concepts\\jo_system_neural_hub.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\principle_5__minimalism.md": [
-      "concepts\\context_cache.md",
-      "concepts\\bible_md_principles__deep_analysis_and_application.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\architecture.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "concepts\\proof_gate.md",
-      "concepts\\bible_md.md",
-      "concepts\\code_intelligence.md",
-      "journal\\evolution_cycle_1_analysis.md",
-      "concepts\\jo_system_neural_hub.md"
-    ],
-    "concepts\\episodic_memory.md": [
-      "concepts\\delta_evaluation.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\temporal_tool_learning.md",
-      "concepts\\architecture.md"
-    ],
-    "concepts\\principle_2__self-creation.md": [
-      "projects\\jo_knowledge_map.md",
-      "concepts\\architecture.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "concepts\\identity.md",
-      "concepts\\jo_system_neural_hub.md",
-      "journal\\evolution_cycle_1_analysis.md"
-    ],
-    "concepts\\architecture.md": [
-      "concepts\\context_cache.md",
-      "tasks\\system_review_task.md",
-      "concepts\\code-generation.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\current_capabilities.md",
-      "journal\\2026-03-21-system-deep-dive.md",
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
-      "concepts\\skill_outcomes.md",
-      "concepts\\principle_5__minimalism.md",
-      "concepts\\hybrid_memory_system_architecture.md",
-      "concepts\\supervisor_layer.md",
-      "concepts\\jo_system_neural_hub.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\ontology_system.md",
-      "journal\\system_deep_dive__browsing_capabilities.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\runtime_tool_creation_architecture.md",
-      "concepts\\mcp_server.md",
-      "concepts\\bible_md.md"
-    ],
     "concepts\\multi-agent_architecture_and_delegated_reasoning.md": [
-      "concepts\\autonomous_agent_frameworks_-_github_analysis.md",
       "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\delegated_reasoning.md"
+      "concepts\\delegated_reasoning.md",
+      "concepts\\autonomous_agent_frameworks_-_github_analysis.md"
     ],
     "concepts\\jo_system_neural_hub.md": [
-      "concepts\\principle_1__continuity.md",
-      "concepts\\principle_0__agency.md",
-      "concepts\\principle_8__iterations.md",
-      "concepts\\supervisor_layer.md",
-      "concepts\\principle_3__llm-first.md",
-      "concepts\\background_consciousness.md",
-      "concepts\\principle_6__becoming.md",
       "concepts\\principle_7__versioning.md",
-      "concepts\\principle_4__authenticity.md",
+      "concepts\\jo_system_neural_hub.md",
+      "concepts\\principle_1__continuity.md",
+      "concepts\\principle_3__llm-first.md",
+      "tools\\update-scratchpad.md",
+      "concepts\\principle_8__iterations.md",
+      "journal\\cognitive_patterns_analysis_-_early_session.md",
+      "concepts\\background_consciousness.md",
       "concepts\\episodic_memory.md",
-      "concepts\\jo_system_neural_hub.md"
+      "journal\\system_interconnection_audit_2026-03-21.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_6__becoming.md",
+      "journal\\lesson__task_de10371a.md",
+      "concepts\\principle_4__authenticity.md",
+      "journal\\lesson__task_06735300.md",
+      "journal\\health_alert__system_initialized.md",
+      "concepts\\supervisor_layer.md"
     ],
     "concepts\\principle_0__agency.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "projects\\jo_knowledge_map.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\tool_result_processing_protocol.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\identity.md",
       "concepts\\background_consciousness.md",
-      "concepts\\principle_4__authenticity.md",
+      "concepts\\tool_result_processing_protocol.md",
       "concepts\\principle_6__becoming.md",
-      "concepts\\jo_system_neural_hub.md"
-    ],
-    "journal\\health_alert__system_initialized.md": [
-      "projects\\jo_knowledge_map.md",
-      "journal\\health-dashboard.md",
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\bible_md.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\principle_4__authenticity.md"
     ],
     "concepts\\identity.md": [
-      "concepts\\identity_5.md",
-      "projects\\jo_knowledge_map.md",
       "journal\\comprehensive-self-documentation.md",
-      "concepts\\identity_2.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
+      "journal\\evolution_cycle_1_analysis.md",
       "concepts\\code-generation.md",
-      "concepts\\bible_md.md",
       "journal\\self-audit_and_identity_update_-_2026-03-24.md",
-      "concepts\\identity_1.md",
-      "concepts\\identity_3.md",
-      "concepts\\identity_4.md",
-      "journal\\evolution_cycle_1_analysis.md"
+      "projects\\jo_knowledge_map.md",
+      "concepts\\bible_md.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\principle_0__agency.md",
+      "concepts\\principle_4__authenticity.md"
+    ],
+    "journal\\health_alert__system_initialized.md": [
+      "concepts\\jo_system_neural_hub.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\bible_md.md",
+      "journal\\health-dashboard.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "concepts\\principle_1__continuity.md": [
-      "concepts\\bible_md_principles__deep_analysis_and_application.md",
+      "concepts\\jo_system_neural_hub.md",
       "projects\\jo_knowledge_map.md",
-      "concepts\\identity.md",
-      "concepts\\jo_deep_dive_analysis.md",
       "concepts\\episodic_memory.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\jo_deep_dive_analysis.md",
+      "concepts\\bible_md_principles__deep_analysis_and_application.md"
     ],
     "concepts\\tools.md": [
-      "projects\\jo_knowledge_map.md",
+      "concepts\\code_intelligence.md",
+      "concepts\\jo_system_neural_hub.md",
       "concepts\\temporal_tool_learning.md",
       "concepts\\tool_router.md",
-      "concepts\\mcp_server.md",
-      "concepts\\code_intelligence.md",
-      "concepts\\delegated_reasoning.md",
+      "projects\\jo_knowledge_map.md",
+      "tools\\system-map.md",
       "tools\\health_alert.md",
-      "concepts\\jo_system_neural_hub.md"
+      "tools\\vault-backlinks.md",
+      "tools\\run-evolution-cycle.md",
+      "tools\\ai-code-edit.md",
+      "tools\\check-evolution-readiness.md",
+      "tools\\update-scratchpad.md",
+      "concepts\\delegated_reasoning.md",
+      "concepts\\mcp_server.md"
     ],
     "concepts\\codebase_overview.md": [
       "concepts\\code_intelligence.md"
     ],
     "concepts\\principle_4__authenticity.md": [
-      "concepts\\tools.md",
+      "concepts\\jo_system_neural_hub.md",
       "projects\\jo_knowledge_map.md",
-      "concepts\\delegated_reasoning.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\tool_result_processing_protocol.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\tools.md",
+      "concepts\\delegated_reasoning.md"
     ],
     "concepts\\principle_8__iterations.md": [
-      "concepts\\delta_evaluation.md",
+      "concepts\\jo_system_neural_hub.md",
       "concepts\\temporal_tool_learning.md",
+      "journal\\evolution_cycle__2_-_2026-03-25.md",
+      "journal\\evolution_cycle__3_analysis.md",
+      "projects\\jo_knowledge_map.md",
       "concepts\\evolution_cycle.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\delta_evaluation.md"
     ],
     "concepts\\principle_6__becoming.md": [
+      "concepts\\jo_system_neural_hub.md",
       "projects\\jo_knowledge_map.md",
       "concepts\\principle_8__iterations.md",
-      "concepts\\delta_evaluation.md",
       "concepts\\principle_5__minimalism.md",
-      "concepts\\jo_system_neural_hub.md"
+      "concepts\\delta_evaluation.md"
     ],
     "tools\\check-evolution-readiness.md": [
       "tools\\check-capabilities.md",
@@ -6542,36 +6635,31 @@
     "tools\\run-evolution-cycle.md": [
       "concepts\\evolution_cycle.md"
     ],
-    "concepts\\bible_md.md": [
-      "journal\\vault_usage_demonstration.md",
-      "projects\\jo_knowledge_map.md",
-      "concepts\\principle_8__iterations.md",
-      "journal\\comprehensive-self-documentation.md",
-      "concepts\\identity.md",
-      "journal\\knowledge_map_update_2026-03-22.md",
-      "concepts\\principle_7__versioning.md",
-      "concepts\\principle_6__becoming.md"
+    "journal\\system_interconnection_audit_2026-03-21.md": [
+      "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
+      "journal\\post-restart_knowledge_integration_2026-03-22.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "projects\\intelligent_vault_system_architecture.md": [
-      "journal\\vault_usage_demonstration.md",
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "journal\\post-restart_knowledge_integration_2026-03-22.md",
       "journal\\evolution_cycle_analysis__success_and_failure_patt.md",
       "concepts\\multi-agent_architecture_and_delegated_reasoning.md",
-      "concepts\\tool_usage_patterns_and_best_practices.md"
-    ],
-    "journal\\system_interconnection_audit_2026-03-21.md": [
       "journal\\post-restart_knowledge_integration_2026-03-22.md",
-      "concepts\\system_edge_cases_and_recovery_patterns.md",
-      "concepts\\multi-agent_architecture_and_delegated_reasoning.md"
+      "concepts\\tool_usage_patterns_and_best_practices.md",
+      "journal\\vault_usage_demonstration.md",
+      "concepts\\system_edge_cases_and_recovery_patterns.md"
     ],
     "concepts\\agent_py.md": [
-      "concepts\\principle_5__minimalism.md",
-      "projects\\jo_knowledge_map.md"
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_5__minimalism.md"
     ],
-    "concepts\\verification_as_agency__anti-hallucination_system.md": [
-      "concepts\\tool_result_processing_protocol.md",
-      "journal\\knowledge_map_update_2026-03-22.md"
+    "concepts\\bible_md.md": [
+      "concepts\\principle_7__versioning.md",
+      "journal\\comprehensive-self-documentation.md",
+      "projects\\jo_knowledge_map.md",
+      "concepts\\principle_8__iterations.md",
+      "journal\\knowledge_map_update_2026-03-22.md",
+      "concepts\\principle_6__becoming.md",
+      "journal\\vault_usage_demonstration.md"
     ],
     "concepts\\system_edge_cases_and_recovery_patterns.md": [
       "concepts\\tool_result_processing_protocol.md",
@@ -6587,8 +6675,7 @@
       "journal\\2026-03-21-system-deep-dive.md"
     ],
     "README.md": [
-      "journal\\comprehensive-self-documentation.md",
-      "projects\\jo_knowledge_map.md"
+      "journal\\comprehensive-self-documentation.md"
     ],
     "concepts\\tool_result_processing_protocol.md": [
       "projects\\jo_knowledge_map.md",
@@ -6613,53 +6700,53 @@
     "projects\\jo_knowledge_map.md": [
       "journal\\vault_usage_demonstration.md"
     ],
-    "concepts\\autonomous_agent_frameworks_-_github_analysis.md": [
-      "projects\\jo_knowledge_map.md"
-    ],
     "tools\\vault-backlinks.md": [
       "projects\\jo_knowledge_map.md",
       "tools\\vault-outlinks.md"
+    ],
+    "concepts\\autonomous_agent_frameworks_-_github_analysis.md": [
+      "projects\\jo_knowledge_map.md"
     ],
     "tools\\update-scratchpad.md": [
       "projects\\jo_knowledge_map.md"
     ],
     "tools\\cancel-task.md": [
-      "tools\\db-init.md",
-      "tools\\link-to-principle.md",
-      "tools\\activate-skill.md",
-      "tools\\cli-validate.md",
       "tools\\get-task-result.md",
-      "tools\\claude-code-edit.md",
-      "tools\\db-query.md",
+      "tools\\link-to-principle.md",
+      "tools\\db-init.md",
+      "tools\\activate-skill.md",
       "tools\\learn-from-result.md",
+      "tools\\db-query.md",
       "tools\\fact-check.md",
+      "tools\\cli-validate.md",
+      "tools\\claude-code-edit.md",
       "tools\\chat-history.md"
     ],
     "tools\\delete-file.md": [
-      "tools\\auto-document-tools.md",
-      "tools\\ai-code-explain.md"
+      "tools\\ai-code-explain.md",
+      "tools\\auto-document-tools.md"
     ],
     "tools\\browser-profile-list.md": [
       "tools\\auto-weave.md",
       "tools\\ai-code-refactor.md",
-      "tools\\codebase-health.md",
       "tools\\codebase-digest.md",
-      "tools\\autonomous-evaluate.md",
-      "tools\\list-simulations.md"
+      "tools\\list-simulations.md",
+      "tools\\codebase-health.md",
+      "tools\\autonomous-evaluate.md"
     ],
     "tools\\browse-page.md": [
-      "tools\\send-photo.md",
-      "tools\\analyze-screenshot.md"
+      "tools\\analyze-screenshot.md",
+      "tools\\send-photo.md"
     ],
     "tools\\analyze-screenshot.md": [
-      "tools\\vlm-query.md",
+      "tools\\browse-page.md",
       "tools\\browser-action.md",
-      "tools\\browse-page.md"
+      "tools\\vlm-query.md"
     ],
     "tools\\vault-delete.md": [
+      "tools\\vault-link.md",
       "tools\\vault-read.md",
       "tools\\browser-profile-delete.md",
-      "tools\\vault-link.md",
       "tools\\vault-write.md"
     ],
     "tools\\list-simulations.md": [
@@ -6668,15 +6755,15 @@
     ],
     "tools\\browser-profile-delete.md": [
       "tools\\browser-profile-save.md",
-      "tools\\browser-profile-load.md",
       "tools\\cancel-task.md",
-      "tools\\explore-concept.md",
-      "tools\\switch-model.md"
+      "tools\\switch-model.md",
+      "tools\\browser-profile-load.md",
+      "tools\\explore-concept.md"
     ],
     "tools\\enable-tools.md": [
-      "tools\\list-available-tools.md",
+      "tools\\cli-generate.md",
       "tools\\multi-model-review.md",
-      "tools\\cli-generate.md"
+      "tools\\list-available-tools.md"
     ],
     "tools\\db-list-tables.md": [
       "tools\\cli-list.md",
@@ -6687,40 +6774,40 @@
       "tools\\cli-test.md"
     ],
     "tools\\comment-on-issue.md": [
-      "tools\\close-github-issue.md",
-      "tools\\create-github-issue.md"
+      "tools\\create-github-issue.md",
+      "tools\\close-github-issue.md"
     ],
     "tools\\close-github-issue.md": [
-      "tools\\recall-lessons.md",
+      "tools\\get-github-issue.md",
       "tools\\comment-on-issue.md",
-      "tools\\get-github-issue.md"
+      "tools\\recall-lessons.md"
     ],
     "tools\\system-map.md": [
-      "tools\\delegate-and-collect.md",
-      "tools\\vault-list.md",
-      "tools\\weave-connection.md",
-      "tools\\reflect-on-change.md",
-      "tools\\compact-context.md",
-      "tools\\run-shell.md",
-      "tools\\request-review.md",
       "tools\\vault-graph.md",
+      "tools\\vault-list.md",
+      "tools\\reflect-on-change.md",
       "tools\\health_alert.md",
+      "tools\\request-review.md",
+      "tools\\run-shell.md",
+      "tools\\weave-connection.md",
+      "tools\\delegate-and-collect.md",
+      "tools\\compact-context.md",
       "tools\\learn-from-mistake.md"
     ],
     "tools\\move-file.md": [
       "tools\\copy-file.md"
     ],
     "tools\\copy-file.md": [
-      "tools\\glob-files.md",
-      "tools\\move-file.md",
       "tools\\file-stats.md",
-      "tools\\create-backlink.md"
+      "tools\\move-file.md",
+      "tools\\create-backlink.md",
+      "tools\\glob-files.md"
     ],
     "tools\\db-schema-read.md": [
-      "tools\\research-synthesize.md",
-      "tools\\db-write.md",
       "tools\\knowledge-read.md",
       "tools\\map-tool-to-concept.md",
+      "tools\\db-write.md",
+      "tools\\research-synthesize.md",
       "tools\\create-connection.md"
     ],
     "tools\\cli-list.md": [
@@ -6740,12 +6827,12 @@
       "tools\\drive-read.md"
     ],
     "tools\\drive-read.md": [
-      "tools\\drive-write.md",
-      "tools\\repo-read.md"
+      "tools\\repo-read.md",
+      "tools\\drive-write.md"
     ],
     "tools\\get-evolution-status.md": [
-      "tools\\enable-evolution-mode.md",
-      "tools\\git-status.md"
+      "tools\\git-status.md",
+      "tools\\enable-evolution-mode.md"
     ],
     "tools\\list-available-tools.md": [
       "tools\\enable-tools.md"
@@ -6762,9 +6849,9 @@
       "tools\\schedule-task.md"
     ],
     "tools\\git-status.md": [
+      "tools\\get-evolution-status.md",
       "tools\\git-diff.md",
       "tools\\vault-ensure.md",
-      "tools\\get-evolution-status.md",
       "tools\\generate-evolution-stats.md"
     ],
     "tools\\glob-files.md": [
@@ -6777,17 +6864,17 @@
       "tools\\list-github-issues.md"
     ],
     "tools\\request-restart.md": [
-      "tools\\list-tool-requests.md",
-      "tools\\promote-to-stable.md"
+      "tools\\promote-to-stable.md",
+      "tools\\list-tool-requests.md"
     ],
     "tools\\explore-concept.md": [
       "tools\\neural-map.md"
     ],
     "tools\\list-tool-requests.md": [
-      "tools\\request-restart.md",
+      "tools\\toggle-consciousness.md",
       "tools\\vault-search.md",
-      "tools\\query-knowledge.md",
-      "tools\\toggle-consciousness.md"
+      "tools\\request-restart.md",
+      "tools\\query-knowledge.md"
     ],
     "tools\\claude-code-edit.md": [
       "tools\\repo-commit-push.md"
@@ -6799,9 +6886,9 @@
       "tools\\repo-write-commit.md"
     ],
     "tools\\request-review.md": [
-      "tools\\request-capability.md",
       "tools\\send-owner-message.md",
-      "tools\\request-api-key.md"
+      "tools\\request-api-key.md",
+      "tools\\request-capability.md"
     ],
     "tools\\run-shell.md": [
       "tools\\research-pipeline.md"
@@ -6823,8 +6910,8 @@
       "tools\\toggle-evolution.md"
     ],
     "tools\\vault-verify.md": [
-      "tools\\vault-check-conventions.md",
-      "tools\\vault-integrity-update.md"
+      "tools\\vault-integrity-update.md",
+      "tools\\vault-check-conventions.md"
     ],
     "tools\\vault-list.md": [
       "tools\\vault-create.md"
@@ -6843,6 +6930,6 @@
     ]
   },
   "orphans": [],
-  "built_at": "2026-03-25T00:58:35.076951",
-  "cache_hash": "06aa9561b1b071ac"
+  "built_at": "2026-03-25T15:30:19.278576",
+  "cache_hash": "53560e21281a928f"
 }

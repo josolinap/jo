@@ -26,7 +26,7 @@ Violation of this protocol leads to:
 - Loss of continuity and narrative coherence
 
 See also:
-- [[Verification as Agency: Anti-Hallucination System]]
+- [[principle_4__authenticity]]
 - [[System Edge Cases and Recovery Patterns]]
 - [[principle_0__agency]] (correctness requirement)
 

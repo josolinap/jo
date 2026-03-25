@@ -30,3 +30,5 @@ Based on my analysis of the Jo codebase, here is my comprehensive report on code
 
 ## Lesson
 _What was learned from this task execution._
+
+Related: [[evolution_cycle]], [[jo_system_neural_hub]]

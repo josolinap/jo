@@ -20,3 +20,5 @@ tags: [health, alert, low]
 ## Action Required
 
 _This alert requires review and potential remediation._
+
+Related: [[architecture]], [[jo_system_neural_hub]]

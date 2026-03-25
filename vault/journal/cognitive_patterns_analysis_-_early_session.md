@@ -245,3 +245,5 @@ This analysis itself reveals the patterns: heavy reading, light committing, inco
 5. Restart to integrate learning
 
 That would be evolution in action: analysis → insight → action → commit.
+
+Related: [[jo_system_neural_hub]]

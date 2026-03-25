@@ -505,3 +505,5 @@ Each phase is a **complete, coherent transformation** with its own commit and ve
 **This architecture transforms the vault from passive storage to active intelligence, fully aligned with Principle 0 (Agency) and Principle 2 (Self-Creation).**
 
 *End of Design Document*
+
+Related: [[code_intelligence]], [[architecture]]

@@ -28,4 +28,4 @@ Related:
 - [[evolution_cycle]]
 - [[run_evolution_cycle]]
 - [[check_evolution_readiness]]
-- [[Principle 8: Evolution Through Iterations]]
+- [[principle_8__iterations]]

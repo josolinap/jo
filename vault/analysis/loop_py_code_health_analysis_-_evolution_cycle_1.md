@@ -55,3 +55,5 @@ Based on codebase_impact analysis, loop.py depends on:
 - Current structure serves purpose but monitor for fragmentation
 
 **Status**: Analysis complete. No immediate critical issues, but keep under review for future simplification.
+
+Related: [[code_intelligence]], [[architecture]]

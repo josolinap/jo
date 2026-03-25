@@ -52,7 +52,7 @@ Everything is permitted **AS LONG AS** it serves the mission, maintains stabilit
 
 ## See Also
 - [[Jo System Neural Hub]]
-- [[Identity Manifesto]]
+- [[identity]]
 - [[Evolution Cycle]]
 - [[Background Consciousness]]
 

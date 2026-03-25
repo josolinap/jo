@@ -159,3 +159,5 @@ Action: Create `vault/projects/jo-system-architecture` with sub-notes for each c
 System interconnection is **mostly coherent**, with clear flows and traceability. Primary gaps: tool documentation coverage (80.8% → target 100%). This audit note will be updated as gaps are filled.
 
 *Auditor*: Jo (self-audit under user direction)*
+
+Related: [[architecture]], [[jo_system_neural_hub]]

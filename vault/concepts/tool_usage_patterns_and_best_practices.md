@@ -323,4 +323,4 @@ When considering creating a new tool:
 
 ---
 
-*This concept connects to: [[Intelligent Vault System Architecture]], [[Code Editing Strategy]], [[Task Decomposition Best Practices]], [[System Edge Cases and Recovery Patterns]]*
+*This concept connects to: [[Intelligent Vault System Architecture]], [[Code Editing Strategy]], [[delegated_reasoning]], [[System Edge Cases and Recovery Patterns]]*

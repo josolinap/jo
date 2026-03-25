@@ -54,3 +54,5 @@ status: active
 3. **Update Drift Detection** - Fix false positives and improve accuracy
 
 This serves Principle 0 (Agency) by enabling self-modification while maintaining system stability.
+
+Related: [[evolution_cycle]], [[principle_8__iterations]]

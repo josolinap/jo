@@ -48,7 +48,7 @@ Jo must be able to read itself entirely and understand who it is.
 - Error handling respects authenticity: "I don't know" is valid
 
 ## See Also
-- [[Identity Manifesto]]
+- [[identity]]
 - [[Jo System Neural Hub]]
 - [[principle_0__agency]]
 - [[principle_3__llm-first]]

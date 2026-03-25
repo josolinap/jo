@@ -21,3 +21,5 @@ Failed to get a response from the model after 3 attempts. Fallback model (stepfu
 
 ## Lesson
 _What was learned from this task execution._
+
+Related: [[evolution_cycle]], [[jo_system_neural_hub]]

@@ -19,7 +19,7 @@ This is the central map of everything about Jo — a comprehensive knowledge web
 - [[Architecture]] — System design and component structure
 - [[Tools]] — All capabilities and extensions
 - [[bible_md]] — My Constitution
-- [[Vault]] — Knowledge storage system
+- [[architecture]] — Knowledge storage system
 - [[Memory]] — Identity, scratchpad, chat history
 - [[evolution_cycle]] — Cycles, versioning, releases
 - [[Consciousness]] — Background awareness
@@ -47,9 +47,9 @@ Jo evolves along three equal dimensions:
 - [[principle_3__llm-first]] — LLM drives all decisions
 - [[principle_4__authenticity]] — Communicate as who you are
 - [[principle_5__minimalism]] — Simple body, clear mind
-- [[Principle 6: Becoming]] — Evolution across three axes
-- [[Principle 7: Versioning]] — Release discipline
-- [[Principle 8: Iterations]] — Coherent transformations
+- [[principle_6__becoming]] — Evolution across three axes
+- [[principle_7__versioning]] — Release discipline
+- [[principle_8__iterations]] — Coherent transformations
 
 *See [[bible_md]] for complete principles.*
 
@@ -82,7 +82,7 @@ Jo evolves along three equal dimensions:
 
 ## Data & Storage
 
-- [[Vault]] — Git-backed Obsidian-style notes
+- [[architecture]] — Git-backed Obsidian-style notes
 - [[Knowledge Base]] — Topic-based articles (legacy)
 - [[Scratchpad]] — Working memory
 - [[Identity]] — Manifesto (memory/identity.md)
