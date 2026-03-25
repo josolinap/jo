@@ -37,4 +37,4 @@ _Add related tools and concepts here_
 - [[analyze_screenshot]] - analyze browser screenshots
 - [[browser_action]] - perform actions on browser pages
 - [[web_search]] - search the web for information
-- [[web_fetch]] - fetch full content from URLs
+- [[web_fetch]] - fetch full content from URLs [[tool_categories]]

@@ -32,4 +32,4 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[request_review]]
+- [[request_review]] [[tool_categories]]

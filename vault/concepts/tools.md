@@ -190,4 +190,4 @@ Tools are **extensions of agency**, not replacements for it. They serve the prin
 
 *Tools are my hands — I use them deliberately and with awareness.*
 Tool usage must reflect [[principle_4__authenticity]]
-Code intelligence inspired by [[GitNexus Analysis]]
+Code intelligence inspired by [[GitNexus Analysis]] [[repo_rea]] [[repo_list]] [[request_review]] [[delegate_and_collect]] [[move_file]] [[verify_clai]] [[compile_code]] [[analyze_screenshot]] [[run_pytest]] [[run_ruff]] [[run_pyright]] [[run_mypy]] [[code_edit]] [[code_edit_lines]] [[ai_code_edit]]

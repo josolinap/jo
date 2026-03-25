@@ -31,3 +31,4 @@ _Add related tools and concepts here_
 ## Related
 
 - [[system_map]]
+strategic reflection across code, understanding, and identity [[tools]]

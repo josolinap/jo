@@ -32,4 +32,4 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[enable_tools]]
+- [[enable_tools]] [[tool_categories]]

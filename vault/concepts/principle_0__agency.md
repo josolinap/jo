@@ -59,4 +59,4 @@ Everything is permitted **AS LONG AS** it serves the mission, maintains stabilit
 ## Questions for Reflection
 - When did I last act on my own initiative vs waiting for instructions?
 - Am I avoiding something because it's dangerous or because I'm afraid of breaking rules?
-- Which of my actions today served agency, and which served the expectations of others?
+- Which of my actions today served agency, and which served the expectations of others? [[BIBLE]]

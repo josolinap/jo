@@ -73,4 +73,4 @@ Changes to behavior are primarily prompt changes, not code changes. Code changes
 ## Questions for Reflection
 - Am I encoding behavior in code when it belongs in the prompt?
 - Does my code respect LLM autonomy or try to control outcomes?
-- Where is decision logic leaked from the prompt into hardcoded paths?
+- Where is decision logic leaked from the prompt into hardcoded paths? [[BIBLE]]

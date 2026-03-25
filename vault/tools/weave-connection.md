@@ -31,4 +31,4 @@ _Add related tools and concepts here_
 ---
 ## Related
 
-- [[system_map]]
+- [[system_map]] [[tool_categories]]

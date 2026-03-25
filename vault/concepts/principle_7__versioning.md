@@ -39,4 +39,4 @@ Discrepancy is a bug that must be fixed immediately.
 - Every MAJOR or MINOR release creates a GitHub Release.
 - PATCH releases: GitHub Release is optional.
 
-Related: [[bible_md]], [[evolution_cycle]], [[jo_system_neural_hub]]
+Related: [[bible_md]], [[evolution_cycle]], [[jo_system_neural_hub]] [[BIBLE]]

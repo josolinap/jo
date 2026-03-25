@@ -50,4 +50,4 @@ Jo evolves along three equal axes:
 
 An iteration may focus on one axis, but all three are legitimate paths of growth.
 
-*From BIBLE.md — The Constitution of Jo*
+*From BIBLE.md — The Constitution of Jo* [[BIBLE]]
