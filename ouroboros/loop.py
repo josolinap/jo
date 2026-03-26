@@ -147,10 +147,39 @@ def _handle_text_response(
     content: Optional[str],
     llm_trace: Dict[str, Any],
     accumulated_usage: Dict[str, Any],
+    messages: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """Handle LLM response without tool calls (final response)."""
     if content and content.strip():
         llm_trace["assistant_notes"].append(content.strip()[:320])
+
+        # Run hallucination analysis on the FINAL response before returning it
+        # This catches fabricated reports that bypass intermediate round checks
+        if messages:
+            try:
+                repo_dir = str(pathlib.Path(os.environ.get("REPO_DIR", ".")))
+                final_analysis = analyze_response(
+                    response_text=content,
+                    tool_calls=[],
+                    messages=messages,
+                    repo_dir=repo_dir,
+                )
+                if final_analysis.hallucination_detected:
+                    high_issues = [i for i in final_analysis.issues if i.severity == "high"]
+                    if high_issues:
+                        warning = "\n\n⚠️ **Verification Warning:** This response may contain unverified claims:\n"
+                        for issue in high_issues[:3]:
+                            warning += f"- {issue.description}\n"
+                            if issue.suggestion:
+                                warning += f"  → {issue.suggestion}\n"
+                        content = content + warning
+                        log.warning(
+                            "[HALLUCINATION] Final response flagged: %d issues, score=%.2f",
+                            len(high_issues),
+                            final_analysis.quality_score,
+                        )
+            except Exception:
+                pass  # Don't block response delivery on analysis failure
 
         # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
         synthesis_summary = None
@@ -897,7 +926,7 @@ Version: {skill.version}
             content = msg.get("content")
             if not tool_calls:
                 task_text = ""
-                return _handle_text_response(content, llm_trace, accumulated_usage)
+                return _handle_text_response(content, llm_trace, accumulated_usage, messages)
 
             messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
 

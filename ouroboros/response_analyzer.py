@@ -8,8 +8,10 @@ Phase 1: Response Quality Analysis
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ouroboros.utils import utc_now_iso
@@ -180,6 +182,160 @@ class ResponseAnalyzer:
                     description=f"References imports ({len(import_claims)}) without verification",
                     evidence=[f"Claims: {', '.join(import_claims[:5])}"],
                     suggestion="Verify imports exist with repo_read or shell_run.",
+                )
+            )
+
+        # Pattern 4: Claims about files that don't actually exist
+        if repo_dir and os.path.isdir(repo_dir):
+            issues.extend(self._verify_file_claims(response, repo_dir))
+
+        # Pattern 5: Fabricated test counts
+        issues.extend(self._verify_test_claims(response, repo_dir))
+
+        # Pattern 6: Fabricated metrics (coverage %, performance numbers)
+        issues.extend(self._verify_metric_claims(response, tool_calls))
+
+        return issues
+
+    def _verify_file_claims(self, response: str, repo_dir: str) -> List[QualityIssue]:
+        """Verify that files mentioned in the response actually exist."""
+        issues: List[QualityIssue] = []
+        repo_path = Path(repo_dir)
+
+        # Extract file paths mentioned in response
+        # Pattern: paths like ouroboros/foo.py, tests/test_bar.py, scripts/baz.sh, etc.
+        file_patterns = [
+            r"(?:ouroboros|tests?|scripts?|vault|supervisor|memory)[/\\][\w./\\-]+\.(?:py|sh|json|md|yaml|yml|toml)",
+            r"(?:src|lib|pkg)[/\\][\w./\\-]+\.(?:py|sh|json|md)",
+        ]
+
+        claimed_files: List[str] = []
+        for pattern in file_patterns:
+            matches = re.findall(pattern, response)
+            claimed_files.extend(matches)
+
+        # Normalize and check existence
+        non_existent: List[str] = []
+        for f in claimed_files:
+            normalized = f.replace("\\", "/").strip("./")
+            full_path = repo_path / normalized
+            if not full_path.exists():
+                non_existent.append(normalized)
+
+        if non_existent:
+            # Check context: are these files being claimed as CREATED/MODIFIED?
+            creation_verbs = r"(?:created?|added?|wrote|introduced?|modified?|updated?|fixed?|refactored?)"
+            claimed_as_changed = []
+            for f in non_existent:
+                # Look for the file near creation verbs
+                escaped = re.escape(f)
+                context_pattern = creation_verbs + r".{0,80}" + escaped
+                alt_pattern = (
+                    escaped + r".{0,80}" + "(?:created|added|wrote|introduced|modified|updated|fixed|refactored)"
+                )
+                if re.search(context_pattern, response, re.IGNORECASE) or re.search(
+                    alt_pattern, response, re.IGNORECASE
+                ):
+                    claimed_as_changed.append(f)
+
+            severity = "high" if len(claimed_as_changed) >= 2 else "medium" if claimed_as_changed else "low"
+            description = (
+                f"Claims {len(claimed_as_changed)} files were created/modified but they don't exist"
+                if claimed_as_changed
+                else f"References {len(non_existent)} files that don't exist"
+            )
+            issues.append(
+                QualityIssue(
+                    issue_type="hallucination",
+                    severity=severity,
+                    description=description,
+                    evidence=[f"Missing: {', '.join(non_existent[:5])}"],
+                    suggestion="Verify files exist with repo_list or glob_files before claiming changes.",
+                )
+            )
+
+        return issues
+
+    def _verify_test_claims(self, response: str, repo_dir: str) -> List[QualityIssue]:
+        """Verify test count claims match reality."""
+        issues: List[QualityIssue] = []
+
+        # Look for test count claims like "9 tests total", "5 new tests", "90 tests"
+        test_count_patterns = [
+            r"(\d+)\s+(?:new\s+)?tests?\s+(?:total|passed|run|exist|added|created|covering)",
+            r"(?:total|of)\s+(\d+)\s+tests?",
+            r"(\d+)\s+tests?\s+(?:in\s+)?(?:the\s+)?(?:suite|project|codebase|repo)",
+            r"pytest.*?(\d+)\s+(?:passed|tests)",
+        ]
+
+        claimed_counts: List[int] = []
+        for pattern in test_count_patterns:
+            matches = re.findall(pattern, response, re.IGNORECASE)
+            for m in matches:
+                try:
+                    claimed_counts.append(int(m))
+                except ValueError:
+                    pass
+
+        if claimed_counts and repo_dir and os.path.isdir(repo_dir):
+            # Deduplicate claimed counts
+            claimed_counts = list(set(claimed_counts))
+            # Count actual tests by scanning test files
+            test_dir = Path(repo_dir) / "tests"
+            if test_dir.exists():
+                actual_count = 0
+                for py_file in test_dir.glob("test_*.py"):
+                    try:
+                        content = py_file.read_text(encoding="utf-8", errors="replace")
+                        actual_count += len(re.findall(r"def\s+test_\w+", content))
+                    except Exception:
+                        pass
+
+                for claimed in claimed_counts:
+                    # Allow small variance (collect vs run counts differ)
+                    if actual_count > 0 and abs(claimed - actual_count) > max(5, actual_count * 0.2):
+                        issues.append(
+                            QualityIssue(
+                                issue_type="hallucination",
+                                severity="high",
+                                description=f"Claims {claimed} tests exist but actual count is ~{actual_count}",
+                                evidence=[f"Claimed: {claimed}", f"Actual: {actual_count}"],
+                                suggestion="Run 'pytest --collect-only -q' to get the real test count.",
+                            )
+                        )
+
+        return issues
+
+    def _verify_metric_claims(self, response: str, tool_calls: List[Dict[str, Any]]) -> List[QualityIssue]:
+        """Verify that performance/coverage metrics were actually measured."""
+        issues: List[QualityIssue] = []
+        response_lower = response.lower()
+
+        # Coverage percentage claims without running coverage
+        coverage_match = re.search(r"(?:coverage|cov)[:\s]*(\d+)\s*%", response_lower)
+        if coverage_match:
+            used_coverage = any("coverage" in str(tc) or "pytest" in str(tc) or "--cov" in str(tc) for tc in tool_calls)
+            if not used_coverage:
+                issues.append(
+                    QualityIssue(
+                        issue_type="hallucination",
+                        severity="high",
+                        description=f"Claims {coverage_match.group(1)}% coverage without running coverage tools",
+                        evidence=["Coverage claimed", "No coverage tool call detected"],
+                        suggestion="Run 'pytest --cov' to get actual coverage data.",
+                    )
+                )
+
+        # Performance timing claims without benchmarks
+        timing_match = re.search(r"(\d+\.?\d*)\s*s(?:econds?)?\s*(?:average|avg|mean|runtime|latency)", response_lower)
+        if timing_match and not tool_calls:
+            issues.append(
+                QualityIssue(
+                    issue_type="hallucination",
+                    severity="high",
+                    description=f"Claims {timing_match.group(1)}s performance without running benchmarks",
+                    evidence=["Timing metric claimed", "No tool calls to measure it"],
+                    suggestion="Use time.time() or a benchmarking tool to measure actual performance.",
                 )
             )
 
