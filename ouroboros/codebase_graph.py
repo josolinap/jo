@@ -1228,16 +1228,32 @@ class OntologyTracker:
 
     def get_insights(self) -> Dict[str, Any]:
         """Get aggregate insights about tracked relationships."""
-        if not self._relationships:
+        # Derive total from aggregate indexes (works for both in-memory and persisted data)
+        tool_total = sum(c for tools in self._tool_usage.values() for c in tools.values())
+        produces_total = sum(c for arts in self._task_produces.values() for c in arts.values())
+        co_total = sum(c for comps in self._co_occurrence.values() for c in comps.values()) // 2
+        seq_total = sum(c for seqs in self._task_sequence.values() for c in seqs.values())
+        total = tool_total + produces_total + co_total + seq_total
+
+        if total == 0 and not self._relationships:
             return {"total_relationships": 0, "average_strength": 0.0}
 
-        total = len(self._relationships)
-        avg_strength = sum(r["strength"] for r in self._relationships) / total
-
-        relation_counts: Dict[str, int] = {}
-        for r in self._relationships:
-            rel = r["relation"]
-            relation_counts[rel] = relation_counts.get(rel, 0) + 1
+        # If we have raw relationships, also compute from those
+        if self._relationships:
+            total = max(total, len(self._relationships))
+            avg_strength = sum(r["strength"] for r in self._relationships) / len(self._relationships)
+            relation_counts: Dict[str, int] = {}
+            for r in self._relationships:
+                rel = r["relation"]
+                relation_counts[rel] = relation_counts.get(rel, 0) + 1
+        else:
+            avg_strength = 0.8  # Seeded default strength
+            relation_counts = {
+                "uses_tool": tool_total,
+                "produces": produces_total,
+                "co_occurs_with": co_total,
+                "followed_by": seq_total,
+            }
 
         # Find most-used tools across all task types
         all_tools: Dict[str, int] = {}

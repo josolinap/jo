@@ -226,6 +226,14 @@ def _handle_text_response(
         if insights_added:
             content = content + "".join(insights_added)
 
+    # Persist ontology tracker at end of task
+    try:
+        from ouroboros.codebase_graph import save_ontology_tracker
+
+        save_ontology_tracker()
+    except Exception:
+        log.debug("Failed to save ontology tracker", exc_info=True)
+
     return (content or ""), accumulated_usage, llm_trace
 
 
@@ -689,21 +697,22 @@ def run_llm_loop(
                 if summarize_info.get("auto_summarized"):
                     emit_progress(f"📝 [Memory] Auto-summarized: {summarize_info.get('reason', '')}")
 
-                from ouroboros.context_enricher import enrich_messages
+                if USE_CONTEXT_ENRICHMENT:
+                    from ouroboros.context_enricher import enrich_messages
 
-                task_text = ""
-                for m in messages:
-                    if m.get("role") == "user":
-                        task_text = m.get("content", "")
-                        break
-                if task_text:
-                    task_type = (
-                        "code"
-                        if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
-                        else "general"
-                    )
-                    repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
-                    messages = enrich_messages(messages, task_text, task_type, repo_dir)
+                    task_text = ""
+                    for m in messages:
+                        if m.get("role") == "user":
+                            task_text = m.get("content", "")
+                            break
+                    if task_text:
+                        task_type = (
+                            "code"
+                            if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
+                            else "general"
+                        )
+                        repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+                        messages = enrich_messages(messages, task_text, task_type, repo_dir)
 
             if round_idx == 1:
                 from ouroboros.tools.agent_coordinator import _coordinator
@@ -852,7 +861,7 @@ Version: {skill.version}
                         if profile["produces"]:
                             ontology_msg += f"\nMost produced: {profile['produces'][0]['artifact']}"
                     except Exception:
-                        pass
+                        log.debug("Ontology profile enrichment failed", exc_info=True)
                     messages.append({"role": "system", "content": ontology_msg})
 
             # Track ontology relationships for tool calls
@@ -958,7 +967,7 @@ Version: {skill.version}
                         if name:
                             learner.record_tool_call(name)
             except Exception:
-                pass
+                log.debug("Temporal learning record failed", exc_info=True)
 
             # Record ontology relationships (task_type → tool_name, tool co-occurrence)
             try:
@@ -974,9 +983,8 @@ Version: {skill.version}
                     record_task_tool_usage(_ontology_task_type, name)
                 if len(tool_names) > 1:
                     record_tool_co_occurrence(tool_names)
-                save_ontology_tracker()
             except Exception:
-                pass
+                log.debug("Ontology recording failed", exc_info=True)
 
             # Track files changed during this round (from tool calls)
             files_changed_this_round = []
