@@ -32,7 +32,7 @@ from ouroboros.utils import (
     get_git_info,
     sanitize_task_for_event,
 )
-from ouroboros.llm import LLMClient, add_usage
+from ouroboros.llm import LLMClient
 from ouroboros.tools import ToolRegistry
 from ouroboros.tools.registry import ToolContext
 from ouroboros.memory import Memory
@@ -463,7 +463,7 @@ class OuroborosAgent:
             if total_budget > 0:
                 budget_remaining = max(0, total_budget - spent)
         except Exception:
-            pass
+            log.debug("Failed to read budget state", exc_info=True)
 
         cap_info["budget_remaining"] = budget_remaining
         return ctx, messages, cap_info
@@ -507,7 +507,7 @@ class OuroborosAgent:
                     if suggested:
                         log.info("[Router] Task type: %s, suggested tools: %s", routed_task_type, suggested[:3])
             except Exception:
-                pass
+                log.debug("Tool routing failed", exc_info=True)
 
             # --- LLM loop (delegated to loop.py) ---
             usage: Dict[str, Any] = {}
@@ -562,7 +562,7 @@ class OuroborosAgent:
                     if line.startswith("M ") or line.startswith("A "):
                         changed_files.append(line[2:].strip())
             except Exception:
-                pass
+                log.debug("Failed to parse git diff for changed files", exc_info=True)
 
             synth_report = synthesize_task(task_text, text, changed_files, self.env.repo_dir)
             eval_report = evaluate_task(task_text, text, changed_files, self.env.repo_dir)
@@ -627,9 +627,9 @@ class OuroborosAgent:
                         if evolved:
                             log.info("[Instinct] Evolved %d patterns: %s", len(evolved), evolved)
                     except Exception:
-                        pass
+                        log.debug("Instinct evolution failed", exc_info=True)
             except Exception:
-                pass
+                log.debug("Post-task learning block failed", exc_info=True)
 
             # Checkpoint verification for evolution tasks
             if task.get("type") in ("evolution", "review") and changed_files:
@@ -643,7 +643,7 @@ class OuroborosAgent:
                         # Append checkpoint report to response
                         text = text + "\n\n" + report
                 except Exception:
-                    pass
+                    log.debug("Checkpoint verification failed", exc_info=True)
 
             # Delta evaluation for evolution tasks
             if task.get("type") in ("evolution", "review"):
@@ -678,7 +678,7 @@ class OuroborosAgent:
                                         if "deletion" in p:
                                             lines_removed = int("".join(c for c in p if c.isdigit()) or "0")
                     except Exception:
-                        pass
+                        log.debug("Failed to parse git diff stats", exc_info=True)
 
                     # Run actual tests to get real pass/fail count
                     tests_passing = 0
@@ -700,7 +700,7 @@ class OuroborosAgent:
                             if " failed" in tline:
                                 tests_failing = int("".join(c for c in tline.split(" failed")[0] if c.isdigit()) or "0")
                     except Exception:
-                        pass
+                        log.debug("Failed to run tests for delta eval", exc_info=True)
 
                     result = evaluator.evaluate_change(
                         lines_added=lines_added,
@@ -714,7 +714,7 @@ class OuroborosAgent:
                     if not result.is_improvement:
                         log.warning("[Delta] Evolution quality: %.4f (not improving)", result.total_delta)
                 except Exception:
-                    pass
+                    log.debug("Delta evaluation failed", exc_info=True)
 
             return list(self._pending_events)
 

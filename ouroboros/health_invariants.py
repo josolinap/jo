@@ -41,7 +41,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: VERIFICATION: Tracking active (no entries yet)")
     except Exception:
-        pass
+        log.debug("Health check failed: verification stats", exc_info=True)
 
     # 2. Version sync: VERSION file vs pyproject.toml
     try:
@@ -57,7 +57,7 @@ def build_health_invariants(env: Any) -> str:
         elif ver_file:
             checks.append(f"OK: version sync ({ver_file})")
     except Exception:
-        pass
+        log.debug("Health check failed: version sync", exc_info=True)
 
     # 3. Budget drift
     try:
@@ -71,7 +71,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: budget drift within tolerance")
     except Exception:
-        pass
+        log.debug("Health check failed: budget drift", exc_info=True)
 
     # 4. Per-task cost anomalies
     try:
@@ -83,7 +83,7 @@ def build_health_invariants(env: Any) -> str:
         if not costly:
             checks.append("OK: no high-cost tasks (>$5)")
     except Exception:
-        pass
+        log.debug("Health check failed: per-task cost", exc_info=True)
 
     # 5. Identity.md awareness (missing or stale)
     try:
@@ -97,7 +97,7 @@ def build_health_invariants(env: Any) -> str:
             else:
                 checks.append("OK: identity.md recent")
     except Exception:
-        pass
+        log.debug("Health check failed: identity awareness", exc_info=True)
 
     # 5b. Scratchpad awareness
     try:
@@ -111,7 +111,7 @@ def build_health_invariants(env: Any) -> str:
             elif age_hours > 1:
                 checks.append(f"OK: scratchpad updated {age_hours:.1f}h ago")
     except Exception:
-        pass
+        log.debug("Health check failed: scratchpad awareness", exc_info=True)
 
     # 5c. Memory directory health
     try:
@@ -123,7 +123,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: memory files present")
     except Exception:
-        pass
+        log.debug("Health check failed: memory directory", exc_info=True)
 
     # 6. Duplicate processing detection
     try:
@@ -179,7 +179,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: no duplicate message processing detected")
     except Exception:
-        pass
+        log.debug("Health check failed: duplicate processing", exc_info=True)
 
     # 7. Session continuity awareness
     try:
@@ -214,9 +214,9 @@ def build_health_invariants(env: Any) -> str:
                     else:
                         checks.append(f"INFO: fresh start ({hours_since:.0f}h since last event)")
             except Exception:
-                pass
+                log.debug("Health check failed: session continuity (inner)", exc_info=True)
     except Exception:
-        pass
+        log.debug("Health check failed: session continuity (outer)", exc_info=True)
 
     # 8. Vault staleness
     try:
@@ -240,7 +240,7 @@ def build_health_invariants(env: Any) -> str:
                     )
                     current_sha = result.stdout.strip()[:12] if result.returncode == 0 else ""
                 except Exception:
-                    pass
+                    log.debug("Health check failed: git rev-parse", exc_info=True)
                 if current_sha and note_sha and len(note_sha) >= 7:
                     compare_len = min(len(current_sha), len(note_sha), 12)
                     if current_sha[:compare_len] != note_sha[:compare_len]:
@@ -251,7 +251,7 @@ def build_health_invariants(env: Any) -> str:
                 elif current_sha:
                     checks.append(f"OK: vault overview fresh (HEAD={current_sha[:8]})")
     except Exception:
-        pass
+        log.debug("Health check failed: vault staleness", exc_info=True)
 
     # 9. Drift detection
     try:
@@ -271,7 +271,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: no drift detected (constitution checks pass)")
     except Exception:
-        pass
+        log.debug("Health check failed: drift detection", exc_info=True)
 
     # 10. Intelligence layer stats
     try:
@@ -284,7 +284,7 @@ def build_health_invariants(env: Any) -> str:
         else:
             checks.append("OK: intelligence layer ready (cache, learning, proof gate, episodic memory, delta eval)")
     except Exception:
-        pass
+        log.debug("Health check failed: context cache", exc_info=True)
 
     try:
         from ouroboros.temporal_learning import get_learner
@@ -295,7 +295,7 @@ def build_health_invariants(env: Any) -> str:
             if pattern_count > 0:
                 checks.append(f"OK: temporal learning {pattern_count} patterns learned")
     except Exception:
-        pass
+        log.debug("Health check failed: temporal learning", exc_info=True)
 
     if not checks:
         return ""
