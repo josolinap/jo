@@ -286,13 +286,13 @@ def check_ontology() -> dict:
         repo_dir = pathlib.Path(__file__).parent.resolve()
         sys.path.insert(0, str(repo_dir))
 
-        from ouroboros.codebase_graph import TASK_ONTOLOGY, OntologyTracker
+        from ouroboros.codebase_graph import TASK_ONTOLOGY, get_ontology_tracker
 
         # Check task ontology types
         ontology_types = list(TASK_ONTOLOGY.keys())
 
-        # Check tracker
-        tracker = OntologyTracker()
+        # Check tracker (uses global singleton that accumulates over time)
+        tracker = get_ontology_tracker()
         insights = tracker.get_insights()
 
         return {

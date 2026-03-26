@@ -812,7 +812,22 @@ Version: {skill.version}
                         f"Produces: {', '.join(task_ontology_info['produces'][:3])}\n"
                         f"Typical tools: {', '.join(task_ontology_info['typical_tools'][:3])}"
                     )
+                    # Enrich with learned recommendations from tracker
+                    try:
+                        from ouroboros.codebase_graph import get_task_ontology_profile
+
+                        profile = get_task_ontology_profile(task_ontology_info["task_type"])
+                        if profile["top_tools"]:
+                            top = profile["top_tools"][0]
+                            ontology_msg += f"\nLearned best tool: {top['tool']} (confidence: {top['confidence']})"
+                        if profile["produces"]:
+                            ontology_msg += f"\nMost produced: {profile['produces'][0]['artifact']}"
+                    except Exception:
+                        pass
                     messages.append({"role": "system", "content": ontology_msg})
+
+            # Track ontology relationships for tool calls
+            _ontology_task_type = task_ontology_info["task_type"] if task_ontology_info else "general"
 
             msg, cost = _call_llm_with_retry(
                 llm,
@@ -913,6 +928,24 @@ Version: {skill.version}
                         name = fn.get("name", "")
                         if name:
                             learner.record_tool_call(name)
+            except Exception:
+                pass
+
+            # Record ontology relationships (task_type → tool_name, tool co-occurrence)
+            try:
+                from ouroboros.codebase_graph import (
+                    record_task_tool_usage,
+                    record_tool_co_occurrence,
+                    save_ontology_tracker,
+                )
+
+                tool_names = [tc.get("function", {}).get("name", "") for tc in tool_calls]
+                tool_names = [n for n in tool_names if n]
+                for name in tool_names:
+                    record_task_tool_usage(_ontology_task_type, name)
+                if len(tool_names) > 1:
+                    record_tool_co_occurrence(tool_names)
+                save_ontology_tracker()
             except Exception:
                 pass
 

@@ -5,7 +5,8 @@ Registers the following as tools Jo can use:
 - extract_from_code: Extract structured info from code
 - extract_from_text: Extract info from text
 - blind_validate: Validate without implementation bias
-- get_task_ontology: Get ontology info for a task
+- get_task_ontology: Get ontology info for a task (enriched with learned patterns)
+- get_ontology_insights: Query learned ontology patterns (tools, companions, chains)
 """
 
 from __future__ import annotations
@@ -207,13 +208,61 @@ def _get_task_ontology(
     Returns:
         JSON with ontology information
     """
-    from ouroboros.codebase_graph import get_ontology_for_task
+    from ouroboros.codebase_graph import get_ontology_for_task, get_task_ontology_profile
 
     ctx.emit_progress_fn("Classifying task ontology...")
 
     ontology = get_ontology_for_task(task)
+    # Enrich with learned data
+    profile = get_task_ontology_profile(ontology["task_type"])
+    ontology["learned_tools"] = profile["top_tools"]
+    ontology["learned_produces"] = profile["produces"]
 
     return json.dumps(ontology, indent=2)
+
+
+def _get_ontology_insights(
+    ctx: ToolContext,
+    task_type: str = "",
+    query: str = "profile",
+) -> str:
+    """Get structured ontology insights — learned patterns from task execution.
+
+    Queries the ontology tracker for tool recommendations, tool companions,
+    task chains, and aggregate insights. Data accumulates across sessions.
+
+    Args:
+        task_type: Task type to query (code, research, vault, git, web, system). Empty for aggregate.
+        query: What to query: "profile", "tools", "companions", "chains", "insights"
+
+    Returns:
+        JSON with requested ontology data
+    """
+    from ouroboros.codebase_graph import get_ontology_tracker
+
+    ctx.emit_progress_fn("Querying ontology tracker...")
+    tracker = get_ontology_tracker()
+
+    if query == "profile" and task_type:
+        return json.dumps(tracker.get_task_profile(task_type), indent=2)
+    elif query == "tools" and task_type:
+        return json.dumps(tracker.get_tool_recommendations(task_type), indent=2)
+    elif query == "companions" and task_type:
+        return json.dumps(tracker.get_tool_companions(task_type), indent=2)
+    elif query == "chains" and task_type:
+        return json.dumps(tracker.get_task_chains(task_type), indent=2)
+    elif query == "insights":
+        return json.dumps(tracker.get_insights(), indent=2)
+    elif query == "data":
+        return json.dumps(tracker.get_structured_data(), indent=2)
+    else:
+        return json.dumps(
+            {
+                "error": f"Unknown query '{query}' or missing task_type",
+                "valid_queries": ["profile", "tools", "companions", "chains", "insights", "data"],
+            },
+            indent=2,
+        )
 
 
 def get_tools() -> List[ToolEntry]:
@@ -313,7 +362,7 @@ def get_tools() -> List[ToolEntry]:
             "get_task_ontology",
             {
                 "name": "get_task_ontology",
-                "description": "Classify task and get ontology info (requires, produces, typical tools).",
+                "description": "Classify task and get ontology info (requires, produces, typical tools) enriched with learned patterns.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -323,5 +372,28 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _get_task_ontology,
+        ),
+        ToolEntry(
+            "get_ontology_insights",
+            {
+                "name": "get_ontology_insights",
+                "description": "Query the ontology tracker for learned patterns: tool recommendations, tool companions, task chains, and aggregate insights.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_type": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Task type to query (code, research, vault, git, web, system). Empty for aggregate.",
+                        },
+                        "query": {
+                            "type": "string",
+                            "default": "profile",
+                            "description": "Query type: profile, tools, companions, chains, insights, data",
+                        },
+                    },
+                },
+            },
+            _get_ontology_insights,
         ),
     ]
