@@ -805,7 +805,8 @@ Version: {skill.version}
                     messages = compact_tool_history(messages, keep_recent=6)
 
             # PIPELINE_PLAN.md Feature 2: Context Enrichment Before LLM Calls
-            if USE_CONTEXT_ENRICHMENT:
+            # Only on round 1 — vault/codebase state doesn't change during a task
+            if USE_CONTEXT_ENRICHMENT and round_idx == 1:
                 from ouroboros.context_enricher import enrich_messages
 
                 task_text = ""

@@ -206,6 +206,19 @@ def route_tools(
     """
     task_type = classify_task(task_text)
 
+    # Feed classification into ontology tracker for cross-system learning
+    try:
+        from ouroboros.codebase_graph import get_ontology_tracker
+
+        tracker = get_ontology_tracker()
+        defaults = get_default_tool_order(task_type)
+        for tool in defaults:
+            tracker.record(task_type, tool, "uses_tool", strength=0.6)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug("Failed to feed ontology from router", exc_info=True)
+
     if learner:
         try:
             from ouroboros.temporal_learning import TemporalToolLearner

@@ -475,7 +475,18 @@ class OuroborosAgent:
         self._last_progress_ts = start_time
         self._pending_events = []
         self._current_chat_id = int(task.get("chat_id") or 0) or None
-        self._current_task_type = str(task.get("type") or "")
+        new_task_type = str(task.get("type") or "")
+
+        # Track task type sequences (what task types follow what)
+        if self._current_task_type and new_task_type and self._current_task_type != new_task_type:
+            try:
+                from ouroboros.codebase_graph import record_task_sequence
+
+                record_task_sequence(self._current_task_type, new_task_type)
+            except Exception:
+                log.debug("Task sequence tracking failed", exc_info=True)
+
+        self._current_task_type = new_task_type
 
         drive_logs = self.env.drive_path("logs")
         heartbeat_stop = self._start_task_heartbeat_loop(str(task.get("id") or ""))

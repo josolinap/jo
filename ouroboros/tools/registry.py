@@ -118,6 +118,8 @@ CORE_TOOL_NAMES = {
     "vault_delete",
     "vault_ensure",
     "system_map",
+    "get_task_ontology",
+    "get_ontology_insights",
 }
 
 
