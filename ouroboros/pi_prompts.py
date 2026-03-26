@@ -158,7 +158,8 @@ def register_pi_skills():
     This function should be called during initialization to make
     the pi prompts available as skills.
     """
-    from ouroboros.tools.skills import Skill, register_skill
+    from ouroboros.tools.skill_definitions import Skill
+    from ouroboros.tools.skill_registry import register_skill
 
     # PR Review Skill
     pr_prompt = get_pr_review_prompt()
