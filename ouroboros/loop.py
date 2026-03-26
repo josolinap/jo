@@ -641,6 +641,38 @@ def _maybe_build_task_graph(task: str) -> Optional[Any]:
     return None
 
 
+def _setup_loop_context(
+    llm: LLMClient,
+    tools: ToolRegistry,
+    event_queue: Optional[queue.Queue],
+    task_id: str,
+) -> Tuple[str, str, Dict[str, Any], Dict[str, Any], _StatefulToolExecutor, Any]:
+    """Initialize core loop context and state."""
+    global _quality_feedback_injected
+
+    active_model = llm.default_model()
+    active_effort = "medium"  # Will be overridden by initial_effort parameter
+
+    llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
+    accumulated_usage: Dict[str, Any] = {}
+    max_retries = 3
+
+    from ouroboros.tools import tool_discovery as _td
+
+    _td.set_registry(tools)
+
+    tool_schemas = tools.schemas(core_only=True)
+    tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, [])
+
+    tools._ctx.event_queue = event_queue
+    tools._ctx.task_id = task_id
+    stateful_executor = _StatefulToolExecutor()
+    _owner_msg_seen: set = set()
+    traceability = get_traceability_layer(tools._ctx)
+
+    return active_model, active_effort, llm_trace, accumulated_usage, stateful_executor, traceability
+
+
 def run_llm_loop(
     messages: List[Dict[str, Any]],
     tools: ToolRegistry,
@@ -663,25 +695,9 @@ def run_llm_loop(
     """
     global _quality_feedback_injected
 
-    active_model = llm.default_model()
-    active_effort = initial_effort
-
-    llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
-    accumulated_usage: Dict[str, Any] = {}
-    max_retries = 3
-
-    from ouroboros.tools import tool_discovery as _td
-
-    _td.set_registry(tools)
-
-    tool_schemas = tools.schemas(core_only=True)
-    tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, messages)
-
-    tools._ctx.event_queue = event_queue
-    tools._ctx.task_id = task_id
-    stateful_executor = _StatefulToolExecutor()
-    _owner_msg_seen: set = set()
-    traceability = get_traceability_layer(tools._ctx)
+    active_model, active_effort, llm_trace, accumulated_usage, stateful_executor, traceability = _setup_loop_context(
+        llm, tools, event_queue, task_id
+    )
 
     try:
         MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
