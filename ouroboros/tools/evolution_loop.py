@@ -500,7 +500,7 @@ def _get_evolution_status(ctx: ToolContext) -> str:
         state_path = ctx.drive_path("state") / "state.json"
         if state_path.exists():
             state = json.loads(state_path.read_text(encoding="utf-8"))
-            evolution_enabled = state.get("evolution_mode_enabled", True)
+            evolution_enabled = state.get("evolution_mode_enabled", False)
     except Exception:
         log.debug("Unexpected error", exc_info=True)
 
