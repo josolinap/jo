@@ -234,6 +234,17 @@ def _get_budget_status(budget_remaining_usd: Optional[float], accumulated_usage:
     """Calculate budget percentage and cost, return None if no budget."""
     if budget_remaining_usd is None:
         return None, None
+
+    total_cost = _estimate_cost(
+        accumulated_usage.get("model", ""),
+        accumulated_usage.get("prompt_tokens", 0),
+        accumulated_usage.get("completion_tokens", 0),
+        accumulated_usage.get("cached_tokens", 0),
+        accumulated_usage.get("cache_write_tokens", 0),
+    )
+    percentage = (total_cost / budget_remaining_usd) * 100 if budget_remaining_usd > 0 else 0
+    return percentage, total_costining_usd is None:
+        return None, None
     
     task_cost = accumulated_usage.get("cost", 0)
     budget_pct = task_cost / budget_remaining_usd if budget_remaining_usd > 0 else 1.0
