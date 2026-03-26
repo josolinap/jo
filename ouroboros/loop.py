@@ -230,6 +230,61 @@ def _handle_text_response(
     return (content or ""), accumulated_usage, llm_trace
 
 
+def _get_budget_status(budget_remaining_usd: Optional[float], accumulated_usage: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    """Calculate budget percentage and cost, return None if no budget."""
+    if budget_remaining_usd is None:
+        return None, None
+    
+    task_cost = accumulated_usage.get("cost", 0)
+    budget_pct = task_cost / budget_remaining_usd if budget_remaining_usd > 0 else 1.0
+    return budget_pct, task_cost
+
+
+def _handle_budget_exceeded(
+    budget_remaining_usd: Optional[float],
+    task_cost: float,
+    messages: List[Dict[str, Any]],
+    llm: LLMClient,
+    active_model: str,
+    active_effort: str,
+    max_retries: int,
+    drive_logs: pathlib.Path,
+    task_id: str,
+    round_idx: int,
+    event_queue: Optional[queue.Queue],
+    accumulated_usage: Dict[str, Any],
+    llm_trace: Dict[str, Any],
+    task_type: str,
+) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
+    """Handle case where budget is exceeded (50%+ spent)."""
+    finish_reason = (
+        f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
+    )
+    messages.append({"role": "system", "content": f"[BUDGET LIMIT] {finish_reason} Give your final response now."})
+    
+    try:
+        final_msg, final_cost = _call_llm_with_retry(
+            llm,
+            messages,
+            active_model,
+            None,
+            active_effort,
+            max_retries,
+            drive_logs,
+            task_id,
+            round_idx,
+            event_queue,
+            accumulated_usage,
+            task_type,
+        )
+        if final_msg:
+            return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
+        return finish_reason, accumulated_usage, llm_trace
+    except Exception:
+        log.warning("Failed to get final response after budget limit", exc_info=True)
+        return finish_reason, accumulated_usage, llm_trace
+
+
 def _check_budget_limits(
     budget_remaining_usd: Optional[float],
     accumulated_usage: Dict[str, Any],
@@ -246,46 +301,39 @@ def _check_budget_limits(
     task_type: str = "task",
 ) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
     """Check budget limits and handle budget overrun."""
-    if budget_remaining_usd is None:
+    budget_pct, task_cost = _get_budget_status(budget_remaining_usd, accumulated_usage)
+    
+    if budget_pct is None:
         return None
-
-    task_cost = accumulated_usage.get("cost", 0)
-    budget_pct = task_cost / budget_remaining_usd if budget_remaining_usd > 0 else 1.0
-
+    
+    # Handle budget exceeded (50%+ spent) - force final response
     if budget_pct > 0.5:
-        finish_reason = (
-            f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
+        return _handle_budget_exceeded(
+            budget_remaining_usd,
+            task_cost,
+            messages,
+            llm,
+            active_model,
+            active_effort,
+            max_retries,
+            drive_logs,
+            task_id,
+            round_idx,
+            event_queue,
+            accumulated_usage,
+            llm_trace,
+            task_type,
         )
-        messages.append({"role": "system", "content": f"[BUDGET LIMIT] {finish_reason} Give your final response now."})
-        try:
-            final_msg, final_cost = _call_llm_with_retry(
-                llm,
-                messages,
-                active_model,
-                None,
-                active_effort,
-                max_retries,
-                drive_logs,
-                task_id,
-                round_idx,
-                event_queue,
-                accumulated_usage,
-                task_type,
-            )
-            if final_msg:
-                return (final_msg.get("content") or finish_reason), accumulated_usage, llm_trace
-            return finish_reason, accumulated_usage, llm_trace
-        except Exception:
-            log.warning("Failed to get final response after budget limit", exc_info=True)
-            return finish_reason, accumulated_usage, llm_trace
-    elif budget_pct > 0.3 and round_idx % 10 == 0:
+    
+    # Add periodic budget warning at 30% threshold
+    if budget_pct > 0.3 and round_idx % 10 == 0:
         messages.append(
             {
                 "role": "system",
                 "content": f"[INFO] Task spent ${task_cost:.3f} of ${budget_remaining_usd:.2f}. Wrap up if possible.",
             }
         )
-
+    
     return None
 
 
