@@ -15,12 +15,16 @@ from __future__ import annotations
 import logging
 import pathlib
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 
 log = logging.getLogger(__name__)
+
+MAX_RETRIES = 3
+BACKOFF_BASE_SEC = 2
 
 
 @dataclass
@@ -31,8 +35,11 @@ class EvolutionCycle:
     trigger: str  # What initiated this cycle
     phase: str  # identify, plan, implement, test, learn
     changes: List[str] = field(default_factory=list)
-    status: str = "pending"  # pending, running, complete, failed
+    status: str = "pending"  # pending, running, complete, failed, degraded
     results: Dict[str, Any] = field(default_factory=dict)
+    errors: List[str] = field(default_factory=list)
+    duration_sec: float = 0.0
+    attempts: int = 0
 
 
 class EvolutionLoop:
@@ -44,31 +51,86 @@ class EvolutionLoop:
         self.enabled = True
 
     def identify_issues(self) -> List[str]:
-        """Identify areas for improvement."""
-        issues = []
+        """Identify areas for improvement with retry logic."""
+        issues: List[str] = []
+        check_errors: List[str] = []
+
+        issues.extend(self._check_tests(check_errors))
+        issues.extend(self._check_syntax(check_errors))
+        issues.extend(self._check_module_sizes(check_errors))
+
+        if check_errors:
+            log.warning("Health checks encountered errors: %s", check_errors)
+
+        return issues
+
+    def _check_tests(self, errors: List[str]) -> List[str]:
+        """Run test suite with retry and exponential backoff."""
+        issues: List[str] = []
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                import subprocess as _sp
+
+                result = _sp.run(
+                    ["py", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                output = (result.stdout + result.stderr).splitlines()
+                summary = output[-1] if output else ""
+                if "failed" in summary.lower() or "error" in summary.lower():
+                    issues.append("Test failures detected")
+                return issues
+            except _sp.TimeoutExpired:
+                delay = BACKOFF_BASE_SEC**attempt
+                log.warning("Test run timed out (attempt %d/%d), retrying in %ds", attempt + 1, MAX_RETRIES, delay)
+                time.sleep(delay)
+            except Exception as e:
+                delay = BACKOFF_BASE_SEC**attempt
+                log.warning("Test check failed (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, e)
+                time.sleep(delay)
+
+        errors.append("Test check failed after %d attempts" % MAX_RETRIES)
+        return issues
+
+    def _check_syntax(self, errors: List[str]) -> List[str]:
+        """Check syntax with retry and exponential backoff."""
+        issues: List[str] = []
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                result = self._run_shell("py -m py_compile ouroboros/*.py 2>&1")
+                if result.strip():
+                    issues.append("Syntax errors in core files")
+                return issues
+            except Exception as e:
+                delay = BACKOFF_BASE_SEC**attempt
+                log.warning("Syntax check failed (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, e)
+                time.sleep(delay)
+
+        errors.append("Syntax check failed after %d attempts" % MAX_RETRIES)
+        return issues
+
+    def _check_module_sizes(self, errors: List[str]) -> List[str]:
+        """Check module sizes against Principle 5 limits."""
+        issues: List[str] = []
 
         try:
-            import subprocess as _sp
+            import pathlib
 
-            result = _sp.run(
-                ["python", "-m", "pytest", "tests/", "-q", "--tb=no"],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            output = (result.stdout + result.stderr).splitlines()
-            summary = output[-1] if output else ""
-            if "failed" in summary.lower() or "error" in summary.lower():
-                issues.append("Test failures detected")
-        except Exception:
-            log.debug("Unexpected error", exc_info=True)
-
-        try:
-            health_result = self._run_shell("py -m py_compile ouroboros/*.py 2>&1")
-            if health_result.strip():
-                issues.append("Syntax errors in core files")
-        except Exception:
-            log.debug("Unexpected error", exc_info=True)
+            max_lines = 1000
+            for py_file in pathlib.Path("ouroboros").rglob("*.py"):
+                try:
+                    lines = len(py_file.read_text(encoding="utf-8").splitlines())
+                    if lines > max_lines:
+                        issues.append(f"Module size violation: {py_file} has {lines} lines (max {max_lines})")
+                except (OSError, UnicodeDecodeError) as e:
+                    log.debug("Could not read %s: %s", py_file, e)
+                    continue
+        except Exception as e:
+            errors.append("Module size check failed: %s" % e)
 
         return issues
 
@@ -93,39 +155,79 @@ class EvolutionLoop:
                         "tool": "ai_code_edit",
                     }
                 )
+            elif "module size" in issue.lower():
+                plans.append(
+                    {
+                        "issue": issue,
+                        "approach": "Refactor oversized module into smaller focused modules",
+                        "tool": "ai_code_edit",
+                    }
+                )
 
         return plans
 
     def run_cycle(self) -> EvolutionCycle:
-        """Run a single evolution cycle."""
+        """Run a single evolution cycle with retry logic and diagnostics."""
         cycle_id = f"cycle_{len(self.cycles) + 1}"
         cycle = EvolutionCycle(id=cycle_id, trigger="autonomous", phase="identify")
+        start_time = time.time()
 
-        log.info(f"Starting evolution cycle: {cycle_id}")
+        log.info("Starting evolution cycle: %s", cycle_id)
 
-        issues = self.identify_issues()
-        cycle.phase = "plan"
-        cycle.results["issues_found"] = issues
+        for attempt in range(MAX_RETRIES):
+            cycle.attempts = attempt + 1
+            try:
+                cycle.status = "running"
+                issues = self.identify_issues()
+                cycle.phase = "plan"
+                cycle.results["issues_found"] = issues
 
-        if issues:
-            plans = self.plan_improvements(issues)
-            cycle.results["plans"] = plans
-            cycle.changes = [f"Will address: {i}" for i in issues]
-            cycle.status = "complete"
-        else:
-            cycle.status = "complete"
-            cycle.results["message"] = "No issues found - system healthy"
+                if issues:
+                    plans = self.plan_improvements(issues)
+                    cycle.results["plans"] = plans
+                    cycle.changes = [f"Will address: {i}" for i in issues]
+                    cycle.status = "degraded" if any("check failed" in e for e in cycle.errors) else "complete"
+                else:
+                    cycle.status = "complete"
+                    cycle.results["message"] = "No issues found - system healthy"
 
+                cycle.duration_sec = time.time() - start_time
+                self.cycles.append(cycle)
+                return cycle
+
+            except Exception as e:
+                delay = BACKOFF_BASE_SEC**attempt
+                error_msg = "Cycle %s attempt %d failed: %s" % (cycle_id, attempt + 1, e)
+                log.error(error_msg)
+                cycle.errors.append(error_msg)
+
+                if attempt < MAX_RETRIES - 1:
+                    log.info("Retrying in %ds...", delay)
+                    time.sleep(delay)
+                else:
+                    cycle.status = "failed"
+                    cycle.phase = "failed"
+                    cycle.results["error"] = str(e)
+                    cycle.results["attempts"] = attempt + 1
+                    cycle.duration_sec = time.time() - start_time
+                    self.cycles.append(cycle)
+                    return cycle
+
+        # Should not reach here, but handle gracefully
+        cycle.status = "failed"
+        cycle.duration_sec = time.time() - start_time
         self.cycles.append(cycle)
         return cycle
 
     def _run_shell(self, cmd: str) -> str:
-        """Run a shell command."""
+        """Run a shell command with timeout."""
         try:
             import subprocess
 
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
             return result.stdout + result.stderr
+        except subprocess.TimeoutExpired:
+            return "Command timed out after 30s"
         except Exception as e:
             return str(e)
 
@@ -151,7 +253,7 @@ def _autonomous_evaluate(ctx: ToolContext) -> str:
             lines.append(f"  Approach: {plan['approach']}")
 
         lines.append("\n**Recommendation:**")
-        lines.append("Use `ai_code_edit` to address these issues.")
+        lines.append("Use `run_evolution_cycle` for a full cycle with retry logic.")
 
     else:
         lines.append("\n✅ **System is healthy.**")
@@ -167,12 +269,16 @@ def _run_evolution_cycle(ctx: ToolContext) -> str:
     loop = EvolutionLoop(ctx)
     cycle = loop.run_cycle()
 
+    status_icon = {"complete": "✅", "degraded": "⚠️", "failed": "❌"}.get(cycle.status, "⏳")
+
     lines = [
         f"## Evolution Cycle: {cycle.id}",
         "",
         f"**Trigger:** {cycle.trigger}",
         f"**Phase:** {cycle.phase}",
-        f"**Status:** {cycle.status}",
+        f"**Status:** {status_icon} {cycle.status}",
+        f"**Duration:** {cycle.duration_sec:.1f}s",
+        f"**Attempts:** {cycle.attempts}",
         "",
         "### Results",
     ]
@@ -184,6 +290,11 @@ def _run_evolution_cycle(ctx: ToolContext) -> str:
         lines.append("\n### Changes")
         for change in cycle.changes:
             lines.append(f"- {change}")
+
+    if cycle.errors:
+        lines.append("\n### Errors")
+        for error in cycle.errors:
+            lines.append(f"- ⚠️ {error}")
 
     return "\n".join(lines)
 
