@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ouroboros.utils import utc_now_iso
+
 log = logging.getLogger(__name__)
 
 
@@ -120,7 +122,7 @@ class DeltaEvaluator:
             capability_delta=round(cap, 4),
             is_improvement=total > 0,
             context=context,
-            timestamp=_now_iso(),
+            timestamp=utc_now_iso(),
         )
 
         self.history.add(result)
@@ -232,9 +234,3 @@ class DeltaEvaluator:
             )
         except Exception as e:
             log.warning("Failed to save delta history: %s", e)
-
-
-def _now_iso() -> str:
-    from datetime import datetime, timezone
-
-    return datetime.now(timezone.utc).isoformat()
