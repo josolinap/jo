@@ -77,6 +77,7 @@ _pricing_lock = threading.Lock()
 
 
 def _get_pricing() -> Dict[str, Tuple[float, float, float]]:
+    """Get model pricing with lazy loading and fallback to static data."""
     """
     Lazy-load pricing. On first call, attempts to fetch from OpenRouter API.
     Falls back to static pricing if fetch fails.
