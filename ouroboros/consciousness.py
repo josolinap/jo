@@ -472,6 +472,7 @@ class BackgroundConsciousness:
             "code_edit_lines",
             # Autonomy tools (neural map, evolution, learning)
             "neural_map",
+            "discover_knowledge_gaps",
             "learn_from_result",
             "autonomous_evaluate",
             "run_evolution_cycle",

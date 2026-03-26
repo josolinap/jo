@@ -1176,4 +1176,34 @@ def get_tools() -> List[ToolEntry]:
             handler=_symbol_context,
             timeout_sec=30,
         ),
+        ToolEntry(
+            name="discover_knowledge_gaps",
+            schema={
+                "name": "discover_knowledge_gaps",
+                "description": (
+                    "Scan all knowledge structures (neural map, ontology, vault, codebase) for gaps. "
+                    "Returns prioritized list of what Jo should know but doesn't. "
+                    "Use during background consciousness to proactively fill understanding gaps. "
+                    "Shows orphaned concepts, disconnected tools, missing ontology links, and unlinked vault notes."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            handler=_discover_knowledge_gaps,
+            timeout_sec=30,
+        ),
     ]
+
+
+def _discover_knowledge_gaps(ctx: ToolContext) -> str:
+    """Scan all knowledge structures for gaps."""
+    import pathlib
+    from ouroboros.knowledge_discovery import KnowledgeDiscovery
+
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+    drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path(".")
+
+    discovery = KnowledgeDiscovery(repo_dir=repo_dir, drive_root=drive_root)
+    return discovery.get_discovery_report()
