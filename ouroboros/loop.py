@@ -25,7 +25,6 @@ from ouroboros.context import (
     compact_tool_history_llm,
     auto_summarize_if_needed,
     smart_context_optimize,
-    DifferentialContext,
 )
 from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
@@ -52,12 +51,6 @@ _pipeline = None
 
 # Track quality feedback injection state (per-task, reset in run_llm_loop)
 _quality_feedback_injected: bool = False
-
-# Track files changed across rounds for synthesis and evaluation
-_files_changed_total: List[str] = []
-
-# Track context optimization state per task (differential context optimization)
-_task_context_tracker: Dict[str, DifferentialContext] = {}
 
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
@@ -324,7 +317,7 @@ def _maybe_inject_self_check(
         f"1. Am I making real progress, or repeating the same actions?\n"
         f"2. Is my current strategy working? Should I try something different?\n"
         f"3. Is my context bloated with old tool results I no longer need?\n"
-        f"   -> If yes, call `compact_context` to summarize them selectively.\n"
+        f"   -> If yes, continue working — the system auto-summarizes when needed.\n"
         f"4. Have I been stuck on the same sub-problem for many rounds?\n"
         f"   -> If yes, consider: simplify the approach, skip the sub-problem, or finish with what I have.\n"
         f"5. Should I just STOP and return my best result so far?\n\n"
