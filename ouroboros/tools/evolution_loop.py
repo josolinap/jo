@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
+from ouroboros.evolution_strategy import EvolutionStrategy, CycleRecord
 
 log = logging.getLogger(__name__)
 
@@ -43,12 +44,13 @@ class EvolutionCycle:
 
 
 class EvolutionLoop:
-    """The autonomous evolution loop."""
+    """The autonomous evolution loop with adaptive strategy."""
 
     def __init__(self, ctx: ToolContext):
         self.ctx = ctx
         self.cycles: List[EvolutionCycle] = []
         self.enabled = True
+        self._strategy = EvolutionStrategy()
 
     def identify_issues(self) -> List[str]:
         """Identify areas for improvement with retry logic."""
@@ -58,10 +60,25 @@ class EvolutionLoop:
         issues.extend(self._check_tests(check_errors))
         issues.extend(self._check_syntax(check_errors))
         issues.extend(self._check_module_sizes(check_errors))
+        issues.extend(self._check_drift(check_errors))
 
         if check_errors:
             log.warning("Health checks encountered errors: %s", check_errors)
 
+        return issues
+
+    def _check_drift(self, errors: List[str]) -> List[str]:
+        """Check for drift violations."""
+        issues: List[str] = []
+        try:
+            from ouroboros.drift_detector import DriftDetector
+
+            detector = DriftDetector(repo_dir=self.ctx.repo_dir, drive_root=self.ctx.drive_root)
+            violations = detector.run_all_checks()
+            for v in violations:
+                issues.append(f"Drift [{v['severity']}]: {v['rule']}: {v['detail']}")
+        except Exception as e:
+            errors.append("Drift check failed: %s" % e)
         return issues
 
     def _check_tests(self, errors: List[str]) -> List[str]:
@@ -167,12 +184,18 @@ class EvolutionLoop:
         return plans
 
     def run_cycle(self) -> EvolutionCycle:
-        """Run a single evolution cycle with retry logic and diagnostics."""
+        """Run a single evolution cycle with adaptive strategy."""
         cycle_id = f"cycle_{len(self.cycles) + 1}"
         cycle = EvolutionCycle(id=cycle_id, trigger="autonomous", phase="identify")
         start_time = time.time()
 
         log.info("Starting evolution cycle: %s", cycle_id)
+
+        # Get trend and suggestions from strategy
+        trend = self._strategy.get_trend()
+        suggestions = self._strategy.suggest_focus()
+        if suggestions:
+            log.info("Strategy suggestions: %s", suggestions[:3])
 
         for attempt in range(MAX_RETRIES):
             cycle.attempts = attempt + 1
@@ -182,14 +205,35 @@ class EvolutionLoop:
                 cycle.phase = "plan"
                 cycle.results["issues_found"] = issues
 
+                # Smart prioritization
                 if issues:
+                    prioritized = self._strategy.prioritize_issues(issues)
+                    cycle.results["prioritized_issues"] = [
+                        {"issue": issue, "impact": round(score, 3)} for issue, score in prioritized
+                    ]
                     plans = self.plan_improvements(issues)
                     cycle.results["plans"] = plans
-                    cycle.changes = [f"Will address: {i}" for i in issues]
+                    cycle.changes = [f"Will address: {issue} (impact: {score:.2f})" for issue, score in prioritized[:5]]
                     cycle.status = "degraded" if any("check failed" in e for e in cycle.errors) else "complete"
                 else:
                     cycle.status = "complete"
                     cycle.results["message"] = "No issues found - system healthy"
+
+                # Compute health score and record
+                health_score = self._strategy.compute_health_score(issues)
+                cycle.results["health_score"] = round(health_score, 3)
+                cycle.results["trend"] = trend
+
+                record = CycleRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    issues_found=issues,
+                    issues_resolved=[],  # Would need comparison with previous cycle
+                    status=cycle.status,
+                    duration_sec=round(time.time() - start_time, 2),
+                    health_score=health_score,
+                )
+                self._strategy.record_cycle(record)
 
                 cycle.duration_sec = time.time() - start_time
                 self.cycles.append(cycle)
@@ -233,58 +277,92 @@ class EvolutionLoop:
 
 
 def _autonomous_evaluate(ctx: ToolContext) -> str:
-    """Run autonomous self-evaluation and improvement."""
+    """Run autonomous self-evaluation with trend analysis."""
     log.info("Running autonomous evaluation...")
 
     loop = EvolutionLoop(ctx)
+    strategy = loop._strategy
 
     lines = ["## Autonomous Evaluation", ""]
 
+    # Trend analysis
+    trend = strategy.get_trend()
+    lines.append(f"**Trend:** {trend.get('trend', 'unknown')}")
+    if trend.get("total_cycles", 0) > 0:
+        lines.append(f"**History:** {trend['total_cycles']} cycles, health={trend.get('recent_health', 0):.0%}")
+    if trend.get("recurring_issues"):
+        lines.append(f"**Recurring:** {', '.join(trend['recurring_issues'][:3])}")
+
+    # Current issues
     issues = loop.identify_issues()
-    lines.append(f"**Issues Identified:** {len(issues)}")
-    for issue in issues:
-        lines.append(f"- {issue}")
+    lines.append(f"\n**Issues Found:** {len(issues)}")
 
     if issues:
+        prioritized = strategy.prioritize_issues(issues)
+        for issue, score in prioritized[:5]:
+            lines.append(f"- [{score:.2f}] {issue}")
+
         plans = loop.plan_improvements(issues)
         lines.append(f"\n**Proposed Improvements:**")
-        for plan in plans:
-            lines.append(f"- **{plan['issue']}**")
-            lines.append(f"  Approach: {plan['approach']}")
+        for plan in plans[:3]:
+            lines.append(f"- **{plan['issue']}**: {plan['approach']}")
+
+        # Strategy suggestions
+        suggestions = strategy.suggest_focus()
+        if suggestions:
+            lines.append(f"\n**Strategy Suggestions:**")
+            for s in suggestions[:3]:
+                lines.append(f"- {s}")
 
         lines.append("\n**Recommendation:**")
-        lines.append("Use `run_evolution_cycle` for a full cycle with retry logic.")
-
+        lines.append("Use `run_evolution_cycle` for a full cycle with adaptive strategy.")
     else:
-        lines.append("\n✅ **System is healthy.**")
-        lines.append("No automatic improvements needed.")
+        lines.append("\n**System is healthy.** No improvements needed.")
+        health = strategy.compute_health_score([])
+        lines.append(f"Health score: {health:.0%}")
 
     return "\n".join(lines)
 
 
 def _run_evolution_cycle(ctx: ToolContext) -> str:
-    """Run a complete evolution cycle."""
+    """Run a complete evolution cycle with adaptive strategy."""
     log.info("Starting evolution cycle...")
 
     loop = EvolutionLoop(ctx)
     cycle = loop.run_cycle()
 
-    status_icon = {"complete": "✅", "degraded": "⚠️", "failed": "❌"}.get(cycle.status, "⏳")
+    status_icon = {"complete": "OK", "degraded": "WARN", "failed": "FAIL"}.get(cycle.status, "...")
 
     lines = [
         f"## Evolution Cycle: {cycle.id}",
         "",
-        f"**Trigger:** {cycle.trigger}",
-        f"**Phase:** {cycle.phase}",
         f"**Status:** {status_icon} {cycle.status}",
         f"**Duration:** {cycle.duration_sec:.1f}s",
         f"**Attempts:** {cycle.attempts}",
-        "",
-        "### Results",
     ]
 
+    # Health score and trend
+    health = cycle.results.get("health_score")
+    if health is not None:
+        lines.append(f"**Health Score:** {health:.0%}")
+    trend = cycle.results.get("trend", {})
+    if trend.get("trend"):
+        lines.append(f"**Trend:** {trend['trend']} (delta: {trend.get('health_delta', 0):+.3f})")
+
+    lines.append("")
+    lines.append("### Results")
+
     for key, value in cycle.results.items():
+        if key in ("trend", "prioritized_issues"):
+            continue
         lines.append(f"- **{key}:** {value}")
+
+    # Prioritized issues
+    prioritized = cycle.results.get("prioritized_issues", [])
+    if prioritized:
+        lines.append("\n### Prioritized Issues")
+        for item in prioritized[:5]:
+            lines.append(f"- [{item['impact']:.2f}] {item['issue']}")
 
     if cycle.changes:
         lines.append("\n### Changes")
@@ -294,7 +372,13 @@ def _run_evolution_cycle(ctx: ToolContext) -> str:
     if cycle.errors:
         lines.append("\n### Errors")
         for error in cycle.errors:
-            lines.append(f"- ⚠️ {error}")
+            lines.append(f"- {error}")
+
+    # Strategy suggestions
+    if trend.get("recurring_issues"):
+        lines.append(f"\n### Recurring Issues")
+        for ri in trend["recurring_issues"]:
+            lines.append(f"- {ri}")
 
     return "\n".join(lines)
 
