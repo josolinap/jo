@@ -229,7 +229,7 @@ class EvolutionLoop:
         except subprocess.TimeoutExpired:
             return "Command timed out after 30s"
         except Exception as e:
-            return str(e)
+            return f"Shell error ({type(e).__name__}): {e}"
 
 
 def _autonomous_evaluate(ctx: ToolContext) -> str:

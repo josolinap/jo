@@ -29,7 +29,7 @@ def _sync_vault_to_repo(ctx: ToolContext, vault: VaultManager, action: str) -> s
     If vault is external (vault_root != repo_vault_path), sync first then commit.
     """
     if vault.repo_vault_path is None:
-        return ""
+        return " [No repo path configured]"
 
     try:
         from ouroboros.tools.git import _repo_commit_push
@@ -47,7 +47,7 @@ def _sync_vault_to_repo(ctx: ToolContext, vault: VaultManager, action: str) -> s
             return f" [{result}]"
         elif "⚠️" in result:
             return f" [Sync: {result}]"
-        return ""
+        return f" [Sync: {result}]" if result else " [Sync: no output]"
     except Exception as e:
         log.warning(f"Failed to sync vault to repo: {e}")
         return f" [Sync: {e}]"
