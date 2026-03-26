@@ -230,7 +230,9 @@ def _handle_text_response(
     return (content or ""), accumulated_usage, llm_trace
 
 
-def _get_budget_status(budget_remaining_usd: Optional[float], accumulated_usage: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+def _get_budget_status(
+    budget_remaining_usd: Optional[float], accumulated_usage: Dict[str, Any]
+) -> Tuple[Optional[float], Optional[float]]:
     """Calculate budget percentage and cost, return None if no budget."""
     if budget_remaining_usd is None:
         return None, None
@@ -243,9 +245,8 @@ def _get_budget_status(budget_remaining_usd: Optional[float], accumulated_usage:
         accumulated_usage.get("cache_write_tokens", 0),
     )
     percentage = (total_cost / budget_remaining_usd) * 100 if budget_remaining_usd > 0 else 0
-    return percentage, total_costining_usd is None:
-        return None, None
-    
+    return percentage, total_cost
+
     task_cost = accumulated_usage.get("cost", 0)
     budget_pct = task_cost / budget_remaining_usd if budget_remaining_usd > 0 else 1.0
     return budget_pct, task_cost
@@ -268,11 +269,9 @@ def _handle_budget_exceeded(
     task_type: str,
 ) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
     """Handle case where budget is exceeded (50%+ spent)."""
-    finish_reason = (
-        f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
-    )
+    finish_reason = f"Task spent ${task_cost:.3f} (>50% of remaining ${budget_remaining_usd:.2f}). Budget exhausted."
     messages.append({"role": "system", "content": f"[BUDGET LIMIT] {finish_reason} Give your final response now."})
-    
+
     try:
         final_msg, final_cost = _call_llm_with_retry(
             llm,
@@ -313,10 +312,10 @@ def _check_budget_limits(
 ) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
     """Check budget limits and handle budget overrun."""
     budget_pct, task_cost = _get_budget_status(budget_remaining_usd, accumulated_usage)
-    
+
     if budget_pct is None:
         return None
-    
+
     # Handle budget exceeded (50%+ spent) - force final response
     if budget_pct > 0.5:
         return _handle_budget_exceeded(
@@ -335,7 +334,7 @@ def _check_budget_limits(
             llm_trace,
             task_type,
         )
-    
+
     # Add periodic budget warning at 30% threshold
     if budget_pct > 0.3 and round_idx % 10 == 0:
         messages.append(
@@ -344,7 +343,7 @@ def _check_budget_limits(
                 "content": f"[INFO] Task spent ${task_cost:.3f} of ${budget_remaining_usd:.2f}. Wrap up if possible.",
             }
         )
-    
+
     return None
 
 
