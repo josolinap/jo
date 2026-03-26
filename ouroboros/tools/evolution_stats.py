@@ -144,37 +144,6 @@ def _collect_data() -> list[dict[str, Any]]:
     return points
 
 
-def _patch_app_html(webapp_dir: Path) -> str:
-    """Inject Evolution tab into app.html if not already present."""
-    app_path = webapp_dir / "app.html"
-    if not app_path.exists():
-        return "app.html not found"
-
-    html = app_path.read_text(encoding="utf-8")
-
-    if 'data-tab="evolution"' in html:
-        return "already patched"
-
-    # 1. Insert nav item before settings nav item
-    settings_nav = '<div class="nav-item" data-tab="settings">'
-    if settings_nav not in html:
-        return f"nav anchor not found"
-    html = html.replace(settings_nav, _EVOLUTION_NAV + "\n      " + settings_nav)
-
-    # 2. Insert tab content before settings tab content
-    settings_tab_marker = '<div class="tab-content" id="tab-settings">'
-    if settings_tab_marker not in html:
-        return "settings tab not found"
-    html = html.replace(settings_tab_marker, _EVOLUTION_TAB + "    " + settings_tab_marker)
-
-    # 3. Add Chart.js + evolution JS before </body>
-    if "chart.js" not in html.lower():
-        html = html.replace("</body>", _EVOLUTION_JS + "\n</body>")
-
-    app_path.write_text(html, encoding="utf-8")
-    return "patched"
-
-
 def _push_to_github(data: dict[str, Any]) -> str:
     """Push evolution.json to the repo's docs/ folder via GitHub API."""
     import base64
