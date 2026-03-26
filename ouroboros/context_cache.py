@@ -165,7 +165,7 @@ class ContextCache:
             self._disk_dir.mkdir(parents=True, exist_ok=True)
             self._disk_key(key).write_text(json.dumps(value, default=str), encoding="utf-8")
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     def _read_disk(self, key: str) -> Optional[Any]:
         try:
@@ -173,7 +173,7 @@ class ContextCache:
             if path.exists():
                 return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return None
 
 

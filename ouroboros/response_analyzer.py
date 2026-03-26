@@ -8,6 +8,10 @@ Phase 1: Response Quality Analysis
 
 from __future__ import annotations
 
+import logging
+
+log = logging.getLogger(__name__)
+
 import os
 import re
 from dataclasses import dataclass, field
@@ -289,7 +293,7 @@ class ResponseAnalyzer:
                         content = py_file.read_text(encoding="utf-8", errors="replace")
                         actual_count += len(re.findall(r"def\s+test_\w+", content))
                     except Exception:
-                        pass
+                        log.debug("Unexpected error", exc_info=True)
 
                 for claimed in claimed_counts:
                     # Allow small variance (collect vs run counts differ)

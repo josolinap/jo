@@ -224,7 +224,7 @@ class HotReloadManager:
                 },
             )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         log.warning(
             "Code changed (SHA %s -> %s) — %d files changed. Exiting for clean respawn.",
@@ -237,7 +237,7 @@ class HotReloadManager:
             try:
                 self.on_code_change(changed_files)
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
 
         import os
 
@@ -285,7 +285,7 @@ class HotReloadManager:
                             capture_output=True,
                         )
                     except Exception:
-                        pass
+                        log.debug("Unexpected error", exc_info=True)
 
             # Check if anything was staged
             result = subprocess.run(

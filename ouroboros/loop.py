@@ -172,7 +172,7 @@ def _handle_text_response(
                             final_analysis.quality_score,
                         )
             except Exception:
-                pass  # Don't block response delivery on analysis failure
+                log.debug("Unexpected error", exc_info=True)  # Don't block response delivery on analysis failure
 
         # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
         synthesis_summary = None
@@ -462,7 +462,7 @@ def _drain_incoming_messages(
                         }
                     )
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
 
 
 def _emit_llm_usage_event(
@@ -1154,7 +1154,7 @@ Version: {skill.version}
                             )
                             _quality_feedback_injected = True
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
             finally:
                 # Track consecutive drift rounds
                 drift_in_current = any(i.issue_type == "drift" for i in _current_issues)
@@ -1228,7 +1228,7 @@ Version: {skill.version}
                         _last_reevaluation_round = round_idx
                         _tool_call_count = 0
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
 
             budget_result = _check_budget_limits(
                 budget_remaining_usd,

@@ -42,7 +42,7 @@ def _acquire_file_lock(lock_path: pathlib.Path, timeout_sec: float = 4.0, stale_
                     ),
                 )
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
             return fd
         except FileExistsError:
             try:
@@ -51,7 +51,7 @@ def _acquire_file_lock(lock_path: pathlib.Path, timeout_sec: float = 4.0, stale_
                     lock_path.unlink()
                     continue
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
             time.sleep(0.05)
         except Exception:
             log.debug(f"Failed to acquire lock at {lock_path}")
@@ -66,12 +66,12 @@ def _release_file_lock(lock_path: pathlib.Path, lock_fd: Optional[int]) -> None:
     try:
         os.close(lock_fd)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
     try:
         if lock_path.exists():
             lock_path.unlink()
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
 
 class Memory:
@@ -355,7 +355,7 @@ class Memory:
                     except json.JSONDecodeError:
                         continue
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         return lessons
 

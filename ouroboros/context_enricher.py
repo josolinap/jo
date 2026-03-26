@@ -189,7 +189,7 @@ class ContextEnricher:
                 if matches >= 2:
                     return True
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         return False
 
@@ -209,7 +209,7 @@ class ContextEnricher:
                         content_lower = content.lower()
                         score += content_lower.count(keyword)
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
 
         return score
 
@@ -274,7 +274,7 @@ class ContextEnricher:
                 else:
                     context_parts.append(f"### Scratchpad\n{content}")
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
 
         return "\n\n".join(context_parts[:2])
 

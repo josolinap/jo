@@ -503,7 +503,7 @@ def _create_connection(ctx: ToolContext, from_concept: str, to_concept: str, con
                         lines.append(f"✅ Added link to {md_file.name}")
                         created = True
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
 
     if not created:
         repo_vault_dir = pathlib.Path(ctx.repo_path("vault/concepts"))

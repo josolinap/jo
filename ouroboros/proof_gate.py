@@ -102,7 +102,7 @@ class ProofGate:
                             warnings.append(f"Module approaching limit: {f} ({lines} lines)")
                         checks_run += 1
                     except Exception:
-                        pass
+                        log.debug("Unexpected error", exc_info=True)
 
         # Check 3: Required modules still exist after write
         for module in self._baseline.get("required_modules", []):

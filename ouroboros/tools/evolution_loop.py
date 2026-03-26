@@ -61,14 +61,14 @@ class EvolutionLoop:
             if "failed" in summary.lower() or "error" in summary.lower():
                 issues.append("Test failures detected")
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         try:
             health_result = self._run_shell("py -m py_compile ouroboros/*.py 2>&1")
             if health_result.strip():
                 issues.append("Syntax errors in core files")
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         return issues
 
@@ -251,7 +251,7 @@ def _synthesize_lessons(ctx: ToolContext) -> str:
                 content = md_file.read_text(encoding="utf-8")
                 lessons.append(content[:200])
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
 
     if not lessons:
         return "No lessons recorded yet."
@@ -277,7 +277,7 @@ Create 3-5 actionable principles that can guide future decisions.
             lines = ["## Synthesized Wisdom", "", result, "", "_This synthesis can be added to BIBLE.md_"]
             return "\n".join(lines)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     return f"Found {len(lessons)} lessons but synthesis failed. Try again when OpenRouter is accessible."
 
@@ -307,7 +307,7 @@ def _get_evolution_status(ctx: ToolContext) -> str:
             state = json.loads(state_path.read_text(encoding="utf-8"))
             evolution_enabled = state.get("evolution_mode_enabled", True)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     lines.append(f"**Evolution Mode:** {'✅ Enabled' if evolution_enabled else '❌ Disabled'}")
     lines.append("")

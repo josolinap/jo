@@ -451,7 +451,7 @@ def export_summary_to_vault(graph: CodebaseGraph, repo_dir: Optional[Path] = Non
             )
             git_sha = result.stdout.strip()[:12] if result.returncode == 0 else ""
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
         # Group by layer
         layers: Dict[str, List[GraphNode]] = {}

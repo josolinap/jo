@@ -37,7 +37,7 @@ def _check_shell_for_protected_files(cmd: List[str]) -> str:
                 if p.strip() and not p.startswith("#")
             ]
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     if not protected_list:
         return ""
@@ -206,7 +206,7 @@ def _is_protected_file(path: str) -> bool:
                 if protected_normalized.endswith("/") and normalized_path.startswith(protected_normalized):
                     return True
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
     return False
 
 

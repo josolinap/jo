@@ -165,7 +165,7 @@ class TaskEvaluator:
                             todos_added += content.count("# TODO")
                             todos_added += content.count("# FIXME")
                     except Exception:
-                        pass
+                        log.debug("Unexpected error", exc_info=True)
 
         if todos_added > 5:
             score -= 0.3
@@ -221,7 +221,7 @@ class TaskEvaluator:
                     if snake_case > 0 and (camel_case > 5 or pascal_case > 5):
                         naming_issues += 1
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
 
         if naming_issues > len(py_files) / 2:
             issues.append("Mixed naming conventions detected")
@@ -302,7 +302,7 @@ class TaskEvaluator:
                     if empty_lines > len(lines) * 0.3:
                         issues.append(f"{f}: excessive empty lines")
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
 
         score = 1.0 - (len(issues) * 0.15)
 

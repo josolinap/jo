@@ -45,7 +45,7 @@ def _is_protected_file(path: str) -> bool:
                 if protected_normalized.endswith("/") and normalized_path.startswith(protected_normalized):
                     return True
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
     return False
 
 

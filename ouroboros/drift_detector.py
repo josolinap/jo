@@ -126,7 +126,7 @@ class DriftDetector:
                             }
                         )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return violations
 
     def _check_identity_freshness(self) -> List[Dict[str, Any]]:
@@ -157,7 +157,7 @@ class DriftDetector:
                     }
                 )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return violations
 
     def _check_identity_core_statements(self) -> List[Dict[str, Any]]:
@@ -182,7 +182,7 @@ class DriftDetector:
                         }
                     )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return violations
 
     def _check_module_line_limits(self) -> List[Dict[str, Any]]:
@@ -207,7 +207,7 @@ class DriftDetector:
                             }
                         )
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
         return violations
 
     def _check_module_growth(self) -> List[Dict[str, Any]]:
@@ -235,7 +235,7 @@ class DriftDetector:
                         }
                     )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return violations
 
     def _check_required_modules(self) -> List[Dict[str, Any]]:

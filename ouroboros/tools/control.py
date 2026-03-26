@@ -131,7 +131,7 @@ def _schedule_task(ctx: ToolContext, description: str, context: str = "", parent
                 },
             )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     tid = uuid.uuid4().hex[:8]
     evt = {"type": "schedule_task", "description": description, "task_id": tid, "depth": new_depth, "ts": utc_now_iso()}

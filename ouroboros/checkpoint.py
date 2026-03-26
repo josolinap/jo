@@ -112,7 +112,7 @@ def _check_syntax(repo_dir: Path, files_changed: List[str]) -> CheckpointResult:
         except py_compile.PyCompileError as e:
             errors.append(str(e))
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     elapsed = (time.time() - start) * 1000
     if errors:
@@ -171,7 +171,7 @@ def _check_line_limits(repo_dir: Path) -> CheckpointResult:
                 if lines > 1600:
                     over_limit.append(f"{py_file.relative_to(repo_dir)} ({lines})")
             except Exception:
-                pass
+                log.debug("Unexpected error", exc_info=True)
 
     elapsed = (time.time() - start) * 1000
     if over_limit:

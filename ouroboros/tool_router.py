@@ -228,7 +228,7 @@ def route_tools(
                 if suggested and len(suggested) >= 2:
                     return task_type, suggested
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     # Fallback to default ordering
     defaults = get_default_tool_order(task_type)

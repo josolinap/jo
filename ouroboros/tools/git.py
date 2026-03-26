@@ -247,7 +247,7 @@ def _track_verification(ctx: ToolContext, method: str, target: str) -> None:
         mem.ensure_files()
         mem.track_verification(claim=f"{method}:{target}", verification_method=method, result="executed")
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
 
 def get_tools() -> List[ToolEntry]:

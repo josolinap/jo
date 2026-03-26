@@ -259,7 +259,7 @@ def _web_search_handler(ctx: ToolContext, query: str, num_results: int = 10, dat
         ddgr_results = _search_ddgr(enhanced_query, num_results, query)
         all_results.extend(ddgr_results)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     if not all_results:
         bing_results = _search_bing_enhanced(enhanced_query, num_results, query)
@@ -847,7 +847,7 @@ def _run_search_with_fallback(query: str, num_results: int) -> List[SearchResult
         if results:
             all_results.extend(results)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     if len(all_results) < 3:
         bing_results = _search_bing_enhanced(query, num_results, query)

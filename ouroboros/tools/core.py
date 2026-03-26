@@ -61,7 +61,7 @@ def _auto_track_verification(ctx: ToolContext, method: str, target: str) -> None
         mem.ensure_files()
         mem.track_verification(claim=f"read:{target}", verification_method=method, result="file_accessed")
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
 
 def _repo_list(ctx: ToolContext, dir: str = ".", max_entries: int = 500) -> str:

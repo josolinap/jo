@@ -241,7 +241,7 @@ def _build_recent_commits_section(repo_dir: pathlib.Path, limit: int = 10) -> st
         if unpushed:
             return f"## Recent unpushed commits\n\n{unpushed}\n"
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     try:
         result = subprocess.run(
@@ -255,7 +255,7 @@ def _build_recent_commits_section(repo_dir: pathlib.Path, limit: int = 10) -> st
         if recent:
             return f"## Recent commits\n\n{recent}\n"
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     return ""
 
@@ -1049,9 +1049,9 @@ def auto_summarize_if_needed(
                         info["reason"] = "recently summarized"
                         return messages, info
                 except Exception:
-                    pass
+                    log.debug("Unexpected error", exc_info=True)
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     return messages, info
 

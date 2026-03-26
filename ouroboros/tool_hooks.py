@@ -139,7 +139,7 @@ def _register_default_hooks(registry: HookRegistry) -> None:
                     if "FAILED" in report:
                         return f"PROOF GATE BLOCKED: {report[:500]}"
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
         return None
 
     registry.register_pre(proof_gate_hook)
@@ -174,7 +174,7 @@ def _register_default_hooks(registry: HookRegistry) -> None:
                 tools_used=[tool_call.name],
             )
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     from pathlib import Path
 

@@ -116,7 +116,7 @@ def _execute_single_tool(
                             "is_code_tool": is_code_tool,
                         }
         except Exception:
-            pass
+            log.debug("Unexpected error", exc_info=True)
 
     tool_ok = True
     error_msg = None
@@ -229,7 +229,7 @@ def _make_timeout_result(
         args = json.loads(tc["function"]["arguments"] or "{}")
         args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
     except Exception:
-        pass
+        log.debug("Unexpected error", exc_info=True)
 
     issue_note = " about the issue" if not reset_msg else ""
     result = (
