@@ -24,7 +24,6 @@
     "supervisor/state.py",
     "ouroboros/health_invariants.py",
     "ouroboros/instinct_evolver.py",
-    "ouroboros/tool_hooks.py",
     "ouroboros/checkpoint.py",
     "ouroboros/delta_eval.py",
     "ouroboros/context_cache.py",
