@@ -216,6 +216,100 @@ def _estimate_cost(
     return round(cost, 6)
 
 
+def _run_hallucination_analysis(
+    content: str,
+    messages: List[Dict[str, Any]],
+    llm_trace: Dict[str, Any],
+) -> str:
+    """Run hallucination analysis on final response and add warnings if needed."""
+    try:
+        repo_dir = str(pathlib.Path(os.environ.get("REPO_DIR", ".")))
+        final_analysis = analyze_response(
+            response_text=content,
+            tool_calls=[],
+            messages=messages,
+            repo_dir=repo_dir,
+        )
+        if final_analysis.hallucination_detected:
+            high_issues = [i for i in final_analysis.issues if i.severity == "high"]
+            if high_issues:
+                warning = "\n\n⚠️ **Verification Warning:** This response may contain unverified claims:\n"
+                for issue in high_issues[:3]:
+                    warning += f"- {issue.description}\n"
+                    if issue.suggestion:
+                        warning += f"  → {issue.suggestion}\n"
+                content = content + warning
+                log.warning(
+                    "[HALLUCINATION] Final response flagged: %d issues, score=%.2f",
+                    len(high_issues),
+                    final_analysis.quality_score,
+                )
+    except Exception:
+        log.debug("Unexpected error", exc_info=True)  # Don't block response delivery on analysis failure
+    
+    return content
+
+
+def _run_semantic_synthesis(content: str) -> Optional[str]:
+    """Run semantic synthesis on final response if enabled."""
+    if not USE_SEMANTIC_SYNTHESIS:
+        return None
+    
+    try:
+        from ouroboros.synthesis import synthesize_task
+
+        # Use the response content as task hint for synthesis
+        task_text = content[:200] if content else ""
+
+        if task_text:
+            return synthesize_task(
+                task=task_text,
+                output=content or "",
+                files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                repo_dir=pathlib.Path(os.environ.get("REPO_DIR", ".")) if os.environ.get("REPO_DIR", ".") else None,
+            )
+    except Exception:
+        log.debug("Semantic synthesis failed", exc_info=True)
+    
+    return None
+
+
+def _run_task_evaluation(content: str) -> Optional[str]:
+    """Run task evaluation on final response if enabled."""
+    if not USE_TASK_EVALUATION:
+        return None
+    
+    try:
+        from ouroboros.eval import evaluate_task
+
+        # Use the response content as task hint for evaluation
+        task_text = content[:200] if content else ""
+
+        if task_text:
+            repo_dir_str = os.environ.get("REPO_DIR")
+            repo_dir = pathlib.Path(repo_dir_str) if repo_dir_str else None
+
+            return evaluate_task(
+                task=task_text,
+                output=content or "",
+                files_changed=getattr(run_llm_loop, "_files_changed_total", []),
+                repo_dir=repo_dir,
+            )
+    except Exception:
+        log.debug("Task evaluation failed", exc_info=True)
+    
+    return None
+
+
+def _persist_ontology_tracker() -> None:
+    """Persist ontology tracker at end of task."""
+    try:
+        from ouroboros.codebase_graph import save_ontology_tracker
+        save_ontology_tracker()
+    except Exception:
+        log.debug("Failed to save ontology tracker", exc_info=True)
+
+
 def _handle_text_response(
     content: Optional[str],
     llm_trace: Dict[str, Any],
@@ -229,65 +323,13 @@ def _handle_text_response(
         # Run hallucination analysis on the FINAL response before returning it
         # This catches fabricated reports that bypass intermediate round checks
         if messages:
-            try:
-                repo_dir = str(pathlib.Path(os.environ.get("REPO_DIR", ".")))
-                final_analysis = analyze_response(
-                    response_text=content,
-                    tool_calls=[],
-                    messages=messages,
-                    repo_dir=repo_dir,
-                )
-                if final_analysis.hallucination_detected:
-                    high_issues = [i for i in final_analysis.issues if i.severity == "high"]
-                    if high_issues:
-                        warning = "\n\n⚠️ **Verification Warning:** This response may contain unverified claims:\n"
-                        for issue in high_issues[:3]:
-                            warning += f"- {issue.description}\n"
-                            if issue.suggestion:
-                                warning += f"  → {issue.suggestion}\n"
-                        content = content + warning
-                        log.warning(
-                            "[HALLUCINATION] Final response flagged: %d issues, score=%.2f",
-                            len(high_issues),
-                            final_analysis.quality_score,
-                        )
-            except Exception:
-                log.debug("Unexpected error", exc_info=True)  # Don't block response delivery on analysis failure
+            content = _run_hallucination_analysis(content, messages, llm_trace)
 
         # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
-        synthesis_summary = None
-        if USE_SEMANTIC_SYNTHESIS:
-            from ouroboros.synthesis import synthesize_task
-
-            # Use the response content as task hint for synthesis
-            task_text = content[:200] if content else ""
-
-            if task_text:
-                synthesis_summary = synthesize_task(
-                    task=task_text,
-                    output=content or "",
-                    files_changed=getattr(run_llm_loop, "_files_changed_total", []),
-                    repo_dir=pathlib.Path(os.environ.get("REPO_DIR", ".")) if os.environ.get("REPO_DIR", ".") else None,
-                )
-
+        synthesis_summary = _run_semantic_synthesis(content)
+        
         # PIPELINE_PLAN.md Feature 5: Eval Framework / Quality Scoring
-        eval_report_str = None
-        if USE_TASK_EVALUATION:
-            from ouroboros.eval import evaluate_task
-
-            # Use the response content as task hint for evaluation
-            task_text = content[:200] if content else ""
-
-            if task_text:
-                repo_dir_str = os.environ.get("REPO_DIR")
-                repo_dir = pathlib.Path(repo_dir_str) if repo_dir_str else None
-
-                eval_report_str = evaluate_task(
-                    task=task_text,
-                    output=content or "",
-                    files_changed=getattr(run_llm_loop, "_files_changed_total", []),
-                    repo_dir=repo_dir,
-                )
+        eval_report_str = _run_task_evaluation(content)
 
         # Add synthesis and eval insights to content
         insights_added = []
@@ -300,12 +342,7 @@ def _handle_text_response(
             content = content + "".join(insights_added)
 
     # Persist ontology tracker at end of task
-    try:
-        from ouroboros.codebase_graph import save_ontology_tracker
-
-        save_ontology_tracker()
-    except Exception:
-        log.debug("Failed to save ontology tracker", exc_info=True)
+    _persist_ontology_tracker()
 
     return (content or ""), accumulated_usage, llm_trace
 
