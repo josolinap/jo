@@ -496,6 +496,39 @@ Create 3-5 actionable principles that can guide future decisions.
     return f"Found {len(lessons)} lessons but synthesis failed. Try again when OpenRouter is accessible."
 
 
+def _knowledge_decay_report(ctx: ToolContext) -> str:
+    """Generate knowledge decay report."""
+    import pathlib
+    from ouroboros.knowledge_decay import KnowledgeDecay
+
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+    decay = KnowledgeDecay(repo_dir=repo_dir)
+    return decay.get_decay_report()
+
+
+def _predictive_health(ctx: ToolContext) -> str:
+    """Generate predictive health report."""
+    import pathlib
+    from ouroboros.health_predictor import HealthPredictor
+
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+    drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
+    predictor = HealthPredictor(repo_dir=repo_dir, drive_root=drive_root)
+    # Take a fresh snapshot
+    predictor.take_snapshot_now()
+    return predictor.get_health_report()
+
+
+def _confidence_report(ctx: ToolContext) -> str:
+    """Generate confidence scoring report."""
+    import pathlib
+    from ouroboros.confidence import ConfidenceScorer
+
+    drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
+    scorer = ConfidenceScorer(drive_root=drive_root)
+    return scorer.get_confidence_report()
+
+
 def _enable_evolution_mode(ctx: ToolContext) -> str:
     """Enable continuous autonomous evolution."""
     log.info("Enabling evolution mode...")
@@ -622,6 +655,45 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             handler=_enable_evolution_mode,
+            timeout_sec=10,
+        ),
+        ToolEntry(
+            name="knowledge_decay_report",
+            schema={
+                "name": "knowledge_decay_report",
+                "description": (
+                    "Assess vault note value and find archive candidates. "
+                    "Shows which notes are low-value (stale, no links) and should be archived."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_knowledge_decay_report,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="predictive_health",
+            schema={
+                "name": "predictive_health",
+                "description": (
+                    "Predict health trends and alert before failures. "
+                    "Uses linear regression on historical metrics to forecast issues."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_predictive_health,
+            timeout_sec=60,
+        ),
+        ToolEntry(
+            name="confidence_report",
+            schema={
+                "name": "confidence_report",
+                "description": (
+                    "Get confidence scoring report. Shows success rates by action type "
+                    "and confidence levels for different operations."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_confidence_report,
             timeout_sec=10,
         ),
     ]

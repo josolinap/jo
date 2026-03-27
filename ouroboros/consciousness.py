@@ -562,6 +562,9 @@ class BackgroundConsciousness:
             # Autonomy tools (neural map, evolution, learning)
             "neural_map",
             "discover_knowledge_gaps",
+            "knowledge_decay_report",
+            "predictive_health",
+            "confidence_report",
             "learn_from_result",
             "autonomous_evaluate",
             "run_evolution_cycle",
