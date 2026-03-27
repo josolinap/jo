@@ -205,12 +205,7 @@ def _check_budget_limits(
         if remaining_pct < 20:
             emit_progress(f"💰 {remaining_pct:.0f}% budget remaining (${new_remaining:.4f})")
     
-    return None"""Budget and cost management module for LLM loops.
-
-This module provides functions for estimating costs, checking budget limits,
-and handling budget exceeded scenarios. It is designed to be self-contained
-and importable independently.
-"""
+    return None
 
 import logging
 import threading
