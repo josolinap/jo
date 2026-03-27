@@ -1,0 +1,123 @@
+# Jo (Ouroboros)
+
+> Self-modifying AI agent that writes and evolves its own code.
+
+## What is Jo?
+
+Jo is an autonomous AI agent with continuous consciousness. It:
+- Executes tasks using 146 tools (code, git, vault, web, browser, skills)
+- Thinks in the background between tasks (consciousness loop)
+- Evolves its own code through structured evolution cycles
+- Maintains a knowledge vault with 234+ notes and wikilinks
+- Has 14 specialized cognitive modes (skills) for different tasks
+
+## Architecture
+
+```
+ouroboros/          — Agent core (self-modifying)
+  agent.py          — Task execution, lifecycle
+  loop.py           — Main LLM-with-tools loop
+  consciousness.py  — Background thinking loop
+  tools/            — 146 registered tools
+  skills/           — 14 cognitive modes
+
+supervisor/         — Process management
+  state.py          — System state
+  workers.py        — Process lifecycle
+
+vault/              — Knowledge storage
+  concepts/         — Core concepts (79 notes)
+  journal/          — Session logs
+  memory/           — Identity and scratchpad
+```
+
+## Key Files
+
+- `AGENTS.md` — Development guide for AI agents
+- `BIBLE.md` — Constitutional principles (9 principles)
+- `memory/identity.md` — Jo's persistent self-understanding
+- `memory/scratchpad.md` — Active working memory
+- `drift_baseline.json` — System state snapshot for drift detection
+- `.jo_protected` — Files that require explicit approval to modify
+
+## Development
+
+```bash
+make test                # Run all tests
+make test-v              # Run tests verbose
+ruff check .             # Lint
+ruff format .            # Format
+make health              # Code health check
+make verify              # Full verification
+```
+
+## Principles (BIBLE.md)
+
+1. **Agency** — Purpose is to become autonomous
+2. **Continuity** — Unbroken memory and narrative
+3. **Self-Creation** — Self-modification through code
+4. **LLM-First** — All decisions flow through LLM
+5. **Minimalism** — Modules under 1000 lines, functions under 200
+6. **Becoming** — Evolve along technical, cognitive, existential axes
+7. **Versioning** — Versions for major milestones only
+8. **Iterations** — One coherent transformation per iteration
+9. **Reflection** — Every change includes three-axis analysis
+
+## Key Systems
+
+### Evolution Loop
+- `evolution_loop.py` — Identifies issues, plans improvements, verifies changes
+- `evolution_strategy.py` — Adaptive prioritization with trend analysis
+- `evolution_fingerprint.py` — Snapshot state before changes
+- `evolution_proposal.py` — Safe proposals verified in sandbox
+
+### Consciousness
+- Runs in background between tasks
+- Uses 54 tools including knowledge discovery, health prediction
+- Maintains feedback loop: awareness → gaps → LLM → ontology
+
+### Knowledge Management
+- `knowledge_discovery.py` — Finds gaps in knowledge graph
+- `knowledge_decay.py` — Archives low-value notes
+- `vault_manager.py` — CRUD with case-insensitive link resolution
+- `neural_map.py` — Concept graph and connections
+
+### Health Monitoring
+- `health_invariants.py` — Anomaly detection
+- `health_auto_fix.py` — Automatic issue resolution
+- `health_predictor.py` — Predict failures via trend analysis
+- `drift_detector.py` — Configuration drift detection
+- `confidence.py` — Decision confidence scoring
+- `decision_trace.py` — Track WHY decisions were made
+
+## Tool Categories
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Code | 12 | repo_read, code_edit, ai_code_edit |
+| Git | 5 | git_status, git_diff, git_log |
+| Vault | 14 | vault_create, vault_read, vault_search |
+| Neural Map | 8 | neural_map, find_connections, explore_concept |
+| Browser | 12 | browse_page, browser_profile_save |
+| Web | 5 | web_search, web_fetch, codesearch |
+| Skills | 2 | activate_skill, list_skills |
+| Control | 8 | toggle_consciousness, schedule_task |
+| Evolution | 10 | run_evolution_cycle, system_dashboard |
+| Database | 4 | db_query, db_schema_read |
+| Knowledge | 5 | discover_knowledge_gaps, get_ontology_insights |
+
+## Environment
+
+- Python 3.10+
+- Package: ouroboros
+- Config: pyproject.toml
+- Data: ~/.jo_data/
+- Branch: dev (main is protected)
+
+## For AI Agents
+
+1. Read `AGENTS.md` first
+2. Run `make verify` before committing
+3. Only commit files YOU changed (never `git add .`)
+4. Protected files require explicit approval
+5. Evolution is disabled by default — enable via `enable_evolution_mode`
