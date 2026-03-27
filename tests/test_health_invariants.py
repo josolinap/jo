@@ -20,7 +20,7 @@ def test_version_sync():
             version_in_pyproject = line.split("=")[1].strip().strip('"')
             break
     assert version_in_pyproject is not None, "Version not found in pyproject.toml"
-    assert version_file == version_in_pyclusion, f"VERSION mismatch: {version_file} != {version_in_pyproject}"
+    assert version_file == version_in_pyproject, f"VERSION mismatch: {version_file} != {version_in_pyproject}"
     # Also check README.md version appears in changelog
     readme = Path("README.md").read_text()
     assert version_file in readme, f"VERSION {version_file} not found in README.md"
