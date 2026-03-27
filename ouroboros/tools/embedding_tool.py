@@ -26,7 +26,7 @@ try:
 except Exception:  # ImportError or runtime error
     _model = None
     _model_available = False
-    log.warning("sentence-transformers not available; embedding tools will be disabled")
+    log.debug("sentence-transformers not available; embedding tools will be disabled")
 
 try:
     import numpy as np
@@ -34,7 +34,7 @@ try:
     _numpy_available = True
 except Exception:
     _numpy_available = False
-    log.warning("numpy not available; embedding similarity will use slower pure Python")
+    log.debug("numpy not available; embedding similarity will use slower pure Python")
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:

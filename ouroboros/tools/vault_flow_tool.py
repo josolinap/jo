@@ -26,7 +26,7 @@ except Exception:  # ImportError or runtime error
     FlowBuilder = None  # type: ignore
     DataScope = None  # type: ignore
     _COCOINDEX_AVAILABLE = False
-    log.warning("CocoIndex not available; vault flow tools will be disabled. Install with: pip install cocoindex")
+    log.debug("CocoIndex not available; vault flow tools will be disabled. Install with: pip install cocoindex")
 
 # Optional LanceDB import (for vector storage)
 try:
@@ -36,7 +36,7 @@ try:
 except Exception:
     lancedb = None  # type: ignore
     _LANCEDB_AVAILABLE = False
-    log.warning("LanceDB not available; falling back to JSON storage for embeddings. Install with: pip install lancedb")
+    log.debug("LanceDB not available; falling back to JSON storage for embeddings. Install with: pip install lancedb")
 
 
 def _vault_incremental_index(
