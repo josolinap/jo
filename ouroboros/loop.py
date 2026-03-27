@@ -52,6 +52,84 @@ _pipeline = None
 # Track quality feedback injection state (per-task, reset in run_llm_loop)
 _quality_feedback_injected: bool = False
 
+
+def _initialize_loop_state(
+    llm: LLMClient,
+    tools: ToolRegistry,
+    event_queue: Optional[queue.Queue],
+    task_id: str,
+) -> Tuple[str, str, Dict[str, Any], Dict[str, Any], _StatefulToolExecutor, Any, bool, int, Dict[str, Any]]:
+    """Initialize loop state and context variables."""
+    (
+        active_model,
+        active_effort,
+        llm_trace,
+        accumulated_usage,
+        stateful_executor,
+        traceability,
+        _owner_msg_seen,
+        max_retries,
+        tool_schemas,
+    ) = _setup_loop_context(llm, tools, event_queue, task_id)
+    return (
+        active_model,
+        active_effort,
+        llm_trace,
+        accumulated_usage,
+        stateful_executor,
+        traceability,
+        _owner_msg_seen,
+        max_retries,
+        tool_schemas,
+    )
+
+
+def _get_loop_config() -> Tuple[int, int]:
+    """Get loop configuration from environment variables."""
+    try:
+        MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
+    except (ValueError, TypeError):
+        MAX_ROUNDS = 200
+        log.warning("Invalid OUROBOROS_MAX_ROUNDS, defaulting to 200")
+    return MAX_ROUNDS, int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
+
+
+def _handle_context_enrichment(
+    messages: List[Dict[str, Any]],
+    drive_root: Optional[pathlib.Path],
+    emit_progress: Callable[[str], None],
+) -> List[Dict[str, Any]]:
+    """Handle auto-summarization and context enrichment if needed."""
+    if drive_root is None or len(messages) == 0:
+        return messages
+    
+    context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
+    messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
+    if summarize_info.get("auto_summarized"):
+        emit_progress(f"📝 [Memory] Auto-summarized: {summarize_info.get('reason', '')}")
+
+    if USE_CONTEXT_ENRICHMENT:
+        from ouroboros.context_enricher import enrich_messages
+
+        task_text = ""
+        for m in messages:
+            if m.get("role") == "user":
+                task_text = m.get("content", "")
+                break
+        if task_text:
+            task_type = (
+                "code"
+                if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
+                else "general"
+            )
+            repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+            enriched_messages = enrich_messages(messages, repo_dir, task_type)
+            if enriched_messages != messages:
+                emit_progress("🔍 [Context] Enriched with additional context")
+                return enriched_messages
+    
+    return messages
+
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
     "anthropic/claude-opus-4.6": (5.0, 0.5, 25.0),
