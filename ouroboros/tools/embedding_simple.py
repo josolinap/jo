@@ -239,7 +239,7 @@ def _embed_text_simple(ctx, text: str) -> str:
 
 def _vault_index_simple(ctx, full_reindex: bool = False) -> str:
     """Build a simple TF-IDF index of vault notes."""
-    vault_dir = ctx.drive_path("vault")
+    vault_dir = ctx.repo_path("vault")
     if not vault_dir.exists():
         return json.dumps({"error": "Vault directory not found", "indexed": 0})
 

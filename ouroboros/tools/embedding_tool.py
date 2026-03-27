@@ -123,7 +123,7 @@ def _vault_semantic_search(
         return json.dumps({"error": f"Failed to embed query: {str(e)}", "results": []})
 
     # Determine vault directory
-    vault_dir = ctx.drive_path("vault")
+    vault_dir = ctx.repo_path("vault")
     if not vault_dir.exists():
         return json.dumps({"error": "Vault directory not found", "results": []})
 
