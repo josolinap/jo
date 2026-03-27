@@ -646,7 +646,7 @@ def _setup_loop_context(
     tools: ToolRegistry,
     event_queue: Optional[queue.Queue],
     task_id: str,
-) -> Tuple[str, str, Dict[str, Any], Dict[str, Any], _StatefulToolExecutor, Any]:
+) -> Tuple[str, str, Dict[str, Any], Dict[str, Any], _StatefulToolExecutor, Any, set, int, List[Dict[str, Any]]]:
     """Initialize core loop context and state."""
     global _quality_feedback_injected
 
@@ -670,7 +670,17 @@ def _setup_loop_context(
     _owner_msg_seen: set = set()
     traceability = get_traceability_layer(tools._ctx)
 
-    return active_model, active_effort, llm_trace, accumulated_usage, stateful_executor, traceability
+    return (
+        active_model,
+        active_effort,
+        llm_trace,
+        accumulated_usage,
+        stateful_executor,
+        traceability,
+        _owner_msg_seen,
+        max_retries,
+        tool_schemas,
+    )
 
 
 def run_llm_loop(
@@ -695,9 +705,17 @@ def run_llm_loop(
     """
     global _quality_feedback_injected
 
-    active_model, active_effort, llm_trace, accumulated_usage, stateful_executor, traceability = _setup_loop_context(
-        llm, tools, event_queue, task_id
-    )
+    (
+        active_model,
+        active_effort,
+        llm_trace,
+        accumulated_usage,
+        stateful_executor,
+        traceability,
+        _owner_msg_seen,
+        max_retries,
+        tool_schemas,
+    ) = _setup_loop_context(llm, tools, event_queue, task_id)
 
     try:
         MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
