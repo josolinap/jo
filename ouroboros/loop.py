@@ -123,7 +123,7 @@ def _handle_context_enrichment(
                 else "general"
             )
             repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
-            enriched_messages = enrich_messages(messages, repo_dir, task_type)
+            enriched_messages = enrich_messages(messages, task_text, task_type, repo_dir)
             if enriched_messages != messages:
                 emit_progress("🔍 [Context] Enriched with additional context")
                 return enriched_messages
