@@ -16,12 +16,11 @@ from tools.registry import ToolContext
 
 def main():
     """Run codebase health assessment."""
-    # Create a mock ToolContext
+    import pathlib
+    # Create a mock ToolContext with correct parameters
     ctx = ToolContext(
-        repo_dir="/home/runner/work/jo/jo",
-        drive_root="/home/runner/.jo_data",
-        tools_registry=None,
-        logger=None
+        repo_dir=pathlib.Path("/home/runner/work/jo/jo"),
+        drive_root=pathlib.Path("/home/runner/.jo_data")
     )
     
     # Run the health assessment
