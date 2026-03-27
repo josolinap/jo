@@ -102,7 +102,7 @@ def _handle_context_enrichment(
     """Handle auto-summarization and context enrichment if needed."""
     if drive_root is None or len(messages) == 0:
         return messages
-    
+
     context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
     messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
     if summarize_info.get("auto_summarized"):
@@ -127,8 +127,9 @@ def _handle_context_enrichment(
             if enriched_messages != messages:
                 emit_progress("🔍 [Context] Enriched with additional context")
                 return enriched_messages
-    
+
     return messages
+
 
 # Pricing from OpenRouter API (2026-02-17). Update periodically via /api/v1/models.
 _MODEL_PRICING_STATIC = {
@@ -761,6 +762,138 @@ def _setup_loop_context(
     )
 
 
+def _handle_first_round_setup(
+    messages: List[Dict[str, Any]],
+    drive_root: Optional[pathlib.Path],
+    emit_progress: Callable[[str], None],
+    tools: ToolRegistry,
+) -> Tuple[List[Dict[str, Any]], Optional[Any], int, str]:
+    """Handle all first-round setup logic: context enrichment, task decomposition, skill detection, ontology.
+
+    Returns:
+        Tuple of (messages, current_skill, last_reevaluation_round, ontology_task_type)
+    """
+    current_skill = None
+    last_reevaluation_round = 0
+    ontology_task_type = "general"
+
+    # 1. Context enrichment and auto-summarization
+    if drive_root is not None:
+        messages = _handle_context_enrichment(messages, drive_root, emit_progress)
+
+    # 2. Task decomposition check
+    try:
+        from ouroboros.tools.agent_coordinator import _coordinator
+
+        if _coordinator is not None:
+            task_text = ""
+            for m in messages:
+                if m.get("role") == "user":
+                    task_text = m.get("content", "")
+                    break
+            if task_text and len(task_text) > 200:
+                decomposition = _coordinator.decompose_task(task_text, "")
+                if len(decomposition.subtasks) >= 2:
+                    orch_hint = (
+                        f"\n[MULTI-AGENT HINT] This task appears complex. "
+                        f"Consider using `delegate_and_collect` or `decompose_task` to break it down.\n"
+                        f"Detected {len(decomposition.subtasks)} subtask types: "
+                        f"{', '.join(s['role'] for s in decomposition.subtasks[:4])}"
+                    )
+                    messages.append({"role": "system", "content": orch_hint})
+                    emit_progress(f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles")
+    except Exception:
+        log.debug("Task decomposition check failed", exc_info=True)
+
+    # 3. Skill detection
+    try:
+        from ouroboros.tools.skills import (
+            detect_skill_with_triggers,
+            extract_task_from_skill_text,
+            log_skill_activation,
+        )
+
+        for m in messages:
+            if m.get("role") == "user":
+                user_text = m.get("content", "")
+                skill, matched_triggers = detect_skill_with_triggers(user_text)
+                if skill:
+                    task = extract_task_from_skill_text(user_text, skill)
+                    log_skill_activation(skill, matched_triggers, user_text)
+
+                    trigger_info = ""
+                    if matched_triggers:
+                        trigger_info = f"\n**[Auto-detected from keywords: {', '.join(matched_triggers)}]**"
+
+                    skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}{trigger_info}]
+
+Version: {skill.version}
+
+{skill.system_prompt_addition}
+
+---
+
+## Task to Analyze
+
+{task}
+
+---
+
+{skill.pre_task_prompt}
+
+{skill.post_task_prompt}"""
+                    messages.append({"role": "system", "content": skill_prompt})
+                    emit_progress(
+                        f"🎯 [Skill] {skill.name.upper()} activated - {skill.description[:60]}... (triggers: {matched_triggers})"
+                    )
+                    current_skill = skill
+                    last_reevaluation_round = 1
+                    break
+    except Exception:
+        log.debug("Skill detection failed", exc_info=True)
+
+    # 4. Ontology integration
+    try:
+        from ouroboros.codebase_graph import get_ontology_for_task
+
+        task_text = ""
+        for m in messages:
+            if m.get("role") == "user":
+                task_text = m.get("content", "")
+                break
+
+        if task_text:
+            task_ontology_info = get_ontology_for_task(task_text)
+            ontology_task_type = task_ontology_info["task_type"]
+
+            # Inject ontology context as system message
+            ontology_msg = (
+                f"[Ontology] Task type: {task_ontology_info['task_type']}\n"
+                f"Requires: {', '.join(task_ontology_info['requires'][:3])}\n"
+                f"Produces: {', '.join(task_ontology_info['produces'][:3])}\n"
+                f"Typical tools: {', '.join(task_ontology_info['typical_tools'][:3])}"
+            )
+
+            # Enrich with learned recommendations from tracker
+            try:
+                from ouroboros.codebase_graph import get_task_ontology_profile
+
+                profile = get_task_ontology_profile(task_ontology_info["task_type"])
+                if profile["top_tools"]:
+                    top = profile["top_tools"][0]
+                    ontology_msg += f"\nLearned best tool: {top['tool']} (confidence: {top['confidence']})"
+                if profile["produces"]:
+                    ontology_msg += f"\nMost produced: {profile['produces'][0]['artifact']}"
+            except Exception:
+                log.debug("Ontology profile enrichment failed", exc_info=True)
+
+            messages.append({"role": "system", "content": ontology_msg})
+    except Exception:
+        log.debug("Ontology integration failed", exc_info=True)
+
+    return messages, current_skill, last_reevaluation_round, ontology_task_type
+
+
 def run_llm_loop(
     messages: List[Dict[str, Any]],
     tools: ToolRegistry,
@@ -855,95 +988,16 @@ def run_llm_loop(
 
             _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
 
-            if round_idx == 1 and drive_root is not None:
-                context_limit = int(os.environ.get("OUROBOROS_CONTEXT_LIMIT", "120000"))
-                messages, summarize_info = auto_summarize_if_needed(messages, drive_root, context_limit)
-                if summarize_info.get("auto_summarized"):
-                    emit_progress(f"📝 [Memory] Auto-summarized: {summarize_info.get('reason', '')}")
-
-                if USE_CONTEXT_ENRICHMENT:
-                    from ouroboros.context_enricher import enrich_messages
-
-                    task_text = ""
-                    for m in messages:
-                        if m.get("role") == "user":
-                            task_text = m.get("content", "")
-                            break
-                    if task_text:
-                        task_type = (
-                            "code"
-                            if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
-                            else "general"
-                        )
-                        repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
-                        messages = enrich_messages(messages, task_text, task_type, repo_dir)
-
+            # Handle all first-round setup
+            _ontology_task_type = "general"  # Default, may be updated below
             if round_idx == 1:
-                from ouroboros.tools.agent_coordinator import _coordinator
-
-                if _coordinator is not None:
-                    task_text = ""
-                    for m in messages:
-                        if m.get("role") == "user":
-                            task_text = m.get("content", "")
-                            break
-                    if task_text and len(task_text) > 200:
-                        decomposition = _coordinator.decompose_task(task_text, "")
-                        if len(decomposition.subtasks) >= 2:
-                            orch_hint = (
-                                f"\n[MULTI-AGENT HINT] This task appears complex. "
-                                f"Consider using `delegate_and_collect` or `decompose_task` to break it down.\n"
-                                f"Detected {len(decomposition.subtasks)} subtask types: "
-                                f"{', '.join(s['role'] for s in decomposition.subtasks[:4])}"
-                            )
-                            messages.append({"role": "system", "content": orch_hint})
-                            emit_progress(
-                                f"Auto-orchestration: Task decomposed into {len(decomposition.subtasks)} roles"
-                            )
-
-            if round_idx == 1:
-                from ouroboros.tools.skills import (
-                    detect_skill_with_triggers,
-                    extract_task_from_skill_text,
-                    log_skill_activation,
+                messages, skill_from_setup, last_reeval_from_setup, ontology_task_type = _handle_first_round_setup(
+                    messages, drive_root, emit_progress, tools
                 )
-
-                for m in messages:
-                    if m.get("role") == "user":
-                        user_text = m.get("content", "")
-                        skill, matched_triggers = detect_skill_with_triggers(user_text)
-                        if skill:
-                            task = extract_task_from_skill_text(user_text, skill)
-                            log_skill_activation(skill, matched_triggers, user_text)
-
-                            trigger_info = ""
-                            if matched_triggers:
-                                trigger_info = f"\n**[Auto-detected from keywords: {', '.join(matched_triggers)}]**"
-
-                            skill_prompt = f"""[SKILL ACTIVATED: {skill.name.upper()}{trigger_info}]
-
-Version: {skill.version}
-
-{skill.system_prompt_addition}
-
----
-
-## Task to Analyze
-
-{task}
-
----
-
-{skill.pre_task_prompt}
-
-{skill.post_task_prompt}"""
-                            messages.append({"role": "system", "content": skill_prompt})
-                            emit_progress(
-                                f"🎯 [Skill] {skill.name.upper()} activated - {skill.description[:60]}... (triggers: {matched_triggers})"
-                            )
-                            _current_skill = skill
-                            _last_reevaluation_round = round_idx
-                            break
+                if skill_from_setup is not None:
+                    _current_skill = skill_from_setup
+                    _last_reevaluation_round = last_reeval_from_setup
+                _ontology_task_type = ontology_task_type
 
             from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
 
@@ -974,63 +1028,6 @@ Version: {skill.version}
             elif round_idx > 3:
                 if len(messages) > 60:
                     messages = compact_tool_history(messages, keep_recent=6)
-
-            # PIPELINE_PLAN.md Feature 2: Context Enrichment Before LLM Calls
-            # Only on round 1 — vault/codebase state doesn't change during a task
-            if USE_CONTEXT_ENRICHMENT and round_idx == 1:
-                from ouroboros.context_enricher import enrich_messages
-
-                task_text = ""
-                for m in messages:
-                    if m.get("role") == "user":
-                        task_text = m.get("content", "")
-                        break
-
-                if task_text:
-                    task_type_detected = (
-                        "code"
-                        if any(kw in task_text.lower() for kw in ["code", "file", "function", "class", "implement"])
-                        else "general"
-                    )
-                    repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
-                    messages = enrich_messages(messages, task_text, task_type_detected, repo_dir)
-
-            # ONTOLOGY INTEGRATION: Classify task and inject ontology context
-            task_ontology_info = None
-            if round_idx == 1:  # Only on first round
-                from ouroboros.codebase_graph import get_ontology_for_task
-
-                task_text = ""
-                for m in messages:
-                    if m.get("role") == "user":
-                        task_text = m.get("content", "")
-                        break
-
-                if task_text:
-                    task_ontology_info = get_ontology_for_task(task_text)
-                    # Inject ontology context as system message
-                    ontology_msg = (
-                        f"[Ontology] Task type: {task_ontology_info['task_type']}\n"
-                        f"Requires: {', '.join(task_ontology_info['requires'][:3])}\n"
-                        f"Produces: {', '.join(task_ontology_info['produces'][:3])}\n"
-                        f"Typical tools: {', '.join(task_ontology_info['typical_tools'][:3])}"
-                    )
-                    # Enrich with learned recommendations from tracker
-                    try:
-                        from ouroboros.codebase_graph import get_task_ontology_profile
-
-                        profile = get_task_ontology_profile(task_ontology_info["task_type"])
-                        if profile["top_tools"]:
-                            top = profile["top_tools"][0]
-                            ontology_msg += f"\nLearned best tool: {top['tool']} (confidence: {top['confidence']})"
-                        if profile["produces"]:
-                            ontology_msg += f"\nMost produced: {profile['produces'][0]['artifact']}"
-                    except Exception:
-                        log.debug("Ontology profile enrichment failed", exc_info=True)
-                    messages.append({"role": "system", "content": ontology_msg})
-
-            # Track ontology relationships for tool calls
-            _ontology_task_type = task_ontology_info["task_type"] if task_ontology_info else "general"
 
             msg, cost = _call_llm_with_retry(
                 llm,
