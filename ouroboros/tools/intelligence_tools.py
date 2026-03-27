@@ -233,7 +233,7 @@ def _get_ontology_insights(
 
     Args:
         task_type: Task type to query (code, research, vault, git, web, system). Empty for aggregate.
-        query: What to query: "profile", "tools", "companions", "chains", "insights"
+        query: What to query: "profile", "tools", "companions", "chains", "insights", "data"
 
     Returns:
         JSON with requested ontology data
@@ -263,6 +263,217 @@ def _get_ontology_insights(
             },
             indent=2,
         )
+
+
+def _get_self_analysis(
+    ctx: ToolContext,
+    analysis_type: str = "comprehensive",
+) -> str:
+    """Provide deep self-analysis of Jo's cognitive state, tool usage patterns,
+    evolution readiness, and recommendations for self-improvement.
+
+    Args:
+        analysis_type: Type of analysis to perform (comprehensive, tool_patterns,
+                      evolution_readiness, cognitive_state)
+
+    Returns:
+        JSON with self-analysis results and recommendations
+    """
+    from ouroboros.codebase_graph import get_ontology_tracker
+    from ouroboros.utils import utc_now_iso
+
+    ctx.emit_progress_fn("Performing self-analysis...")
+    tracker = get_ontology_tracker()
+
+    # Get current timestamp
+    timestamp = utc_now_iso()
+
+    # Basic stats
+    insights = tracker.get_insights()
+    tool_usage = tracker.get_structured_data().get("tool_usage", {})
+    co_occurrence = tracker.get_structured_data().get("co_occurrence", {})
+    task_sequences = tracker.get_structured_data().get("task_sequences", {})
+    task_produces = tracker.get_structured_data().get("task_produces", {})
+
+    if analysis_type == "comprehensive":
+        # Calculate evolution readiness score
+        total_tool_calls = insights.get("total_relationships", 0)
+        tool_diversity = len([t for t, tools in tool_usage.items() if tools])
+        avg_tools_per_task = sum(len(tools) for tools in tool_usage.values()) / max(len(tool_usage), 1)
+
+        # Task pattern analysis
+        most_active_task = max(tool_usage.items(), key=lambda x: sum(x[1].values())) if tool_usage else ("none", {})
+        least_used_task = min(
+            [(t, sum(tools.values())) for t, tools in tool_usage.items() if tools], default=("none", 0)
+        )
+
+        # Tool synergy analysis
+        strongest_co_occurrence = []
+        for tool1, partners in co_occurrence.items():
+            if partners:
+                strongest_partner = max(partners.items(), key=lambda x: x[1]) if partners else None
+                if strongest_partner:
+                    strongest_co_occurrence.append(
+                        {"tool_pair": [tool1, strongest_partner[0]], "strength": strongest_partner[1]}
+                    )
+        strongest_co_occurrence.sort(key=lambda x: x["strength"], reverse=True)
+
+        # Evolution indicators
+        has_learned_patterns = total_tool_calls > 10  # Arbitrary threshold
+        has_tool_specialization = avg_tools_per_task < 3.0  # Using focused tool sets
+        has_task_differentiation = len([t for t, prod in task_produces.items() if prod]) >= 3
+
+        evolution_readiness_score = 0
+        if has_learned_patterns:
+            evolution_readiness_score += 30
+        if has_tool_specialization:
+            evolution_readiness_score += 25
+        if has_task_differentiation:
+            evolution_readiness_score += 25
+        if tool_diversity >= 4:
+            evolution_readiness_score += 20
+
+        analysis = {
+            "timestamp": timestamp,
+            "analysis_type": "comprehensive",
+            "cognitive_state": {
+                "total_interactions": total_tool_calls,
+                "tool_diversity": tool_diversity,
+                "avg_tools_per_task": round(avg_tools_per_task, 2),
+                "most_active_task_type": most_active_task[0] if most_active_task[0] != "none" else None,
+                "least_used_task_type": least_used_task[0] if least_used_task[0] != "none" else None,
+            },
+            "tool_patterns": {
+                "strongest_co_occurrences": strongest_co_occurrence[:3],
+                "tool_usage_by_task": {task: dict(tools) for task, tools in tool_usage.items()},
+                "most_used_tool_overall": insights.get("top_tools_overall", [{}])[0].get("tool")
+                if insights.get("top_tools_overall")
+                else None,
+            },
+            "evolution_readiness": {
+                "score": min(evolution_readiness_score, 100),
+                "level": "high"
+                if evolution_readiness_score >= 80
+                else "medium"
+                if evolution_readiness_score >= 50
+                else "low",
+                "indicators": {
+                    "has_learned_patterns": has_learned_patterns,
+                    "has_tool_specialization": has_tool_specialization,
+                    "has_task_differentiation": has_task_differentiation,
+                    "sufficient_tool_diversity": tool_diversity >= 4,
+                },
+                "recommendations": _get_evolution_recommendations(tracker, evolution_readiness_score),
+            },
+            "recommendations": [
+                f"Focus on developing {least_used_task[0]} capabilities"
+                if least_used_task[0] != "none"
+                else "Explore new task types",
+                f"Deepen specialization in {most_active_task[0]} workflows"
+                if most_active_task[0] != "none"
+                else "Establish core task patterns",
+                "Consider cross-tool experimentation to discover new synergies",
+                "Document successful tool combinations for future reference",
+            ],
+        }
+
+    elif analysis_type == "tool_patterns":
+        analysis = {
+            "timestamp": timestamp,
+            "analysis_type": "tool_patterns",
+            "tool_usage": tool_usage,
+            "co_occurrence": co_occurrence,
+            "task_produces": task_produces,
+            "insights": {
+                "most_versatile_task": max(tool_usage.items(), key=lambda x: len(x[1]))[0] if tool_usage else None,
+                "most_specialized_task": min(
+                    [(t, len(tools)) for t, tools in tool_usage.items() if tools], default=(None, 0)
+                )[0],
+                "tool_specialization_score": sum(len(tools) for tools in tool_usage.values())
+                / max(sum(1 for tools in tool_usage.values() if tools), 1),
+            },
+        }
+
+    elif analysis_type == "evolution_readiness":
+        analysis = {
+            "timestamp": timestamp,
+            "analysis_type": "evolution_readiness",
+            "readiness_metrics": {
+                "total_learned_interactions": insights.get("total_relationships", 0),
+                "task_types_with_experience": len([t for t, tools in tool_usage.items() if tools]),
+                "average_tool_set_size": sum(len(tools) for tools in tool_usage.values())
+                / max(len([t for t, tools in tool_usage.items() if tools]), 1),
+                "unique_tools_used": len({tool for tools in tool_usage.values() for tool in tools.keys()}),
+                "task_transition_patterns": len(task_sequences),
+            },
+            "readiness_level": "developing",  # Simplified
+            "next_steps": [
+                "Continue task execution to build stronger patterns",
+                "Experiment with tool combinations in familiar tasks",
+                "Document successful approaches for knowledge transfer",
+            ],
+        }
+
+    else:  # cognitive_state
+        analysis = {
+            "timestamp": timestamp,
+            "analysis_type": "cognitive_state",
+            "cognitive_metrics": {
+                "knowledge_retention": insights.get("total_relationships", 0) > 0,
+                "pattern_recognition": len(task_sequences) > 0,
+                "tool_adaptability": len([t for t, tools in tool_usage.items() if len(tools) > 2]) >= 2,
+                "task_flexibility": len([t for t, tools in tool_usage.items() if tools]) >= 3,
+            },
+            "cognitive_profile": {
+                "learning_style": "experiential" if insights.get("total_relationships", 0) > 5 else "observational",
+                "problem_approach": "specialized"
+                if sum(len(tools) for tools in tool_usage.values()) / max(len(tool_usage), 1) < 2.5
+                else "exploratory",
+                "knowledge_integration": "active" if len(co_occurrence) > 0 else "passive",
+            },
+        }
+
+    return json.dumps(analysis, indent=2)
+
+
+def _get_evolution_recommendations(tracker, score):
+    """Generate evolution recommendations based on readiness score."""
+    recommendations = []
+
+    if score < 30:
+        recommendations.extend(
+            [
+                "Execute more varied tasks to build foundational patterns",
+                "Focus on consistent tool usage to develop muscle memory",
+                "Document what works and what doesn't in a personal knowledge base",
+            ]
+        )
+    elif score < 60:
+        recommendations.extend(
+            [
+                "Begin experimenting with tool combinations in safe contexts",
+                "Start documenting successful workflows as personal best practices",
+                "Seek slightly more challenging tasks to expand capabilities",
+            ]
+        )
+    elif score < 80:
+        recommendations.extend(
+            [
+                "Refine and optimize established workflows",
+                "Begin teaching or documenting patterns for others",
+                "Look for opportunities to combine expertise across domains",
+            ]
+        )
+    else:
+        recommendations.extend(
+            [
+                "Consider mentoring or knowledge sharing roles",
+                "Look for innovative combinations of established skills",
+                "Focus on creating novel approaches rather than just executing",
+            ]
+        )
+
+    return recommendations[:3]  # Limit to top 3
 
 
 def get_tools() -> List[ToolEntry]:
@@ -395,5 +606,23 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _get_ontology_insights,
+        ),
+        ToolEntry(
+            "get_self_analysis",
+            {
+                "name": "get_self_analysis",
+                "description": "Provide deep self-analysis of Jo's cognitive state, tool usage patterns, evolution readiness, and recommendations for self-improvement.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "analysis_type": {
+                            "type": "string",
+                            "default": "comprehensive",
+                            "description": "Type of analysis: comprehensive, tool_patterns, evolution_readiness, cognitive_state",
+                        },
+                    },
+                },
+            },
+            _get_self_analysis,
         ),
     ]
