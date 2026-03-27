@@ -329,6 +329,12 @@ class BackgroundConsciousness:
                 },
             )
 
+            # Record cycle findings for feedback loop
+            try:
+                self._record_cycle_findings(final_content or "")
+            except Exception:
+                log.debug("Failed to record cycle findings", exc_info=True)
+
         except Exception as e:
             append_jsonl(
                 self._drive_root / "logs" / "events.jsonl",
@@ -338,6 +344,54 @@ class BackgroundConsciousness:
                     "error": repr(e),
                 },
             )
+
+    def _record_cycle_findings(self, thought: str) -> None:
+        """Record consciousness cycle findings for the feedback loop.
+
+        After thinking, extract and record:
+        - What gaps were identified
+        - What connections were discovered
+        - What patterns were noticed
+        This feeds back into the ontology tracker.
+        """
+        if not thought or len(thought) < 50:
+            return
+
+        thought_lower = thought.lower()
+
+        # Record insights to ontology tracker if patterns detected
+        try:
+            from ouroboros.codebase_graph import get_ontology_tracker
+
+            tracker = get_ontology_tracker()
+
+            # Detect task type from thought content
+            task_type = "consciousness"
+            if any(w in thought_lower for w in ["bug", "error", "fix", "broken"]):
+                task_type = "debug"
+            elif any(w in thought_lower for w in ["refactor", "decompose", "split", "module"]):
+                task_type = "refactor"
+            elif any(w in thought_lower for w in ["test", "verify", "check"]):
+                task_type = "test"
+            elif any(w in thought_lower for w in ["improve", "optimize", "enhance"]):
+                task_type = "improve"
+
+            # Record that consciousness ran and what tools it might use
+            tracker.record(task_type, "consciousness", "analyzed", strength=0.3)
+            tracker.save_ontology_tracker()
+        except Exception:
+            pass
+
+        # Log cycle to events for trend tracking
+        append_jsonl(
+            self._drive_root / "logs" / "events.jsonl",
+            {
+                "ts": utc_now_iso(),
+                "type": "consciousness_cycle_complete",
+                "thought_length": len(thought),
+                "preview": thought[:200],
+            },
+        )
 
     # -------------------------------------------------------------------
     # Context building (lightweight)
@@ -418,6 +472,41 @@ class BackgroundConsciousness:
         runtime_lines.append(f"Current model: {self._model}")
 
         parts.append("## Runtime\n\n" + "\n".join(runtime_lines))
+
+        # Knowledge gaps — what Jo should know but doesn't
+        try:
+            from ouroboros.knowledge_discovery import KnowledgeDiscovery
+
+            discovery = KnowledgeDiscovery(repo_dir=self._repo_dir, drive_root=self._drive_root)
+            gaps = discovery.scan_all()
+            if gaps:
+                gap_lines = [f"## Knowledge Gaps ({len(gaps)} found)", ""]
+                for g in gaps[:5]:
+                    gap_lines.append(f"- [{g.severity:.1f}] {g.gap_type}: {g.description[:100]}")
+                    if g.suggested_action:
+                        gap_lines.append(f"  Suggested: {g.suggested_action[:100]}")
+                parts.append("\n".join(gap_lines))
+        except Exception as e:
+            log.debug("Failed to load knowledge gaps: %s", e)
+
+        # Neural map summary — what connections exist
+        try:
+            from ouroboros.tools.neural_map import _build_unified_map
+            from ouroboros.tools.registry import ToolContext as _TC
+
+            _ctx = _TC(repo_dir=self._repo_dir, drive_root=self._drive_root)
+            nm = _build_unified_map(_ctx)
+            concepts = len(nm.concepts)
+            connections = len(nm.connections)
+            orphaned = sum(1 for cid, c in nm.concepts.items() if not nm._adjacency.get(cid))
+            if concepts > 0:
+                parts.append(
+                    f"## Neural Map\n\n"
+                    f"Concepts: {concepts}, Connections: {connections}, Orphaned: {orphaned}\n"
+                    f"Use tools to explore concepts and create connections."
+                )
+        except Exception as e:
+            log.debug("Failed to load neural map: %s", e)
 
         return "\n\n".join(parts)
 
