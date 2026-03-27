@@ -12,15 +12,18 @@ The nervous system for continuous self-improvement.
 
 from __future__ import annotations
 
+import json
 import logging
 import pathlib
 import re
+import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 from ouroboros.evolution_strategy import EvolutionStrategy, CycleRecord
+from ouroboros.tools.intelligence_tools import _get_self_analysis as get_self_analysis_func
 
 log = logging.getLogger(__name__)
 
@@ -87,9 +90,7 @@ class EvolutionLoop:
 
         for attempt in range(MAX_RETRIES):
             try:
-                import subprocess as _sp
-
-                result = _sp.run(
+                result = subprocess.run(
                     ["py", "-m", "pytest", "tests/", "-q", "--tb=no"],
                     capture_output=True,
                     text=True,
@@ -100,7 +101,7 @@ class EvolutionLoop:
                 if "failed" in summary.lower() or "error" in summary.lower():
                     issues.append("Test failures detected")
                 return issues
-            except _sp.TimeoutExpired:
+            except subprocess.TimeoutExpired:
                 delay = BACKOFF_BASE_SEC**attempt
                 log.warning("Test run timed out (attempt %d/%d), retrying in %ds", attempt + 1, MAX_RETRIES, delay)
                 time.sleep(delay)
@@ -223,6 +224,13 @@ class EvolutionLoop:
                 health_score = self._strategy.compute_health_score(issues)
                 cycle.results["health_score"] = round(health_score, 3)
                 cycle.results["trend"] = trend
+                # Get self-analysis for deeper insights
+                try:
+                    self_analysis_json = get_self_analysis_func(self.ctx, analysis_type="comprehensive")
+                    cycle.results["self_analysis"] = json.loads(self_analysis_json)
+                except Exception as e:
+                    log.debug("Failed to get self-analysis during evolution cycle: %s", e)
+                    cycle.results["self_analysis"] = {"error": str(e)}
 
                 record = CycleRecord(
                     cycle_id=cycle_id,
