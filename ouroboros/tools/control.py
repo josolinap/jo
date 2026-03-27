@@ -386,7 +386,10 @@ def _get_task_result(ctx: ToolContext, task_id: str) -> str:
     result_file = results_dir / f"{task_id}.json"
     if not result_file.exists():
         return f"Task {task_id}: not found or not yet completed"
-    data = json.loads(result_file.read_text())
+    try:
+        data = json.loads(result_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, Exception) as e:
+        return f"Task {task_id}: result file corrupted ({e})"
     status = data.get("status", "unknown")
     result = data.get("result", "")
     cost = data.get("cost_usd", 0)

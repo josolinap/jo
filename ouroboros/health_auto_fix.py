@@ -19,6 +19,21 @@ class HealthAutoFix:
         self.repo_dir = Path(repo_dir)
         self.drive_root = Path(drive_root)
 
+    def _write_with_lock(self, path: Path, content: str) -> None:
+        """Write file with locking to prevent race conditions."""
+        try:
+            from ouroboros.memory import _acquire_file_lock, _release_file_lock
+
+            lock_path = self.drive_root / "locks" / f"{path.stem}.lock"
+            lock_fd = _acquire_file_lock(lock_path)
+            try:
+                path.write_text(content, encoding="utf-8")
+            finally:
+                _release_file_lock(lock_path, lock_fd)
+        except Exception:
+            # Fallback: write without lock if locking unavailable
+            path.write_text(content, encoding="utf-8")
+
     def check_and_fix_all(self) -> Dict[str, Any]:
         """Run all auto-fix checks and return results."""
         results = {
@@ -95,7 +110,7 @@ class HealthAutoFix:
             try:
                 identity_path.parent.mkdir(parents=True, exist_ok=True)
                 default_identity = self._get_default_identity()
-                identity_path.write_text(default_identity, encoding="utf-8")
+                self._write_with_lock(identity_path, default_identity)
                 return True, "created identity.md with default content"
             except Exception as e:
                 return False, f"failed to create identity.md: {e}"
@@ -127,7 +142,7 @@ class HealthAutoFix:
             try:
                 scratchpad_path.parent.mkdir(parents=True, exist_ok=True)
                 default_scratchpad = self._get_default_scratchpad()
-                scratchpad_path.write_text(default_scratchpad, encoding="utf-8")
+                self._write_with_lock(scratchpad_path, default_scratchpad)
                 return True, "created scratchpad.md with default content"
             except Exception as e:
                 return False, f"failed to create scratchpad.md: {e}"
@@ -161,12 +176,12 @@ class HealthAutoFix:
         # Ensure essential memory files
         identity_path = memory_dir / "identity.md"
         if not identity_path.exists():
-            identity_path.write_text(self._get_default_identity(), encoding="utf-8")
+            self._write_with_lock(identity_path, self._get_default_identity())
             created.append("identity.md")
 
         scratchpad_path = memory_dir / "scratchpad.md"
         if not scratchpad_path.exists():
-            scratchpad_path.write_text(self._get_default_scratchpad(), encoding="utf-8")
+            self._write_with_lock(scratchpad_path, self._get_default_scratchpad())
             created.append("scratchpad.md")
 
         journal_path = memory_dir / "scratchpad_journal.jsonl"
