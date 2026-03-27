@@ -432,7 +432,11 @@ def _search_searx_enhanced(query: str, num_results: int, original_query: str) ->
         if not result:
             return []
 
-        data = json.loads(result)
+        try:
+            data = json.loads(result)
+        except json.JSONDecodeError:
+            return []
+
         results = data.get("results", [])
         if not results:
             return []

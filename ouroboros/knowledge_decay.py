@@ -205,7 +205,7 @@ class KnowledgeDecay:
             existing = []
             if self._log_path.exists():
                 try:
-                    existing = json.loads(self._log_path.read_text())
+                    existing = json.loads(self._log_path.read_text(encoding="utf-8"))
                 except Exception:
                     existing = []
             existing.append(entry)

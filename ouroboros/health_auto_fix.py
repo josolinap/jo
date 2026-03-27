@@ -86,9 +86,9 @@ class HealthAutoFix:
         if not version_file.exists() or not pyproject_file.exists():
             return False, "version or pyproject files missing"
 
-        current_ver = version_file.read_text().strip()
+        current_ver = version_file.read_text(encoding="utf-8").strip()
 
-        pyproject_content = pyproject_file.read_text()
+        pyproject_content = pyproject_file.read_text(encoding="utf-8")
         pyproject_ver = None
         for line in pyproject_content.splitlines():
             if line.strip().startswith("version"):

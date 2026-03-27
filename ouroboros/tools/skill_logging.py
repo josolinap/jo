@@ -40,7 +40,7 @@ def log_skill_activation(skill: Skill, matched_triggers: List[str], user_input: 
         existing = []
         if log_path.exists():
             try:
-                existing = json.loads(log_path.read_text())
+                existing = json.loads(log_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 existing = []
 
@@ -79,7 +79,7 @@ def log_skill_outcome(
         existing = []
         if log_path.exists():
             try:
-                existing = json.loads(log_path.read_text())
+                existing = json.loads(log_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 existing = []
 
@@ -100,7 +100,7 @@ def get_skill_success_rates() -> Dict[str, Dict[str, float]]:
         if not log_path.exists():
             return {}
 
-        entries = json.loads(log_path.read_text())
+        entries = json.loads(log_path.read_text(encoding="utf-8"))
         outcomes = [e for e in entries if e.get("type") == "outcome"]
 
         if not outcomes:
@@ -223,7 +223,7 @@ def get_skill_stats() -> Dict[str, Any]:
         if not log_path.exists():
             return {"total_activations": 0, "message": "No activations logged yet"}
 
-        activations = json.loads(log_path.read_text())
+        activations = json.loads(log_path.read_text(encoding="utf-8"))
 
         skill_counts: Dict[str, int] = {}
         trigger_counts: Dict[str, int] = {}
