@@ -10,6 +10,8 @@ Registers the following as tools Jo can use:
 - get_self_analysis: Provide deep self-analysis of cognitive state and evolution readiness
 - embed_text: Generate embedding vector for given text
 - vault_semantic_search: Search vault notes by semantic similarity using embeddings
+- vault_incremental_index: Incrementally index vault notes into LanceDB vector store using CocoIndex
+- vault_search_semantic: Search indexed vault notes using semantic similarity via LanceDB
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 from ouroboros.tools.embedding_tool import _embed_text, _vault_semantic_search
+from ouroboros.tools.vault_flow_tool import _vault_incremental_index, _vault_search_semantic
 
 log = logging.getLogger(__name__)
 
@@ -659,5 +662,39 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _vault_semantic_search,
+        ),
+        ToolEntry(
+            "vault_incremental_index",
+            {
+                "name": "vault_incremental_index",
+                "description": "Incrementally index vault notes into LanceDB vector store using CocoIndex incremental flows.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "full_reindex": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "If true, delete existing index and rebuild from scratch",
+                        },
+                    },
+                },
+            },
+            _vault_incremental_index,
+        ),
+        ToolEntry(
+            "vault_search_semantic",
+            {
+                "name": "vault_search_semantic",
+                "description": "Search vault notes using semantic similarity via the LanceDB index.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query text"},
+                        "top_k": {"type": "integer", "default": 5, "description": "Number of results to return"},
+                    },
+                    "required": ["query"],
+                },
+            },
+            _vault_search_semantic,
         ),
     ]
