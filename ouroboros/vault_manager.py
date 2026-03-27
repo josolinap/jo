@@ -61,13 +61,17 @@ class VaultManager:
         p = pathlib.Path(note_name_or_path)
         if p.exists() and p.is_file():
             return p
-        name = note_name_or_path.rstrip(".md")
+        name = note_name_or_path[:-3] if note_name_or_path.endswith(".md") else note_name_or_path
         name_lower = name.lower()
-        for md_file in self.vault_root.rglob("*.md"):
-            if ".vault" in md_file.parts:
-                continue
-            if md_file.stem.lower() == name_lower or str(md_file) == note_name_or_path:
-                return md_file
+
+        # Try exact match first, then space->underscore variant
+        variants = [name_lower, name_lower.replace(" ", "_"), name_lower.replace("_", " ")]
+        for variant in variants:
+            for md_file in self.vault_root.rglob("*.md"):
+                if ".vault" in md_file.parts:
+                    continue
+                if md_file.stem.lower() == variant or str(md_file) == note_name_or_path:
+                    return md_file
         return None
 
     def note_name(self, path: pathlib.Path) -> str:
