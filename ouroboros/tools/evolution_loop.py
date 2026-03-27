@@ -119,13 +119,20 @@ class EvolutionLoop:
 
         for attempt in range(MAX_RETRIES):
             try:
-                import subprocess
+                import py_compile
+                import pathlib
 
-                result = subprocess.run(
-                    ["py", "-m", "py_compile", "ouroboros/*.py"], capture_output=True, text=True, timeout=30
-                )
-                if result.returncode != 0:
-                    issues.append(f"Syntax errors in core files: {result.stderr[:200]}")
+                # Check all Python files in ouroboros directory
+                py_files = list(pathlib.Path("ouroboros").rglob("*.py"))
+                syntax_errors = []
+                for py_file in py_files:
+                    try:
+                        py_compile.compile(str(py_file), doraise=True)
+                    except py_compile.PyCompileError as e:
+                        syntax_errors.append(str(e))
+
+                if syntax_errors:
+                    issues.append(f"Syntax errors in {len(syntax_errors)} files")
                 return issues
             except Exception as e:
                 delay = BACKOFF_BASE_SEC**attempt
