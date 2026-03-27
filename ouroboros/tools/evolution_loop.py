@@ -399,6 +399,38 @@ def _run_evolution_cycle(ctx: ToolContext) -> str:
         for ri in trend["recurring_issues"]:
             lines.append(f"- {ri}")
 
+    # Knowledge decay assessment
+    try:
+        import pathlib
+        from ouroboros.knowledge_decay import KnowledgeDecay
+
+        repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+        decay = KnowledgeDecay(repo_dir=repo_dir)
+        candidates = decay.get_archive_candidates()
+        if candidates:
+            lines.append(f"\n### Knowledge Decay")
+            lines.append(f"**Archive candidates:** {len(candidates)} low-value notes")
+            for c in candidates[:3]:
+                lines.append(f"- [{c.value_score:.3f}] {c.title}")
+    except Exception:
+        pass
+
+    # Predictive health
+    try:
+        from ouroboros.health_predictor import HealthPredictor
+
+        repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+        drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
+        predictor = HealthPredictor(repo_dir=repo_dir, drive_root=drive_root)
+        predictor.take_snapshot_now()
+        predictions = predictor.predict_trends()
+        if predictions.get("alerts"):
+            lines.append(f"\n### Health Predictions")
+            for alert in predictions["alerts"]:
+                lines.append(f"- [WARNING] {alert['message']}")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 
@@ -527,6 +559,89 @@ def _confidence_report(ctx: ToolContext) -> str:
     drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
     scorer = ConfidenceScorer(drive_root=drive_root)
     return scorer.get_confidence_report()
+
+
+def _system_dashboard(ctx: ToolContext) -> str:
+    """Comprehensive system health dashboard combining all monitoring systems."""
+    import pathlib
+
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+    drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
+
+    lines = ["# System Dashboard", ""]
+
+    # Drift
+    try:
+        from ouroboros.drift_detector import DriftDetector
+
+        d = DriftDetector(repo_dir=repo_dir, drive_root=drive_root)
+        violations = d.run_all_checks()
+        if violations:
+            lines.append(f"## Drift ({len(violations)} violations)")
+            for v in violations[:3]:
+                lines.append(f"- [{v['severity'].upper()}] {v['rule']}: {v['detail'][:80]}")
+        else:
+            lines.append("## Drift: OK")
+    except Exception as e:
+        lines.append(f"## Drift: Error ({e})")
+
+    # Knowledge gaps
+    try:
+        from ouroboros.knowledge_discovery import KnowledgeDiscovery
+
+        kd = KnowledgeDiscovery(repo_dir=repo_dir, drive_root=drive_root)
+        gaps = kd.scan_all()
+        lines.append(f"\n## Knowledge Gaps: {len(gaps)}")
+        for g in gaps[:3]:
+            lines.append(f"- [{g.severity:.1f}] {g.gap_type}: {g.description[:60]}")
+    except Exception:
+        pass
+
+    # Knowledge decay
+    try:
+        from ouroboros.knowledge_decay import KnowledgeDecay
+
+        decay = KnowledgeDecay(repo_dir=repo_dir)
+        candidates = decay.get_archive_candidates()
+        notes = decay.assess_all()
+        healthy = sum(1 for n in notes if n.value_score >= 0.3)
+        lines.append(f"\n## Knowledge: {len(notes)} notes ({healthy} healthy, {len(candidates)} archive candidates)")
+    except Exception:
+        pass
+
+    # Predictive health
+    try:
+        from ouroboros.health_predictor import HealthPredictor
+
+        predictor = HealthPredictor(repo_dir=repo_dir, drive_root=drive_root)
+        trends = predictor.predict_trends()
+        if trends.get("alerts"):
+            lines.append(f"\n## Health Predictions: {len(trends['alerts'])} alerts")
+            for a in trends["alerts"][:3]:
+                lines.append(f"- {a['message'][:80]}")
+        else:
+            lines.append(f"\n## Health Predictions: {trends.get('overall_trend', 'unknown')}")
+    except Exception:
+        pass
+
+    # Skills
+    try:
+        from ouroboros.tools.skills import SKILLS
+
+        lines.append(f"\n## Skills: {len(SKILLS)} registered")
+    except Exception:
+        pass
+
+    # Tools
+    try:
+        from ouroboros.tools.registry import ToolRegistry
+
+        r = ToolRegistry(repo_dir=repo_dir, drive_root=drive_root)
+        lines.append(f"## Tools: {len(r.schemas())} registered")
+    except Exception:
+        pass
+
+    return "\n".join(lines)
 
 
 def _enable_evolution_mode(ctx: ToolContext) -> str:
@@ -695,5 +810,19 @@ def get_tools() -> List[ToolEntry]:
             },
             handler=_confidence_report,
             timeout_sec=10,
+        ),
+        ToolEntry(
+            name="system_dashboard",
+            schema={
+                "name": "system_dashboard",
+                "description": (
+                    "Comprehensive system health dashboard. Combines drift detection, "
+                    "knowledge gaps, decay, predictive health, skills, and tools into "
+                    "one unified view."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_system_dashboard,
+            timeout_sec=60,
         ),
     ]
