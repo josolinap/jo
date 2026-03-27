@@ -51,13 +51,11 @@ def _vault_incremental_index(
     Returns:
         JSON string with indexing results or error message
     """
-    if not _COCOINDEX_AVAILABLE:
-        return json.dumps({"error": "CocoIndex not available. Install with: pip install cocoindex", "indexed": 0})
+    if not _COCOINDEX_AVAILABLE or not _LANCEDB_AVAILABLE:
+        # Fallback to simple TF-IDF indexing (no external dependencies)
+        from ouroboros.tools.embedding_simple import _vault_index_simple
 
-    if not _LANCEDB_AVAILABLE:
-        return json.dumps(
-            {"error": "LanceDB not available for vector storage. Install with: pip install lancedb", "indexed": 0}
-        )
+        return _vault_index_simple(ctx, full_reindex)
 
     try:
         # Determine paths
@@ -181,14 +179,14 @@ def _vault_search_semantic(
     Returns:
         JSON string with search results
     """
-    if not _COCOINDEX_AVAILABLE:
-        return json.dumps({"error": "CocoIndex not available. Install with: pip install cocoindex", "results": []})
-
-    if not _LANCEDB_AVAILABLE:
-        return json.dumps({"error": "LanceDB not available. Install with: pip install lancedb", "results": []})
-
     if not query or not query.strip():
         return json.dumps({"error": "Empty query provided", "results": []})
+
+    if not _COCOINDEX_AVAILABLE or not _LANCEDB_AVAILABLE:
+        # Fallback to simple TF-IDF search (no external dependencies)
+        from ouroboros.tools.embedding_simple import _vault_search_simple
+
+        return _vault_search_simple(ctx, query, top_k)
 
     try:
         # Connect to the LanceDB table

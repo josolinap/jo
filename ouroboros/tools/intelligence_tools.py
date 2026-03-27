@@ -8,10 +8,13 @@ Registers the following as tools Jo can use:
 - get_task_ontology: Get ontology info for a task (enriched with learned patterns)
 - get_ontology_insights: Query learned ontology patterns (tools, companions, chains)
 - get_self_analysis: Provide deep self-analysis of cognitive state and evolution readiness
-- embed_text: Generate embedding vector for given text
+- embed_text: Generate embedding vector for given text (using sentence-transformers if available, else simple TF)
 - vault_semantic_search: Search vault notes by semantic similarity using embeddings
-- vault_incremental_index: Incrementally index vault notes into LanceDB vector store using CocoIndex
+- vault_incremental_index: Incrementally index vault notes into LanceDB vector store using CocoIndex incremental flows
 - vault_search_semantic: Search indexed vault notes using semantic similarity via LanceDB
+- embed_text_simple: Generate a simple TF-IDF embedding (no external dependencies)
+- vault_index_simple: Build a simple TF-IDF index of vault notes (no external dependencies)
+- vault_search_simple: Search vault notes using simple TF-IDF and cosine similarity (no external dependencies)
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from typing import Any, Dict, List, Optional
 from ouroboros.tools.registry import ToolEntry, ToolContext
 from ouroboros.tools.embedding_tool import _embed_text, _vault_semantic_search
 from ouroboros.tools.vault_flow_tool import _vault_incremental_index, _vault_search_semantic
+from ouroboros.tools.embedding_simple import _embed_text_simple, _vault_index_simple, _vault_search_simple
 
 log = logging.getLogger(__name__)
 
@@ -636,7 +640,7 @@ def get_tools() -> List[ToolEntry]:
             "embed_text",
             {
                 "name": "embed_text",
-                "description": "Generate embedding vector for given text using sentence-transformers.",
+                "description": "Generate embedding vector for given text (using sentence-transformers if available, else simple TF).",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -651,7 +655,7 @@ def get_tools() -> List[ToolEntry]:
             "vault_semantic_search",
             {
                 "name": "vault_semantic_search",
-                "description": "Search vault notes by semantic similarity using embeddings.",
+                "description": "Search vault notes by semantic similarity (using embeddings if available, else simple TF-IDF).",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -696,5 +700,54 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _vault_search_semantic,
+        ),
+        ToolEntry(
+            "embed_text_simple",
+            {
+                "name": "embed_text_simple",
+                "description": "Generate a simple TF-IDF embedding for given text (no external dependencies).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "Text to embed"},
+                    },
+                    "required": ["text"],
+                },
+            },
+            _embed_text_simple,
+        ),
+        ToolEntry(
+            "vault_index_simple",
+            {
+                "name": "vault_index_simple",
+                "description": "Build a simple TF-IDF index of vault notes (no external dependencies).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "full_reindex": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "If true, delete existing index and rebuild from scratch",
+                        },
+                    },
+                },
+            },
+            _vault_index_simple,
+        ),
+        ToolEntry(
+            "vault_search_simple",
+            {
+                "name": "vault_search_simple",
+                "description": "Search vault notes using simple TF-IDF and cosine similarity (no external dependencies).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query text"},
+                        "top_k": {"type": "integer", "default": 5, "description": "Number of results to return"},
+                    },
+                    "required": ["query"],
+                },
+            },
+            _vault_search_simple,
         ),
     ]

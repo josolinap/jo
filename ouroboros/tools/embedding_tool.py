@@ -67,26 +67,29 @@ def _embed_text(
     Returns:
         JSON string with embedding vector or error message
     """
-    if not _model_available:
-        return json.dumps({"error": "Embedding model not available. Install sentence-transformers.", "embedding": None})
-
     if not text or not text.strip():
         return json.dumps({"error": "Empty text provided", "embedding": None})
 
-    try:
-        embedding = _model.encode(text.strip())
-        # Convert to list of floats for JSON serialization
-        embedding_list = [float(x) for x in embedding]
-        return json.dumps(
-            {
-                "text": text[:100] + ("..." if len(text) > 100 else ""),
-                "embedding": embedding_list,
-                "dimension": len(embedding_list),
-            }
-        )
-    except Exception as e:
-        log.error(f"Embedding generation failed: {e}")
-        return json.dumps({"error": f"Embedding generation failed: {str(e)}", "embedding": None})
+    if _model_available:
+        try:
+            embedding = _model.encode(text.strip())
+            # Convert to list of floats for JSON serialization
+            embedding_list = [float(x) for x in embedding]
+            return json.dumps(
+                {
+                    "text": text[:100] + ("..." if len(text) > 100 else ""),
+                    "embedding": embedding_list,
+                    "dimension": len(embedding_list),
+                }
+            )
+        except Exception as e:
+            log.error(f"Embedding generation failed: {e}")
+            return json.dumps({"error": f"Embedding generation failed: {str(e)}", "embedding": None})
+    else:
+        # Fallback to simple TF-IDF embedding (no external dependencies)
+        from ouroboros.tools.embedding_simple import _embed_text_simple
+
+        return _embed_text_simple(ctx, text)
 
 
 def _vault_semantic_search(
@@ -103,11 +106,14 @@ def _vault_semantic_search(
     Returns:
         JSON string with search results
     """
-    if not _model_available:
-        return json.dumps({"error": "Embedding model not available. Install sentence-transformers.", "results": []})
-
     if not query or not query.strip():
         return json.dumps({"error": "Empty query provided", "results": []})
+
+    if not _model_available:
+        # Fallback to simple TF-IDF search (no external dependencies)
+        from ouroboros.tools.embedding_simple import _vault_search_simple
+
+        return _vault_search_simple(ctx, query, top_k)
 
     try:
         # Embed the query
