@@ -115,9 +115,10 @@ def test_no_accidental_protected_edits():
 def test_verification_tracking_enabled():
     """Check that verification tools are being used (anti-hallucination)."""
     # Verify repo_read and git operations are available in tool schema
-    from ouroboros.tools import get_tools
-    tools = get_tools()
-    tool_names = [t["name"] for t in tools]
+    from ouroboros.tools.registry import ToolRegistry
+    from pathlib import Path
+    registry = ToolRegistry(repo_dir=Path("."), drive_root=Path("~/.jo_data"))
+    tool_names = registry.available_tools()
     assert "repo_read" in tool_names, "repo_read tool must be available"
     assert "git_status" in tool_names, "git_status tool must be available"
     assert "git_diff" in tool_names, "git_diff tool must be available"
