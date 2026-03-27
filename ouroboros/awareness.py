@@ -1,3 +1,9 @@
+"""Awareness system — scans repository state and health metrics.
+
+Collects git state, system info, and environment data for consciousness.
+Writes scan results to awareness.jsonl log and repo_state.json.
+"""
+
 import json
 import os
 import subprocess

@@ -1,3 +1,9 @@
+"""Vault manager — CRUD operations for the knowledge vault.
+
+Handles note creation, reading, linking, backlinks, and graph operations.
+Supports case-insensitive link resolution and space/underscore matching.
+"""
+
 from __future__ import annotations
 
 import hashlib
