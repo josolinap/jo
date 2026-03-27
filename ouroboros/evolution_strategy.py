@@ -165,7 +165,18 @@ class EvolutionStrategy:
     def get_trend(self) -> Dict[str, Any]:
         """Analyze health trend across recent cycles."""
         if len(self._history) < 2:
-            return {"trend": "insufficient_data", "cycles": len(self._history)}
+            return {
+                "trend": "insufficient_data",
+                "cycles": len(self._history),
+                "health_delta": 0.0,
+                "recent_health": 0.0,
+                "older_health": 0.0,
+                "failure_rate": 0.0,
+                "avg_duration_sec": 0.0,
+                "recurring_issues": [],
+                "total_cycles": len(self._history),
+                "unresolved_issues": len(self._issue_registry),
+            }
 
         recent = self._history[-5:]
         older = self._history[-10:-5] if len(self._history) >= 10 else self._history[: len(self._history) - 5]
