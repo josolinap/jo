@@ -48,4 +48,4 @@ This violates the core principle of narrative continuity and self-creation. Know
 - Maintain balance between completeness and minimalism
 - Create backlink maps to track knowledge flow
 
-**Goal**: Transform fragmented knowledge into a coherent, self-reinforcing knowledge graph that supports agency and continuity.
+**Goal**: Transform fragmented knowledge into a coherent, self-reinforcing knowledge graph that supports agency and continuity. [[analyze_codebase_-_core_functionality]] [[install_launcher_dependencies_-_system_bootstrap]] [[_link_decision_to_principle_-_implementation]] [[Principle 1: Continuity]] [[Principle 2: Self-Creation]] [[Principle 5: Minimalis]]
