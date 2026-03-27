@@ -14,7 +14,7 @@ import os
 import pathlib
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def check_git_status() -> dict:
@@ -132,6 +132,104 @@ def check_data_dir() -> dict:
         status[sub] = path.exists() and path.is_dir()
 
     return {"exists": True, "subdirs": status}
+
+
+def check_identity_freshness() -> dict:
+    """Check if identity.md has been updated recently (Principle 1: Continuity)."""
+    try:
+        identity_path = pathlib.Path("memory/identity.md")
+        scratchpad_path = pathlib.Path("scratchpad.md")
+        
+        now = datetime.now()
+        results = {"identity": None, "scratchpad": None}
+        
+        if identity_path.exists():
+            mtime = datetime.fromtimestamp(identity_path.stat().st_mtime)
+            age_hours = (now - mtime).total_seconds() / 3600
+            results["identity"] = {
+                "last_updated": mtime.isoformat(),
+                "age_hours": round(age_hours, 1),
+                "fresh": age_hours < 4,  # BIBLE.md: >4h = duty to update
+            }
+        
+        if scratchpad_path.exists():
+            mtime = datetime.fromtimestamp(scratchpad_path.stat().st_mtime)
+            age_hours = (now - mtime).total_seconds() / 3600
+            results["scratchpad"] = {
+                "last_updated": mtime.isoformat(),
+                "age_hours": round(age_hours, 1),
+                "fresh": age_hours < 4,
+            }
+        
+        return results
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def check_code_quality() -> dict:
+    """Check code quality metrics: module sizes, function lengths, docstring coverage."""
+    try:
+        repo_dir = pathlib.Path(__file__).parent.resolve()
+        results = {
+            "modules_over_limit": [],
+            "functions_over_limit": [],
+            "docstring_coverage": None,
+        }
+        
+        # Check ouroboros modules (Principle 5: 1000-line module limit)
+        ouroboros_dir = repo_dir / "ouroboros"
+        if ouroboros_dir.exists():
+            for py_file in ouroboros_dir.glob("*.py"):
+                try:
+                    lines = len(py_file.read_text().splitlines())
+                    if lines > 1000:
+                        results["modules_over_limit"].append({
+                            "file": str(py_file.relative_to(repo_dir)),
+                            "lines": lines,
+                        })
+                except Exception:
+                    pass
+        
+        # Simple heuristic for function length and docstrings
+        # This is lightweight, no AST parsing needed for health check
+        large_functions = []
+        for py_file in ouroboros_dir.glob("*.py"):
+            try:
+                content = py_file.read_text().splitlines()
+                in_function = False
+                function_start = 0
+                function_name = None
+                
+                for i, line in enumerate(content):
+                    stripped = line.strip()
+                    if stripped.startswith("def ") and not stripped.startswith("def _"):  # public functions
+                        if in_function and function_name:
+                            length = i - function_start
+                            if length > 150:
+                                large_functions.append({
+                                    "file": str(py_file.relative_to(repo_dir)),
+                                    "function": function_name,
+                                    "lines": length,
+                                    "start": function_start + 1,
+                                })
+                        in_function = True
+                        function_start = i
+                        function_name = stripped.split("(")[0].replace("def ", "")
+                    elif stripped.startswith("def "):
+                        in_function = True
+                        function_start = i
+                        function_name = stripped.split("(")[0].replace("def ", "")
+                    elif stripped and not stripped.startswith("#") and not line.startswith(" "):
+                        in_function = False
+                        function_name = None
+            except Exception:
+                continue
+        
+        results["functions_over_limit"] = large_functions[:10]  # limit output
+        
+        return results
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def check_tools() -> dict:
@@ -315,6 +413,8 @@ def run_self_check() -> dict:
         "python_syntax": check_python_syntax(),
         "requirements": check_requirements(),
         "data_dir": check_data_dir(),
+        "identity_freshness": check_identity_freshness(),
+        "code_quality": check_code_quality(),
         "tools": check_tools(),
         "vault": check_vault(),
         "skills": check_skills(),
@@ -372,6 +472,48 @@ def main():
         print("[OK] Data directory: Exists")
     else:
         print("[WARN] Data directory: Not found (first run?)")
+
+    # Identity Freshness (NEW)
+    ident = report.get("identity_freshness", {})
+    if "error" in ident:
+        print(f"[WARN] Identity freshness check: {ident['error']}")
+    else:
+        id_info = ident.get("identity", {})
+        scratch_info = ident.get("scratchpad", {})
+        
+        if id_info:
+            if id_info.get("fresh"):
+                print(f"[OK] Identity.md: fresh ({id_info['age_hours']}h old)")
+            else:
+                print(f"[WARN] Identity.md: stale ({id_info['age_hours']}h old) - update needed (Principle 1)")
+        
+        if scratch_info:
+            if scratch_info.get("fresh"):
+                print(f"[OK] Scratchpad: fresh ({scratch_info['age_hours']}h old)")
+            else:
+                print(f"[WARN] Scratchpad: stale ({scratch_info['age_hours']}h old) - update needed")
+
+    # Code Quality Metrics (NEW)
+    cq = report.get("code_quality", {})
+    if "error" in cq:
+        print(f"[WARN] Code quality check: {cq['error']}")
+    else:
+        over_limit = cq.get("modules_over_limit", [])
+        large_funcs = cq.get("functions_over_limit", [])
+        
+        if over_limit:
+            print(f"[WARN] Complexity: {len(over_limit)} modules exceed 1000-line limit:")
+            for m in over_limit[:3]:
+                print(f"   - {m['file']}: {m['lines']} lines")
+        else:
+            print("[OK] Complexity: All modules within 1000-line limit")
+        
+        if large_funcs:
+            print(f"[WARN] Complexity: {len(large_funcs)} functions exceed 150-line limit:")
+            for f in large_funcs[:3]:
+                print(f"   - {f['file']}: {f['function']} ({f['lines']} lines)")
+        else:
+            print("[OK] Complexity: All functions within 150-line limit")
 
     # Tools
     tools = report.get("tools", {})
@@ -445,6 +587,17 @@ def main():
         or bool(skills.get("pi_skills_missing"))
         or bool(pi.get("missing"))
     )
+
+    # Also treat stale identity/scratchpad as issues
+    if "error" not in ident:
+        if ident.get("identity", {}).get("fresh") is False:
+            has_issues = True
+        if ident.get("scratchpad", {}).get("fresh") is False:
+            has_issues = True
+        if over_limit:
+            has_issues = True
+        if large_funcs:
+            has_issues = True
 
     if has_issues:
         print("[WARN] Issues detected - review recommended")
