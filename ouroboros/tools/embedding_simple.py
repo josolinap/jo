@@ -34,6 +34,43 @@ def tokenize(text: str) -> List[str]:
     return tokens
 
 
+def generate_ngrams(tokens: List[str], n: int = 2) -> List[str]:
+    """Generate n-grams from a list of tokens.
+
+    Args:
+        tokens: List of tokens
+        n: N-gram size (default 2 for bigrams)
+
+    Returns:
+        List of n-grams as strings (e.g., "tool_improvement", "self_evolution")
+    """
+    if len(tokens) < n:
+        return []
+    return ["_".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
+
+
+def tokenize_with_ngrams(text: str, ngram_range: tuple = (1, 2)) -> List[str]:
+    """Tokenize text and include n-grams.
+
+    Args:
+        text: Input text
+        ngram_range: Tuple of (min_n, max_n) for n-gram generation
+
+    Returns:
+        List of tokens including unigrams and n-grams
+    """
+    tokens = tokenize(text)
+    all_tokens = tokens.copy()
+
+    # Add n-grams
+    min_n, max_n = ngram_range
+    for n in range(min_n, max_n + 1):
+        if n > 1:  # Skip unigrams (already added)
+            all_tokens.extend(generate_ngrams(tokens, n))
+
+    return all_tokens
+
+
 def compute_tf(tokens: List[str]) -> Dict[str, float]:
     """Compute term frequency for a list of tokens."""
     counts = Counter(tokens)
@@ -139,13 +176,13 @@ class SimpleIndex:
             log.info("No vault notes found")
             return
 
-        # Read and tokenize each note
+        # Read and tokenize each note (with n-grams for better phrase matching)
         all_tokens = []
         notes_content = {}
         for path in note_paths:
             try:
                 content = path.read_text(encoding="utf-8", errors="ignore")
-                tokens = tokenize(content)
+                tokens = tokenize_with_ngrams(content, ngram_range=(1, 2))  # Unigrams + bigrams
                 all_tokens.append(tokens)
                 notes_content[str(path)] = {"content": content, "tokens": tokens}
             except Exception as e:
@@ -176,8 +213,8 @@ class SimpleIndex:
         if not self.loaded or not self.documents:
             return []
 
-        # Tokenize query and compute vector
-        query_tokens = tokenize(query)
+        # Tokenize query with n-grams and compute vector
+        query_tokens = tokenize_with_ngrams(query, ngram_range=(1, 2))  # Unigrams + bigrams
         if not query_tokens:
             return []
 
@@ -223,7 +260,7 @@ def _embed_text_simple(ctx, text: str) -> str:
     # For a single text, we cannot compute IDF; we'll use a dummy IDF of 1 for all words.
     # Better: use a pre-computed IDF from a default corpus (e.g., common English words).
     # For simplicity, we'll just return a bag-of-words vector with term frequencies.
-    tokens = tokenize(text)
+    tokens = tokenize_with_ngrams(text, ngram_range=(1, 2))  # Include bigrams
     tf = compute_tf(tokens)
     # Convert to a list representation (vocabulary may be huge, so we keep as dict)
     return json.dumps(
