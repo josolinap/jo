@@ -196,12 +196,43 @@ class EvolutionLoop:
         return plans
 
     def run_cycle(self) -> EvolutionCycle:
-        """Run a single evolution cycle with adaptive strategy."""
+        """Run a single evolution cycle with adaptive strategy and fingerprinting."""
+        import pathlib
+
         cycle_id = f"cycle_{len(self.cycles) + 1}"
         cycle = EvolutionCycle(id=cycle_id, trigger="autonomous", phase="identify")
         start_time = time.time()
 
         log.info("Starting evolution cycle: %s", cycle_id)
+
+        # Take fingerprint before cycle
+        pre_fingerprint = None
+        try:
+            from ouroboros.evolution_fingerprint import EvolutionFingerprinter
+
+            repo_dir = pathlib.Path(self.ctx.repo_dir) if self.ctx.repo_dir else pathlib.Path(".")
+            fp = EvolutionFingerprinter(repo_dir=repo_dir)
+            pre_fingerprint = fp.take_snapshot()
+            cycle.results["pre_snapshot"] = pre_fingerprint.snapshot_id
+        except Exception:
+            log.debug("Failed to take pre-cycle fingerprint", exc_info=True)
+
+        # Start decision trace
+        trace_id = None
+        try:
+            from ouroboros.decision_trace import DecisionTracer
+
+            tracer = DecisionTracer()
+            trace_id = tracer.start_trace(
+                decision_type="evolution",
+                context_summary=f"Cycle {cycle_id}, trigger={cycle.trigger}",
+                action_taken="run_evolution_cycle",
+                confidence=0.7,
+                reasoning="Autonomous evolution cycle",
+                tags=["evolution", "auto"],
+            )
+        except Exception:
+            pass
 
         # Get trend and suggestions from strategy
         trend = self._strategy.get_trend()
@@ -253,6 +284,35 @@ class EvolutionLoop:
                     health_score=health_score,
                 )
                 self._strategy.record_cycle(record)
+
+                # Post-cycle fingerprint comparison
+                if pre_fingerprint:
+                    try:
+                        changes = fp.compare_with_current(pre_fingerprint)
+                        if changes.get("protected_file_changes"):
+                            cycle.results["protected_changes"] = changes["protected_file_changes"]
+                        if changes.get("module_size_changes"):
+                            cycle.results["module_changes"] = changes["module_size_changes"][:5]
+                    except Exception:
+                        pass
+
+                # Complete decision trace
+                if trace_id:
+                    try:
+                        from ouroboros.decision_trace import DecisionTracer
+
+                        tracer = DecisionTracer()
+                        tracer.complete_trace(
+                            trace_id,
+                            outcome="pass"
+                            if cycle.status == "complete"
+                            else "fail"
+                            if cycle.status == "failed"
+                            else "partial",
+                            outcome_detail=f"{len(issues)} issues found, health={health_score:.0%}",
+                        )
+                    except Exception:
+                        pass
 
                 cycle.duration_sec = time.time() - start_time
                 self.cycles.append(cycle)
@@ -561,6 +621,24 @@ def _confidence_report(ctx: ToolContext) -> str:
     return scorer.get_confidence_report()
 
 
+def _evolution_fingerprint(ctx: ToolContext) -> str:
+    """Take and report on system fingerprint."""
+    import pathlib
+    from ouroboros.evolution_fingerprint import EvolutionFingerprinter
+
+    repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
+    fp = EvolutionFingerprinter(repo_dir=repo_dir)
+    return fp.get_fingerprint_report()
+
+
+def _decision_trace_report(ctx: ToolContext) -> str:
+    """Get decision trace report."""
+    from ouroboros.decision_trace import DecisionTracer
+
+    tracer = DecisionTracer()
+    return tracer.get_decision_report()
+
+
 def _system_dashboard(ctx: ToolContext) -> str:
     """Comprehensive system health dashboard combining all monitoring systems."""
     import pathlib
@@ -824,5 +902,31 @@ def get_tools() -> List[ToolEntry]:
             },
             handler=_system_dashboard,
             timeout_sec=60,
+        ),
+        ToolEntry(
+            name="evolution_fingerprint",
+            schema={
+                "name": "evolution_fingerprint",
+                "description": (
+                    "Take a system fingerprint snapshot. Records git SHA, protected file hashes, "
+                    "module sizes, test/tool/skill counts. Use to detect unexpected changes."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_evolution_fingerprint,
+            timeout_sec=30,
+        ),
+        ToolEntry(
+            name="decision_trace_report",
+            schema={
+                "name": "decision_trace_report",
+                "description": (
+                    "Get decision trace report. Shows recent decisions, success rates by type, "
+                    "low-confidence decisions, and failures. Track WHY decisions were made."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_decision_trace_report,
+            timeout_sec=10,
         ),
     ]
