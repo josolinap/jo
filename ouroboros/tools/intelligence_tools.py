@@ -15,6 +15,7 @@ Registers the following as tools Jo can use:
 - embed_text_simple: Generate a simple TF-IDF embedding (no external dependencies)
 - vault_index_simple: Build a simple TF-IDF index of vault notes (no external dependencies)
 - vault_search_simple: Search vault notes using simple TF-IDF and cosine similarity (no external dependencies)
+- record_tool_combination: Manually record that a set of tools work well together for a specific task type
 """
 
 from __future__ import annotations
@@ -487,6 +488,65 @@ def _get_evolution_recommendations(tracker, score):
     return recommendations[:3]  # Limit to top 3
 
 
+def _record_tool_combination(
+    ctx: ToolContext,
+    tools: List[str],
+    description: str = "",
+    task_type: str = "general",
+) -> str:
+    """Manually record that a set of tools work well together.
+
+    Args:
+        tools: List of tool names that work well together
+        description: Description of what they were used for
+        task_type: Task type context (code, research, vault, etc.)
+
+    Returns:
+        JSON confirmation of recording
+    """
+    from ouroboros.codebase_graph import (
+        get_ontology_tracker,
+        record_tool_co_occurrence,
+        record_task_tool_usage,
+        save_ontology_tracker,
+    )
+
+    if not tools or len(tools) < 2:
+        return json.dumps({"error": "Need at least 2 tools to record a combination", "recorded": False})
+
+    ctx.emit_progress_fn(f"Recording tool combination: {', '.join(tools)}")
+
+    try:
+        # Record each tool usage for the task type
+        for tool in tools:
+            record_task_tool_usage(task_type, tool)
+
+        # Record co-occurrence
+        record_tool_co_occurrence(tools)
+
+        # Save to disk
+        save_ontology_tracker()
+
+        # Get updated stats
+        tracker = get_ontology_tracker()
+        insights = tracker.get_insights()
+
+        return json.dumps(
+            {
+                "recorded": True,
+                "tools": tools,
+                "task_type": task_type,
+                "description": description,
+                "total_relationships": insights.get("total_relationships", 0),
+                "co_occurrence_entries": len(tracker._co_occurrence),
+                "message": f"Successfully recorded {len(tools)} tools working together for {task_type} tasks",
+            }
+        )
+
+    except Exception as e:
+        return json.dumps({"error": f"Failed to record tool combination: {str(e)}", "recorded": False})
+
+
 def get_tools() -> List[ToolEntry]:
     """Get all intelligence tools."""
     return [
@@ -749,5 +809,34 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _vault_search_simple,
+        ),
+        ToolEntry(
+            "record_tool_combination",
+            {
+                "name": "record_tool_combination",
+                "description": "Manually record that a set of tools work well together for a specific task type.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tools": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of tool names that work well together",
+                        },
+                        "description": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Description of what they were used for",
+                        },
+                        "task_type": {
+                            "type": "string",
+                            "default": "general",
+                            "description": "Task type context (code, research, vault, git, web, system)",
+                        },
+                    },
+                    "required": ["tools"],
+                },
+            },
+            _record_tool_combination,
         ),
     ]
