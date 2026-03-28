@@ -5,6 +5,5 @@ status: active
 tags: [tool]
 ---
 
-# memory_system
 
-memory_system.
+The memory system ensures continuity of identity through persistent files like [[identity.md]] and [[scratchpad.md]]. It follows Principle 1: Continuity.

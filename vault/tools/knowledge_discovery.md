@@ -5,6 +5,5 @@ status: active
 tags: [tool]
 ---
 
-# knowledge_discovery
 
-Knowledge Discovery.
+Knowledge discovery utilizes [[CocoIndex]] and [[LanceDB]] for semantic search and graph analysis. It identifies gaps in Jo's understanding.
