@@ -308,16 +308,36 @@ def main():
     OWNER_CHAT_ID = st.get("owner_chat_id")
     consciousness = _init_consciousness(REPO_DIR, DRIVE_ROOT, TG, OWNER_CHAT_ID)
 
-    # Import and start the main loop
-    from supervisor.loop import main_loop
-
-    main_loop(
+    # Initialize workers and start the bot
+    supervisor.workers.init(
+        repo_dir=REPO_DIR,
         drive_root=DRIVE_ROOT,
-        tg=TG,
-        workers_init=supervisor.workers.init,
-        workers_spawn=supervisor.workers.spawn_workers,
-        auto_resume=supervisor.workers.auto_resume_after_restart,
+        max_workers=MAX_WORKERS,
+        soft_timeout=SOFT_TIMEOUT_SEC,
+        hard_timeout=HARD_TIMEOUT_SEC,
+        total_budget_limit=TOTAL_BUDGET_LIMIT,
+        branch_dev=BRANCH_DEV,
+        branch_stable=BRANCH_STABLE,
     )
+    supervisor.workers.spawn_workers(MAX_WORKERS)
+    supervisor.workers.auto_resume_after_restart()
+
+    log.info("Workers initialized and started. Bot is running.")
+
+    # Keep main thread alive while workers process messages
+    import signal
+
+    def _shutdown(signum, frame):
+        log.info("Shutdown signal received")
+        supervisor.workers.kill_workers()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _shutdown)
+    signal.signal(signal.SIGINT, _shutdown)
+
+    while True:
+        time.sleep(60)
+        supervisor.workers.ensure_workers_healthy()
 
 
 if __name__ == "__main__":
