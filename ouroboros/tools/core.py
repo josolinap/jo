@@ -365,6 +365,24 @@ def _forward_to_worker(ctx: ToolContext, task_id: str, message: str) -> str:
     return f"Message forwarded to task {task_id}"
 
 
+# --- Memory Consolidation ---
+
+def _consolidate_memory(ctx: ToolContext) -> str:
+    """Summarize recent event logs and update persistent Identity/Scratchpad.
+    Use this after major milestones or recovery to ensure narrative continuity.
+    """
+    try:
+        from ouroboros.memory import Memory
+        mem = Memory(drive_root=ctx.drive_root, repo_dir=ctx.repo_dir)
+        res = mem.consolidate()
+        if res["status"] == "success":
+            return f"Memory consolidated. Events summarized: {res['events_distilled']}. Identity updated: {res['identity_updated']}."
+        else:
+            return f"Consolidation failed: {res.get('message')}"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 # ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
@@ -458,6 +476,18 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _send_photo,
+        ),
+        ToolEntry(
+            "consolidate_memory",
+            {
+                "name": "consolidate_memory",
+                "description": (
+                    "Summarize recent event logs and update persistent identity/scratchpad files. "
+                    "Call this after significant work phases or recovery from errors."
+                ),
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _consolidate_memory,
         ),
         ToolEntry(
             "codebase_digest",

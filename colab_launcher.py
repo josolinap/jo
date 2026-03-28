@@ -8,6 +8,9 @@ import logging
 import os, sys, json, time, uuid, pathlib, subprocess, datetime, threading, queue as _queue_mod
 from typing import Any, Dict, List, Optional, Set, Tuple
 from dotenv import load_dotenv
+import supervisor.workers
+from supervisor.state import load_state, save_state
+from supervisor.watchdog import InfrastructureWatchdog
 
 log = logging.getLogger(__name__)
 
@@ -321,6 +324,10 @@ def main():
     )
     supervisor.workers.spawn_workers(MAX_WORKERS)
     supervisor.workers.auto_resume_after_restart()
+
+    # Start health watchdog
+    watchdog = InfrastructureWatchdog(DRIVE_ROOT, REPO_DIR)
+    watchdog.start()
 
     log.info("Workers initialized. Starting main loop.")
 

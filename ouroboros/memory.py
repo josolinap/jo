@@ -20,6 +20,7 @@ from collections import Counter
 from typing import Any, Dict, List, Optional
 
 from ouroboros.utils import utc_now_iso, read_text, write_text, append_jsonl, short
+from ouroboros.memory_consolidator import MemoryConsolidator
 
 log = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ class Memory:
         self.repo_dir = repo_dir
         self._identity_lock_path = drive_root / "locks" / "identity.lock"
         self._scratchpad_lock_path = drive_root / "locks" / "scratchpad.lock"
+        self._consolidator = MemoryConsolidator(drive_root)
 
     # --- Paths ---
 
@@ -138,6 +140,30 @@ class Memory:
             write_text(self.identity_path(), content)
         finally:
             _release_file_lock(self._identity_lock_path, lock_fd)
+
+    def consolidate(self, limit: int = 50) -> Dict[str, str]:
+        """Distill recent events and suggest/apply memory updates."""
+        try:
+            events_summary = self._consolidator.distill_events(limit=limit)
+            
+            # Update Identity
+            current_id = self.load_identity()
+            new_id = self._consolidator.suggest_identity_update(current_id, events_summary)
+            if new_id != current_id:
+                self.save_identity(new_id)
+
+            # Update Scratchpad context (simplified for now)
+            current_sp = self.load_scratchpad()
+            # Logic to update scratchpad could be added here
+            
+            return {
+                "status": "success",
+                "events_distilled": len(events_summary.split("\n")),
+                "identity_updated": new_id != current_id
+            }
+        except Exception as e:
+            log.error(f"Memory consolidation failed: {e}")
+            return {"status": "error", "message": str(e)}
 
     def ensure_files(self) -> None:
         """Create memory files if they don't exist (with locking for atomicity)."""

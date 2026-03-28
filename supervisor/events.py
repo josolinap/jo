@@ -14,6 +14,7 @@ import sys
 import time
 import uuid
 from typing import Any, Dict, Optional
+from supervisor.sys_ops import safe_replace
 
 log = logging.getLogger(__name__)
 

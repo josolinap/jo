@@ -1,11 +1,14 @@
 from __future__ import annotations
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 import pathlib
+
+from supervisor.sys_ops import safe_replace
 
 log = logging.getLogger(__name__)
 
@@ -138,7 +141,9 @@ def safe_pull(branch: str = "dev", repo_dir: Optional[pathlib.Path] = None) -> b
             timeout=120,
         )
         if result.returncode == 0:
-            log.info("safe_pull: rebase succeeded for branch '%s'", branch)
+            # Atomic replace via sys_ops
+            safe_replace(tmp_path, target_path)
+            log.info("Recovery complete: repo state was invalid, restored from head (was on main/detached)")
             return True
 
         # Rebase failed — abort and fall through to hard reset

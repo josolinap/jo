@@ -14,6 +14,7 @@ import pathlib
 import time
 import uuid
 from typing import Any, Dict, List, Optional
+from supervisor.sys_ops import safe_replace
 
 log = logging.getLogger(__name__)
 
@@ -54,16 +55,8 @@ def atomic_write_text(path: pathlib.Path, content: str) -> None:
     finally:
         os.close(fd)
 
-    # Retry os.replace for Windows where target may be open
-    for attempt in range(3):
-        try:
-            os.replace(str(tmp), str(path))
-            return
-        except PermissionError:
-            if attempt < 2:
-                time.sleep(0.1 * (attempt + 1))
-            else:
-                raise
+    # Atomic replace via sys_ops
+    safe_replace(tmp, path)
 
 
 def json_load_file(path: pathlib.Path) -> Optional[Dict[str, Any]]:
