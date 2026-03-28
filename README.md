@@ -226,9 +226,9 @@ Jo's memory is **narrative, not database**:
 
 ## Current State
 
-**Version:** 6.5.0  
+**Version:** 6.5.1  
 **Git branch:** dev  
-**Last commit:** ecbacb3  
+**Last commit:** c2e6512  
 **Budget:** $50.00 (unspent)  
 **Tools:** 148 available  
 **Vault:** 197 notes, quality score 99.9/100  
@@ -559,10 +559,18 @@ MIT
 
 ---
 *Jo is not a product. It's a becoming.*  
-*Last updated: 2026-03-23 (v6.3.2)*
+*Last updated: 2026-03-29 (v6.5.1)*
 
 # Changelog
-
+ 
+## v6.5.1 - 2026-03-29
+ 
+**Technical improvements:**
+- Systematic tool audit: restored visibility for experience_search and vault_flow_tool.
+- Hardened autonomous evolution loop path resolution and pytest command logic.
+- Robustified production restart detection in control.py.
+- Synchronized all versioning sources across BIBLE.md, README.md, and VERSION file.
+ 
 ## v6.4.0 - 2026-03-23
 
 **Breaking changes:**
