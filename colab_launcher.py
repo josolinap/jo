@@ -327,10 +327,24 @@ def main():
     # Main loop: poll Telegram, enqueue tasks, process events
     from supervisor.events import dispatch_event
     from supervisor.queue import enqueue_task
+    from supervisor.telegram import send_with_budget, log_chat
 
     event_q = supervisor.workers.get_event_q()
     update_offset = 0
     _last_health_check = time.time()
+
+    # Attach runtime objects to workers module so event handlers can access them
+    supervisor.workers.TG = TG
+    supervisor.workers.DRIVE_ROOT = DRIVE_ROOT
+    supervisor.workers.REPO_DIR = REPO_DIR
+    supervisor.workers.BRANCH_DEV = BRANCH_DEV
+    supervisor.workers.BRANCH_STABLE = BRANCH_STABLE
+    supervisor.workers.consciousness = consciousness
+    supervisor.workers.send_with_budget = send_with_budget
+    supervisor.workers.log_chat = log_chat
+    supervisor.workers.append_jsonl = append_jsonl
+    supervisor.workers.load_state = load_state
+    supervisor.workers.save_state = save_state
 
     def _shutdown(signum, frame):
         log.info("Shutdown signal received")
@@ -365,32 +379,13 @@ def main():
             log.debug("Telegram poll error: %s", e)
             time.sleep(1)
 
-        # Process all pending events from workers
+        # Process all pending events from workers — use workers module as ctx
         while True:
             try:
                 evt = event_q.get_nowait()
             except Exception:
                 break
-            # Build a minimal ctx for dispatch_event
-            from supervisor.telegram import send_with_budget as _swb, log_chat as _lc
-
-            _ctx = type(
-                "ctx",
-                (),
-                {
-                    "DRIVE_ROOT": DRIVE_ROOT,
-                    "append_jsonl": append_jsonl,
-                    "update_budget_from_usage": lambda u: None,
-                    "load_state": load_state,
-                    "save_state": save_state,
-                    "send_with_budget": _swb,
-                    "log_chat": _lc,
-                    "TG": TG,
-                    "get_event_q": lambda: event_q,
-                    "consciousness": consciousness,
-                },
-            )()
-            dispatch_event(evt, _ctx)
+            dispatch_event(evt, supervisor.workers)
 
         # Periodic health check (every 5 min)
         if time.time() - _last_health_check > 300:
