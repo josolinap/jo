@@ -12,10 +12,10 @@ env:
   HOME: /home/runner
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# Permissions for git push operations (Jo creates tags/commits)
+# Permissions for git push operations (Jo creates tags/commits) and run cleanup
 permissions:
   contents: write
-  actions: read
+  actions: write
 
 on:
   # Trigger on push to dev (Jo's working branch)
@@ -452,10 +452,12 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Cleanup old workflow runs
         if: always()
+        timeout-minutes: 3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           KEEP_RUNS: 20
+          MAX_DELETE: 30
         run: |
           echo "🧹 Cleaning up old workflow runs..."
           echo "   Keeping the most recent $KEEP_RUNS completed runs"
@@ -464,12 +466,11 @@ jobs:
           WORKFLOW_NAME="${{ github.workflow }}"
           echo "   Workflow: $WORKFLOW_NAME"
 
-          # Get all completed runs for this workflow, sorted newest first
-          # gh run list returns newest first by default
+          # Get completed runs for this workflow, sorted newest first
           ALL_RUNS=$(gh run list \
             --workflow "$WORKFLOW_NAME" \
             --status completed \
-            --limit 500 \
+            --limit 200 \
             --json databaseId,createdAt \
             --repo $GITHUB_REPOSITORY 2>/dev/null)
 
@@ -478,29 +479,25 @@ jobs:
             exit 0
           fi
 
-          # Count total runs
           TOTAL_RUNS=$(echo "$ALL_RUNS" | jq length)
           echo "   Total completed runs: $TOTAL_RUNS"
 
           if [ "$TOTAL_RUNS" -le "$KEEP_RUNS" ]; then
-            echo "ℹ️ Only $TOTAL_RUNS runs found, keeping all (threshold: $KEEP_RUNS)"
+            echo "ℹ️ Only $TOTAL_RUNS runs found, keeping all."
             exit 0
           fi
 
-          # Get runs to delete (skip the most recent KEEP_RUNS, delete the rest)
-          # jq '.[20:]' skips first 20 (newest) and returns the rest (older ones to delete)
-          RUNS_TO_DELETE=$(echo "$ALL_RUNS" | jq -r ".[$KEEP_RUNS:][].databaseId")
+          # Get runs to delete, capped at MAX_DELETE to avoid timeouts
+          RUNS_TO_DELETE=$(echo "$ALL_RUNS" | jq -r ".[$KEEP_RUNS:][].databaseId" | head -n "$MAX_DELETE")
 
           if [ -z "$RUNS_TO_DELETE" ]; then
             echo "ℹ️ No old runs to delete."
             exit 0
           fi
 
-          # Count how many we'll delete
           DELETE_COUNT=$(echo "$RUNS_TO_DELETE" | wc -l)
-          echo "   Deleting $DELETE_COUNT old completed runs..."
+          echo "   Deleting up to $DELETE_COUNT old runs..."
 
-          # Delete each run
           DELETED=0
           FAILED=0
           for run_id in $RUNS_TO_DELETE; do
