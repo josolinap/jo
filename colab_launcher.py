@@ -187,13 +187,15 @@ def _init_supervisor(DRIVE_ROOT, TOTAL_BUDGET_LIMIT, BUDGET_REPORT_EVERY_MESSAGE
 # 5) Background consciousness
 # ----------------------------
 def _init_consciousness(REPO_DIR, DRIVE_ROOT, TG, OWNER_CHAT_ID):
-    from supervisor.consciousness import Consciousness
+    from ouroboros.consciousness import BackgroundConsciousness
+    import queue
 
-    consciousness = Consciousness(
+    _chat_id = int(OWNER_CHAT_ID) if OWNER_CHAT_ID else None
+    consciousness = BackgroundConsciousness(
         drive_root=DRIVE_ROOT,
-        telegram_client=TG,
-        owner_chat_id=int(OWNER_CHAT_ID) if OWNER_CHAT_ID else None,
-        check_interval_sec=30,
+        repo_dir=pathlib.Path(REPO_DIR),
+        event_queue=queue.Queue(),
+        owner_chat_id_fn=lambda: _chat_id,
     )
     try:
         consciousness.start()
