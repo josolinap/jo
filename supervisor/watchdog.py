@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 
 from supervisor.state import load_state, save_state
 from supervisor.git_ops import get_current_sha
+from ouroboros.experience_indexer import ExperienceIndexer
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class InfrastructureWatchdog:
         self.check_interval = check_interval
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._indexer = ExperienceIndexer(drive_root)
 
     def start(self):
         """Start the watchdog in a background thread."""
@@ -69,7 +71,13 @@ class InfrastructureWatchdog:
                 # Note: we don't auto-restart here (loop.py handles that if it checks expected_sha)
                 # But we log it for the supervisor to see.
 
-        # 3. Budget reporting
+        # 3. Experience Indexing
+        try:
+            self._indexer.rebuild()
+        except Exception as e:
+            log.error("Watchdog: background indexing failed: %s", e)
+
+        # 4. Budget reporting
         # (Reserved for future periodic budget notifications if chat is quiet)
         
         log.debug("Watchdog check complete.")

@@ -383,6 +383,11 @@ def _consolidate_memory(ctx: ToolContext) -> str:
         return f"Error: {e}"
 
 
+def _search_experience(ctx: ToolContext, query: str) -> str:
+    from ouroboros.tools.experience_search import search_experience
+    return search_experience(ctx, query)
+
+
 # ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
@@ -488,6 +493,18 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}, "required": []},
             },
             _consolidate_memory,
+        ),
+        ToolEntry(
+            "search_experience",
+            {
+                "name": "search_experience",
+                "description": (
+                    "Search past activities for relevant history. "
+                    "Use this to find how similar tasks were successful or failed in the past."
+                ),
+                "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+            },
+            _search_experience,
         ),
         ToolEntry(
             "codebase_digest",
