@@ -48,7 +48,7 @@ def ensure_claude_code_cli() -> bool:
 # ----------------------------
 from ouroboros.apply_patch import install as install_apply_patch
 from ouroboros.llm import DEFAULT_LIGHT_MODEL
-from supervisor.state import load_state, save_state
+from supervisor.state import load_state, save_state, append_jsonl
 from supervisor.telegram import TelegramClient
 import supervisor.workers
 
