@@ -197,7 +197,7 @@ When `evolution_mode_enabled`, each cycle is a coherent transformation:
 - `py -m py_compile ouroboros/ supervisor/`
 - `pytest tests/ -q`
 - `ruff check .` (if installed)
-- `python -c "import ouroboros.xxx"`
+- `python -c "import# Ouroboros (v6.5.1)
 - `system_map` to verify tool connections
 - `git status` review
 - Have a rollback plan
