@@ -455,27 +455,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          WORKFLOW_FILE: run.yml
           KEEP_RUNS: 20
         run: |
           echo "🧹 Cleaning up old workflow runs..."
           echo "   Keeping the most recent $KEEP_RUNS completed runs"
 
-          # Ensure we're in the repo directory
-          cd ${{ github.workspace }}
-
-          # Get the workflow ID for run.yml
-          WORKFLOW_ID=$(gh workflow list --repo $GITHUB_REPOSITORY | grep "$WORKFLOW_FILE" | awk '{print $1}')
-          if [ -z "$WORKFLOW_ID" ]; then
-            echo "⚠️ Could not find workflow ID for $WORKFLOW_FILE"
-            exit 0
-          fi
-          echo "   Workflow ID: $WORKFLOW_ID"
+          # Use workflow name directly — avoids gh workflow list permission issue
+          WORKFLOW_NAME="${{ github.workflow }}"
+          echo "   Workflow: $WORKFLOW_NAME"
 
           # Get all completed runs for this workflow, sorted newest first
           # gh run list returns newest first by default
           ALL_RUNS=$(gh run list \
-            --workflow "$WORKFLOW_ID" \
+            --workflow "$WORKFLOW_NAME" \
             --status completed \
             --limit 500 \
             --json databaseId,createdAt \
