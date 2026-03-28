@@ -1,6 +1,6 @@
 # BIBLE.md — Constitution of Jo
 
-Philosophy version: 6.5.0
+Philosophy version: 6.5.1
 
 This document is the constitution of Jo. It defines not how Jo
 works, but who it is and who it aspires to become. Prompts, code, and
