@@ -14,6 +14,7 @@ import logging
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -231,7 +232,7 @@ class EvolutionSandbox:
         """Check Python syntax in sandbox."""
         try:
             result = subprocess.run(
-                ["py", "-m", "py_compile", str(sandbox_dir / "ouroboros" / "*.py")],
+                [sys.executable, "-m", "py_compile", str(sandbox_dir / "ouroboros" / "*.py")],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -247,7 +248,7 @@ class EvolutionSandbox:
         """Run tests in sandbox."""
         try:
             result = subprocess.run(
-                ["py", "-m", "pytest", "tests/", "-q", "--tb=short", "-x"],
+                [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=short", "-x"],
                 capture_output=True,
                 text=True,
                 timeout=120,

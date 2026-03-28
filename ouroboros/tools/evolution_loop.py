@@ -91,7 +91,7 @@ class EvolutionLoop:
         for attempt in range(MAX_RETRIES):
             try:
                 result = subprocess.run(
-                    ["py", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                    ["python3", "-m", "pytest", "tests/", "-q", "--tb=no"],
                     capture_output=True,
                     text=True,
                     timeout=120,

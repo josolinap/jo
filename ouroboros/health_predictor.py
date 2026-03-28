@@ -119,8 +119,10 @@ class HealthPredictor:
         try:
             import subprocess
 
+            import sys
+
             result = subprocess.run(
-                ["py", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=no"],
                 capture_output=True,
                 text=True,
                 timeout=60,

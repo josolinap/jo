@@ -223,6 +223,10 @@ class OuroborosAgent:
                 # Auto-rescue: commit and push
                 auto_committed = False
                 try:
+                    # Remove stale git index.lock from previous crashed operations
+                    index_lock = self.env.repo_dir / ".git" / "index.lock"
+                    if index_lock.exists():
+                        index_lock.unlink(missing_ok=True)
                     # Only stage tracked files (not secrets/notebooks)
                     subprocess.run(["git", "add", "-u"], cwd=str(self.env.repo_dir), timeout=10, check=True)
                     subprocess.run(

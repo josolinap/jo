@@ -597,10 +597,16 @@ def kill_workers() -> None:
     with _queue_lock:
         cleared_running = len(RUNNING)
         for w in WORKERS.values():
-            if w.proc.is_alive():
-                w.proc.terminate()
+            try:
+                if w.proc.is_alive():
+                    w.proc.terminate()
+            except (AssertionError, ValueError):
+                pass
         for w in WORKERS.values():
-            w.proc.join(timeout=5)
+            try:
+                w.proc.join(timeout=5)
+            except (AssertionError, ValueError):
+                pass
         WORKERS.clear()
         RUNNING.clear()
     queue.persist_queue_snapshot(reason="kill_workers")
