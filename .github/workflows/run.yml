@@ -335,13 +335,14 @@ jobs:
           timeout 330m python colab_launcher.py || EXIT_CODE=$?
           EXIT_CODE=${EXIT_CODE:-0}
 
-           if [ "$EXIT_CODE" -eq 124 ]; then
-             echo "✅ Bot ran for 5.5 hours — time limit reached, self-restart will fire."
-           elif [ "$EXIT_CODE" -eq 0 ]; then
-             echo "ℹ️ Bot exited cleanly (code 0)."
-           else
-             echo "⚠️ Bot exited with code $EXIT_CODE."
-           fi
+          if [ "$EXIT_CODE" -eq 124 ]; then
+            echo "✅ Bot ran for 5.5 hours — time limit reached, self-restart will fire."
+          elif [ "$EXIT_CODE" -eq 0 ]; then
+            echo "ℹ️ Bot exited cleanly (code 0)."
+          else
+            echo "⚠️ Bot exited with code $EXIT_CODE."
+            exit "$EXIT_CODE"
+          fi
 
       # -----------------------------------------------------------------------
       # 6.1 Notify owner on failure (before cache save)
