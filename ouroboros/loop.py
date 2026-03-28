@@ -24,7 +24,7 @@ from ouroboros.context import (
     compact_tool_history,
     compact_tool_history_llm,
     auto_summarize_if_needed,
-    smart_context_optimize,
+    # smart_context_optimize imported but never called — removed (bug #16)
 )
 from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
@@ -961,6 +961,12 @@ def run_llm_loop(
         tool_schemas,
     ) = _setup_loop_context(llm, tools, event_queue, task_id)
 
+    # Bug #4: _setup_loop_context always returns active_effort="medium".
+    # Apply the caller-supplied initial_effort here so evolution/review tasks
+    # actually run at "high" effort when requested.
+    if initial_effort and initial_effort != "medium":
+        active_effort = normalize_reasoning_effort(initial_effort, default="medium")
+
     try:
         MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))
     except (ValueError, TypeError):
@@ -1098,7 +1104,7 @@ def run_llm_loop(
                         llm_trace,
                     )
 
-                fallback_progress = f"Fallback: {active_model} -> {fallback_model} after empty response"
+                # Bug #15: fallback_progress was assigned but never used — removed.
                 emit_progress(f"🔄 [Fallback] {active_model} → {fallback_model}")
 
                 msg, fallback_cost = _call_llm_with_retry(
@@ -1154,7 +1160,9 @@ def run_llm_loop(
             try:
                 from ouroboros.temporal_learning import get_learner
 
-                learner = get_learner(repo_dir=drive_root) if drive_root else None
+                # Bug #5: drive_root is ~/.jo_data; passing it as repo_dir caused
+                # path ~/.jo_data/.jo_data/tool_patterns.json. Pass as persistence_path directly.
+                learner = get_learner(persistence_path=drive_root / "tool_patterns.json") if drive_root else None
                 if learner:
                     for tc in tool_calls:
                         fn = tc.get("function", {})

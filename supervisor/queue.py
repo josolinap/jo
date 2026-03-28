@@ -104,18 +104,19 @@ def sort_pending() -> None:
 
 
 def enqueue_task(task: Dict[str, Any], front: bool = False) -> Dict[str, Any]:
-    """Add task to PENDING queue."""
-    t = dict(task)
-    QUEUE_SEQ_COUNTER_REF["value"] += 1
-    seq = QUEUE_SEQ_COUNTER_REF["value"]
-    t.setdefault("priority", _task_priority(str(t.get("type") or "")))
-    _att = t.get("_attempt")
-    t.setdefault("_attempt", int(_att) if _att is not None else 1)
-    t["_queue_seq"] = -seq if front else seq
-    t["queued_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    PENDING.append(t)
-    sort_pending()
-    return t
+    """Add task to PENDING queue. Thread-safe: always called under _queue_lock."""
+    with _queue_lock:
+        t = dict(task)
+        QUEUE_SEQ_COUNTER_REF["value"] += 1
+        seq = QUEUE_SEQ_COUNTER_REF["value"]
+        t.setdefault("priority", _task_priority(str(t.get("type") or "")))
+        _att = t.get("_attempt")
+        t.setdefault("_attempt", int(_att) if _att is not None else 1)
+        t["_queue_seq"] = -seq if front else seq
+        t["queued_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        PENDING.append(t)
+        sort_pending()
+        return t
 
 
 def queue_has_task_type(task_type: str) -> bool:

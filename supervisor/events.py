@@ -129,9 +129,9 @@ def _handle_task_done(evt: Dict[str, Any], ctx: Any) -> None:
 
     if task_id:
         task_data = ctx.RUNNING.pop(str(task_id), {})
-        ctx.RUNNING.pop(str(task_id), None)
     else:
         task_data = {}
+    # Note: second pop removed — key already gone after first pop (bug #12)
     if wid in ctx.WORKERS and ctx.WORKERS[wid].busy_task_id == task_id:
         ctx.WORKERS[wid].busy_task_id = None
     ctx.persist_queue_snapshot(reason="task_done")
@@ -154,7 +154,7 @@ def _handle_task_done(evt: Dict[str, Any], ctx: Any) -> None:
             }
             tmp_file = results_dir / f"{task_id}.json.tmp"
             tmp_file.write_text(json.dumps(result_data, ensure_ascii=False), encoding="utf-8")
-            os.rename(tmp_file, result_file)
+            os.replace(tmp_file, result_file)  # atomic on all platforms, no FileExistsError on Windows
     except Exception as e:
         log.warning("Failed to store task result in events: %s", e)
 
@@ -185,7 +185,9 @@ def _handle_restart_request(evt: Dict[str, Any], ctx: Any) -> None:
             int(st["owner_chat_id"]),
             f"♻️ Restart requested by agent: {evt.get('reason')}",
         )
-    ok, msg = ctx.safe_restart(reason="agent_restart_request", unsynced_policy="rescue_and_reset")
+    # Bug #2: safe_restart is never attached to the workers module — call git_ops directly.
+    from supervisor import git_ops
+    ok, msg = git_ops.safe_restart(reason="agent_restart_request", unsynced_policy="rescue_and_reset")
     if not ok:
         if st.get("owner_chat_id"):
             ctx.send_with_budget(int(st["owner_chat_id"]), f"⚠️ Restart skipped: {msg}")
@@ -194,7 +196,7 @@ def _handle_restart_request(evt: Dict[str, Any], ctx: Any) -> None:
     st2 = ctx.load_state()
     st2["session_id"] = uuid.uuid4().hex
     st2["tg_offset"] = int(st2.get("tg_offset") or st.get("tg_offset") or 0)
-    ctx.save_state(st2)
+    ctx.save_state(st2)  # save_state IS attached to workers module by colab_launcher
     ctx.persist_queue_snapshot(reason="pre_restart_exit")
     # Entry point - kept in root for backward compatibility with GitHub Actions
     launcher = os.path.join(os.getcwd(), "colab_launcher.py")

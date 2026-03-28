@@ -204,11 +204,29 @@ class TemporalToolLearner:
 
 # Global singleton
 _learner: Optional[TemporalToolLearner] = None
+_learner_lock = __import__("threading").Lock()
 
 
-def get_learner(repo_dir: Optional[Path] = None) -> TemporalToolLearner:
+def get_learner(
+    repo_dir: Optional[Path] = None,
+    persistence_path: Optional[Path] = None,
+) -> TemporalToolLearner:
+    """Return global TemporalToolLearner singleton (thread-safe).
+
+    Bug #5 fix: callers can pass persistence_path directly to avoid the
+    legacy repo_dir / ".jo_data" / "tool_patterns.json" double-nesting.
+    Bug #20 fix: init is guarded by a lock so two threads cannot both see
+    _learner is None and create separate instances.
+    """
     global _learner
     if _learner is None:
-        path = repo_dir / ".jo_data" / "tool_patterns.json" if repo_dir else None
-        _learner = TemporalToolLearner(persistence_path=path)
+        with _learner_lock:
+            if _learner is None:  # double-checked locking
+                if persistence_path is not None:
+                    path = persistence_path
+                elif repo_dir is not None:
+                    path = repo_dir / ".jo_data" / "tool_patterns.json"
+                else:
+                    path = None
+                _learner = TemporalToolLearner(persistence_path=path)
     return _learner

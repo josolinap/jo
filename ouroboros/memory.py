@@ -103,12 +103,17 @@ class Memory:
     # --- Load / save (with locking) ---
 
     def load_scratchpad(self) -> str:
-        p = self.scratchpad_path()
-        if p.exists():
-            return read_text(p)
-        default = self._default_scratchpad()
-        write_text(p, default)
-        return default
+        """Load scratchpad with file locking to prevent reading during a concurrent write."""
+        lock_fd = _acquire_file_lock(self._scratchpad_lock_path)
+        try:
+            p = self.scratchpad_path()
+            if p.exists():
+                return read_text(p)
+            default = self._default_scratchpad()
+            write_text(p, default)
+            return default
+        finally:
+            _release_file_lock(self._scratchpad_lock_path, lock_fd)
 
     def save_scratchpad(self, content: str) -> None:
         """Save scratchpad with file locking to prevent race conditions."""

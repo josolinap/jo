@@ -346,6 +346,23 @@ def main():
     supervisor.workers.load_state = load_state
     supervisor.workers.save_state = save_state
 
+    # Attach missing functions needed by event handlers
+    from supervisor.state import update_budget_from_usage
+    from supervisor.queue import (
+        persist_queue_snapshot,
+        enqueue_task,
+        cancel_task_by_id,
+        sort_pending,
+        queue_review_task,
+    )
+
+    supervisor.workers.update_budget_from_usage = update_budget_from_usage
+    supervisor.workers.persist_queue_snapshot = persist_queue_snapshot
+    supervisor.workers.enqueue_task = enqueue_task
+    supervisor.workers.cancel_task_by_id = cancel_task_by_id
+    supervisor.workers.sort_pending = sort_pending
+    supervisor.workers.queue_review_task = queue_review_task
+
     def _shutdown(signum, frame):
         log.info("Shutdown signal received")
         supervisor.workers.kill_workers()

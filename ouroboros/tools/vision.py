@@ -103,22 +103,23 @@ def _vlm_query(ctx: ToolContext, prompt: str, image_url: str = "", image_base64:
 
 def _emit_usage(ctx: ToolContext, usage: Dict[str, Any], model: str) -> None:
     """Emit LLM usage event for budget tracking."""
-    if ctx.event_queue is None:
-        return
-    try:
-        event = {
-            "type": "llm_usage",
-            "model": model,
-            "prompt_tokens": usage.get("prompt_tokens", 0),
-            "completion_tokens": usage.get("completion_tokens", 0),
-            "cached_tokens": usage.get("cached_tokens", 0),
-            "cost": usage.get("cost", 0.0),
-            "task_id": ctx.task_id,
-            "task_type": ctx.current_task_type or "task",
-        }
-        ctx.event_queue.put_nowait(event)
-    except Exception:
-        log.debug("Failed to emit VLM usage event", exc_info=True)
+    event = {
+        "type": "llm_usage",
+        "model": model,
+        "prompt_tokens": usage.get("prompt_tokens", 0),
+        "completion_tokens": usage.get("completion_tokens", 0),
+        "cached_tokens": usage.get("cached_tokens", 0),
+        "cost": usage.get("cost", 0.0),
+        "task_id": ctx.task_id,
+        "task_type": ctx.current_task_type or "task",
+    }
+    if ctx.event_queue is not None:
+        try:
+            ctx.event_queue.put_nowait(event)
+        except Exception:
+            log.debug("Failed to emit VLM usage event", exc_info=True)
+    elif hasattr(ctx, "pending_events"):  # Bug #13: fallback so costs aren't silently dropped
+        ctx.pending_events.append(event)
 
 
 def get_tools() -> List[ToolEntry]:

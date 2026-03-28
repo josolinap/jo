@@ -225,6 +225,8 @@ def load_state() -> Dict[str, Any]:
     state from becoming a competing, stale source of truth.
     """
     lock_fd = acquire_file_lock(STATE_LOCK_PATH)
+    if lock_fd is None:
+        log.warning("load_state: failed to acquire state lock (timeout) — proceeding without lock")
     try:
         st = _load_state_unlocked()
     finally:
@@ -258,6 +260,8 @@ def load_state() -> Dict[str, Any]:
 
 def save_state(st: Dict[str, Any]) -> None:
     lock_fd = acquire_file_lock(STATE_LOCK_PATH)
+    if lock_fd is None:
+        log.warning("save_state: failed to acquire state lock (timeout) — proceeding without lock")
     try:
         _save_state_unlocked(st)
     finally:

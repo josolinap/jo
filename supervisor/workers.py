@@ -22,7 +22,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from supervisor.state import load_state, append_jsonl
+from supervisor.state import load_state, append_jsonl, update_budget_from_usage
 from supervisor import git_ops
 from supervisor.telegram import send_with_budget
 
@@ -284,10 +284,10 @@ def auto_resume_after_restart() -> None:
             restart_msg_parts.append("• Last run: First session")
 
         # Get pending tasks count
-        from supervisor.queue import PENDING, RUNNING
+        from supervisor.queue import PENDING as _PENDING, RUNNING as _RUNNING
 
-        pending_count = len(PENDING) if "PENDING" in dir() else 0
-        running_count = len(RUNNING) if "RUNNING" in dir() else 0
+        pending_count = len(_PENDING)
+        running_count = len(_RUNNING)
         if pending_count > 0 or running_count > 0:
             restart_msg_parts.append(f"• Tasks: {running_count} running, {pending_count} pending")
 

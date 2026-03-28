@@ -162,13 +162,6 @@ class PlanHandler(PhaseHandler):
             duration_ms=duration,
         )
 
-    def _decompose_task(self, task: str) -> List[Dict[str, str]]:
-        return [
-            {"description": "Analyze requirements", "role": "analyzer"},
-            {"description": "Implement changes", "role": "coder"},
-            {"description": "Verify implementation", "role": "reviewer"},
-        ]
-
 
 class ExecuteHandler(PhaseHandler):
     """Phase 3: Execute tools and gather data."""

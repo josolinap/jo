@@ -11,6 +11,7 @@ Forbidden files are never modifiable regardless of proposals.
 from __future__ import annotations
 
 import logging
+import os
 import pathlib
 import shutil
 import subprocess
@@ -231,15 +232,22 @@ class EvolutionSandbox:
     def _check_syntax(self, sandbox_dir: pathlib.Path) -> tuple[bool, str]:
         """Check Python syntax in sandbox."""
         try:
-            result = subprocess.run(
-                [sys.executable, "-m", "py_compile", str(sandbox_dir / "ouroboros" / "*.py")],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=str(sandbox_dir),
-            )
-            if result.returncode != 0:
-                return False, result.stderr[:500]
+            import glob as _glob
+
+            py_files = _glob.glob(str(sandbox_dir / "ouroboros" / "**" / "*.py"), recursive=True)
+            if not py_files:
+                return True, "No .py files found"
+            for f in py_files:
+                result = subprocess.run(
+                    [sys.executable, "-m", "py_compile", f],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    cwd=str(sandbox_dir),
+                )
+                if result.returncode != 0:
+                    rel = os.path.relpath(f, sandbox_dir)
+                    return False, f"{rel}: {result.stderr[:500]}"
             return True, "OK"
         except Exception as e:
             return False, str(e)

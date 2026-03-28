@@ -269,7 +269,7 @@ class HotReloadManager:
             vault_changes = [
                 f
                 for f in dirty_files
-                if "vault/" in f and (f.startswith("??") or f.startswith(" M") or f.startswith(" M"))
+                if "vault/" in f and (f.startswith("??") or f.startswith(" M") or f.startswith("M "))
             ]
 
             # Try to rescue vault changes (most important)

@@ -36,9 +36,9 @@ def _web_search(ctx: ToolContext, query: str) -> str:
 
 def get_tools() -> List[ToolEntry]:
     return [
-        ToolEntry("web_search", {
-            "name": "web_search",
-            "description": "Search the web via OpenAI Responses API. Returns JSON with answer + sources.",
+        ToolEntry("web_search_openai", {
+            "name": "web_search_openai",
+            "description": "Search the web via OpenAI Responses API (requires OPENAI_API_KEY). Returns JSON with answer. Use web_search for the standard multi-engine search.",
             "parameters": {"type": "object", "properties": {
                 "query": {"type": "string"},
             }, "required": ["query"]},

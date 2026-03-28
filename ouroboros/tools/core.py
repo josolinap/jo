@@ -313,7 +313,9 @@ Now write a comprehensive summary:"""
         )
 
         # Track cost in budget system
+        cost = 0.0
         if usage:
+            cost = float(usage.get("cost", 0))
             usage_event = {
                 "type": "llm_usage",
                 "ts": utc_now_iso(),
@@ -343,7 +345,6 @@ Now write a comprehensive summary:"""
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(summary, encoding="utf-8")
 
-        cost = float(usage.get("cost", 0))
         return f"OK: Summarized {len(entries)} messages. Written to memory/dialogue_summary.md. Cost: ${cost:.4f}\n\n{summary[:500]}..."
 
     except Exception as e:

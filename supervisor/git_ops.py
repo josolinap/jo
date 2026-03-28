@@ -76,8 +76,21 @@ def sync_runtime_dependencies() -> None:
     pass
 
 
-def safe_restart() -> None:
-    pass
+def safe_restart(reason: str = "", unsynced_policy: str = "rescue_and_reset") -> tuple:
+    """Pull latest code and prepare for restart. Returns (ok: bool, msg: str)."""
+    try:
+        # Pull latest from remote
+        pull_ok = safe_pull(branch="dev", repo_dir=REPO_DIR)
+        if not pull_ok:
+            return False, "git pull failed"
+        # Run import test to verify code compiles
+        result = import_test()
+        if not result.get("ok"):
+            stderr = str(result.get("stderr", ""))[:200]
+            return False, f"import test failed: {stderr}"
+        return True, "ok"
+    except Exception as e:
+        return False, str(e)[:200]
 
 
 def get_current_sha(repo_dir: Optional[pathlib.Path] = None) -> str:
