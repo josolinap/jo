@@ -48,6 +48,7 @@ def ensure_claude_code_cli() -> bool:
 # ----------------------------
 from ouroboros.apply_patch import install as install_apply_patch
 from ouroboros.llm import DEFAULT_LIGHT_MODEL
+from supervisor.telegram import TelegramClient
 
 # ----------------------------
 # 1) Secrets + runtime config
@@ -241,7 +242,9 @@ def main():
     MODEL_LIGHT = get_cfg("OUROBOROS_MODEL_LIGHT", default="openrouter/free", allow_legacy_secret=True)
 
     BUDGET_REPORT_EVERY_MESSAGES = 10
-    SOFT_TIMEOUT_SEC = max(60, int(get_cfg("OUROBOROS_SOFT_TIMEOUT_SEC", default="600", allow_legacy_secret=True) or "600"))
+    SOFT_TIMEOUT_SEC = max(
+        60, int(get_cfg("OUROBOROS_SOFT_TIMEOUT_SEC", default="600", allow_legacy_secret=True) or "600")
+    )
     HARD_TIMEOUT_SEC = max(
         120, int(get_cfg("OUROBOROS_HARD_TIMEOUT_SEC", default="1800", allow_legacy_secret=True) or "1800")
     )
