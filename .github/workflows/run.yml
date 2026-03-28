@@ -11,6 +11,7 @@ concurrency:
 env:
   HOME: /home/runner
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHONUNBUFFERED: "1"
 
 # Permissions for git push operations (Jo creates tags/commits) and run cleanup
 permissions:
@@ -411,9 +412,17 @@ jobs:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           REPO: ${{ github.repository }}
           BRANCH: dev
+          EXIT_CODE: ${{ steps.bot-run.outputs.exit_code }}
         run: |
           if [ -z "$PAT_TOKEN" ]; then
             echo "⚠️ PAT_TOKEN not set — cron will handle restarts every 2 hours."
+            exit 0
+          fi
+
+          # Don't self-restart if this run was cancelled by a newer run
+          # (the newer run will handle the bot instead)
+          if [ "${{ cancelled() }}" = "true" ]; then
+            echo "ℹ️ This run was cancelled by a newer run — skipping self-restart."
             exit 0
           fi
 
