@@ -30,3 +30,26 @@ def search_experience(ctx: ToolContext, query: str) -> str:
     except Exception as e:
         log.error(f"search_experience tool failed: {e}")
         return f"Error searching experience: {e}"
+
+
+def get_tools() -> list:
+    """Return tools for registration."""
+    from ouroboros.tools.registry import ToolEntry
+
+    return [
+        ToolEntry(
+            name="search_experience",
+            schema={
+                "name": "search_experience",
+                "description": "Search the experience index for relevant past activities. Use this to find how similar tasks were handled in the past.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"},
+                    },
+                    "required": ["query"],
+                },
+            },
+            handler=search_experience,
+        )
+    ]

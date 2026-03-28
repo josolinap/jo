@@ -19,11 +19,9 @@ log = logging.getLogger(__name__)
 _runtime_tools_cache: dict = {}
 
 
-def _get_runtime_tools_dir() -> Path:
-    """Get the runtime tools directory."""
-    import os
-
-    return Path(os.environ.get("REPO_DIR", ".")) / "runtime_tools"
+def _get_runtime_tools_dir(ctx: ToolContext) -> Path:
+    """Get the runtime tools directory from context."""
+    return ctx.repo_path("runtime_tools")
 
 
 def _load_runtime_tool_spec(tool_path: Path) -> Optional[dict]:
@@ -100,9 +98,16 @@ def _create_tool_handler(spec: dict) -> Any:
     return handler
 
 
-def get_tools() -> List[ToolEntry]:
+def get_tools(ctx: Optional[ToolContext] = None) -> List[ToolEntry]:
     """Auto-discover and return runtime tools as ToolEntry objects."""
-    runtime_dir = _get_runtime_tools_dir()
+    # Use provided context or look for REPO_DIR env
+    if ctx:
+        runtime_dir = _get_runtime_tools_dir(ctx)
+    else:
+        import os
+        repo_dir = Path(os.environ.get("REPO_DIR", "."))
+        runtime_dir = repo_dir / "runtime_tools"
+
     if not runtime_dir.exists():
         return []
 

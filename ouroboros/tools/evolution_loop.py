@@ -90,11 +90,13 @@ class EvolutionLoop:
 
         for attempt in range(MAX_RETRIES):
             try:
+                import sys
                 result = subprocess.run(
-                    ["python3", "-m", "pytest", "tests/", "-q", "--tb=no"],
+                    [sys.executable, "-m", "pytest", str(self.ctx.repo_path("tests")), "-q", "--tb=no"],
                     capture_output=True,
                     text=True,
                     timeout=120,
+                    cwd=self.ctx.repo_dir,
                 )
                 output = (result.stdout + result.stderr).splitlines()
                 summary = output[-1] if output else ""
@@ -123,7 +125,7 @@ class EvolutionLoop:
                 import pathlib
 
                 # Check all Python files in ouroboros directory
-                py_files = list(pathlib.Path("ouroboros").rglob("*.py"))
+                py_files = list(self.ctx.repo_path("ouroboros").rglob("*.py"))
                 syntax_errors = []
                 for py_file in py_files:
                     try:
@@ -150,7 +152,7 @@ class EvolutionLoop:
             import pathlib
 
             max_lines = 1000
-            for py_file in pathlib.Path("ouroboros").rglob("*.py"):
+            for py_file in self.ctx.repo_path("ouroboros").rglob("*.py"):
                 try:
                     lines = len(py_file.read_text(encoding="utf-8").splitlines())
                     if lines > max_lines:

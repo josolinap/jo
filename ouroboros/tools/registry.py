@@ -130,9 +130,12 @@ class ToolRegistry:
     export get_tools() -> List[ToolEntry].
     """
 
-    def __init__(self, repo_dir: pathlib.Path, drive_root: pathlib.Path):
+    def __init__(self, repo_dir: pathlib.Path | str, drive_root: pathlib.Path | str):
         self._entries: Dict[str, ToolEntry] = {}
-        self._ctx = ToolContext(repo_dir=repo_dir, drive_root=drive_root)
+        # Ensure we always use Path objects
+        rd = pathlib.Path(repo_dir) if isinstance(repo_dir, str) else repo_dir
+        dr = pathlib.Path(drive_root) if isinstance(drive_root, str) else drive_root
+        self._ctx = ToolContext(repo_dir=rd, drive_root=dr)
         self._load_modules()
 
     def _load_modules(self) -> None:

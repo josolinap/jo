@@ -249,3 +249,49 @@ def _vault_search_semantic(
     except Exception as e:
         log.error(f"Vault semantic search failed: {e}")
         return json.dumps({"error": f"Vault semantic search failed: {str(e)}", "results": []})
+
+
+def get_tools() -> list:
+    """Return tools for registration."""
+    from ouroboros.tools.registry import ToolEntry
+
+    return [
+        ToolEntry(
+            name="vault_incremental_index",
+            schema={
+                "name": "vault_incremental_index",
+                "description": "Run an incremental CocoIndex flow to index vault notes into a vector store for semantic search.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "full_reindex": {
+                            "type": "boolean",
+                            "description": "If true, delete existing index and rebuild from scratch",
+                            "default": False,
+                        },
+                    },
+                },
+            },
+            handler=_vault_incremental_index,
+        ),
+        ToolEntry(
+            name="vault_search_semantic",
+            schema={
+                "name": "vault_search_semantic",
+                "description": "Search vault notes using semantic similarity. High precision retrieval for complex concepts.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query text"},
+                        "top_k": {
+                            "type": "integer",
+                            "description": "Number of results to return",
+                            "default": 5,
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+            handler=_vault_search_semantic,
+        ),
+    ]

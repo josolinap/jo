@@ -21,12 +21,18 @@ CODE_DIRS = {"ouroboros/", "supervisor/", "tools/"}
 def _get_changed_files_since_last_push(ctx: ToolContext) -> Set[str]:
     """Get files changed in the most recent commit(s) that haven't been pushed."""
     try:
-        diff = run_cmd(["git", "diff", "--name-only", "HEAD~1..HEAD"], cwd=ctx.repo_dir)
+        # Get all files changed relative to the safe branch (dev) or last pushed state
+        # Better: check all unpushed commits on the current branch
+        branch = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ctx.repo_dir).strip()
+        diff = run_cmd(["git", "log", f"origin/{branch}..{branch}", "--name-only", "--oneline"], cwd=ctx.repo_dir)
         committed = run_cmd(["git", "diff", "--cached", "--name-only"], cwd=ctx.repo_dir).strip()
         files = set()
-        for f in diff.strip().split("\n"):
-            if f.strip():
-                files.add(f.strip())
+        for line in diff.strip().split("\n"):
+            # skip the oneline part
+            if " " in line: 
+                continue
+            if line.strip():
+                files.add(line.strip())
         for f in committed.split("\n"):
             if f.strip():
                 files.add(f.strip())
