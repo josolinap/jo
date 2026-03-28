@@ -317,8 +317,14 @@ jobs:
           PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright
 
         run: |
-          # Install Playwright browsers (needed by some tools, skipped if unused)
-          python -m playwright install chromium --with-deps 2>/dev/null || true
+          # Install Playwright browser binary (deps only needed on first run)
+          if [ -d /tmp/ms-playwright ]; then
+            echo "Playwright cache hit — skipping --with-deps (saves ~60s of apt-get)"
+            python -m playwright install chromium 2>/dev/null || true
+          else
+            echo "No Playwright cache — installing with system deps"
+            python -m playwright install chromium --with-deps 2>/dev/null || true
+          fi
 
           # Configure git identity for tag/commit operations
           git config --global user.name "Jo"
