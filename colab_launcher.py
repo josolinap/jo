@@ -322,22 +322,80 @@ def main():
     supervisor.workers.spawn_workers(MAX_WORKERS)
     supervisor.workers.auto_resume_after_restart()
 
-    log.info("Workers initialized and started. Bot is running.")
+    log.info("Workers initialized. Starting main loop.")
 
-    # Keep main thread alive while workers process messages
-    import signal
+    # Main loop: poll Telegram, enqueue tasks, process events
+    from supervisor.events import dispatch_event
+    from supervisor.queue import enqueue_task
+
+    event_q = supervisor.workers.get_event_q()
+    update_offset = 0
+    _last_health_check = time.time()
 
     def _shutdown(signum, frame):
         log.info("Shutdown signal received")
         supervisor.workers.kill_workers()
         sys.exit(0)
 
+    import signal
+
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
     while True:
-        time.sleep(60)
-        supervisor.workers.ensure_workers_healthy()
+        try:
+            # Poll Telegram for new messages (long-poll with 5s timeout)
+            updates = TG.get_updates(offset=update_offset, timeout=5)
+            for upd in updates:
+                update_offset = upd["update_id"] + 1
+                msg = upd.get("message") or upd.get("edited_message") or {}
+                chat_id = msg.get("chat", {}).get("id")
+                text = msg.get("text", "")
+                if chat_id and text:
+                    task = {
+                        "id": uuid.uuid4().hex[:8],
+                        "type": "task",
+                        "chat_id": int(chat_id),
+                        "text": text,
+                    }
+                    enqueue_task(task)
+                    supervisor.workers.assign_tasks()
+                    log.info("Enqueued task from chat %s: %s", chat_id, text[:50])
+        except Exception as e:
+            log.debug("Telegram poll error: %s", e)
+            time.sleep(1)
+
+        # Process all pending events from workers
+        while True:
+            try:
+                evt = event_q.get_nowait()
+            except Exception:
+                break
+            # Build a minimal ctx for dispatch_event
+            from supervisor.telegram import send_with_budget as _swb, log_chat as _lc
+
+            _ctx = type(
+                "ctx",
+                (),
+                {
+                    "DRIVE_ROOT": DRIVE_ROOT,
+                    "append_jsonl": append_jsonl,
+                    "update_budget_from_usage": lambda u: None,
+                    "load_state": load_state,
+                    "save_state": save_state,
+                    "send_with_budget": _swb,
+                    "log_chat": _lc,
+                    "TG": TG,
+                    "get_event_q": lambda: event_q,
+                    "consciousness": consciousness,
+                },
+            )()
+            dispatch_event(evt, _ctx)
+
+        # Periodic health check (every 5 min)
+        if time.time() - _last_health_check > 300:
+            supervisor.workers.ensure_workers_healthy()
+            _last_health_check = time.time()
 
 
 if __name__ == "__main__":
