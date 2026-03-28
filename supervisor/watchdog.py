@@ -9,10 +9,13 @@ import logging
 import threading
 import json
 import pathlib
-from typing import Optional, Dict, Any
+import datetime
+from typing import Optional, Dict, Any, List
 
 from supervisor.state import load_state, save_state
 from supervisor.git_ops import get_current_sha
+from supervisor.sys_ops import safe_replace
+from supervisor.health_reporter import HealthReporter
 from ouroboros.experience_indexer import ExperienceIndexer
 
 log = logging.getLogger(__name__)
@@ -25,6 +28,7 @@ class InfrastructureWatchdog:
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._indexer = ExperienceIndexer(drive_root)
+        self._reporter = HealthReporter(drive_root)
 
     def start(self):
         """Start the watchdog in a background thread."""
@@ -77,10 +81,71 @@ class InfrastructureWatchdog:
         except Exception as e:
             log.error("Watchdog: background indexing failed: %s", e)
 
-        # 4. Budget reporting
+        # 4. Task Monitoring (detect stuck workers)
+        try:
+            self._monitor_tasks(st)
+        except Exception as e:
+            log.error("Watchdog: task monitoring failed: %s", e)
+
+        # 5. Storage Cleanup
+        try:
+            self._cleanup_storage()
+        except Exception as e:
+            log.error("Watchdog: storage cleanup failed: %s", e)
+
+        # 6. Periodic Heartbeat
+        try:
+            heartbeat = self._reporter.generate_heartbeat()
+            log.info("Watchdog Heartbeat:\n%s", heartbeat)
+        except Exception as e:
+            log.error("Watchdog: heartbeat generation failed: %s", e)
+
+        # 6. Budget reporting
         # (Reserved for future periodic budget notifications if chat is quiet)
         
         log.debug("Watchdog check complete.")
+
+    def _monitor_tasks(self, state: Dict[str, Any]):
+        """Check for workers that haven't made progress in > 2 hours."""
+        running = state.get("running_tasks", {})
+        now = time.time()
+        for task_id, info in running.items():
+            start_ts = info.get("start_ts")
+            if start_ts:
+                # Convert ISO string or use timestamp
+                try:
+                    dt = datetime.datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
+                    elapsed = (datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds()
+                    if elapsed > 7200: # 2 hours
+                        log.warning("Watchdog: Task %s likely stuck (running for %.1fh)", task_id, elapsed/3600)
+                        # Future: auto-restart stuck worker could be added here
+                except:
+                    continue
+
+    def _cleanup_storage(self):
+        """Delete old /tmp files and rotate logs if too large."""
+        # 1. /tmp cleanup
+        tmp_dir = self.drive_root / "tmp"
+        if tmp_dir.exists():
+            now = time.time()
+            for f in tmp_dir.iterdir():
+                if f.is_file() and (now - f.stat().st_mtime) > 259200: # 3 days
+                    try:
+                        f.unlink()
+                        log.info("Watchdog: cleaned up old tmp file %s", f.name)
+                    except:
+                        pass
+
+        # 2. Log rotation (basic)
+        events_path = self.drive_root / "logs" / "events.jsonl"
+        if events_path.exists() and events_path.stat().st_size > 10 * 1024 * 1024: # 10MB
+            log.info("Watchdog: rotating events.jsonl (size > 10MB)")
+            backup_path = events_path.with_suffix(".jsonl.old")
+            try:
+                # Naive rotation: just keep one backup
+                safe_replace(events_path, backup_path)
+            except:
+                pass
 
     def _restore_from_last_good(self):
         last_good_path = self.drive_root / "state" / "state.last_good.json"
