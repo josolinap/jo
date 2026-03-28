@@ -407,22 +407,14 @@ jobs:
       # Includes retry logic to handle transient API failures.
       # -----------------------------------------------------------------------
       - name: Self-restart — trigger next run
-        if: always()
+        if: success() || failure()
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           REPO: ${{ github.repository }}
           BRANCH: dev
-          EXIT_CODE: ${{ steps.bot-run.outputs.exit_code }}
         run: |
           if [ -z "$PAT_TOKEN" ]; then
             echo "⚠️ PAT_TOKEN not set — cron will handle restarts every 2 hours."
-            exit 0
-          fi
-
-          # Don't self-restart if this run was cancelled by a newer run
-          # (the newer run will handle the bot instead)
-          if [ "${{ cancelled() }}" = "true" ]; then
-            echo "ℹ️ This run was cancelled by a newer run — skipping self-restart."
             exit 0
           fi
 
@@ -467,7 +459,7 @@ jobs:
       # Deletes completed runs older than the most recent 20 for this workflow
       # -----------------------------------------------------------------------
       - name: Cleanup old workflow runs
-        if: always()
+        if: success() || failure()
         timeout-minutes: 3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
