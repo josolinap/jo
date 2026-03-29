@@ -61,6 +61,53 @@ def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
     return begin_part + separator + end_part
 
 
+def _summarize_tool_result(fn_name: str, result: str) -> str:
+    """Code Mode: Summarize tool results instead of raw output.
+
+    Inspired by Claude Code - returns structured summary, not raw data.
+    This keeps context clean and improves model independence.
+    """
+    result_str = str(result)
+
+    if fn_name in ("repo_read", "drive_read"):
+        lines = result_str.split("\n")
+        return f"[FILE] {len(lines)} lines, {len(result_str)} chars - First 500: {result_str[:500]}"
+
+    if fn_name in ("repo_list", "drive_list"):
+        items = result_str.strip().split("\n")
+        return f"[LIST] {len(items)} items - {', '.join(items[:10])}" + (
+            f" ... +{len(items) - 10} more" if len(items) > 10 else ""
+        )
+
+    if fn_name == "web_search":
+        return f"[SEARCH] {result_str[:500]}..." if len(result_str) > 500 else f"[SEARCH] {result_str}"
+
+    if fn_name == "codebase_digest":
+        return f"[CODEBASE] {result_str[:300]}..." if len(result_str) > 300 else f"[CODEBASE] {result_str}"
+
+    if fn_name == "grep_content":
+        lines = [l for l in result_str.split("\n") if l.strip()]
+        return f"[GREP] {len(lines)} matches - {', '.join(lines[:5])}"
+
+    if fn_name == "vault_search":
+        return f"[VAULT] {result_str[:400]}..." if len(result_str) > 400 else f"[VAULT] {result_str}"
+
+    if fn_name == "codebase_analyze":
+        try:
+            data = json.loads(result_str)
+            return f"[GRAPH] {data.get('nodes', 0)} nodes, {data.get('edges', 0)} edges"
+        except:
+            return f"[ANALYZE] {result_str[:200]}..."
+
+    if "error" in result_str.lower() or result_str.startswith("!"):
+        return f"[ERROR] {result_str[:300]}"
+
+    if len(result_str) > 300:
+        return f"[SUMMARY] {result_str[:300]}... ({len(result_str)} chars total)"
+
+    return result_str
+
+
 def _execute_single_tool(
     tools: Any,
     tc: Dict[str, Any],

@@ -46,6 +46,19 @@ USE_CODE_NORMALIZATION = os.environ.get("OUROBOROS_NORMALIZE_CODE", "1") == "1"
 
 log = logging.getLogger(__name__)
 
+
+def _preflight_checks(budget_remaining_usd: Optional[float] = None) -> Tuple[bool, str]:
+    """Pre-flight checks BEFORE LLM call - deterministic governance.
+
+    Returns (should_continue, reason_if_not)
+    This is model-independent: doesn't ask LLM, just checks state.
+    """
+    if budget_remaining_usd is not None and budget_remaining_usd <= 0:
+        return False, "Budget exhausted - cannot proceed"
+
+    return True, ""
+
+
 # Initialize pipeline components (used when USE_STRUCTURED_PIPELINE is enabled)
 _pipeline = None
 
@@ -246,7 +259,7 @@ def _run_hallucination_analysis(
                 )
     except Exception:
         log.debug("Unexpected error", exc_info=True)  # Don't block response delivery on analysis failure
-    
+
     return content
 
 
@@ -254,7 +267,7 @@ def _run_semantic_synthesis(content: str) -> Optional[str]:
     """Run semantic synthesis on final response if enabled."""
     if not USE_SEMANTIC_SYNTHESIS:
         return None
-    
+
     try:
         from ouroboros.synthesis import synthesize_task
 
@@ -270,7 +283,7 @@ def _run_semantic_synthesis(content: str) -> Optional[str]:
             )
     except Exception:
         log.debug("Semantic synthesis failed", exc_info=True)
-    
+
     return None
 
 
@@ -278,7 +291,7 @@ def _run_task_evaluation(content: str) -> Optional[str]:
     """Run task evaluation on final response if enabled."""
     if not USE_TASK_EVALUATION:
         return None
-    
+
     try:
         from ouroboros.eval import evaluate_task
 
@@ -297,7 +310,7 @@ def _run_task_evaluation(content: str) -> Optional[str]:
             )
     except Exception:
         log.debug("Task evaluation failed", exc_info=True)
-    
+
     return None
 
 
@@ -305,6 +318,7 @@ def _persist_ontology_tracker() -> None:
     """Persist ontology tracker at end of task."""
     try:
         from ouroboros.codebase_graph import save_ontology_tracker
+
         save_ontology_tracker()
     except Exception:
         log.debug("Failed to save ontology tracker", exc_info=True)
@@ -327,7 +341,7 @@ def _handle_text_response(
 
         # PIPELINE_PLAN.md Feature 3: Semantic Synthesis Pass
         synthesis_summary = _run_semantic_synthesis(content)
-        
+
         # PIPELINE_PLAN.md Feature 5: Eval Framework / Quality Scoring
         eval_report_str = _run_task_evaluation(content)
 
@@ -987,6 +1001,10 @@ def run_llm_loop(
     try:
         while True:
             round_idx += 1
+
+            should_continue, reason = _preflight_checks(budget_remaining_usd)
+            if not should_continue:
+                return f"⚠️ {reason}", {}, {"error": reason}
 
             if round_idx > MAX_ROUNDS:
                 finish_reason = (
