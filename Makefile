@@ -14,8 +14,9 @@ test-v:
 # Run codebase health check (requires ouroboros importable)
 health:
 	python3 -c "from ouroboros.review import collect_sections, compute_complexity_metrics; \
-		import pathlib, json; \
-		sections, stats = collect_sections(pathlib.Path('.'), pathlib.Path('/home/runner/.jo_data')); \
+		import pathlib, json, os; \
+		data_root = os.environ.get('DATA_ROOT', os.path.expanduser('~/.jo_data')); \
+		sections, stats = collect_sections(pathlib.Path('.'), pathlib.Path(data_root)); \
 		m = compute_complexity_metrics(sections); \
 		print(json.dumps(m, indent=2, default=str))"
 
@@ -26,7 +27,7 @@ verify:
 	@python3 -m py_compile supervisor/*.py 2>/dev/null && echo "OK: All Supervisor modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
 	@python3 -m py_compile ouroboros/tools/*.py 2>/dev/null && echo "OK: All Tools modules compile" || { echo "FAIL: Syntax errors found"; exit 1; }
 	@echo "Verifying version sync..."
-	@python3 -c "from pathlib import Path; v=Path('VERSION').read_text().strip(); r=Path('README.md').read_text(); assert v in r, f'Version mismatch: VERSION={v} not in README'; assert v == Path('pyproject.toml').read_text().split('version = ')[1].split('\\n')[0].strip('\"'), f'Version mismatch: VERSION={v} != pyproject.toml'; print(f'OK: Version sync ({v})')"
+	@python3 -c "from pathlib import Path; v=Path('VERSION').read_text(encoding='utf-8').strip(); r=Path('README.md').read_text(encoding='utf-8'); assert v in r, f'Version mismatch: VERSION={v} not in README'; assert v == Path('pyproject.toml').read_text(encoding='utf-8').split('version = ')[1].split('\\n')[0].strip('\"'), f'Version mismatch: VERSION={v} != pyproject.toml'; print(f'OK: Version sync ({v})')"
 	@echo "Running tests..."
 	@python3 -m pytest tests/ -q --tb=short
 	@echo "Verification complete."

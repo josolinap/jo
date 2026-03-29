@@ -20,6 +20,7 @@ from ouroboros.experience_indexer import ExperienceIndexer
 
 log = logging.getLogger(__name__)
 
+
 class InfrastructureWatchdog:
     def __init__(self, drive_root: pathlib.Path, repo_dir: pathlib.Path, check_interval: int = 300):
         self.drive_root = drive_root
@@ -54,7 +55,7 @@ class InfrastructureWatchdog:
     def perform_health_check(self):
         """Analyze system state and auto-fix drift."""
         log.debug("Watchdog: performing health check...")
-        
+
         # 1. State integrity check
         try:
             st = load_state()
@@ -102,7 +103,7 @@ class InfrastructureWatchdog:
 
         # 6. Budget reporting
         # (Reserved for future periodic budget notifications if chat is quiet)
-        
+
         log.debug("Watchdog check complete.")
 
     def _monitor_tasks(self, state: Dict[str, Any]):
@@ -116,10 +117,11 @@ class InfrastructureWatchdog:
                 try:
                     dt = datetime.datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
                     elapsed = (datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds()
-                    if elapsed > 7200: # 2 hours
-                        log.warning("Watchdog: Task %s likely stuck (running for %.1fh)", task_id, elapsed/3600)
+                    if elapsed > 7200:  # 2 hours
+                        log.warning("Watchdog: Task %s likely stuck (running for %.1fh)", task_id, elapsed / 3600)
                         # Future: auto-restart stuck worker could be added here
-                except:
+                except (ValueError, TypeError) as e:
+                    log.debug("Failed to parse task timestamp: %s", e)
                     continue
 
     def _cleanup_storage(self):
@@ -129,29 +131,29 @@ class InfrastructureWatchdog:
         if tmp_dir.exists():
             now = time.time()
             for f in tmp_dir.iterdir():
-                if f.is_file() and (now - f.stat().st_mtime) > 259200: # 3 days
+                if f.is_file() and (now - f.stat().st_mtime) > 259200:  # 3 days
                     try:
                         f.unlink()
                         log.info("Watchdog: cleaned up old tmp file %s", f.name)
-                    except:
-                        pass
+                    except (OSError, PermissionError) as e:
+                        log.debug("Failed to clean up tmp file: %s", e)
 
         # 2. Log rotation (basic)
         events_path = self.drive_root / "logs" / "events.jsonl"
-        if events_path.exists() and events_path.stat().st_size > 10 * 1024 * 1024: # 10MB
+        if events_path.exists() and events_path.stat().st_size > 10 * 1024 * 1024:  # 10MB
             log.info("Watchdog: rotating events.jsonl (size > 10MB)")
             backup_path = events_path.with_suffix(".jsonl.old")
             try:
                 # Naive rotation: just keep one backup
                 safe_replace(events_path, backup_path)
-            except:
-                pass
+            except (OSError, IOError) as e:
+                log.warning("Failed to rotate events.jsonl: %s", e)
 
     def _restore_from_last_good(self):
         last_good_path = self.drive_root / "state" / "state.last_good.json"
         if last_good_path.exists():
             try:
-                with open(last_good_path, 'r') as f:
+                with open(last_good_path, "r") as f:
                     good_st = json.load(f)
                 save_state(good_st)
                 log.info("Watchdog: successfully restored state from state.last_good.json")
