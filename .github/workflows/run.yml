@@ -455,48 +455,50 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
-      # 8. Cleanup: Delete old completed workflow runs (keep last 20)
-      # Deletes completed runs older than the most recent 20 for this workflow
+      # 8. Cleanup: Delete old completed workflow runs (keep non-scheduled last 5)
       # -----------------------------------------------------------------------
       - name: Cleanup old workflow runs
         if: success() || failure()
-        timeout-minutes: 3
+        timeout-minutes: 10
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          KEEP_RUNS: 20
-          MAX_DELETE: 30
+          KEEP_RUNS: 5
+          MAX_DELETE: 100
         run: |
           echo "🧹 Cleaning up old workflow runs..."
-          echo "   Keeping the most recent $KEEP_RUNS completed runs"
+          echo "   Keeping the most recent $KEEP_RUNS completed non-scheduled runs"
+          echo "   ALL scheduled runs are kept."
 
-          # Use workflow name directly — avoids gh workflow list permission issue
           WORKFLOW_NAME="${{ github.workflow }}"
-          echo "   Workflow: $WORKFLOW_NAME"
-
-          # Get completed runs for this workflow, sorted newest first
+          
+          # Get COMPLETED runs for this workflow
           ALL_RUNS=$(gh run list \
             --workflow "$WORKFLOW_NAME" \
             --status completed \
-            --limit 200 \
-            --json databaseId,createdAt \
-            --repo $GITHUB_REPOSITORY 2>/dev/null)
+            --limit 1000 \
+            --json databaseId,event \
+            --repo $GITHUB_REPOSITORY)
 
           if [ -z "$ALL_RUNS" ] || [ "$ALL_RUNS" = "[]" ]; then
             echo "ℹ️ No completed runs found."
             exit 0
           fi
 
-          TOTAL_RUNS=$(echo "$ALL_RUNS" | jq length)
-          echo "   Total completed runs: $TOTAL_RUNS"
+          # Select non-scheduled runs only
+          # jq filters out "schedule" events and keeps manual/push runs
+          NON_SCHEDULED_RUNS=$(echo "$ALL_RUNS" | jq -c '.[] | select(.event != "schedule")')
+          TOTAL_NON_SCHEDULED=$(echo "$NON_SCHEDULED_RUNS" | jq -s length)
+          
+          echo "   Total non-scheduled completed runs: $TOTAL_NON_SCHEDULED"
 
-          if [ "$TOTAL_RUNS" -le "$KEEP_RUNS" ]; then
-            echo "ℹ️ Only $TOTAL_RUNS runs found, keeping all."
+          if [ "$TOTAL_NON_SCHEDULED" -le "$KEEP_RUNS" ]; then
+            echo "ℹ️ Only $TOTAL_NON_SCHEDULED non-scheduled runs found, keeping all."
             exit 0
           fi
 
-          # Get runs to delete, capped at MAX_DELETE to avoid timeouts
-          RUNS_TO_DELETE=$(echo "$ALL_RUNS" | jq -r ".[$KEEP_RUNS:][].databaseId" | head -n "$MAX_DELETE")
+          # Get runs to delete (skipping the first $KEEP_RUNS), capped at MAX_DELETE
+          RUNS_TO_DELETE=$(echo "$NON_SCHEDULED_RUNS" | jq -s -r ".[$KEEP_RUNS:][].databaseId" | head -n "$MAX_DELETE")
 
           if [ -z "$RUNS_TO_DELETE" ]; then
             echo "ℹ️ No old runs to delete."

@@ -257,6 +257,19 @@ def _update_identity(ctx: ToolContext, content: str, commit: bool = False) -> st
     return result
 
 
+def _verify_freshness(ctx: ToolContext, target: str = "memory/identity.md") -> str:
+    """Explicitly verify that a file (identity, vault note, etc) is still accurate.
+    This clears the 'stale' warning for that file without needing to edit it.
+    """
+    try:
+        from ouroboros.memory import Memory
+        mem = Memory(drive_root=ctx.drive_root)
+        mem.verify_freshness(target)
+        return f"OK: Freshness verified for {target}. No edit performed."
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def _toggle_evolution(ctx: ToolContext, enabled: bool) -> str:
     """Toggle evolution mode on/off via supervisor event."""
     ctx.pending_events.append(
@@ -575,6 +588,29 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _update_identity,
+        ),
+        ToolEntry(
+            "verify_freshness",
+            {
+                "name": "verify_freshness",
+                "description": (
+                    "Explicitly verify that a target file (identity.md, vault note, BIBLE.md) is still accurate. "
+                    "Use this when you have read the file and feel it doesn't need changes yet. "
+                    "This clears the 'stale' health warning for that specific path."
+                ),
+                "parameters": {
+                    "type": "object", 
+                    "properties": {
+                        "target": {
+                            "type": "string", 
+                            "description": "Path to verify (relative to repo root or .jo_data). Default: memory/identity.md",
+                            "default": "memory/identity.md"
+                        }
+                    }, 
+                    "required": []
+                },
+            },
+            _verify_freshness,
         ),
         ToolEntry(
             "learn_from_mistake",

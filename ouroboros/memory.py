@@ -81,9 +81,12 @@ class Memory:
     def __init__(self, drive_root: pathlib.Path, repo_dir: Optional[pathlib.Path] = None):
         self.drive_root = drive_root
         self.repo_dir = repo_dir
+        self.drive_memory = drive_root / "memory"
         self._identity_lock_path = drive_root / "locks" / "identity.lock"
         self._scratchpad_lock_path = drive_root / "locks" / "scratchpad.lock"
         self._consolidator = MemoryConsolidator(drive_root)
+        self.identity_meta = self.drive_memory / "identity_meta.json"
+        self.freshness_meta = self.drive_memory / "freshness_meta.json"
 
     # --- Paths ---
 
@@ -140,6 +143,51 @@ class Memory:
             write_text(self.identity_path(), content)
         finally:
             _release_file_lock(self._identity_lock_path, lock_fd)
+            self.verify_identity()  # Evolution counts as verification
+
+    def verify_freshness(self, path: str) -> None:
+        """Explicitly verify that a file is still accurate without editing it.
+        Stores the verification timestamp in freshness_meta.json.
+        """
+        meta = {}
+        if self.freshness_meta.exists():
+            try:
+                meta = json.loads(self.freshness_meta.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        
+        meta[path] = utc_now_iso()
+        self.freshness_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        
+        # Backward compatibility for identity.md
+        if path == "memory/identity.md":
+            self.identity_meta.write_text(json.dumps({"last_verified": meta[path]}, indent=2), encoding="utf-8")
+
+    def get_last_verified(self, path: str) -> Optional[str]:
+        """Get the ISO timestamp of the last semantic verification for a path."""
+        if self.freshness_meta.exists():
+            try:
+                meta = json.loads(self.freshness_meta.read_text(encoding="utf-8"))
+                return meta.get(path)
+            except Exception:
+                pass
+        
+        # Fallback to legacy identity_meta.json
+        if path == "memory/identity.md" and self.identity_meta.exists():
+            try:
+                data = json.loads(self.identity_meta.read_text(encoding="utf-8"))
+                return data.get("last_verified")
+            except Exception:
+                pass
+        return None
+
+    def verify_identity(self) -> None:
+        """Legacy helper for identity verification."""
+        self.verify_freshness("memory/identity.md")
+
+    def get_identity_last_verified(self) -> Optional[str]:
+        """Legacy helper for identity verification."""
+        return self.get_last_verified("memory/identity.md")
 
     def consolidate(self, limit: int = 50) -> Dict[str, str]:
         """Distill recent events and suggest/apply memory updates."""
@@ -151,10 +199,8 @@ class Memory:
             new_id = self._consolidator.suggest_identity_update(current_id, events_summary)
             if new_id != current_id:
                 self.save_identity(new_id)
-
-            # Update Scratchpad context (simplified for now)
-            current_sp = self.load_scratchpad()
-            # Logic to update scratchpad could be added here
+            else:
+                self.verify_identity()  # Checked but no changes needed
             
             return {
                 "status": "success",

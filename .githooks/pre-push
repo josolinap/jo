@@ -26,14 +26,23 @@ echo "✓ Syntax OK"
 
 # Critical imports check
 echo "Checking critical imports..."
-$PYTHON -c "from ouroboros.tools.registry import ToolRegistry" 2>/dev/null || { echo "✗ ToolRegistry import failed"; exit 1; }
-$PYTHON -c "from ouroboros.vault_manager import VaultManager" 2>/dev/null || { echo "✗ VaultManager import failed"; exit 1; }
-$PYTHON -c "from supervisor.state import init" 2>/dev/null || { echo "✗ supervisor.state import failed"; exit 1; }
+$PYTHON -c "from ouroboros.tools.registry import ToolRegistry" || { echo "✗ ToolRegistry import failed"; exit 1; }
+$PYTHON -c "from ouroboros.vault_manager import VaultManager" || { echo "✗ VaultManager import failed"; exit 1; }
+$PYTHON -c "from supervisor.state import init" || { echo "✗ supervisor.state import failed"; exit 1; }
 echo "✓ Imports OK"
 
-# Run smoke tests
+# Run smoke tests - ensures fundamental loop logic is sound
 echo "Running smoke tests..."
-$PYTHON -m pytest tests/test_smoke.py -q --tb=short 2>/dev/null || { echo "✗ Smoke tests failed"; exit 1; }
+
+# Handle Windows vs Unix path separator for PYTHONPATH
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    SEP=";"
+else
+    SEP=":"
+fi
+export PYTHONPATH="${PYTHONPATH}${SEP}."
+
+$PYTHON -m pytest tests/test_smoke.py -q --tb=short || { echo "✗ Smoke tests failed"; exit 1; }
 echo "✓ Tests OK"
 
 # Optional: Run ruff linting if available

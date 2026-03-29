@@ -91,11 +91,33 @@ def build_health_invariants(env: Any) -> str:
         if not identity_path.exists():
             checks.append("WARN: MISSING IDENTITY: identity.md not found, will be auto-created")
         else:
-            age_hours = (time.time() - identity_path.stat().st_mtime) / 3600
-            if age_hours > 8:
-                checks.append(f"WARNING: STALE IDENTITY: identity.md last updated {age_hours:.0f}h ago")
+            # Check both file mtime (evolution) and meta last_verified (check-in)
+            mtime = identity_path.stat().st_mtime
+            age_hours_mtime = (time.time() - mtime) / 3600
+            
+            # Try to get semantic verification time
+            last_ver_iso = None
+            try:
+                from ouroboros.memory import Memory
+                mem = Memory(drive_root=env.drive_root)
+                last_ver_iso = mem.get_identity_last_verified()
+            except Exception:
+                pass
+            
+            if last_ver_iso:
+                import datetime
+                last_ver_dt = datetime.datetime.fromisoformat(last_ver_iso.replace("Z", "+00:00"))
+                age_hours_ver = (datetime.datetime.now(datetime.timezone.utc) - last_ver_dt).total_seconds() / 3600
+                age_hours = min(age_hours_mtime, age_hours_ver)
             else:
-                checks.append("OK: identity.md recent")
+                age_hours = age_hours_mtime
+
+            if age_hours > 24: # Increased threshold for semantic check
+                checks.append(f"WARNING: STALE IDENTITY: identity.md last verified {age_hours:.0f}h ago")
+            elif age_hours > 8:
+                checks.append(f"INFO: identity.md needs check-in ({age_hours:.0f}h since last verification)")
+            else:
+                checks.append("OK: identity.md fresh")
     except Exception:
         log.debug("Health check failed: identity awareness", exc_info=True)
 
@@ -252,6 +274,38 @@ def build_health_invariants(env: Any) -> str:
                     checks.append(f"OK: vault overview fresh (HEAD={current_sha[:8]})")
     except Exception:
         log.debug("Health check failed: vault staleness", exc_info=True)
+
+    # 8b. General Vault Freshness
+    try:
+        from ouroboros.memory import Memory
+        mem = Memory(drive_root=env.drive_root)
+        
+        critical_notes = [
+            "vault/concepts/codebase_overview.md",
+            "vault/concepts/minimalism.md",
+            "vault/concepts/agency.md",
+            "BIBLE.md"
+        ]
+        
+        for note_path_str in critical_notes:
+            note_path = env.repo_path(note_path_str)
+            if note_path.exists():
+                mtime = note_path.stat().st_mtime
+                age_hours_mtime = (time.time() - mtime) / 3600
+                
+                last_ver_iso = mem.get_last_verified(note_path_str)
+                if last_ver_iso:
+                    import datetime
+                    last_ver_dt = datetime.datetime.fromisoformat(last_ver_iso.replace("Z", "+00:00"))
+                    age_hours_ver = (datetime.datetime.now(datetime.timezone.utc) - last_ver_dt).total_seconds() / 3600
+                    age_hours = min(age_hours_mtime, age_hours_ver)
+                else:
+                    age_hours = age_hours_mtime
+                
+                if age_hours > 72: # 3 days threshold for general vault notes
+                    checks.append(f"INFO: VAULT STALE: {note_path_str} last verified {age_hours:.0f}h ago")
+    except Exception:
+        log.debug("Health check failed: general vault freshness", exc_info=True)
 
     # 9. Drift detection
     try:

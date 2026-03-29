@@ -36,8 +36,10 @@ def _list_dir(root: pathlib.Path, rel: str, max_entries: int = 500) -> List[str]
 
 
 def _repo_read(ctx: ToolContext, path: str) -> str:
+    from ouroboros.utils import read_text
     try:
-        result = read_text(ctx.repo_path(path))
+        abs_path = ctx.repo_path(path)
+        result = read_text(abs_path)
         _auto_track_verification(ctx, "repo_read", path)
         from ouroboros.normalizer import get_normalizer
 
@@ -47,9 +49,54 @@ def _repo_read(ctx: ToolContext, path: str) -> str:
             result = normalizer.normalize(result, file_type)
         return result
     except FileNotFoundError:
-        return f"⚠️ File not found: {path}"
+        # Self-healing: try to find the file
+        suggestion = _heuristic_file_search(ctx, path)
+        if suggestion:
+            return f"⚠️ File not found: {path}. Did you mean '{suggestion}'?"
+        return f"⚠️ File not found: {path}. Use repo_list if you're unsure of the path."
     except Exception as e:
         return f"⚠️ Error reading {path}: {e}"
+
+
+def _heuristic_file_search(ctx: ToolContext, path: str) -> Optional[str]:
+    """Autonomous search for a missing file to prevent task failure."""
+    try:
+        filename = os.path.basename(path)
+        if not filename:
+            return None
+        
+        # 1. Check parent directory for similar names (typos)
+        parent = os.path.dirname(path) or "."
+        parent_abs = ctx.repo_path(parent)
+        if parent_abs.exists() and parent_abs.is_dir():
+            from difflib import get_close_matches
+            files = [f.name for f in parent_abs.iterdir() if f.is_file()]
+            matches = get_close_matches(filename, files, n=1, cutoff=0.7)
+            if matches:
+                return os.path.join(parent, matches[0]).replace("\\", "/")
+
+        # 2. Check for case-insensitive match in parent
+        if parent_abs.exists() and parent_abs.is_dir():
+            for f in parent_abs.iterdir():
+                if f.is_file() and f.name.lower() == filename.lower():
+                    return os.path.join(parent, f.name).replace("\\", "/")
+
+        # 3. Wider search via git ls-files if available
+        try:
+            from ouroboros.utils import run_cmd
+            # Only search for the filename globally if it's unique enough (at least 4 chars)
+            if len(filename) >= 4:
+                # Use git ls-files to find all occurrences of the filename
+                all_files = run_cmd(["git", "ls-files", f"*{filename}"], cwd=ctx.repo_dir).splitlines()
+                if all_files:
+                    # Return the shortest match or the one with similar directory structure
+                    return all_files[0].replace("\\", "/")
+        except Exception:
+            pass
+
+        return None
+    except Exception:
+        return None
 
 
 def _auto_track_verification(ctx: ToolContext, method: str, target: str) -> None:
@@ -376,7 +423,8 @@ def _consolidate_memory(ctx: ToolContext) -> str:
         mem = Memory(drive_root=ctx.drive_root, repo_dir=ctx.repo_dir)
         res = mem.consolidate()
         if res["status"] == "success":
-            return f"Memory consolidated. Events summarized: {res['events_distilled']}. Identity updated: {res['identity_updated']}."
+            status = "Refined" if res["identity_updated"] else "Verified"
+            return f"Memory consolidated ({status}). Events summarized: {res['events_distilled']}."
         else:
             return f"Consolidation failed: {res.get('message')}"
     except Exception as e:

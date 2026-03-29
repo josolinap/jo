@@ -1,7 +1,10 @@
 [project]
 name = "ouroboros"
 version = "6.5.1"
-description = "Self-creating agent"
+description = "A self-creating AI agent that evolves its own code."
+authors = [
+    { name = "Anton Razzhigaev", email = "jomonsolinap@gmail.com" }
+]
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
