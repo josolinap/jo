@@ -998,6 +998,19 @@ def run_llm_loop(
     _recent_responses: List[str] = []
     _consecutive_drift_rounds: int = 0
 
+    # Auto-select model based on task complexity (round 1 only)
+    _task_text_for_model_selection = ""
+    for m in messages:
+        if m.get("role") == "user":
+            _task_text_for_model_selection = m.get("content", "")[:200]
+            break
+
+    from ouroboros.auto_system import get_model_for_task
+
+    _selected_model, complexity = get_model_for_task(_task_text_for_model_selection, _tool_call_count)
+    if _selected_model and complexity in ("fast", "deep"):
+        active_model = _selected_model
+
     try:
         while True:
             round_idx += 1

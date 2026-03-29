@@ -115,6 +115,30 @@ def _execute_single_tool(
     task_id: str = "",
     traceability: Any = None,
 ) -> Dict[str, Any]:
+    # Sandbox check - enforce read-only mode if enabled
+    sandbox_readonly = tc.get("sandbox_read_only", False)
+    write_tools = {
+        "repo_write_commit",
+        "repo_commit_push",
+        "code_edit",
+        "vault_write",
+        "vault_create",
+        "drive_write",
+        "delete_file",
+        "move_file",
+        "copy_file",
+    }
+
+    if sandbox_readonly and fn_name in write_tools:
+        return {
+            "tool_call_id": tool_call_id,
+            "fn_name": fn_name,
+            "result": f"⚠️ SANDBOX_BLOCKED: {fn_name} is write-tool but sandbox mode is read-only",
+            "is_error": True,
+            "args_for_log": {},
+            "is_code_tool": is_code_tool,
+        }
+
     fn_name = tc["function"]["name"]
     tool_call_id = tc["id"]
     is_code_tool = fn_name in tools.CODE_TOOLS
