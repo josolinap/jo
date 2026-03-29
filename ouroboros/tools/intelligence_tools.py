@@ -839,4 +839,89 @@ def get_tools() -> List[ToolEntry]:
             },
             _record_tool_combination,
         ),
+        ToolEntry(
+            "blind_validate",
+            {
+                "name": "blind_validate",
+                "description": "Validate code using deterministic checks (syntax, security, imports). No LLM opinion - avoids implementation bias.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": "string", "description": "Code to validate"},
+                        "language": {
+                            "type": "string",
+                            "default": "python",
+                            "description": "Language: python, javascript",
+                        },
+                    },
+                    "required": ["code"],
+                },
+            },
+            _blind_validate,
+        ),
     ]
+
+
+def _blind_validate(ctx: ToolContext, code: str = "", language: str = "python") -> str:
+    """Validate code without LLM bias using deterministic checks.
+
+    This tool provides model-independent validation:
+    - Syntax check (not opinion)
+    - Security patterns
+    - Import validation
+    - Basic correctness
+
+    Args:
+        code: The code to validate
+        language: Programming language (python, javascript, etc.)
+
+    Returns:
+        Validation results with pass/fail and specific issues
+    """
+    import ast
+    import re
+
+    issues = []
+    passed = True
+
+    if not code:
+        return "No code provided for validation"
+
+    if language == "python":
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            issues.append(f"Syntax error: {e}")
+            passed = False
+        except ValueError as e:
+            issues.append(f"Value error: {e}")
+            passed = False
+
+        dangerous = ["eval(", "exec(", "os.system(", "subprocess.call(", "shell=True"]
+        for d in dangerous:
+            if d in code:
+                issues.append(f"Security warning: {d} is potentially dangerous")
+                passed = False
+
+        if "import " in code and "from " not in code:
+            imports = re.findall(r"^import\s+(\w+)", code, re.MULTILINE)
+            for imp in imports[:5]:
+                try:
+                    __import__(imp)
+                except ImportError:
+                    issues.append(f"Import '{imp}' not found")
+
+    elif language == "javascript":
+        if "eval(" in code:
+            issues.append("Security: eval() is dangerous")
+            passed = False
+        if "innerHTML" in code:
+            issues.append("Security: innerHTML can cause XSS")
+            passed = False
+
+    if passed and not issues:
+        return "✅ PASSED: Code validation successful (deterministic checks)"
+    elif passed:
+        return f"⚠️ PASSED with warnings:\n- " + "\n- ".join(issues)
+    else:
+        return f"❌ FAILED:\n- " + "\n- ".join(issues)
