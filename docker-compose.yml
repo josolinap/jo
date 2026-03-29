@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  jo:
+    build: .
+    container_name: jo-agent
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - DATA_ROOT=/app/data
+      - REPO_DIR=/app
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - jo_data:/app/data
+      - ./memory:/app/memory:ro
+      - ./vault:/app/vault:ro
+      - ./constitution.json:/app/constitution.json:ro
+      - ./BIBLE.md:/app/BIBLE.md:ro
+      - ./.jo_protected:/app/.jo_protected:ro
+    working_dir: /app
+    command: python colab_launcher.py
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  jo_data:
+    driver: local
