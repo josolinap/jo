@@ -61,7 +61,7 @@ def main():
         print(f"Warning: version check failed: {e}", file=sys.stderr)
 
     # 2. Module line limits
-    max_lines = constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1600)
+    max_lines = constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1000)
     for module_dir in ["ouroboros", "supervisor"]:
         dir_path = repo / module_dir
         if dir_path.exists():
