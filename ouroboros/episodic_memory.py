@@ -110,6 +110,18 @@ class EpisodicMemory:
         if len(self._episodes) > self._max:
             self._episodes = self._episodes[-self._max :]
 
+        # Bridge: feed successful episodes into hybrid memory for semantic search
+        if success:
+            try:
+                from ouroboros.hybrid_memory import get_hybrid_memory
+
+                hm = get_hybrid_memory(self._storage_path.parent.parent)
+                if hm:
+                    fact_text = f"{decision}: {action} → {outcome}"
+                    hm.add_message("system", fact_text[:1000])
+            except Exception:
+                pass
+
         return episode
 
     def recall(

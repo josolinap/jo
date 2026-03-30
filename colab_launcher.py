@@ -285,6 +285,13 @@ def main():
     # Setup storage paths
     DRIVE_ROOT, REPO_DIR = _setup_paths()
 
+    # Initialize configuration manager (reads config/default.yaml + overrides)
+    from ouroboros.config_manager import get_config_manager
+
+    _config = get_config_manager(REPO_DIR)
+    MAX_WORKERS = int(_config.get("workers.max_workers", MAX_WORKERS))
+    SOFT_TIMEOUT_SEC = int(_config.get("workers.soft_timeout_sec", SOFT_TIMEOUT_SEC))
+
     # Git constants
     BRANCH_DEV, BRANCH_STABLE, REMOTE_URL = _setup_git_constants(GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
 

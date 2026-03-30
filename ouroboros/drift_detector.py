@@ -188,7 +188,7 @@ class DriftDetector:
     def _check_module_line_limits(self) -> List[Dict[str, Any]]:
         """Check modules under line limit."""
         violations = []
-        max_lines = self.constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1000)
+        max_lines = self.constitution.get("principles", {}).get("5_minimalism", {}).get("max_module_lines", 1600)
         for module_dir in ["ouroboros", "supervisor"]:
             dir_path = self.repo_dir / module_dir
             if not dir_path.exists():

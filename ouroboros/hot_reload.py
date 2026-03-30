@@ -26,6 +26,7 @@ SOFT_RELOAD_DIRS: Set[str] = {
     "memory/",
     "docs/",
     "prompts/",
+    "config/",
     "README.md",
     ".github/",
     ".gitignore",
@@ -190,6 +191,20 @@ class HotReloadManager:
                 # Full restart needed for code changes
                 self._exit_for_restart(current_sha, hard)
             elif soft:
+                # Reload config if config files changed
+                config_changes = [f for f in soft if f.startswith("config/")]
+                if config_changes:
+                    try:
+                        from ouroboros.config_manager import get_config_manager
+
+                        cm = get_config_manager(self.repo_dir)
+                        if cm.reload_if_changed():
+                            log.info("Configuration reloaded after config file changes")
+                            if self.on_vault_change:
+                                self.on_vault_change("Configuration reloaded")
+                    except Exception as e:
+                        log.debug("Config reload failed: %s", e)
+
                 # Notify about vault/doc changes
                 notification = notify_model_of_changes(soft)
                 if notification and self.on_vault_change:

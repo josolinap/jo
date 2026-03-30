@@ -227,6 +227,21 @@ def _build_vault_context(env: Any, task_text: str) -> str:
         return ""
 
 
+def _build_hybrid_memory_context(env: Any, task_text: str) -> str:
+    """Retrieve relevant facts from hybrid memory for context injection."""
+    try:
+        from ouroboros.hybrid_memory import get_hybrid_memory
+
+        hm = get_hybrid_memory(env.drive_root)
+        if hm is None:
+            return ""
+
+        return hm.retrieve(task_text)
+    except Exception:
+        log.debug("Hybrid memory retrieval failed", exc_info=True)
+        return ""
+
+
 def _build_recent_commits_section(repo_dir: pathlib.Path, limit: int = 10) -> str:
     """Build recent git commits section for restart continuity."""
     try:
@@ -349,6 +364,20 @@ def build_llm_messages(
         vault_ctx = _build_vault_context(env, task_text)
         if vault_ctx:
             dynamic_parts.append(vault_ctx)
+
+    # Hybrid memory — record user message + retrieve relevant facts
+    if task_text:
+        try:
+            from ouroboros.hybrid_memory import get_hybrid_memory
+
+            hm = get_hybrid_memory(env.drive_root)
+            if hm:
+                hm.add_message("user", task_text)
+        except Exception:
+            log.debug("Hybrid memory recording failed", exc_info=True)
+        memory_ctx = _build_hybrid_memory_context(env, task_text)
+        if memory_ctx:
+            dynamic_parts.append(memory_ctx)
 
     dynamic_parts.extend(_build_recent_sections(memory, env, task_id=task.get("id", "")))
 
@@ -595,74 +624,6 @@ def compact_tool_history(messages: list, keep_recent: int = 6) -> list:
         result.append(msg)
 
     return result
-
-
-def create_isolated_context(
-    task: str,
-    relevant_files: Optional[List[str]] = None,
-    max_context_tokens: int = 4000,
-) -> List[Dict[str, Any]]:
-    """Create an isolated context for sub-agent execution.
-
-    Inspired by DeerFlow's isolated sub-agent context approach.
-    Creates a fresh context with only the task and relevant files,
-    not the full conversation history.
-
-    Args:
-        task: The task description for the sub-agent
-        relevant_files: List of file paths to include in context
-        max_context_tokens: Maximum tokens for context
-
-    Returns:
-        List of messages for the sub-agent
-    """
-    import pathlib
-
-    messages = []
-
-    # Add system message with task context
-    system_msg = {
-        "role": "system",
-        "content": (
-            f"You are a sub-agent working on a specific task. "
-            f"Focus only on this task. Do not reference previous conversations.\n\n"
-            f"TASK: {task}"
-        ),
-    }
-    messages.append(system_msg)
-
-    # Add relevant file contents if provided
-    if relevant_files:
-        file_contents = []
-        for file_path in relevant_files[:5]:  # Limit to 5 files
-            try:
-                path = pathlib.Path(file_path)
-                if path.exists() and path.is_file():
-                    content = path.read_text(encoding="utf-8", errors="ignore")
-                    # Truncate long files
-                    if len(content) > 2000:
-                        content = content[:1000] + "\n... (truncated) ...\n" + content[-1000:]
-                    file_contents.append(f"=== {file_path} ===\n{content}")
-            except Exception:
-                continue
-
-        if file_contents:
-            context_msg = {
-                "role": "user",
-                "content": (
-                    f"Here are the relevant files for your task:\n\n"
-                    + "\n\n".join(file_contents)
-                    + f"\n\nNow complete this task: {task}"
-                ),
-            }
-            messages.append(context_msg)
-        else:
-            # No files, just give the task
-            messages.append({"role": "user", "content": task})
-    else:
-        messages.append({"role": "user", "content": task})
-
-    return messages
 
 
 def summarize_completed_task(
@@ -937,77 +898,6 @@ def _get_context_token_count(messages: List[Dict[str, Any]]) -> int:
         return estimate_tokens(str(content)) + 6
 
     return sum(_estimate_msg_tokens(m) for m in messages)
-
-
-def _summarize_chat_history(drive_root: pathlib.Path, keep_recent: int = 50) -> Optional[str]:
-    """Summarize older chat history, returning a compact summary string.
-
-    Reads chat.jsonl, summarizes older messages (beyond keep_recent),
-    and returns a summary. Returns None if not enough history to summarize.
-    """
-    try:
-        chat_path = drive_root / "memory" / "chat.jsonl"
-        if not chat_path.exists():
-            return None
-
-        lines = chat_path.read_text(encoding="utf-8").strip().split("\n")
-        if len(lines) <= keep_recent + 10:
-            return None  # Not enough history to summarize
-
-        # Parse messages
-        recent_lines = lines[-keep_recent:] if len(lines) > keep_recent else lines
-        older_lines = lines[: len(lines) - keep_recent] if len(lines) > keep_recent else []
-
-        if not older_lines:
-            return None
-
-        # Extract key info from older messages
-        older_messages = []
-        for line in older_lines:
-            try:
-                msg = json.loads(line)
-                direction = msg.get("direction", "?")
-                text = msg.get("text", "")[:300]  # Truncate for prompt
-                if text:
-                    prefix = "Owner:" if direction == "in" else "Jo:"
-                    older_messages.append(f"{prefix} {text}")
-            except Exception:
-                continue
-
-        if not older_messages:
-            return None
-
-        # Build summary prompt
-        history_text = "\n".join(older_messages[:100])  # Limit to recent 100
-        prompt = (
-            "Summarize this conversation history into key points:\n"
-            "- What did the owner ask about?\n"
-            "- What did Jo do or say?\n"
-            "- Any important decisions or conclusions?\n"
-            "Keep it concise (max 500 words).\n\n"
-            f"Conversation:\n{history_text}"
-        )
-
-        # Call light model to summarize
-        from ouroboros.llm import LLMClient, DEFAULT_LIGHT_MODEL
-
-        light_model = os.environ.get("OUROBOROS_MODEL_LIGHT") or DEFAULT_LIGHT_MODEL
-        client = LLMClient()
-        resp_msg, _usage = client.chat(
-            messages=[{"role": "user", "content": prompt}],
-            model=light_model,
-            reasoning_effort="low",
-            max_tokens=1024,
-        )
-        summary = resp_msg.get("content", "").strip()
-        if summary:
-            log.info(f"Auto-summarized {len(older_messages)} chat messages")
-            return summary
-
-    except Exception:
-        log.debug("Failed to summarize chat history", exc_info=True)
-
-    return None
 
 
 def auto_summarize_if_needed(

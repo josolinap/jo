@@ -227,8 +227,23 @@ class OuroborosAgent:
                     index_lock = self.env.repo_dir / ".git" / "index.lock"
                     if index_lock.exists():
                         index_lock.unlink(missing_ok=True)
-                    # Only stage tracked files (not secrets/notebooks)
-                    subprocess.run(["git", "add", "-u"], cwd=str(self.env.repo_dir), timeout=10, check=True)
+                    # Only stage specific modified tracked files (not all with -u)
+                    files_to_stage = []
+                    for f in dirty_files:
+                        status = f[:2] if len(f) >= 2 else ""
+                        if status in (" M", "M ", "MM"):
+                            path = f[3:].strip() if len(f) > 3 else ""
+                            if path:
+                                files_to_stage.append(path)
+                    if not files_to_stage:
+                        return {"dirty_files": dirty_files, "auto_committed": False, "issues": len(dirty_files)}
+                    for fpath in files_to_stage:
+                        subprocess.run(
+                            ["git", "add", fpath],
+                            cwd=str(self.env.repo_dir),
+                            timeout=10,
+                            check=True,
+                        )
                     subprocess.run(
                         ["git", "commit", "-m", "auto-rescue: uncommitted changes detected on startup"],
                         cwd=str(self.env.repo_dir),

@@ -24,7 +24,6 @@ from ouroboros.context import (
     compact_tool_history,
     compact_tool_history_llm,
     auto_summarize_if_needed,
-    # smart_context_optimize imported but never called — removed (bug #16)
 )
 from ouroboros.response_analyzer import analyze_response, get_analyzer
 from ouroboros.utils import (
@@ -773,12 +772,13 @@ def _setup_loop_context(
     tools: ToolRegistry,
     event_queue: Optional[queue.Queue],
     task_id: str,
+    initial_effort: str = "medium",
 ) -> Tuple[str, str, Dict[str, Any], Dict[str, Any], _StatefulToolExecutor, Any, set, int, List[Dict[str, Any]]]:
     """Initialize core loop context and state."""
     global _quality_feedback_injected
 
     active_model = llm.default_model()
-    active_effort = "medium"  # Will be overridden by initial_effort parameter
+    active_effort = normalize_reasoning_effort(initial_effort, default="medium")
 
     llm_trace: Dict[str, Any] = {"assistant_notes": [], "tool_calls": []}
     accumulated_usage: Dict[str, Any] = {}
@@ -974,13 +974,7 @@ def run_llm_loop(
         _owner_msg_seen,
         max_retries,
         tool_schemas,
-    ) = _setup_loop_context(llm, tools, event_queue, task_id)
-
-    # Bug #4: _setup_loop_context always returns active_effort="medium".
-    # Apply the caller-supplied initial_effort here so evolution/review tasks
-    # actually run at "high" effort when requested.
-    if initial_effort and initial_effort != "medium":
-        active_effort = normalize_reasoning_effort(initial_effort, default="medium")
+    ) = _setup_loop_context(llm, tools, event_queue, task_id, initial_effort=initial_effort)
 
     try:
         MAX_ROUNDS = max(1, int(os.environ.get("OUROBOROS_MAX_ROUNDS", "200")))

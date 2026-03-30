@@ -177,68 +177,6 @@ class LocalLLMClient:
         return msg, usage
 
 
-class HuggingFaceLLMClient:
-    """Hugging Face Serverless Inference API wrapper."""
-
-    def __init__(self):
-        self._base_url = "https://router.huggingface.co/v1/"
-        self._api_key = os.environ.get("HUGGINGFACE_API_KEY", "")
-        self._model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
-        self._client = None
-
-    def _get_client(self):
-        if self._client is None:
-            from openai import OpenAI
-
-            self._client = OpenAI(
-                base_url=self._base_url,
-                api_key=self._api_key,
-            )
-        return self._client
-
-    def chat(
-        self,
-        messages: List[Dict[str, Any]],
-        model: str,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        reasoning_effort: str = "medium",
-        max_tokens: int = 16384,
-        tool_choice: str = "auto",
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Single LLM call to Hugging Face. Returns: (response_message_dict, usage_dict)."""
-        client = self._get_client()
-
-        # Hugging Face serverless API doesn't support complex reasoning parameters or tools the same way sometimes,
-        # but the standard Chat Completion bits work.
-        kwargs: Dict[str, Any] = {
-            "model": model or self._model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-        }
-
-        # HF Inference API support for tools depends on the specific model
-        if tools:
-            kwargs["tools"] = tools
-            kwargs["tool_choice"] = tool_choice
-
-        resp = client.chat.completions.create(**kwargs)
-        resp_dict = resp.model_dump()
-
-        usage = resp_dict.get("usage") or {}
-        choices = resp_dict.get("choices") or [{}]
-        msg = (choices[0] if choices else {}).get("message") or {}
-
-        usage["cost"] = 0.0
-
-        # Detect empty response (no content and no tool calls)
-        tool_calls = msg.get("tool_calls") or []
-        content = msg.get("content")
-        if not tool_calls and (not content or not content.strip()):
-            raise ValueError("Hugging Face returned an empty response")
-
-        return msg, usage
-
-
 class LLMClient:
     """LLM client with provider support (OpenRouter or local vLLM)."""
 
@@ -352,27 +290,8 @@ class LLMClient:
                 raise ValueError("OpenRouter returned an empty response")
 
             return msg, usage
-        except Exception as e:
-            # Fallback to HuggingFace if API key is configured
-            hf_key = os.environ.get("HUGGINGFACE_API_KEY", "")
-            if hf_key:
-                log.warning(f"OpenRouter failed, attempting HuggingFace fallback: {e}")
-                try:
-                    from ouroboros.llm import HuggingFaceLLMClient
-
-                    hf_client = HuggingFaceLLMClient()
-                    fallback_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-Coder-32B-Instruct")
-                    return hf_client.chat(
-                        messages=messages,
-                        model=fallback_model,
-                        tools=tools,
-                        reasoning_effort=reasoning_effort,
-                        max_tokens=max_tokens,
-                        tool_choice=tool_choice,
-                    )
-                except Exception as hf_error:
-                    log.error(f"HuggingFace fallback also failed: {hf_error}")
-            raise  # Re-raise original error if no fallback or fallback failed
+        except Exception:
+            raise  # Re-raise — no fallback provider
 
     def _chat_openrouter(
         self,
@@ -456,7 +375,7 @@ class LLMClient:
         self,
         prompt: str,
         images: List[Dict[str, Any]],
-        model: str = "openrouter/free",
+        model: str = "",
         max_tokens: int = 1024,
         reasoning_effort: str = "low",
     ) -> Tuple[str, Dict[str, Any]]:
@@ -468,13 +387,15 @@ class LLMClient:
             images: List of image dicts. Each dict must have either:
                 - {"url": "https://..."} — for URL images
                 - {"base64": "<b64>", "mime": "image/png"} — for base64 images
-            model: VLM-capable model ID
+            model: VLM-capable model ID (uses default_model if empty)
             max_tokens: Max response tokens
             reasoning_effort: Effort level
 
         Returns:
             (text_response, usage_dict)
         """
+        if not model:
+            model = self.default_model()
         # Build multipart content
         content: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
         for img in images:

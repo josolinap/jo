@@ -101,7 +101,13 @@ class InfrastructureWatchdog:
         except Exception as e:
             log.error("Watchdog: heartbeat generation failed: %s", e)
 
-        # 6. Budget reporting
+        # 7. Drift detection
+        try:
+            self._run_drift_check()
+        except Exception as e:
+            log.error("Watchdog: drift detection failed: %s", e)
+
+        # 8. Budget reporting
         # (Reserved for future periodic budget notifications if chat is quiet)
 
         log.debug("Watchdog check complete.")
@@ -159,3 +165,19 @@ class InfrastructureWatchdog:
                 log.info("Watchdog: successfully restored state from state.last_good.json")
             except Exception as e:
                 log.error("Watchdog: critical failure - could not restore from last good state: %s", e)
+
+    def _run_drift_check(self):
+        """Run drift detection against constitution and baseline."""
+        try:
+            from ouroboros.drift_detector import DriftDetector
+
+            detector = DriftDetector(self.repo_dir, self.drive_root)
+            report = detector.run_all_checks()
+            if report.get("total_issues", 0) > 0:
+                log.warning("Drift detected: %d issues", report["total_issues"])
+                # Save drift report for visibility
+                report_path = self.drive_root / "state" / "drift_report.json"
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        except Exception as e:
+            log.debug("Drift check failed: %s", e)

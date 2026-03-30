@@ -37,3 +37,8 @@ context:
 logging:
   suppress_progress: true
   log_level: "INFO"
+
+memory:
+  hybrid_enabled: true
+  session_size: 50
+  retrieve_top_k: 5

@@ -11,6 +11,7 @@ from datetime import datetime
 
 log = logging.getLogger(__name__)
 
+
 class MemoryConsolidator:
     def __init__(self, drive_root: pathlib.Path):
         self.drive_root = drive_root
@@ -25,14 +26,20 @@ class MemoryConsolidator:
 
         important_events = []
         try:
-            with open(self.events_path, 'r', encoding='utf-8') as f:
+            with open(self.events_path, "r", encoding="utf-8") as f:
                 # Read lines from end (naive but works for small/mid logs)
                 lines = f.readlines()
                 for line in reversed(lines[-limit:]):
                     try:
                         ev = json.loads(line)
                         etype = ev.get("type")
-                        if etype in ("task_done", "task_error", "worker_boot", "startup_verification", "restart_verify"):
+                        if etype in (
+                            "task_done",
+                            "task_error",
+                            "worker_boot",
+                            "startup_verification",
+                            "restart_verify",
+                        ):
                             important_events.append(ev)
                     except:
                         continue
@@ -52,7 +59,9 @@ class MemoryConsolidator:
             elif etype == "task_error":
                 summary_parts.append(f"- [{ts}] Task FAILED: {ev.get('task_id')} - {ev.get('error')[:100]}")
             elif etype == "worker_boot":
-                summary_parts.append(f"- [{ts}] System RESTARTED (PID {ev.get('pid')}) on branch {ev.get('git_branch')}")
+                summary_parts.append(
+                    f"- [{ts}] System RESTARTED (PID {ev.get('pid')}) on branch {ev.get('git_branch')}"
+                )
             elif etype == "startup_verification":
                 issues = ev.get("issues_count", 0)
                 summary_parts.append(f"- [{ts}] Startup Check: {issues} issue(s) detected")
@@ -64,9 +73,11 @@ class MemoryConsolidator:
         Produce a prompt or a direct string for updating the identity.
         Currently returns the 'Current State' section update.
         """
-        now = datetime.utcnow().strftime("%Y-%m-%d")
+        from datetime import timezone
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         new_state = f"## Current State ({now})\n\n**Events since last consolidation:**\n{events_summary}\n"
-        
+
         # Naive replacement logic for the 'Current State' section
         if "## Current State" in current_identity:
             parts = current_identity.split("## Current State")

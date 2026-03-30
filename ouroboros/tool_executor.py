@@ -115,6 +115,10 @@ def _execute_single_tool(
     task_id: str = "",
     traceability: Any = None,
 ) -> Dict[str, Any]:
+    fn_name = tc["function"]["name"]
+    tool_call_id = tc["id"]
+    is_code_tool = fn_name in tools.CODE_TOOLS
+
     # Sandbox check - enforce read-only mode if enabled
     sandbox_readonly = tc.get("sandbox_read_only", False)
     write_tools = {
@@ -138,10 +142,6 @@ def _execute_single_tool(
             "args_for_log": {},
             "is_code_tool": is_code_tool,
         }
-
-    fn_name = tc["function"]["name"]
-    tool_call_id = tc["id"]
-    is_code_tool = fn_name in tools.CODE_TOOLS
 
     try:
         args = json.loads(tc["function"]["arguments"] or "{}")
