@@ -43,6 +43,7 @@ USE_SEMANTIC_SYNTHESIS = os.environ.get("OUROBOROS_SYNTHESIS", "0") == "1"
 USE_TASK_GRAPH = os.environ.get("OUROBOROS_TASK_GRAPH", "0") == "1"
 USE_TASK_EVALUATION = os.environ.get("OUROBOROS_EVAL", "0") == "1"
 USE_CODE_NORMALIZATION = os.environ.get("OUROBOROS_NORMALIZE_CODE", "1") == "1"
+USE_DSPY = os.environ.get("OUROBOROS_DSPY", "0") == "1"
 
 log = logging.getLogger(__name__)
 

@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 from ouroboros.tools.registry import ToolEntry, ToolContext
 from ouroboros.evolution_strategy import EvolutionStrategy, CycleRecord
 from ouroboros.tools.intelligence_tools import _get_self_analysis as get_self_analysis_func
+from ouroboros.confidence import ConfidenceScorer
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +55,9 @@ class EvolutionLoop:
         self.cycles: List[EvolutionCycle] = []
         self.enabled = True
         self._strategy = EvolutionStrategy()
+        self._scorer = ConfidenceScorer(
+            drive_root=pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
+        )
 
     def identify_issues(self) -> List[str]:
         """Identify areas for improvement with retry logic."""
@@ -91,6 +95,7 @@ class EvolutionLoop:
         for attempt in range(MAX_RETRIES):
             try:
                 import sys
+
                 result = subprocess.run(
                     [sys.executable, "-m", "pytest", str(self.ctx.repo_path("tests")), "-q", "--tb=no"],
                     capture_output=True,
@@ -166,34 +171,55 @@ class EvolutionLoop:
         return issues
 
     def plan_improvements(self, issues: List[str]) -> List[Dict[str, str]]:
-        """Plan improvements based on identified issues."""
+        """Plan improvements based on identified issues, scored by confidence."""
         plans = []
 
         for issue in issues:
             if "test" in issue.lower():
-                plans.append(
-                    {
-                        "issue": issue,
-                        "approach": "Run detailed tests to identify specific failures",
-                        "tool": "ai_code_edit",
-                    }
-                )
+                plan = {
+                    "issue": issue,
+                    "approach": "Run detailed tests to identify specific failures",
+                    "tool": "ai_code_edit",
+                }
             elif "syntax" in issue.lower():
-                plans.append(
-                    {
-                        "issue": issue,
-                        "approach": "Fix syntax errors in affected files",
-                        "tool": "ai_code_edit",
-                    }
-                )
+                plan = {
+                    "issue": issue,
+                    "approach": "Fix syntax errors in affected files",
+                    "tool": "ai_code_edit",
+                }
             elif "module size" in issue.lower():
-                plans.append(
-                    {
-                        "issue": issue,
-                        "approach": "Refactor oversized module into smaller focused modules",
-                        "tool": "ai_code_edit",
-                    }
+                plan = {
+                    "issue": issue,
+                    "approach": "Refactor oversized module into smaller focused modules",
+                    "tool": "ai_code_edit",
+                }
+            elif "drift" in issue.lower():
+                plan = {
+                    "issue": issue,
+                    "approach": "Investigate and resolve drift violation",
+                    "tool": "ai_code_edit",
+                }
+            else:
+                plan = {
+                    "issue": issue,
+                    "approach": "Investigate and address issue",
+                    "tool": "ai_code_edit",
+                }
+
+            # Score confidence for this plan
+            try:
+                conf = self._scorer.score_decision(
+                    decision_type="evolution_plan",
+                    evidence_count=len(plans) + 1,
                 )
+                plan["confidence"] = conf["confidence"]
+                plan["confidence_level"] = conf["level"]
+                plan["confidence_recommendation"] = conf["recommendation"]
+            except Exception:
+                plan["confidence"] = 0.5
+                plan["confidence_level"] = "medium"
+
+            plans.append(plan)
 
         return plans
 
@@ -259,6 +285,10 @@ class EvolutionLoop:
                     plans = self.plan_improvements(issues)
                     cycle.results["plans"] = plans
                     cycle.changes = [f"Will address: {issue} (impact: {score:.2f})" for issue, score in prioritized[:5]]
+
+                    # Confidence scoring for the cycle overall
+                    cycle_confidence = self._score_cycle_confidence(plans)
+                    cycle.results["confidence"] = cycle_confidence
                     cycle.status = "degraded" if any("check failed" in e for e in cycle.errors) else "complete"
                 else:
                     cycle.status = "complete"
@@ -316,6 +346,9 @@ class EvolutionLoop:
                     except Exception:
                         pass
 
+                # Record confidence outcome for learning
+                self._record_cycle_outcome(cycle)
+
                 cycle.duration_sec = time.time() - start_time
                 self.cycles.append(cycle)
                 return cycle
@@ -334,15 +367,51 @@ class EvolutionLoop:
                     cycle.phase = "failed"
                     cycle.results["error"] = str(e)
                     cycle.results["attempts"] = attempt + 1
+                    self._record_cycle_outcome(cycle)
                     cycle.duration_sec = time.time() - start_time
                     self.cycles.append(cycle)
                     return cycle
 
         # Should not reach here, but handle gracefully
         cycle.status = "failed"
+        self._record_cycle_outcome(cycle)
         cycle.duration_sec = time.time() - start_time
         self.cycles.append(cycle)
         return cycle
+
+    def _score_cycle_confidence(self, plans: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Score overall confidence for a cycle based on its plans."""
+        if not plans:
+            return {"overall": 0.5, "level": "medium", "detail": "No plans to score"}
+
+        confidences = [p.get("confidence", 0.5) for p in plans]
+        avg = sum(confidences) / len(confidences)
+        low_confidence_plans = [p for p in plans if p.get("confidence", 0.5) < 0.5]
+
+        return {
+            "overall": round(avg, 3),
+            "level": self._scorer._level(avg),
+            "plan_count": len(plans),
+            "low_confidence_count": len(low_confidence_plans),
+            "recommendation": self._scorer._recommend(avg),
+        }
+
+    def _record_cycle_outcome(self, cycle: EvolutionCycle) -> None:
+        """Record cycle outcome for future confidence scoring."""
+        success = cycle.status == "complete"
+        details = f"issues={len(cycle.results.get('issues_found', []))}, health={cycle.results.get('health_score', 0)}"
+        self._scorer.record_outcome(
+            action=f"evolution_cycle:{cycle.id}",
+            success=success,
+            details=details,
+        )
+        # Also record per-plan outcomes
+        for plan in cycle.results.get("plans", []):
+            self._scorer.record_outcome(
+                action=f"evolution_plan:{plan.get('tool', 'unknown')}",
+                success=success,
+                details=plan.get("issue", "")[:100],
+            )
 
     def _run_shell(self, cmd: str) -> str:
         """Run a shell command with timeout."""
@@ -386,7 +455,9 @@ def _autonomous_evaluate(ctx: ToolContext) -> str:
         plans = loop.plan_improvements(issues)
         lines.append(f"\n**Proposed Improvements:**")
         for plan in plans[:3]:
-            lines.append(f"- **{plan['issue']}**: {plan['approach']}")
+            conf = plan.get("confidence", 0.5)
+            conf_level = plan.get("confidence_level", "?")
+            lines.append(f"- [{conf:.0%} {conf_level}] **{plan['issue']}**: {plan['approach']}")
 
         # Strategy suggestions
         suggestions = strategy.suggest_focus()
@@ -429,6 +500,13 @@ def _run_evolution_cycle(ctx: ToolContext) -> str:
     trend = cycle.results.get("trend", {})
     if trend.get("trend"):
         lines.append(f"**Trend:** {trend['trend']} (delta: {trend.get('health_delta', 0):+.3f})")
+
+    # Confidence
+    confidence = cycle.results.get("confidence", {})
+    if confidence:
+        lines.append(f"**Confidence:** {confidence.get('overall', 0):.0%} ({confidence.get('level', 'unknown')})")
+        if confidence.get("low_confidence_count", 0) > 0:
+            lines.append(f"**Low-confidence plans:** {confidence['low_confidence_count']}")
 
     lines.append("")
     lines.append("### Results")
@@ -718,6 +796,22 @@ def _system_dashboard(ctx: ToolContext) -> str:
 
         r = ToolRegistry(repo_dir=repo_dir, drive_root=drive_root)
         lines.append(f"## Tools: {len(r.schemas())} registered")
+    except Exception:
+        pass
+
+    # Confidence
+    try:
+        from ouroboros.confidence import ConfidenceScorer
+
+        scorer = ConfidenceScorer(drive_root=drive_root)
+        history = scorer._load_history()
+        if history:
+            total = len(history)
+            successes = sum(1 for h in history if h.get("success"))
+            rate = successes / total if total > 0 else 0
+            lines.append(f"\n## Confidence: {rate:.0%} success rate ({total} recorded)")
+        else:
+            lines.append(f"\n## Confidence: No history yet")
     except Exception:
         pass
 

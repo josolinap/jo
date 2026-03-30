@@ -123,6 +123,12 @@ CORE_TOOL_NAMES = {
     "system_map",
     "get_task_ontology",
     "get_ontology_insights",
+    "dspy_classify",
+    "dspy_select_tools",
+    "dspy_verify",
+    "dspy_route",
+    "dspy_optimize",
+    "dspy_status",
 }
 
 

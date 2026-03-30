@@ -195,6 +195,9 @@ def route_tools(
 ) -> Tuple[str, List[str]]:
     """Route tools for a task using semantic classification + learned patterns.
 
+    When OUROBOROS_DSPY=1, uses DSPy signatures for classification and tool
+    selection instead of keyword matching.
+
     Args:
         task_text: The task description
         available_tools: List of available tool names
@@ -204,20 +207,11 @@ def route_tools(
     Returns:
         Tuple of (task_type, ordered_tool_list)
     """
+    # Standard keyword-based routing
     task_type = classify_task(task_text)
 
     # Feed classification into ontology tracker for cross-system learning
-    try:
-        from ouroboros.codebase_graph import get_ontology_tracker
-
-        tracker = get_ontology_tracker()
-        defaults = get_default_tool_order(task_type)
-        for tool in defaults:
-            tracker.record(task_type, tool, "uses_tool", strength=0.6)
-    except Exception:
-        import logging
-
-        logging.getLogger(__name__).debug("Failed to feed ontology from router", exc_info=True)
+    _feed_ontology(task_type, get_default_tool_order(task_type))
 
     if learner:
         try:
@@ -238,7 +232,26 @@ def route_tools(
     remaining = [t for t in available_tools if t not in ordered]
     ordered.extend(remaining)
 
-    return task_type, ordered[:top_n]
+    selected = ordered[:top_n]
+    
+    # Make DSPy tools always available to Jo
+    for t in available_tools:
+        if t.startswith("dspy_") and t not in selected:
+            selected.append(t)
+
+    return task_type, selected
+
+
+def _feed_ontology(task_type: str, tools: List[str]) -> None:
+    """Feed tool usage patterns into the ontology tracker."""
+    try:
+        from ouroboros.codebase_graph import get_ontology_tracker
+
+        tracker = get_ontology_tracker()
+        for tool in tools:
+            tracker.record(task_type, tool, "uses_tool", strength=0.6)
+    except Exception:
+        pass
 
 
 def get_routing_report(task_text: str, available_tools: List[str]) -> str:
