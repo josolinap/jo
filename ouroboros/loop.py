@@ -376,6 +376,9 @@ def _emit_llm_usage_event(
 # Re-export LLM and setup functions from loop_llm for backward compatibility
 from ouroboros.loop_llm import _call_llm_with_retry, _handle_first_round_setup  # noqa: E402
 
+# Re-export response handling from loop_response
+from ouroboros.loop_response import _handle_text_response  # noqa: E402
+
 
 # Pipeline Phase Handlers for Feature 1: Structured Pipeline Architecture
 if USE_STRUCTURED_PIPELINE:
