@@ -28,6 +28,8 @@ ruff format .            # Format code
 make health              # Code health check
 make verify              # Verify code compiles + tests pass (run before commit)
 make clean               # Clean cache
+python scripts/check_module_health.py              # Check module sizes & complexity
+python scripts/check_module_health.py --report     # Generate detailed health report
 ```
 
 ---
@@ -159,6 +161,55 @@ except ValueError as e:
 - **Function maximum**: 200 lines
 
 Refactor if exceeded.
+
+---
+
+## Module Decomposition Protocol
+
+**Oversized modules (>1000 lines) are the #1 code health risk.** Follow this protocol:
+
+### Before Touching Any Oversized Module
+
+1. **Check impact** — Use `codebase_impact("symbol_name")` to see what depends on it
+2. **Read the module** — Understand current structure before proposing changes
+3. **Run health check** — `python scripts/check_module_health.py`
+
+### Extraction Rules
+
+1. **Extract by cohesion, not size** — Group related functions together:
+   - Lifecycle methods (init, shutdown, restart)
+   - Message handling vs internal state management
+   - Tool orchestration vs dialogue flow
+   - Health monitoring vs business logic
+
+2. **Preserve interfaces** — External API stays exactly the same:
+   ```python
+   # GOOD: Delegation pattern
+   class OuroborosAgent:
+       def _verify_system_state(self, git_sha):
+           return self._health.verify(git_sha)  # Same interface
+   ```
+
+3. **Gradual migration** — One chunk at a time:
+   - Extract chunk → new module
+   - Update imports in original module
+   - Commit, verify tests pass
+   - Move next chunk
+
+4. **Check for circular imports** — The health checker detects these automatically
+
+### Current Violations (as of 2026-03-31)
+
+| Module | Lines | Priority |
+|--------|-------|----------|
+| `ouroboros/loop.py` | 1450 | CRITICAL |
+| `ouroboros/codebase_graph.py` | 1354 | CRITICAL |
+| `ouroboros/tools/neural_map.py` | 1209 | CRITICAL |
+| `ouroboros/context.py` | 1202 | CRITICAL |
+| `ouroboros/agent.py` | 1190 | CRITICAL |
+| `ouroboros/tools/evolution_loop.py` | 1028 | CRITICAL |
+
+See `docs/MODULE_DECOMPOSITION_PROTOCOL.md` for full decomposition plan.
 
 ---
 
