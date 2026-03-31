@@ -3,7 +3,9 @@ Ouroboros agent core — thin orchestrator.
 
 Delegates to: loop.py (LLM tool loop), tools/ (tool schemas/execution),
 llm.py (LLM calls), memory.py (scratchpad/identity),
-context.py (context building), review.py (code collection/metrics).
+context.py (context building), review.py (code collection/metrics),
+agent_health.py (system verification), agent_messaging.py (events),
+agent_state.py (evolution history).
 """
 
 from __future__ import annotations
@@ -14,7 +16,6 @@ import logging
 import os
 import pathlib
 import queue
-import subprocess
 import threading
 import time
 import traceback
@@ -41,6 +42,9 @@ from ouroboros.loop import run_llm_loop
 from ouroboros.pipeline import get_pipeline, PipelineContext
 from ouroboros.synthesis import synthesize_task
 from ouroboros.eval import evaluate_task
+from ouroboros.agent_health import SystemVerifier
+from ouroboros.agent_messaging import MessageEmitter
+from ouroboros.agent_state import EvolutionHistory
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +97,11 @@ class OuroborosAgent:
         self.llm = LLMClient()
         self.tools = ToolRegistry(repo_dir=env.repo_dir, drive_root=env.drive_root)
         self.memory = Memory(drive_root=env.drive_root, repo_dir=env.repo_dir)
+
+        # Delegated subsystems
+        self._health = SystemVerifier(env)
+        self._messenger = MessageEmitter(event_queue)
+        self._evolution = EvolutionHistory(env)
 
         # Initialize multi-agent coordinator
         from ouroboros.tools.agent_coordinator import initialize as init_coordinator
@@ -158,267 +167,11 @@ class OuroborosAgent:
                     "git_sha": git_sha,
                 },
             )
-            self._verify_restart(git_sha)
-            self._verify_system_state(git_sha)
+            self._health.verify_restart(git_sha)
+            self._health.verify_system_state(git_sha)
         except Exception:
             log.warning("Worker boot logging failed", exc_info=True)
             return
-
-    def _verify_restart(self, git_sha: str) -> None:
-        """Best-effort restart verification."""
-        try:
-            pending_path = self.env.drive_path("state") / "pending_restart_verify.json"
-            claim_path = pending_path.with_name(f"pending_restart_verify.claimed.{os.getpid()}.json")
-            try:
-                os.rename(str(pending_path), str(claim_path))
-            except (FileNotFoundError, Exception):
-                return
-            try:
-                claim_data = json.loads(read_text(claim_path))
-                expected_sha = str(claim_data.get("expected_sha", "")).strip()
-                ok = bool(expected_sha and expected_sha == git_sha)
-                append_jsonl(
-                    self.env.drive_path("logs") / "events.jsonl",
-                    {
-                        "ts": utc_now_iso(),
-                        "type": "restart_verify",
-                        "pid": os.getpid(),
-                        "ok": ok,
-                        "expected_sha": expected_sha,
-                        "observed_sha": git_sha,
-                    },
-                )
-            except Exception:
-                log.debug("Failed to log restart verify event", exc_info=True)
-                pass
-            try:
-                claim_path.unlink()
-            except Exception:
-                log.debug("Failed to delete restart verify claim file", exc_info=True)
-                pass
-        except Exception:
-            log.debug("Restart verification failed", exc_info=True)
-            pass
-
-    def _check_uncommitted_changes(self) -> Tuple[dict, int]:
-        """Check for uncommitted changes and attempt auto-rescue commit & push."""
-        import re
-        import subprocess
-
-        try:
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=str(self.env.repo_dir),
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=True,
-            )
-            dirty_files = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
-            # Filter out noise: tilde files, backup files, temp files
-            dirty_files = [
-                f for f in dirty_files if not (f.startswith("?? ~") or f.startswith("?? .") or "~" in f or ".tmp" in f)
-            ]
-            if dirty_files:
-                # Auto-rescue: commit and push
-                auto_committed = False
-                try:
-                    # Remove stale git index.lock from previous crashed operations
-                    index_lock = self.env.repo_dir / ".git" / "index.lock"
-                    if index_lock.exists():
-                        index_lock.unlink(missing_ok=True)
-                    # Only stage specific modified tracked files (not all with -u)
-                    files_to_stage = []
-                    for f in dirty_files:
-                        status = f[:2] if len(f) >= 2 else ""
-                        if status in (" M", "M ", "MM"):
-                            path = f[3:].strip() if len(f) > 3 else ""
-                            if path:
-                                files_to_stage.append(path)
-                    if not files_to_stage:
-                        return {"dirty_files": dirty_files, "auto_committed": False, "issues": len(dirty_files)}
-                    for fpath in files_to_stage:
-                        subprocess.run(
-                            ["git", "add", fpath],
-                            cwd=str(self.env.repo_dir),
-                            timeout=10,
-                            check=True,
-                        )
-                    subprocess.run(
-                        ["git", "commit", "-m", "auto-rescue: uncommitted changes detected on startup"],
-                        cwd=str(self.env.repo_dir),
-                        timeout=30,
-                        check=True,
-                    )
-                    # Validate branch name
-                    if not re.match(r"^[a-zA-Z0-9_/-]+$", self.env.branch_dev):
-                        raise ValueError(f"Invalid branch name: {self.env.branch_dev}")
-                    # Pull with rebase before push
-                    subprocess.run(
-                        ["git", "pull", "--rebase", "origin", self.env.branch_dev],
-                        cwd=str(self.env.repo_dir),
-                        timeout=60,
-                        check=True,
-                    )
-                    # Push
-                    try:
-                        subprocess.run(
-                            ["git", "push", "origin", self.env.branch_dev],
-                            cwd=str(self.env.repo_dir),
-                            timeout=60,
-                            check=True,
-                        )
-                        auto_committed = True
-                        log.warning(f"Auto-rescued {len(dirty_files)} uncommitted files on startup")
-                    except subprocess.CalledProcessError:
-                        # If push fails, undo the commit
-                        subprocess.run(["git", "reset", "HEAD~1"], cwd=str(self.env.repo_dir), timeout=10, check=True)
-                        raise
-                except Exception as e:
-                    log.warning(f"Failed to auto-rescue uncommitted changes: {e}", exc_info=True)
-                return {
-                    "status": "warning",
-                    "files": dirty_files[:20],
-                    "auto_committed": auto_committed,
-                }, 1
-            else:
-                return {"status": "ok"}, 0
-        except Exception as e:
-            return {"status": "error", "error": str(e)}, 0
-
-    def _check_version_sync(self) -> Tuple[dict, int]:
-        """Check VERSION file sync with git tags and pyproject.toml."""
-        import subprocess
-        import re
-
-        try:
-            version_file = read_text(self.env.repo_path("VERSION")).strip()
-            issue_count = 0
-            result_data = {"version_file": version_file}
-
-            # Check pyproject.toml version
-            pyproject_path = self.env.repo_path("pyproject.toml")
-            pyproject_content = read_text(pyproject_path)
-            match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', pyproject_content, re.MULTILINE)
-            if match:
-                pyproject_version = match.group(1)
-                result_data["pyproject_version"] = pyproject_version
-                if version_file != pyproject_version:
-                    result_data["status"] = "warning"
-                    issue_count += 1
-
-            # Check README.md version (Bible P7: VERSION == README version)
-            try:
-                readme_content = read_text(self.env.repo_path("README.md"))
-                readme_match = re.search(r"\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", readme_content)
-                if readme_match:
-                    readme_version = readme_match.group(1)
-                    result_data["readme_version"] = readme_version
-                    if version_file != readme_version:
-                        result_data["status"] = "warning"
-                        issue_count += 1
-            except Exception:
-                log.debug("Failed to check README.md version", exc_info=True)
-
-            # Check git tags
-            result = subprocess.run(
-                ["git", "describe", "--tags", "--abbrev=0"],
-                cwd=str(self.env.repo_dir),
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode != 0:
-                result_data["status"] = "warning"
-                result_data["message"] = "no_tags"
-                return result_data, issue_count
-            else:
-                latest_tag = result.stdout.strip().lstrip("v")
-                result_data["latest_tag"] = latest_tag
-                if version_file != latest_tag:
-                    result_data["status"] = "warning"
-                    issue_count += 1
-
-            if issue_count == 0:
-                result_data["status"] = "ok"
-
-            return result_data, issue_count
-        except Exception as e:
-            return {"status": "error", "error": str(e)}, 0
-
-    def _check_budget(self) -> Tuple[dict, int]:
-        """Check budget remaining with warning thresholds."""
-        try:
-            state_path = self.env.drive_path("state") / "state.json"
-            state_data = json.loads(read_text(state_path))
-            total_budget_str = os.environ.get("TOTAL_BUDGET", "")
-
-            # Handle unset or zero budget gracefully
-            if not total_budget_str or float(total_budget_str) == 0:
-                return {"status": "unconfigured"}, 0
-            else:
-                total_budget = float(total_budget_str)
-                spent = float(state_data.get("spent_usd", 0))
-                remaining = max(0, total_budget - spent)
-
-                if remaining < 10:
-                    status = "emergency"
-                    issues = 1
-                elif remaining < 50:
-                    status = "critical"
-                    issues = 1
-                elif remaining < 100:
-                    status = "warning"
-                    issues = 0
-                else:
-                    status = "ok"
-                    issues = 0
-
-                return {
-                    "status": status,
-                    "remaining_usd": round(remaining, 2),
-                    "total_usd": total_budget,
-                    "spent_usd": round(spent, 2),
-                }, issues
-        except Exception as e:
-            return {"status": "error", "error": str(e)}, 0
-
-    def _verify_system_state(self, git_sha: str) -> None:
-        """Bible Principle 1: verify system state on every startup.
-
-        Checks:
-        - Uncommitted changes (auto-rescue commit & push)
-        - VERSION file sync with git tags
-        - Budget remaining (warning thresholds)
-        """
-        checks = {}
-        issues = 0
-        drive_logs = self.env.drive_path("logs")
-
-        # 1. Uncommitted changes
-        checks["uncommitted_changes"], issue_count = self._check_uncommitted_changes()
-        issues += issue_count
-
-        # 2. VERSION vs git tag
-        checks["version_sync"], issue_count = self._check_version_sync()
-        issues += issue_count
-
-        # 3. Budget check
-        checks["budget"], issue_count = self._check_budget()
-        issues += issue_count
-
-        # Log verification result
-        event = {
-            "ts": utc_now_iso(),
-            "type": "startup_verification",
-            "checks": checks,
-            "issues_count": issues,
-            "git_sha": git_sha,
-        }
-        append_jsonl(drive_logs / "events.jsonl", event)
-
-        if issues > 0:
-            log.warning(f"Startup verification found {issues} issue(s): {checks}")
 
     # =====================================================================
     # Main entry point
@@ -883,7 +636,7 @@ class OuroborosAgent:
             log.warning("Failed to store task result: %s", e)
 
     # =====================================================================
-    # Auto-update scratchpad after evolution/review tasks
+    # Auto-update scratchpad after evolution/review tasks (delegated to agent_state.py)
     # =====================================================================
 
     def _auto_update_scratchpad_after_task(
@@ -893,181 +646,7 @@ class OuroborosAgent:
         llm_trace: Dict[str, Any],
     ) -> None:
         """Auto-log evolution/review results with success tracking and archive/forget."""
-        try:
-            from ouroboros.memory import Memory
-
-            task_type = task.get("type", "unknown")
-            task_id = task.get("id", "")
-
-            # Count commits made during this task
-            commit_tools = {"repo_write_commit", "repo_commit_push", "commit"}
-            commit_count = sum(
-                1
-                for tc in llm_trace.get("tool_calls", [])
-                if isinstance(tc, dict) and tc.get("tool", "").lower() in commit_tools
-            )
-
-            # Check if tests passed (look for test-related tool calls)
-            test_tools = {"shell_run", "bash"}
-            test_mentions = [
-                tc
-                for tc in llm_trace.get("tool_calls", [])
-                if isinstance(tc, dict) and "test" in tc.get("tool", "").lower()
-            ]
-
-            cost = sum(float(tc.get("cost", 0)) for tc in llm_trace.get("tool_calls", []) if isinstance(tc, dict))
-
-            # Determine success: made commits AND has meaningful response
-            success = commit_count > 0 and len(response_text.strip()) > 100
-
-            # Get current cycle
-            try:
-                st = self._load_state_fn()
-                cycle = int(st.get("evolution_cycle", 0))
-            except Exception:
-                cycle = 0
-
-            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-            # Extract summary from response (first 300 chars)
-            summary = response_text[:300].replace("#", "").replace("*", "").replace("\n", " ").strip()
-            if len(response_text) > 300:
-                summary += "..."
-
-            # Build history entry
-            history_entry = {
-                "task_id": task_id,
-                "cycle": cycle,
-                "timestamp": timestamp,
-                "commits": commit_count,
-                "success": success,
-                "archived": False,
-                "summary": summary,
-                "cost": round(cost, 4),
-            }
-
-            # Update state with history
-            self._update_evolution_history(history_entry, success)
-
-            # Update scratchpad with human-readable entry
-            mem = Memory(self.env.drive_root, self.env.repo_dir)
-            current = mem.load_scratchpad()
-
-            status_emoji = "✅" if success else "❌"
-            status_text = "stable" if success else "failed"
-
-            new_section = f"""
-## {task_type.title()} #{task_id} ({cycle}) {status_emoji} [{status_text}]
-- {timestamp}
-- Commits: {commit_count}
-- Cost: ${cost:.4f}
-- Summary: {summary}
-"""
-
-            # Append to scratchpad
-            updated = current + new_section
-            lines = updated.splitlines()
-
-            # Prune: keep last 50 evolution entries (~200 lines)
-            if len(lines) > 200:
-                lines = lines[-200:]
-                updated = "\n".join(lines)
-
-            mem.save_scratchpad(updated)
-            log.info(f"Auto-updated scratchpad after {task_type} task {task_id} (success={success})")
-
-            # Auto-archive if stable (success + no failures for 3 cycles)
-            self._try_archive_stable_evolution()
-
-        except Exception as e:
-            log.warning("Failed to auto-update scratchpad: %s", e)
-
-    def _load_state_fn(self):
-        """Load state - imported lazily to avoid circular imports."""
-        from supervisor.state import load_state
-
-        return load_state()
-
-    def _save_state_fn(self, st):
-        """Save state - imported lazily."""
-        from supervisor.state import save_state
-
-        save_state(st)
-
-    def _update_evolution_history(self, entry: Dict[str, Any], success: bool) -> None:
-        """Update evolution history in state with archive/forget logic."""
-        try:
-            st = self._load_state_fn()
-            history = st.get("evolution_history", [])
-
-            # Add new entry at the beginning
-            history.insert(0, entry)
-
-            # Prune: keep last 30 entries
-            MAX_HISTORY = 30
-            if len(history) > MAX_HISTORY:
-                # Move entries older than 7 days to archived (they're "forgotten" from active view)
-                cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
-                pruned = []
-                for h in history:
-                    try:
-                        ts = datetime.datetime.fromisoformat(h.get("timestamp", ""))
-                        if ts > cutoff:
-                            pruned.append(h)
-                    except Exception:
-                        pruned.append(h)
-                history = pruned[:MAX_HISTORY]
-
-            st["evolution_history"] = history
-
-            # Update consecutive failures counter
-            if success:
-                st["evolution_consecutive_failures"] = 0
-            else:
-                st["evolution_consecutive_failures"] = int(st.get("evolution_consecutive_failures", 0)) + 1
-                failures = st["evolution_consecutive_failures"]
-                if failures >= 2:
-                    log.warning(
-                        f"EVOLUTION HEALTH ALERT: {failures} consecutive failures. "
-                        f"Consider pausing evolution mode and reviewing recent commits."
-                    )
-
-            self._save_state_fn(st)
-
-        except Exception as e:
-            log.warning("Failed to update evolution history: %s", e)
-
-    def _try_archive_stable_evolution(self) -> None:
-        """Archive evolutions that have been stable (3+ successful, no recent failures)."""
-        try:
-            st = self._load_state_fn()
-            history = st.get("evolution_history", [])
-            consecutive_success = 0
-
-            for entry in history:
-                if entry.get("archived"):
-                    continue
-                if entry.get("success"):
-                    consecutive_success += 1
-                else:
-                    break
-
-            # Archive if 3+ consecutive successful evolutions
-            if consecutive_success >= 3:
-                archived_count = 0
-                for entry in history:
-                    if entry.get("success") and not entry.get("archived"):
-                        entry["archived"] = True
-                        archived_count += 1
-                        if archived_count >= consecutive_success - 1:  # Keep latest
-                            break
-
-                st["evolution_history"] = history
-                self._save_state_fn(st)
-                log.info(f"Archived {archived_count} stable evolution entries")
-
-        except Exception as e:
-            log.warning("Failed to archive stable evolutions: %s", e)
+        self._evolution.auto_update_scratchpad_after_task(task, response_text, llm_trace)
 
     # =====================================================================
     # Review context builder
@@ -1106,78 +685,20 @@ class OuroborosAgent:
             return f"## Code Review Context\n\n(Failed to collect: {e})\nUse repo_read and repo_list to inspect code."
 
     # =====================================================================
-    # Event emission helpers
+    # Event emission helpers (delegated to agent_messaging.py)
     # =====================================================================
 
     def _emit_progress(self, text: str) -> None:
-        self._last_progress_ts = time.time()
-
-        # Suppress progress messages to owner if configured
-        if os.environ.get("OUROBOROS_SUPPRESS_PROGRESS", "1") == "1":
-            log.debug(f"[Progress] {text}")  # Still log internally
-            return
-
-        if self._event_queue is None or self._current_chat_id is None:
-            return
-        try:
-            self._event_queue.put(
-                {
-                    "type": "send_message",
-                    "chat_id": self._current_chat_id,
-                    "text": f"💬 {text}",
-                    "format": "markdown",
-                    "is_progress": True,
-                    "ts": utc_now_iso(),
-                }
-            )
-        except Exception:
-            log.warning("Failed to emit progress event", exc_info=True)
-            pass
+        self._last_progress_ts = self._messenger.emit_progress(text, self._current_chat_id, self._last_progress_ts)
 
     def _emit_typing_start(self) -> None:
-        if self._event_queue is None or self._current_chat_id is None:
-            return
-        try:
-            self._event_queue.put(
-                {
-                    "type": "typing_start",
-                    "chat_id": self._current_chat_id,
-                    "ts": utc_now_iso(),
-                }
-            )
-        except Exception:
-            log.warning("Failed to emit typing start event", exc_info=True)
-            pass
+        self._messenger.emit_typing_start(self._current_chat_id)
 
     def _emit_task_heartbeat(self, task_id: str, phase: str) -> None:
-        if self._event_queue is None:
-            return
-        try:
-            self._event_queue.put(
-                {
-                    "type": "task_heartbeat",
-                    "task_id": task_id,
-                    "phase": phase,
-                    "ts": utc_now_iso(),
-                }
-            )
-        except Exception:
-            log.warning("Failed to emit task heartbeat event", exc_info=True)
-            pass
+        self._messenger.emit_task_heartbeat(task_id, phase)
 
     def _start_task_heartbeat_loop(self, task_id: str) -> Optional[threading.Event]:
-        if self._event_queue is None or not task_id.strip():
-            return None
-        interval = 30
-        stop = threading.Event()
-        self._emit_task_heartbeat(task_id, "start")
-
-        def _loop() -> None:
-            while not stop.wait(interval):
-                self._emit_task_heartbeat(task_id, "running")
-
-        threading.Thread(target=_loop, daemon=True).start()
-        return stop
+        return self._messenger.start_heartbeat_loop(task_id)
 
 
 # ---------------------------------------------------------------------------
