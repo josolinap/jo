@@ -191,7 +191,7 @@ Always be technical and concise. Focus on actual bugs, security issues, and perf
 
 ## Verdict
 [Approve / Request Changes / Needs Discussion]""",
-                triggers=["review", "pr", "pull request", "code review"],
+                triggers=["review pr", "review pull request", "code review", "pr review", "/github-review"],
                 version="1.0.0",
             )
         )
