@@ -8,3 +8,5 @@ tags: [tool]
 # cli_generate
 
 Generate a CLI from source code.
+
+Related: [[cli-anything-integration]]

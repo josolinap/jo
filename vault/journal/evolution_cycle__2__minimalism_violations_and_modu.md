@@ -92,3 +92,5 @@ Split `build_llm_messages` (123 lines) into:
 ## Evolution Log
 
 Will be updated as implementation progresses.
+
+Related: [[principle-5]]

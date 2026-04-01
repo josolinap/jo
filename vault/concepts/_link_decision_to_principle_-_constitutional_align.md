@@ -47,3 +47,5 @@ _link_decision_to_principle(
 - [[Principle 7: Versioning]] - Change tracking
 
 **Tags**: meta-cognition, alignment, accountability, constitutional
+
+Related: [[principles]]

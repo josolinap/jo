@@ -8,3 +8,5 @@ tags: [tool]
 # autonomous_evaluate
 
 Run autonomous self-evaluation.
+
+Related: [[evaluation]]

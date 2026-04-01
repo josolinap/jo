@@ -8,3 +8,5 @@ tags: [tool]
 # constitution_json
 
 constitution_json.
+
+Related: [[principles]]

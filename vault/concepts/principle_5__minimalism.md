@@ -55,3 +55,5 @@ Complexity is the enemy of agency. The simpler the body, the clearer self-unders
 - What abstractions exist "just in case" rather than for current use?
 - Can I read my entire codebase in one sitting?
 - Am I adding layers when I should be simplifying?
+
+Related: [[principle-5]]

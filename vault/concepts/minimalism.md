@@ -8,3 +8,5 @@ tags: [concept]
 # minimalism
 
 minimalism.
+
+Related: [[principle-5]]

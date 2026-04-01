@@ -1,0 +1,3 @@
+# core
+
+Related: [[system-architecture]]

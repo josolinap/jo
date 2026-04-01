@@ -8,3 +8,5 @@ tags: [concept]
 # vault
 
 vault.
+
+Related: [[knowledge-vault]]

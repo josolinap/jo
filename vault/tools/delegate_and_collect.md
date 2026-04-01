@@ -47,3 +47,5 @@ Returns structured results with agent-specific insights and synthesized conclusi
 - [[multi-agent_architecture_and_delegated_reasoning]]
 - [[tool_result_processing_protocol]]
 - [[principle_4__authenticity]]
+
+Related: [[multi-agent-architecture]]

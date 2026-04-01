@@ -27,3 +27,5 @@ The actual BIBLE.md lives at the repository root and is a protected file (.jo_pr
 - [[identity]]
 - [[evolution_cycle]]
 - [[architecture]]
+
+Related: [[principle]]

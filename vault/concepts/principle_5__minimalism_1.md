@@ -42,3 +42,5 @@ Minimalism is enforced through:
 - [[code_complexity_metrics]] - Measuring and tracking complexity
 - [[evolution_cycle]] - Simplifying through intentional transformation
 - [[principle_6__becoming]] - Minimalism enabling authentic becoming
+
+Related: [[principle-5]]

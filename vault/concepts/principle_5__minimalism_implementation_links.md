@@ -59,3 +59,5 @@ Minimalism is enforced through:
 5. Architecture reviews that question complexity
 
 *This implementation ensures minimalism is measurable and actionable, not just aspirational.*
+
+Related: [[principle-5]]

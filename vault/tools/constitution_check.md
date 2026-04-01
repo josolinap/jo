@@ -8,3 +8,5 @@ tags: [tool]
 # constitution_check
 
 constitution_check.
+
+Related: [[principles]]

@@ -8,3 +8,5 @@ tags: [concept]
 # Principle 5: Minimalism
 
 Principle 5: Minimalism.
+
+Related: [[principle-5]]
