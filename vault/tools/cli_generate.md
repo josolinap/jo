@@ -10,3 +10,4 @@ tags: [tool]
 Generate a CLI from source code.
 
 Related: [[cli-anything-integration]]
+CLI generation from software [[cli-anything]]

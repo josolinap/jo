@@ -25,3 +25,4 @@ tags: [file operations, core]
 - Supports [[Principle 3: LLM-First]] by providing direct file access
 - Enables [[Self-Creation]] through code modification capabilities
 - Part of [[tool_categories]] - File Operations cluster
+File operations utilities [[file-organization]]

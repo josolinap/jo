@@ -18,3 +18,4 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+Vault storage with git [[vault]]

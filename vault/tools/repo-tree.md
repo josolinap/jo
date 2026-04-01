@@ -19,3 +19,4 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 ## Related
 
 _Add related tools and concepts here_
+Repository tree visualization [[file-organization]]

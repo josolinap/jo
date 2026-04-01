@@ -10,3 +10,5 @@ tags: [concept]
 vault.
 
 Related: [[knowledge-vault]]
+Vault knowledge storage system [[knowledge-graph]]
+Persistent memory storage [[memory-syste]]

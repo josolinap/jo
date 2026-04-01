@@ -32,3 +32,4 @@ Reads a UTF-8 text file from the GitHub repo. Used for code analysis, verificati
 - [[Code Intelligence]]
 - [[Verification as Agency: Anti-Hallucination System]]
 - [[Codebase Overview]]
+Git repository reading [[git-integration]]

@@ -10,3 +10,4 @@ tags: [tool]
 constitution_check.
 
 Related: [[principles]]
+Constitution check system [[bible]]

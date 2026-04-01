@@ -49,3 +49,5 @@ Returns structured results with agent-specific insights and synthesized conclusi
 - [[principle_4__authenticity]]
 
 Related: [[multi-agent-architecture]]
+Tool for parallel multi-agent coordination [[multi-agent-architecture]]
+Primary delegation mechanism [[orchestrator]]

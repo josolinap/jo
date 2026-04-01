@@ -202,3 +202,4 @@ ouroboros/
 ├── awareness.py          # System scanning
 └── consciousness.py     # Background thinking
 ```
+Pipeline architecture overview [[system-architecture]]

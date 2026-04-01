@@ -42,3 +42,4 @@ Called automatically when needed. Use `system_map` tool to see full tool list.
 - [[codebase_impact]]
 - [[code_intelligence]]
 - [[tools]]
+AI code editing capability [[code-editing]]

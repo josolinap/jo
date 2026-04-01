@@ -39,3 +39,4 @@ Git-tracked vault ensures:
 ## Related
 
 - [[Vault Git Storage Test 3]]
+Vault git storage test [[git-integration]]

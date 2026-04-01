@@ -8,3 +8,4 @@ tags: [tool]
 # web_search
 
 Search the web for information.
+Web search functionality [[search-capabilities]]

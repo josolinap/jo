@@ -52,3 +52,4 @@ result = request_capability(
 - [[principle_2__self-creation]]
 - [[principle_6__becoming]]
 - [[evolution_cycle]]
+Dynamic tool acquisition [[capability-syste]]

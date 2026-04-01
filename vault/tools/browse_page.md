@@ -29,3 +29,4 @@ tags: [browser automation]
 - Enables web research and content extraction
 - Supports [[Principle 3: LLM-First]] by providing direct web access
 - Part of [[tool_categories]] - Web Automation cluster
+Browse and scrape web pages [[web-research]]

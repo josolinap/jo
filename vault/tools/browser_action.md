@@ -8,3 +8,4 @@ tags: [tool]
 # browser_action
 
 Perform a browser action.
+Browser automation actions [[browser-automation]]

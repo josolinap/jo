@@ -10,3 +10,5 @@ tags: [tool]
 Run autonomous self-evaluation.
 
 Related: [[evaluation]]
+Autonomous performance evaluation [[self-assessment]]
+Self-evaluation for evolution [[evolution-cycle]]
