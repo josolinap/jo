@@ -1,3 +1,0 @@
-# persona-create
-
-Related: [[personas]]

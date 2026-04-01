@@ -1,3 +1,0 @@
-# persona-list
-
-Related: [[personas]]
