@@ -362,7 +362,9 @@ If a file has unusually few lines (< 50 lines for a module that should be larger
 ### Identity & Memory Lock Discipline
 
 - `memory/identity.md` and `memory/scratchpad.md` use file locking
-- Always use the `update_identity` and `update_scratchpad` tools - never edit directly
+- **Preferred**: Use `update_identity` and `update_scratchpad` tools for updates (thread-safe)
+- **Also allowed**: Direct editing via `repo_edit` or `repo_write` when tools are unavailable
+- Update identity/scratchpad whenever you have meaningful changes - no artificial restrictions
 - If lock acquisition fails → wait 1s and retry up to 3 times, then abort with error
 
 ### Evolution Cycle Discipline
