@@ -277,7 +277,137 @@ def get_hook_manager() -> HookManager:
     global _manager
     if _manager is None:
         _manager = HookManager()
+        _register_default_hooks(_manager)
     return _manager
+
+
+def _register_default_hooks(manager: HookManager) -> None:
+    """Register default hooks for common operations."""
+    import os
+
+    # Pre-tool: Cerebrum do-not-repeat check for write operations
+    def cerebrum_check_handler(ctx: HookContext) -> Optional[HookResult]:
+        """Check cerebrum before write operations."""
+        write_tools = {"repo_write_commit", "repo_commit_push", "code_edit", "vault_write", "vault_create"}
+        if ctx.tool_name not in write_tools:
+            return None
+
+        try:
+            from ouroboros.cerebrum import CerebrumManager
+            import pathlib
+
+            repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+            mgr = CerebrumManager(repo_dir)
+            action_desc = f"{ctx.tool_name}: {ctx.args}"
+            violations = mgr.check_before_action(action_desc)
+
+            if violations:
+                return HookResult(action=HookAction.DENY, message=f"Cerebrum violation: {violations}")
+        except Exception:
+            pass
+        return None
+
+    manager.register(
+        Hook(
+            name="cerebrum_pre_write_check",
+            hook_type=HookType.PRE_TOOL,
+            handler=cerebrum_check_handler,
+            priority=10,
+            description="Check cerebrum do-not-repeat rules before write operations",
+        )
+    )
+
+    # Post-tool: Record tool calls in stuck detector
+    def stuck_detector_handler(ctx: HookContext) -> Optional[HookResult]:
+        """Record tool calls in stuck detector."""
+        try:
+            from ouroboros.stuck_detector import get_detector
+
+            detector = get_detector()
+            detector.record_call(ctx.tool_name, ctx.args)
+        except Exception:
+            pass
+        return None
+
+    manager.register(
+        Hook(
+            name="stuck_detector_record",
+            hook_type=HookType.POST_TOOL,
+            handler=stuck_detector_handler,
+            priority=5,
+            description="Record tool calls for stuck detection",
+        )
+    )
+
+    # Post-tool: Log bug fixes to buglog
+    def buglog_handler(ctx: HookContext) -> Optional[HookResult]:
+        """Automatically log bug fixes."""
+        if ctx.tool_name == "repo_write_commit" and isinstance(ctx.result, str):
+            result_lower = ctx.result.lower()
+            if any(word in result_lower for word in ["fix", "bug", "error", "issue", "resolve"]):
+                try:
+                    from ouroboros.buglog import BugLog
+                    import pathlib
+
+                    repo_dir = pathlib.Path(os.environ.get("REPO_DIR", "."))
+                    buglog = BugLog(repo_dir)
+                    file_path = ctx.args.get("file_path", "")
+                    message = ctx.args.get("message", "")
+
+                    if file_path and message:
+                        buglog.log_fix(
+                            error_message=f"Auto-detected fix in {file_path}",
+                            file_path=file_path,
+                            root_cause="Auto-logged from commit message",
+                            fix_description=message[:200],
+                            tags=["auto-logged"],
+                        )
+                except Exception:
+                    pass
+        return None
+
+    manager.register(
+        Hook(
+            name="buglog_auto_log",
+            hook_type=HookType.POST_TOOL,
+            handler=buglog_handler,
+            priority=3,
+            description="Auto-log bug fixes to buglog",
+        )
+    )
+
+    # On-error: Start debug session automatically
+    def debug_auto_start_handler(ctx: HookContext) -> Optional[HookResult]:
+        """Start debug session on repeated errors."""
+        try:
+            from ouroboros.debug_analyzer import get_analyzer
+            import time
+
+            analyzer = get_analyzer()
+            # Use tool name as session ID for automatic tracking
+            session_id = f"auto_{ctx.tool_name}_{int(time.time())}"
+
+            if ctx.error:
+                analyzer.start_session(session_id, f"Auto-debug for {ctx.tool_name}")
+                analysis = analyzer.analyze_failure(session_id, ctx.error)
+
+                return HookResult(
+                    action=HookAction.TRANSFORM,
+                    modified_result=f"{ctx.result}\n\n[Auto-debug] {analysis.root_cause}\nSuggestion: {analysis.suggested_fix}",
+                )
+        except Exception:
+            pass
+        return None
+
+    manager.register(
+        Hook(
+            name="debug_auto_analyze",
+            hook_type=HookType.ON_ERROR,
+            handler=debug_auto_start_handler,
+            priority=5,
+            description="Auto-analyze errors with debug analyzer",
+        )
+    )
 
 
 def get_tools():

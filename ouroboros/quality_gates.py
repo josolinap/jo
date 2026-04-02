@@ -53,6 +53,19 @@ class QualityGateRunner:
     def __init__(self, repo_dir: pathlib.Path):
         self.repo_dir = repo_dir
         self._gates: Dict[str, QualityGate] = {}
+
+        # Load configuration
+        try:
+            from ouroboros.config_manager import get_config
+
+            config = get_config()
+            gates_config = config.get("quality_gates", {})
+            self._enabled_gates = gates_config.get("enabled_gates", [])
+            self._auto_run_on_error = gates_config.get("auto_run_on_error", True)
+        except Exception:
+            self._enabled_gates = []
+            self._auto_run_on_error = True
+
         self._register_default_gates()
 
     def _register_default_gates(self) -> None:
@@ -102,6 +115,14 @@ class QualityGateRunner:
                 "All imports resolve successfully",
                 self._check_imports,
                 category="syntax",
+            )
+        )
+        self.register(
+            QualityGate(
+                "no_hallucinations",
+                "No hallucinated task completions",
+                self._check_hallucinations,
+                category="quality",
             )
         )
 
@@ -340,6 +361,47 @@ class QualityGateRunner:
                 "imports_valid", GateStatus.FAIL, f"{len(errors)} files with import issues", "\n".join(errors[:3])
             )
         return GateResult("imports_valid", GateStatus.PASS, "All imports parse successfully")
+
+    def _check_hallucinations(self, repo_dir: pathlib.Path) -> GateResult:
+        """Check for potential hallucinations in recent tool responses."""
+        try:
+            from ouroboros.hallucination_guard import get_guard
+            import json
+
+            guard = get_guard()
+            stats = guard.stats()
+
+            # Check if there have been hallucinations detected
+            hallucinations = stats.get("hallucinations_detected", 0)
+            total_checked = stats.get("total_checked", 0)
+
+            if total_checked == 0:
+                return GateResult("no_hallucinations", GateStatus.PASS, "No responses checked yet (guard inactive)")
+
+            hallucination_rate = hallucinations / total_checked if total_checked > 0 else 0
+
+            if hallucination_rate > 0.1:  # More than 10% hallucination rate
+                return GateResult(
+                    "no_hallucinations",
+                    GateStatus.FAIL,
+                    f"High hallucination rate: {hallucination_rate:.0%} ({hallucinations}/{total_checked})",
+                    "Review recent tool responses for false completion claims",
+                )
+            elif hallucinations > 0:
+                return GateResult(
+                    "no_hallucinations",
+                    GateStatus.PASS,
+                    f"Low hallucination rate: {hallucination_rate:.0%} ({hallucinations}/{total_checked})",
+                    "Some hallucinations detected but within acceptable range",
+                )
+            else:
+                return GateResult(
+                    "no_hallucinations",
+                    GateStatus.PASS,
+                    f"No hallucinations detected (checked {total_checked} responses)",
+                )
+        except Exception as e:
+            return GateResult("no_hallucinations", GateStatus.ERROR, f"Failed to check hallucinations: {e}")
 
 
 def get_tools():

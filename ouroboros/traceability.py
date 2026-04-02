@@ -84,7 +84,7 @@ class TraceabilityLayer:
 
     def _auto_verify_claim(self, tool_name: str, args: Dict[str, Any], result: str, error: Optional[str]) -> None:
         """Automatically log verification after tool execution."""
-        from ouroboros.tools.control import _verify_claim
+        from ouroboros.memory import Memory
 
         claim = f"tool:{tool_name}"
         method = tool_name
@@ -96,37 +96,51 @@ class TraceabilityLayer:
             outcome = "warning"
 
         try:
-            _verify_claim(
-                self.ctx,
-                claim=claim,
-                method=method,
-                outcome=outcome,
-            )
+            mem = Memory(drive_root=self.ctx.drive_root)
+            mem.ensure_files()
+            mem.track_verification(claim=claim, verification_method=method, result=outcome)
         except Exception as e:
             log.debug(f"_verify_claim failed: {e}")
 
     def _auto_learn_from_result(self, task_description: str, result: str, success: bool) -> None:
         """Automatically record lesson after task completion."""
-        from ouroboros.tools.connection_weavers import _learn_from_result
+        from ouroboros.vault_manager import VaultManager
 
         if len(task_description) < 10:
             return
 
         result_summary = result[:300] if result else "No result"
+        status = "success" if success else "failure"
+        title = f"Lesson: {task_description[:50]}"
+        
+        content = f"""
+## Task
+{task_description[:100]}
+
+## Result
+{result_summary}
+
+## Status
+{"✅ Success" if success else "❌ Failure"}
+
+## Lesson
+_What was learned from this task execution._
+"""
         try:
-            _learn_from_result(
-                self.ctx,
-                task=task_description[:100],
-                result=result_summary,
-                success=success,
+            vault = VaultManager(self.ctx.repo_path("vault"))
+            vault.create_note(
+                title=title,
+                folder="journal",
+                content=content,
+                tags=["lesson", status],
+                type="lesson",
+                status="reviewed",
             )
         except Exception as e:
             log.debug(f"_learn_from_result failed: {e}")
 
     def _auto_reflect_on_change(self, commit_message: str, files_changed: List[str]) -> None:
         """Automatically create reflection after commit."""
-        from ouroboros.tools.connection_weavers import _reflect_on_change
-
         if not commit_message or commit_message.startswith("Merge"):
             return
 
@@ -134,20 +148,34 @@ class TraceabilityLayer:
         if len(files_changed) > 5:
             files_str += f" (+{len(files_changed) - 5} more)"
 
-        change_desc = f"Commit: {commit_message[:80]}\nFiles: {files_str}"
+        change_description = f"Commit: {commit_message[:80]}\nFiles: {files_str}"
+        outcome = "Committed and pushed"
+        
+        from datetime import datetime
+        identity_path = self.ctx.drive_path("memory/identity.md")
+        now = datetime.now().isoformat()
 
+        reflection = f"""
+## Reflection - {now}
+
+**Change:** {change_description}
+**Outcome:** {outcome}
+
+_This change reflects growth in capabilities._
+"""
         try:
-            _reflect_on_change(
-                self.ctx,
-                change_description=change_desc,
-                outcome="Committed and pushed",
-            )
+            if identity_path.exists():
+                content = identity_path.read_text(encoding="utf-8")
+                identity_path.write_text(content + reflection, encoding="utf-8")
+            else:
+                identity_path.parent.mkdir(parents=True, exist_ok=True)
+                identity_path.write_text(f"# Identity\n{reflection}", encoding="utf-8")
         except Exception as e:
             log.debug(f"_reflect_on_change failed: {e}")
 
     def _auto_health_alert(self, invariant_name: str, message: str, severity: str = "medium") -> None:
         """Automatically create journal entry for health alerts."""
-        from ouroboros.tools.vault import _vault_create
+        from ouroboros.vault_manager import VaultManager
 
         severity_icons = {
             "critical": "🔴",
@@ -171,12 +199,12 @@ class TraceabilityLayer:
 _This alert requires review and potential remediation._
 """
         try:
-            _vault_create(
-                self.ctx,
+            vault = VaultManager(self.ctx.repo_path("vault"))
+            vault.create_note(
                 title=title,
                 folder="journal",
                 content=content,
-                tags=f"health, alert, {severity}",
+                tags=["health", "alert", severity],
                 type="alert",
                 status="open",
             )

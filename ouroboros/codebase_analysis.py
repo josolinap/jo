@@ -11,7 +11,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List
 
-from ouroboros.codebase_graph import CodebaseGraph, GraphEdge
+from ouroboros.codebase_models import CodebaseGraph, GraphEdge
 
 log = logging.getLogger(__name__)
 

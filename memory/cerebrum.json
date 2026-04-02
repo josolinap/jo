@@ -1,0 +1,31 @@
+{
+  "do_not_repeat": [
+    {
+      "content": "Test error message: Test root cause",
+      "category": "do_not_repeat",
+      "added_at": "2026-04-02T21:35:39",
+      "tags": [
+        "test",
+        "integration",
+        "buglog",
+        "auto-learned"
+      ],
+      "source": "buglog:bug-fa5b1a"
+    }
+  ],
+  "preferences": [],
+  "learnings": [
+    {
+      "content": "Fix for Test error message: Test fix description",
+      "category": "learning",
+      "added_at": "2026-04-02T21:35:39",
+      "tags": [
+        "test",
+        "integration",
+        "fix-pattern",
+        "buglog"
+      ],
+      "source": "buglog:bug-fa5b1a"
+    }
+  ]
+}

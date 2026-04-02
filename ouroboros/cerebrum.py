@@ -80,6 +80,22 @@ class CerebrumManager:
         self.cerebrum_path = repo_dir / "memory" / "cerebrum.json"
         self._cerebrum: Optional[Cerebrum] = None
 
+        # Load configuration
+        try:
+            from ouroboros.config_manager import get_config
+
+            config = get_config()
+            cerebrum_config = config.get("cerebrum", {})
+            self._max_do_not_repeat = cerebrum_config.get("max_do_not_repeat", 100)
+            self._max_preferences = cerebrum_config.get("max_preferences", 200)
+            self._max_learnings = cerebrum_config.get("max_learnings", 500)
+            self._min_confidence = cerebrum_config.get("min_confidence", 0.6)
+        except Exception:
+            self._max_do_not_repeat = 100
+            self._max_preferences = 200
+            self._max_learnings = 500
+            self._min_confidence = 0.6
+
     def _load(self) -> Cerebrum:
         if self._cerebrum is not None:
             return self._cerebrum

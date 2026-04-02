@@ -32,6 +32,12 @@ class SystemState:
     evolution_mode: bool = False
     background_consciousness: bool = False
     timestamp: str = ""
+    # Stack information
+    languages: List[str] = field(default_factory=list)
+    frameworks: List[str] = field(default_factory=list)
+    build_tools: List[str] = field(default_factory=list)
+    test_frameworks: List[str] = field(default_factory=list)
+    stack_confidence: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return vars(self)
@@ -136,6 +142,25 @@ class HeadlessQuery:
         if vault_dir.exists():
             vault_notes = len(list(vault_dir.rglob("*.md")))
 
+        # Stack detection integration
+        languages = []
+        frameworks = []
+        build_tools = []
+        test_frameworks = []
+        stack_confidence = 0.0
+        try:
+            from ouroboros.stack_detector import StackDetector
+
+            detector = StackDetector(self.repo_dir)
+            stack = detector.detect()
+            languages = stack.languages
+            frameworks = stack.frameworks
+            build_tools = stack.build_tools
+            test_frameworks = stack.test_frameworks
+            stack_confidence = stack.confidence
+        except Exception:
+            pass
+
         return SystemState(
             version=version,
             git_sha=git_sha,
@@ -145,6 +170,11 @@ class HeadlessQuery:
             max_module_lines=max_lines,
             vault_notes=vault_notes,
             timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+            languages=languages,
+            frameworks=frameworks,
+            build_tools=build_tools,
+            test_frameworks=test_frameworks,
+            stack_confidence=stack_confidence,
         )
 
     def _get_health_state(self) -> HealthState:
@@ -202,6 +232,19 @@ class HeadlessQuery:
             f"**Health**: {'✅ OK' if result.health.all_passing else '❌ Issues'} ({len(result.health.violations)} violations)",
             f"**Query time**: {result.query_time_ms}ms",
         ]
+
+        # Add stack information if available
+        if result.system.languages:
+            stack_parts = []
+            if result.system.languages:
+                stack_parts.append(f"Languages: {', '.join(result.system.languages)}")
+            if result.system.frameworks:
+                stack_parts.append(f"Frameworks: {', '.join(result.system.frameworks)}")
+            if result.system.test_frameworks:
+                stack_parts.append(f"Tests: {', '.join(result.system.test_frameworks)}")
+            if stack_parts:
+                lines.append(f"**Stack**: {' | '.join(stack_parts)} (confidence: {result.system.stack_confidence:.0%})")
+
         return "\n".join(lines)
 
 

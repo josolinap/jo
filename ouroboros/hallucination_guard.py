@@ -49,6 +49,18 @@ class HallucinationGuard:
     """Detects and rejects hallucinated task completions."""
 
     def __init__(self):
+        # Load configuration
+        try:
+            from ouroboros.config_manager import get_config
+
+            config = get_config()
+            guard_config = config.get("hallucination_guard", {})
+            self._enabled = guard_config.get("enabled", True)
+            self._confidence_threshold = guard_config.get("confidence_threshold", 0.7)
+        except Exception:
+            self._enabled = True
+            self._confidence_threshold = 0.7
+
         self._completion_re = [re.compile(p) for p in COMPLETION_PATTERNS]
         self._false_positive_re = [re.compile(p) for p in FALSE_POSITIVE_PATTERNS]
         self._stats = {"total_checked": 0, "hallucinations_detected": 0, "false_positives_avoided": 0}

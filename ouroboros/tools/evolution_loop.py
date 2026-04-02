@@ -426,23 +426,6 @@ class EvolutionLoop:
             return f"Shell error ({type(e).__name__}): {e}"
 
 
-# Re-export tool functions from evolution_tools for backward compatibility
-from ouroboros.tools.evolution_tools import (  # noqa: E402
-    _autonomous_evaluate,
-    _run_evolution_cycle,
-    _check_evolution_readiness,
-    _synthesize_lessons,
-    _knowledge_decay_report,
-    _predictive_health,
-    _confidence_report,
-    _evolution_fingerprint,
-    _decision_trace_report,
-    _system_dashboard,
-    _enable_evolution_mode,
-    _get_evolution_status,
-)
-
-
 def get_tools() -> List[ToolEntry]:
     """Get evolution loop tools."""
     return [

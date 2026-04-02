@@ -74,11 +74,28 @@ class ToolOrchestrator:
         execution_order = []
         visited: Set[str] = set()
 
+        # Check for stuck patterns to avoid them
+        stuck_tools = set()
+        try:
+            from ouroboros.stuck_detector import get_detector
+
+            detector = get_detector()
+            stuck_tools = set(detector.get_stuck_patterns())
+        except Exception:
+            pass
+
         while remaining:
             ready = []
             for call_id in remaining:
                 deps = set(self._calls[call_id].depends_on)
                 if deps <= visited:
+                    # Skip tools that are stuck in loops
+                    tool_name = self._calls[call_id].tool_name
+                    if tool_name in stuck_tools:
+                        log.warning(f"Skipping stuck tool: {tool_name}")
+                        self._calls[call_id].status = ToolCallStatus.SKIPPED
+                        visited.add(call_id)
+                        continue
                     ready.append(call_id)
 
             if not ready:

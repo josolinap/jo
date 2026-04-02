@@ -1,0 +1,18 @@
+{
+  "bugs": [
+    {
+      "bug_id": "bug-fa5b1a",
+      "error_message": "Test error message",
+      "file_path": "test.py",
+      "root_cause": "Test root cause",
+      "fix_description": "Test fix description",
+      "tags": [
+        "test",
+        "integration"
+      ],
+      "fixed_at": "2026-04-02T21:35:39",
+      "session_id": ""
+    }
+  ],
+  "updated_at": "2026-04-02T21:35:39"
+}

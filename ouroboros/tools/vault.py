@@ -32,22 +32,30 @@ def _sync_vault_to_repo(ctx: ToolContext, vault: VaultManager, action: str) -> s
         return " [No repo path configured]"
 
     try:
-        from ouroboros.tools.git import _repo_commit_push
-
+        from ouroboros.utils import run_cmd
+        
         # Only sync if vault is stored separately from repo
         needs_sync = vault.vault_root.resolve() != vault.repo_vault_path.resolve()
         if needs_sync:
             vault.sync_to_repo()
 
-        # Commit vault changes
+        # Commit vault changes directly
         commit_msg = f"vault: {action}"
-        result = _repo_commit_push(ctx, commit_message=commit_msg, paths=["vault"])
+        try:
+            run_cmd(["git", "add", "vault"], cwd=ctx.repo_dir)
+            run_cmd(["git", "commit", "-m", commit_msg], cwd=ctx.repo_dir)
+            result_commit = "OK: committed locally"
+        except Exception as e:
+            if "nothing to commit" in str(e).lower():
+                result_commit = "OK: no changes to commit"
+            else:
+                result_commit = f"⚠️ GIT_ERROR: {e}"
 
-        if "OK:" in result:
-            return f" [{result}]"
-        elif "⚠️" in result:
-            return f" [Sync: {result}]"
-        return f" [Sync: {result}]" if result else " [Sync: no output]"
+        if "OK:" in result_commit:
+            return f" [{result_commit}]"
+        elif "⚠️" in result_commit:
+            return f" [Sync: {result_commit}]"
+        return f" [Sync: {result_commit}]" if result_commit else " [Sync: no output]"
     except Exception as e:
         log.warning(f"Failed to sync vault to repo: {e}")
         return f" [Sync: {e}]"

@@ -42,3 +42,81 @@ memory:
   hybrid_enabled: true
   session_size: 50
   retrieve_top_k: 5
+
+# Learning modules configuration
+cerebrum:
+  max_do_not_repeat: 100
+  max_preferences: 200
+  max_learnings: 500
+  auto_cleanup_days: 30
+  min_confidence: 0.6
+
+buglog:
+  max_entries: 1000
+  auto_tag: true
+  auto_cerebrum_sync: true
+
+memory_extractor:
+  min_confidence: 0.6
+  max_tags: 5
+  auto_extract_on_session_end: true
+
+# Quality and safety modules
+quality_gates:
+  enabled_gates: ["compiles", "no_bare_except", "no_secrets", "functions_under_limit", "modules_under_limit", "imports_valid", "no_hallucinations"]
+  auto_run_on_error: true
+  categories: ["syntax", "security", "style", "quality"]
+
+hallucination_guard:
+  enabled: true
+  confidence_threshold: 0.7
+  false_positive_patterns: true
+  auto_check: true
+
+stuck_detector:
+  enabled: true
+  window_size: 10
+  repeat_threshold: 3
+  auto_reset_on_recovery: true
+
+# Module connections
+hooks:
+  enabled: true
+  config_path: "config/hooks.json"
+  auto_register_defaults: true
+
+anatomy:
+  auto_scan_on_startup: false
+  max_files: 100
+  cache_hours: 24
+
+query:
+  include_stack_info: true
+  include_health_check: true
+  cache_seconds: 30
+
+stack_detector:
+  auto_detect: true
+  confidence_threshold: 0.5
+
+# Orchestration
+tool_orchestrator:
+  avoid_stuck_tools: true
+  max_parallel: 8
+  dependency_timeout_sec: 300
+
+pipeline:
+  enabled: false
+  phases: ["diagnose", "plan", "execute", "verify", "synthesize"]
+  auto_advance: true
+
+# Ideation and debugging
+ideation:
+  max_ideas: 10
+  min_confidence: 0.5
+  auto_reflect: true
+
+debug_analyzer:
+  max_depth: 3
+  debug_probability: 0.8
+  auto_start_on_error: true

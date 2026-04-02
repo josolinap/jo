@@ -93,7 +93,7 @@ _This change reflects growth in capabilities._
 
 def _learn_from_result(ctx: ToolContext, task: str, result: str, success: bool = True) -> str:
     """Store a lesson from task result in vault."""
-    from ouroboros.tools.vault import _vault_create
+    from ouroboros.vault_manager import VaultManager
 
     status = "success" if success else "failure"
     title = f"Lesson: {task[:50]}"
@@ -113,16 +113,16 @@ _What was learned from this task execution._
 """
 
     try:
-        result = _vault_create(
-            ctx,
+        vault = VaultManager(ctx.repo_path("vault"))
+        path = vault.create_note(
             title=title,
             folder="journal",
             content=content,
-            tags=f"lesson, {status}",
+            tags=["lesson", status],
             type="lesson",
             status="reviewed",
         )
-        return f"✅ Lesson stored: {result}"
+        return f"✅ Lesson stored: {path}"
     except Exception as e:
         return f"⚠️ Failed to store lesson: {e}"
 

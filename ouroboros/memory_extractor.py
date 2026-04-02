@@ -221,6 +221,44 @@ class MemoryExtractor:
         except Exception as e:
             return f"Failed to save to cerebrum: {e}"
 
+    def extract_from_buglog(self, limit: int = 50) -> List[ExtractedMemory]:
+        """Extract memories from buglog entries."""
+        memories = []
+        try:
+            from ouroboros.buglog import BugLog
+
+            buglog = BugLog(self.repo_dir)
+            entries = buglog._load()
+
+            for entry in entries[-limit:]:
+                # Extract as mistake memory
+                memories.append(
+                    ExtractedMemory(
+                        content=f"{entry.error_message}: {entry.root_cause}",
+                        category="mistake",
+                        confidence=0.8,
+                        source=f"buglog:{entry.bug_id}",
+                        tags=entry.tags + ["buglog", "error-pattern"],
+                        extracted_at=entry.fixed_at or time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    )
+                )
+
+                # Extract fix pattern as learning
+                memories.append(
+                    ExtractedMemory(
+                        content=f"Fix: {entry.fix_description}",
+                        category="pattern",
+                        confidence=0.7,
+                        source=f"buglog:{entry.bug_id}",
+                        tags=entry.tags + ["buglog", "fix-pattern"],
+                        extracted_at=entry.fixed_at or time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    )
+                )
+        except Exception:
+            log.debug("Failed to extract from buglog", exc_info=True)
+
+        return memories
+
 
 def get_tools():
     from ouroboros.tools.registry import ToolEntry
@@ -242,6 +280,18 @@ def get_tools():
     def memory_extract_save(ctx, text: str, source: str = "") -> str:
         extractor = _get_extractor(ctx.repo_dir)
         memories = extractor.extract_from_text(text, source)
+        memories = extractor.deduplicate(memories)
+        return extractor.save_to_cerebrum(memories)
+
+    def memory_extract_buglog(ctx, limit: int = 50) -> str:
+        extractor = _get_extractor(ctx.repo_dir)
+        memories = extractor.extract_from_buglog(limit)
+        memories = extractor.deduplicate(memories)
+        return extractor.format_for_cerebrum(memories)
+
+    def memory_extract_buglog_save(ctx, limit: int = 50) -> str:
+        extractor = _get_extractor(ctx.repo_dir)
+        memories = extractor.extract_from_buglog(limit)
         memories = extractor.deduplicate(memories)
         return extractor.save_to_cerebrum(memories)
 
@@ -277,5 +327,33 @@ def get_tools():
                 },
             },
             memory_extract_save,
+        ),
+        ToolEntry(
+            "memory_extract_buglog",
+            {
+                "name": "memory_extract_buglog",
+                "description": "Extract memories from buglog entries (error patterns and fix patterns).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "default": 50, "description": "Max entries to process"},
+                    },
+                },
+            },
+            memory_extract_buglog,
+        ),
+        ToolEntry(
+            "memory_extract_buglog_save",
+            {
+                "name": "memory_extract_buglog_save",
+                "description": "Extract memories from buglog and save them to cerebrum.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "default": 50, "description": "Max entries to process"},
+                    },
+                },
+            },
+            memory_extract_buglog_save,
         ),
     ]

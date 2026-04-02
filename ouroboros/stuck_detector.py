@@ -40,6 +40,17 @@ class SlidingWindowStuckDetector:
     """Detects stuck loops using a sliding window of tool call signatures."""
 
     def __init__(self, window_size: int = 10, repeat_threshold: int = 3):
+        # Load configuration
+        try:
+            from ouroboros.config_manager import get_config
+
+            config = get_config()
+            stuck_config = config.get("stuck_detector", {})
+            window_size = stuck_config.get("window_size", window_size)
+            repeat_threshold = stuck_config.get("repeat_threshold", repeat_threshold)
+        except Exception:
+            pass
+
         self.window_size = window_size
         self.repeat_threshold = repeat_threshold
         self._window: Deque[ToolCallSignature] = deque(maxlen=window_size)
@@ -118,6 +129,18 @@ class SlidingWindowStuckDetector:
             "current_window_size": len(self._window),
             "repeat_threshold": self.repeat_threshold,
         }
+
+    def get_stuck_patterns(self) -> List[str]:
+        """Get list of tools that are currently stuck in loops."""
+        if len(self._window) < self.repeat_threshold:
+            return []
+
+        call_counts: Dict[str, int] = {}
+        for sig in self._window:
+            key = f"{sig.tool_name}:{sig.args_hash}"
+            call_counts[key] = call_counts.get(key, 0) + 1
+
+        return [k.split(":")[0] for k, v in call_counts.items() if v >= self.repeat_threshold]
 
 
 _detector: Optional[SlidingWindowStuckDetector] = None

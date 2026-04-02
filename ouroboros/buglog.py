@@ -83,6 +83,26 @@ class BugLog:
         )
         entries.append(entry)
         self._save()
+
+        # Learning loop: Feed to Cerebrum
+        try:
+            from ouroboros.cerebrum import CerebrumManager
+
+            cerebrum = CerebrumManager(self.repo_dir)
+            # Add to do-not-repeat to avoid making the same mistake
+            do_not_repeat_content = f"{error_message}: {root_cause}"
+            cerebrum.add_do_not_repeat(
+                content=do_not_repeat_content, tags=(tags or []) + ["buglog", "auto-learned"], source=f"buglog:{bug_id}"
+            )
+            # Add fix as a learning
+            cerebrum.add_learning(
+                content=f"Fix for {error_message[:50]}: {fix_description[:100]}",
+                tags=(tags or []) + ["fix-pattern", "buglog"],
+                source=f"buglog:{bug_id}",
+            )
+        except Exception:
+            log.debug("Failed to feed buglog to cerebrum", exc_info=True)
+
         return f"Logged bug fix {bug_id}: {error_message[:80]}"
 
     def search(self, query: str, limit: int = 5) -> str:

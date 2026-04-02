@@ -70,6 +70,92 @@ DEFAULTS: Dict[str, Any] = {
         "session_size": 50,
         "retrieve_top_k": 5,
     },
+    # Learning modules configuration
+    "cerebrum": {
+        "max_do_not_repeat": 100,
+        "max_preferences": 200,
+        "max_learnings": 500,
+        "auto_cleanup_days": 30,
+        "min_confidence": 0.6,
+    },
+    "buglog": {
+        "max_entries": 1000,
+        "auto_tag": True,
+        "auto_cerebrum_sync": True,
+    },
+    "memory_extractor": {
+        "min_confidence": 0.6,
+        "max_tags": 5,
+        "auto_extract_on_session_end": True,
+    },
+    # Quality and safety modules
+    "quality_gates": {
+        "enabled_gates": [
+            "compiles",
+            "no_bare_except",
+            "no_secrets",
+            "functions_under_limit",
+            "modules_under_limit",
+            "imports_valid",
+            "no_hallucinations",
+        ],
+        "auto_run_on_error": True,
+        "categories": ["syntax", "security", "style", "quality"],
+    },
+    "hallucination_guard": {
+        "enabled": True,
+        "confidence_threshold": 0.7,
+        "false_positive_patterns": True,
+        "auto_check": True,
+    },
+    "stuck_detector": {
+        "enabled": True,
+        "window_size": 10,
+        "repeat_threshold": 3,
+        "auto_reset_on_recovery": True,
+    },
+    # Module connections
+    "hooks": {
+        "enabled": True,
+        "config_path": "config/hooks.json",
+        "auto_register_defaults": True,
+    },
+    "anatomy": {
+        "auto_scan_on_startup": False,
+        "max_files": 100,
+        "cache_hours": 24,
+    },
+    "query": {
+        "include_stack_info": True,
+        "include_health_check": True,
+        "cache_seconds": 30,
+    },
+    "stack_detector": {
+        "auto_detect": True,
+        "confidence_threshold": 0.5,
+    },
+    # Orchestration
+    "tool_orchestrator": {
+        "avoid_stuck_tools": True,
+        "max_parallel": 8,
+        "dependency_timeout_sec": 300,
+    },
+    "pipeline": {
+        "enabled": False,
+        "phases": ["diagnose", "plan", "execute", "verify", "synthesize"],
+        "auto_advance": True,
+    },
+    # Ideation and debugging
+    "ideation": {
+        "max_ideas": 10,
+        "min_confidence": 0.5,
+        "auto_reflect": True,
+    },
+    "debug_analyzer": {
+        "max_depth": 3,
+        "debug_probability": 0.8,
+        "auto_start_on_error": True,
+    },
 }
 
 

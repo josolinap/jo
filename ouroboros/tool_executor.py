@@ -158,6 +158,29 @@ def _execute_single_tool(
 
     args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
 
+    # Hook integration: Pre-tool hooks
+    hook_mgr = None
+    try:
+        from ouroboros.hooks import get_hook_manager
+
+        hook_mgr = get_hook_manager()
+        allowed, modified_args, deny_msg = hook_mgr.fire_pre_tool(fn_name, args if isinstance(args, dict) else {})
+        if not allowed:
+            return {
+                "tool_call_id": tool_call_id,
+                "fn_name": fn_name,
+                "result": f"⚠️ HOOK_DENIED: {deny_msg}",
+                "is_error": True,
+                "args_for_log": args_for_log,
+                "is_code_tool": is_code_tool,
+            }
+        # Use modified args if hook rewrote them
+        if modified_args != args:
+            args = modified_args
+            args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
+    except Exception:
+        log.debug("Pre-tool hook failed", exc_info=True)
+
     # Proof gate: check for violations before file writes
     if fn_name in ("repo_write_commit", "repo_commit_push", "code_edit", "vault_write", "vault_create"):
         try:
@@ -227,6 +250,23 @@ def _execute_single_tool(
             traceability.on_tool_invoked(fn_name, args_for_log, str(result)[:500], error_msg)
         except Exception as e:
             log.debug(f"Traceability hook failed: {e}")
+
+    # Hook integration: Post-tool hooks
+    if hook_mgr is not None:
+        try:
+            result = hook_mgr.fire_post_tool(fn_name, args_for_log, str(result))
+        except Exception:
+            log.debug("Post-tool hook failed", exc_info=True)
+
+    # Hook integration: Error hooks
+    if is_error and hook_mgr is not None:
+        try:
+            error_messages = hook_mgr.fire_on_error(fn_name, args_for_log, str(result))
+            if error_messages:
+                # Append hook error suggestions to result
+                result = f"{result}\n\nHook suggestions:\n" + "\n".join(f"- {msg}" for msg in error_messages)
+        except Exception:
+            log.debug("On-error hook failed", exc_info=True)
 
     return {
         "tool_call_id": tool_call_id,

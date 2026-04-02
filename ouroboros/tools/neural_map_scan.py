@@ -11,7 +11,7 @@ import pathlib
 import re
 from typing import Any, Optional
 
-from ouroboros.tools.neural_map import Concept, NeuralMap
+from ouroboros.tools.neural_map_models import Concept, NeuralMap
 
 log = logging.getLogger(__name__)
 
