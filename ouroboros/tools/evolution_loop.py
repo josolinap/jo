@@ -428,6 +428,22 @@ class EvolutionLoop:
 
 def get_tools() -> List[ToolEntry]:
     """Get evolution loop tools."""
+    # Lazy imports to avoid circular dependency
+    from ouroboros.tools.evolution_tools import (
+        _autonomous_evaluate,
+        _run_evolution_cycle,
+        _check_evolution_readiness,
+        _synthesize_lessons,
+        _knowledge_decay_report,
+        _predictive_health,
+        _confidence_report,
+        _evolution_fingerprint,
+        _decision_trace_report,
+        _system_dashboard,
+        _enable_evolution_mode,
+        _get_evolution_status,
+    )
+
     return [
         ToolEntry(
             name="autonomous_evaluate",
