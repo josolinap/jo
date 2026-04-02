@@ -304,7 +304,8 @@ class OuroborosAgent:
                 initial_effort = "medium"
 
             try:
-                text, usage, llm_trace = run_llm_loop(
+                from ouroboros.query_engine import QueryEngine
+                engine = QueryEngine(
                     messages=messages,
                     tools=self.tools,
                     llm=self.llm,
@@ -318,6 +319,7 @@ class OuroborosAgent:
                     initial_effort=initial_effort,
                     drive_root=self.env.drive_root,
                 )
+                text, usage, llm_trace = engine.run()
             except Exception as e:
                 tb = traceback.format_exc()
                 append_jsonl(

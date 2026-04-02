@@ -129,6 +129,12 @@ CORE_TOOL_NAMES = {
     "dspy_route",
     "dspy_optimize",
     "dspy_status",
+    "enter_plan_mode",
+    "exit_plan_mode",
+    "enter_worktree",
+    "exit_worktree",
+    "task_create",
+    "task_check",
 }
 
 

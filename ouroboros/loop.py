@@ -468,6 +468,7 @@ def run_llm_loop(
     event_queue: Optional[queue.Queue] = None,
     initial_effort: str = "medium",
     drive_root: Optional[pathlib.Path] = None,
+    engine: Optional[Any] = None,
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """
     Core LLM-with-tools loop.
@@ -523,7 +524,11 @@ def run_llm_loop(
         while True:
             round_idx += 1
 
-            should_continue, reason = _preflight_checks(budget_remaining_usd)
+            if engine:
+                should_continue, reason = engine.preflight_checks()
+            else:
+                should_continue, reason = _preflight_checks(budget_remaining_usd)
+                
             if not should_continue:
                 return f"⚠️ {reason}", {}, {"error": reason}
 
@@ -564,7 +569,10 @@ def run_llm_loop(
                 active_effort = normalize_reasoning_effort(ctx.active_effort_override, default=active_effort)
                 ctx.active_effort_override = None
 
-            _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
+            if engine:
+                engine.drain_incoming_messages()
+            else:
+                _drain_incoming_messages(messages, incoming_messages, drive_root, task_id, event_queue, _owner_msg_seen)
 
             # Handle all first-round setup
             _ontology_task_type = "general"  # Default, may be updated below

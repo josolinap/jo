@@ -120,7 +120,7 @@ def _execute_single_tool(
     is_code_tool = fn_name in tools.CODE_TOOLS
 
     # Sandbox check - enforce read-only mode if enabled
-    sandbox_readonly = tc.get("sandbox_read_only", False)
+    sandbox_readonly = getattr(tools._ctx, "sandbox_read_only", False)
     write_tools = {
         "repo_write_commit",
         "repo_commit_push",
@@ -131,13 +131,14 @@ def _execute_single_tool(
         "delete_file",
         "move_file",
         "copy_file",
+        "run_shell",
     }
 
     if sandbox_readonly and fn_name in write_tools:
         return {
             "tool_call_id": tool_call_id,
             "fn_name": fn_name,
-            "result": f"⚠️ SANDBOX_BLOCKED: {fn_name} is write-tool but sandbox mode is read-only",
+            "result": f"⚠️ SANDBOX_BLOCKED: {fn_name} is write-tool but sandbox mode is read-only. Use exit_plan_mode to unlock.",
             "is_error": True,
             "args_for_log": {},
             "is_code_tool": is_code_tool,

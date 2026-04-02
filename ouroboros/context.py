@@ -115,6 +115,28 @@ def _build_memory_sections(memory: Memory) -> List[str]:
     return sections
 
 
+def _build_markdown_skills_context(env: Any) -> str:
+    """Inject lightweight Markdown-based skills to adapt core prompts on the fly."""
+    try:
+        skills_dir = env.repo_path(".jo_skills")
+        if not skills_dir.exists() or not skills_dir.is_dir():
+            return ""
+            
+        skill_parts = []
+        for md_file in skills_dir.glob("*.md"):
+            content = md_file.read_text(encoding="utf-8", errors="ignore")
+            if content.strip():
+                skill_parts.append(f"### Skill: {md_file.name}\n\n{content}")
+                
+        if not skill_parts:
+            return ""
+        
+        return "## Project Skills & Instructions\n\n" + "\n\n".join(skill_parts)
+    except Exception:
+        log.debug("Failed to read .jo_skills contents", exc_info=True)
+        return ""
+
+
 def _build_recent_sections(memory: Memory, env: Any, task_id: str = "") -> List[str]:
     """Build recent chat, recent progress, recent tools, recent events sections."""
     sections = []
@@ -338,6 +360,10 @@ def build_llm_messages(
         kb_index = kb_index_path.read_text(encoding="utf-8")
         if kb_index.strip():
             semi_stable_parts.append("## Knowledge base\n\n" + clip_text(kb_index, 50000))
+
+    skills_ctx = _build_markdown_skills_context(env)
+    if skills_ctx:
+        semi_stable_parts.append(skills_ctx)
 
     semi_stable_text = "\n\n".join(semi_stable_parts)
 
