@@ -8,3 +8,4 @@ tags: [tool]
 # validate_connection
 
 validate_connection.
+Connection validation ensures links are not hallucinated [[Verification as Agency]]

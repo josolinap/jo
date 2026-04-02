@@ -30,3 +30,4 @@ tags: [browser automation]
 - Supports [[Principle 3: LLM-First]] by providing direct web access
 - Part of [[tool_categories]] - Web Automation cluster
 Browse and scrape web pages [[web-research]]
+Browser tools extend Jo's agency into the web [[principle_0__agency]]

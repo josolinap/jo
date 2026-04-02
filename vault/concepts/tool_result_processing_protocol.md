@@ -31,3 +31,5 @@ See also:
 - [[principle_0__agency]] (correctness requirement)
 
 > "Tool error is information, not catastrophe. I investigate." — Tool Error Handling
+Tool result processing is critical for delegated agent coordination [[Multi-Agent Architecture and Delegated Reasoning]]
+Tool result processing ensures correctness in delegated reasoning [[principle_3__llm-first]]

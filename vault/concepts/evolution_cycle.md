@@ -29,3 +29,4 @@ Related:
 - [[run_evolution_cycle]]
 - [[check_evolution_readiness]]
 - [[principle_8__iterations]]
+Evolution cycle execution implements the iteration framework [[principle_8__evolution-through-iterations]]

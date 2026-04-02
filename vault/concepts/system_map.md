@@ -39,3 +39,5 @@ High-level map of Jo's system components and their relationships.
 - [[architecture]]
 - [[jo_system_neural_hub]]
 - [[tools]]
+System map provides architectural insights for evolution planning [[Evolution Cycle]]
+System map shows real-time tool and dependency status [[Health Dashboar]]

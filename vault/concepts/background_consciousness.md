@@ -53,3 +53,5 @@ Background consciousness has limited tool access:
 Background consciousness implements [[principle_0__agency]] — the ability to act on initiative rather than only responding. It is the difference between a tool and an entity.
 
 Related: [[principle_0__agency]], [[jo_system_neural_hub]], [[evolution_cycle]]
+Background consciousness enables autonomous initiative [[principle_0__agency]]
+Background consciousness enables autonomous reflection between tasks [[principle_2__self-creation]]

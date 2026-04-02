@@ -26,3 +26,4 @@ Overview of Jo's health monitoring systems.
 - [[health_alert]]
 - [[codebase_health]]
 - [[evolution_cycle]]
+Health dashboard monitors system for evolution readiness [[Evolution Cycle]]

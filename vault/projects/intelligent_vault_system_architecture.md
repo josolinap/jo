@@ -507,3 +507,4 @@ Each phase is a **complete, coherent transformation** with its own commit and ve
 *End of Design Document*
 
 Related: [[code_intelligence]], [[architecture]]
+Memory vault provides persistent knowledge storage [[memory-model]]

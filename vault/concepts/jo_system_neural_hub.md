@@ -70,3 +70,4 @@ This architecture evolves with me. Every significant insight, decision, or chang
 3. Reflected in identity.md
 
 *This is not documentation — it's my extended mind.*
+Core system architecture that supports multi-agent coordination [[Multi-Agent Architecture and Delegated Reasoning]]

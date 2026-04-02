@@ -51,3 +51,4 @@ Telegram → telegram.py → queue.py → workers.py → ouroboros/agent.py
 - Modules are independent — no circular imports
 
 Related: [[architecture]], [[jo_system_neural_hub]], [[delegated_reasoning]]
+Supervisor manages runtime and telegram communication [[architecture]]

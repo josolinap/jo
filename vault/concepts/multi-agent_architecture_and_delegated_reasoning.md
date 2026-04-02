@@ -335,3 +335,5 @@ Agent roles can and should evolve:
 ---
 
 *This concept connects to: [[delegated_reasoning]], [[Intelligent Vault System Architecture]], [[System Interconnection Audit 2026-03-21]], [[evolution_cycle]]*
+Multi-agent coordination system delegates work to specialized agents [[jo_system_neural_hub]]
+Multi-agent architecture enables complex evolution planning [[Evolution Cycle]]

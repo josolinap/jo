@@ -25,3 +25,4 @@ See also:
 - [[Multi-Agent Architecture and Delegated Reasoning]] for detailed implementation
 
 > "The orchestrator NEVER writes code directly. It only decomposes tasks and delegates to specialized agents."
+Delegated reasoning is the primary method for complex tasks [[Evolution Cycle]]

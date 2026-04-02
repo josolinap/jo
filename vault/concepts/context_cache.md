@@ -45,3 +45,4 @@ cache.invalidate("prefix:")             # Invalidate by prefix
 - No thread safety by design — single-task use
 
 Related: [[code_intelligence]], [[principle_5__minimalism]], [[architecture]]
+Context manages prompt building and caching [[loop.py]]

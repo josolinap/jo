@@ -66,3 +66,5 @@ Every relationship carries a confidence score (0.0-1.0):
 - **Parent tracking**: Confidence lookup uses BFS parent map, not just changed_node
 
 Related: [[architecture]], [[principle_5__minimalism]], [[tools]], [[codebase_overview]]
+Code intelligence analyzes impact before evolution changes [[Evolution Cycle]]
+Code intelligence enables minimalism through complexity control [[principle_5__minimalis]]
