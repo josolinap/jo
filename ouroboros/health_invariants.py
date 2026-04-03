@@ -463,6 +463,22 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: self-healing", exc_info=True)
 
+    # 17. Context Compaction (Claude Code-inspired)
+    try:
+        from ouroboros.context_compaction import get_compaction
+
+        compaction = get_compaction(repo_dir=env.repo_dir)
+        comp_stats = compaction.get_stats()
+        if comp_stats["total_compactions"] > 0:
+            checks.append(
+                f"OK: context compaction - {comp_stats['total_compactions']} compactions, "
+                f"circuit breaker {'TRIPPED' if comp_stats['circuit_breaker_tripped'] else 'ready'}"
+            )
+        else:
+            checks.append("OK: context compaction ready (no compactions yet)")
+    except Exception:
+        log.debug("Health check failed: context compaction", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

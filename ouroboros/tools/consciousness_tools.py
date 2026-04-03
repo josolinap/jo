@@ -286,6 +286,24 @@ def _self_healing_stats(ctx: ToolContext) -> str:
     return f"## Self-Healing Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _compaction_status(ctx: ToolContext) -> str:
+    """Get context compaction status."""
+    from ouroboros.context_compaction import get_compaction
+
+    compaction = get_compaction(ctx.repo_dir)
+    stats = compaction.get_stats()
+    return f"## Context Compaction Status\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
+def _compaction_reset_circuit(ctx: ToolContext) -> str:
+    """Reset the compaction circuit breaker."""
+    from ouroboros.context_compaction import get_compaction
+
+    compaction = get_compaction(ctx.repo_dir)
+    compaction.reset_circuit_breaker()
+    return "✅ Compaction circuit breaker reset"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -609,5 +627,23 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _self_healing_stats,
+        ),
+        ToolEntry(
+            "compaction_status",
+            {
+                "name": "compaction_status",
+                "description": "Get context compaction status and statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _compaction_status,
+        ),
+        ToolEntry(
+            "compaction_reset_circuit",
+            {
+                "name": "compaction_reset_circuit",
+                "description": "Reset the compaction circuit breaker after failures.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _compaction_reset_circuit,
         ),
     ]

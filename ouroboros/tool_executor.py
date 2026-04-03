@@ -28,13 +28,61 @@ log = logging.getLogger(__name__)
 
 READ_ONLY_PARALLEL_TOOLS = frozenset(
     {
+        # File operations (read-only)
         "repo_read",
         "repo_list",
+        "repo_status",
+        "repo_log",
         "drive_read",
         "drive_list",
+        # Search operations
         "web_search",
         "codebase_digest",
+        "anatomy_scan",
+        "anatomy_lookup",
+        "anatomy_search",
+        # Query operations
+        "query_status",
+        "query_full",
+        "query_health",
+        # Memory operations (read-only)
+        "cerebrum_search",
+        "cerebrum_summary",
+        "cerebrum_check",
+        "buglog_search",
+        "buglog_summary",
+        "memory_extract",
+        # State operations (read-only)
+        "notepad_read",
+        "notepad_stats",
+        "project_memory_read",
+        "persistent_tag_list",
+        "state_full_context",
         "chat_history",
+        # Verification operations
+        "verify_build",
+        "verify_tests",
+        # Skill and disclosure operations
+        "disclosure_visible_skills",
+        "disclosure_stats",
+        "capability_detect_gaps",
+        "capability_stats",
+        # Consciousness and growth operations
+        "consciousness_status",
+        "growth_report",
+        "growth_stats",
+        # Identity operations
+        "identity_verify",
+        "identity_history",
+        "identity_stats",
+        # Self-healing operations
+        "self_healing_detect",
+        "self_healing_stats",
+        # Outreach operations
+        "outreach_pending",
+        "outreach_stats",
+        # Modification operations
+        "modification_history",
     }
 )
 
