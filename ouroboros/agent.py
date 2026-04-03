@@ -769,6 +769,55 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Auto-vault persistence failed", exc_info=True)
 
+            # --- Post-task: Behavioral drift tracking (Phase 10) ---
+            try:
+                from ouroboros.behavioral_drift import get_behavioral_drift_detector
+
+                detector = get_behavioral_drift_detector(self.env.repo_dir)
+                # Track task success rate
+                success = "error" not in text.lower()[:100] and "⚠" not in text[:20]
+                detector.record_metric(
+                    "task_success_rate",
+                    1.0 if success else 0.0,
+                    context=f"Task type: {task_type_str or 'general'}",
+                )
+                # Track response length (proxy for quality)
+                response_length = len(text)
+                detector.record_metric(
+                    "response_length",
+                    float(response_length),
+                    context=f"Task type: {task_type_str or 'general'}",
+                )
+                # Track tool usage diversity
+                tools_used = []
+                for tc in llm_trace.get("tool_calls", []):
+                    if isinstance(tc, dict):
+                        name = tc.get("name", tc.get("function", {}).get("name", ""))
+                        if name:
+                            tools_used.append(name)
+                detector.record_metric(
+                    "tool_diversity",
+                    float(len(set(tools_used))),
+                    context=f"Used {len(tools_used)} tool calls",
+                )
+            except Exception:
+                log.debug("Behavioral drift tracking failed", exc_info=True)
+
+            # --- Post-task: Dead letter queue for failed tasks ---
+            try:
+                if not success:
+                    from ouroboros.dead_letter_queue import get_dead_letter_queue
+
+                    dlq = get_dead_letter_queue(self.env.repo_dir)
+                    dlq.add_failed_task(
+                        task=task,
+                        error_message=text[:500],
+                        session_id=str(task.get("id") or ""),
+                        tags=[task_type_str or "general", "auto-captured"],
+                    )
+            except Exception:
+                log.debug("Dead letter queue failed", exc_info=True)
+
             # --- Post-task: Proactive Outreach (Principle 0: Agency) ---
             try:
                 from ouroboros.proactive_outreach import get_outreach

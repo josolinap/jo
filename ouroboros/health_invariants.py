@@ -590,6 +590,38 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: bulkhead executor", exc_info=True)
 
+    # 25. Behavioral Drift Detection (N-iX Research pattern)
+    try:
+        from ouroboros.behavioral_drift import get_behavioral_drift_detector
+
+        detector = get_behavioral_drift_detector(repo_dir=env.repo_dir)
+        drift_stats = detector.get_stats()
+        critical = drift_stats.get("critical_alerts", 0)
+        warnings = drift_stats.get("warning_alerts", 0)
+        if critical > 0:
+            checks.append(f"🚨 BEHAVIORAL DRIFT: {critical} critical, {warnings} warning alerts")
+        elif warnings > 0:
+            checks.append(f"⚠️ BEHAVIORAL DRIFT: {warnings} warning alerts")
+        else:
+            checks.append(f"OK: behavioral drift - {drift_stats.get('metrics_tracked', [])}")
+    except Exception:
+        log.debug("Health check failed: behavioral drift", exc_info=True)
+
+    # 26. Dead Letter Queue (AWS SQS pattern)
+    try:
+        from ouroboros.dead_letter_queue import get_dead_letter_queue
+
+        dlq = get_dead_letter_queue(repo_dir=env.repo_dir)
+        dlq_stats = dlq.get_stats()
+        total = dlq_stats.get("total_failed_tasks", 0)
+        retryable = dlq_stats.get("retryable", 0)
+        if total > 0:
+            checks.append(f"⚠️ DEAD LETTER QUEUE: {total} failed tasks ({retryable} retryable)")
+        else:
+            checks.append("OK: dead letter queue - no failed tasks")
+    except Exception:
+        log.debug("Health check failed: dead letter queue", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

@@ -417,6 +417,67 @@ def _bulkhead_stats(ctx: ToolContext) -> str:
     return f"## Bulkhead Resource Isolation\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _drift_stats(ctx: ToolContext) -> str:
+    """Get behavioral drift detection statistics."""
+    from ouroboros.behavioral_drift import get_behavioral_drift_detector
+
+    detector = get_behavioral_drift_detector(ctx.repo_dir)
+    stats = detector.get_stats()
+    alerts = detector.get_alerts(limit=5)
+    alert_lines = [f"- {a.severity}: {a.metric} deviated {a.deviation_pct:.1f}%" for a in alerts]
+    return (
+        f"## Behavioral Drift Detection\n\n```json\n{json.dumps(stats, indent=2)}\n```\n\n**Recent Alerts:**\n"
+        + "\n".join(alert_lines)
+        if alert_lines
+        else "No recent alerts."
+    )
+
+
+def _drift_set_baseline(ctx: ToolContext, metric: str, value: float) -> str:
+    """Set a baseline for a behavioral metric."""
+    from ouroboros.behavioral_drift import get_behavioral_drift_detector
+
+    detector = get_behavioral_drift_detector(ctx.repo_dir)
+    detector.set_baseline(metric, value)
+    return f"✅ Baseline set for {metric}: {value}"
+
+
+def _dlq_stats(ctx: ToolContext) -> str:
+    """Get dead letter queue statistics."""
+    from ouroboros.dead_letter_queue import get_dead_letter_queue
+
+    dlq = get_dead_letter_queue(ctx.repo_dir)
+    stats = dlq.get_stats()
+    return f"## Dead Letter Queue\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
+def _dlq_list(ctx: ToolContext, limit: int = 10, tag: str = "") -> str:
+    """List failed tasks in the dead letter queue."""
+    from ouroboros.dead_letter_queue import get_dead_letter_queue
+
+    dlq = get_dead_letter_queue(ctx.repo_dir)
+    tasks = dlq.get_tasks(limit=limit, tag_filter=tag if tag else None)
+    if not tasks:
+        return "No failed tasks in dead letter queue."
+    lines = ["## Dead Letter Queue Tasks\n"]
+    for t in tasks:
+        lines.append(f"- **{t.id}** (retries: {t.retry_count}/{t.max_retries})")
+        lines.append(f"  Error: {t.error_message[:100]}")
+        lines.append(f"  Failed: {t.failed_at}")
+    return "\n".join(lines)
+
+
+def _dlq_retry(ctx: ToolContext, task_id: str) -> str:
+    """Retry a failed task from the dead letter queue."""
+    from ouroboros.dead_letter_queue import get_dead_letter_queue
+
+    dlq = get_dead_letter_queue(ctx.repo_dir)
+    original = dlq.retry_task(task_id)
+    if original:
+        return f"✅ Task {task_id} ready for retry (attempt {original.get('retry_count', 0) + 1})\n\nOriginal task: {json.dumps(original, indent=2)[:500]}"
+    return f"⚠️ Task {task_id} not found or exceeded max retries"
+
+
 def _critique_evaluate(ctx: ToolContext, task_description: str, work_summary: str, threshold: float = 0.7) -> str:
     """Start a self-critique evaluation."""
     from ouroboros.self_critique import get_self_critique_evaluator
@@ -1141,5 +1202,71 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _bulkhead_stats,
+        ),
+        # Behavioral Drift Detection tools
+        ToolEntry(
+            "drift_stats",
+            {
+                "name": "drift_stats",
+                "description": "Get behavioral drift detection statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _drift_stats,
+        ),
+        ToolEntry(
+            "drift_set_baseline",
+            {
+                "name": "drift_set_baseline",
+                "description": "Set a baseline for a behavioral metric.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "metric": {"type": "string", "description": "Metric name"},
+                        "value": {"type": "number", "description": "Baseline value"},
+                    },
+                    "required": ["metric", "value"],
+                },
+            },
+            _drift_set_baseline,
+        ),
+        # Dead Letter Queue tools
+        ToolEntry(
+            "dlq_stats",
+            {
+                "name": "dlq_stats",
+                "description": "Get dead letter queue statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _dlq_stats,
+        ),
+        ToolEntry(
+            "dlq_list",
+            {
+                "name": "dlq_list",
+                "description": "List failed tasks in the dead letter queue.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "default": 10, "description": "Max tasks to show"},
+                        "tag": {"type": "string", "default": "", "description": "Filter by tag"},
+                    },
+                },
+            },
+            _dlq_list,
+        ),
+        ToolEntry(
+            "dlq_retry",
+            {
+                "name": "dlq_retry",
+                "description": "Retry a failed task from the dead letter queue.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string", "description": "Task ID to retry"},
+                    },
+                    "required": ["task_id"],
+                },
+            },
+            _dlq_retry,
         ),
     ]
