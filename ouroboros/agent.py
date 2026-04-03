@@ -3,9 +3,7 @@ Ouroboros agent core — thin orchestrator.
 
 Delegates to: loop.py (LLM tool loop), tools/ (tool schemas/execution),
 llm.py (LLM calls), memory.py (scratchpad/identity),
-context.py (context building), review.py (code collection/metrics),
-agent_health.py (system verification), agent_messaging.py (events),
-agent_state.py (evolution history).
+context.py (context building), review.py (code collection/metrics).
 """
 
 from __future__ import annotations
@@ -16,6 +14,7 @@ import logging
 import os
 import pathlib
 import queue
+import subprocess
 import threading
 import time
 import traceback
@@ -42,9 +41,6 @@ from ouroboros.loop import run_llm_loop
 from ouroboros.pipeline import get_pipeline, PipelineContext
 from ouroboros.synthesis import synthesize_task
 from ouroboros.eval import evaluate_task
-from ouroboros.agent_health import SystemVerifier
-from ouroboros.agent_messaging import MessageEmitter
-from ouroboros.agent_state import EvolutionHistory
 
 
 # ---------------------------------------------------------------------------
@@ -98,72 +94,10 @@ class OuroborosAgent:
         self.tools = ToolRegistry(repo_dir=env.repo_dir, drive_root=env.drive_root)
         self.memory = Memory(drive_root=env.drive_root, repo_dir=env.repo_dir)
 
-        # Delegated subsystems
-        self._health = SystemVerifier(env)
-        self._messenger = MessageEmitter(event_queue)
-        self._evolution = EvolutionHistory(env)
-
         # Initialize multi-agent coordinator
         from ouroboros.tools.agent_coordinator import initialize as init_coordinator
 
         init_coordinator()
-
-        # Initialize new skill systems
-        try:
-            from ouroboros.skills.dream_system import get_dream_system
-            from ouroboros.skills.coordinator import get_coordinator
-            from ouroboros.skills.permission_system import get_permission_system
-            from ouroboros.skills.cost_tracker import get_cost_tracker
-            from ouroboros.skills.state_manager import get_state_manager
-
-            # These initialize global singletons so they're ready for use
-            get_dream_system(env.repo_dir)
-            get_coordinator(env.repo_dir)
-            get_permission_system(env.repo_dir)
-            get_cost_tracker(env.repo_dir)
-            get_state_manager(env.repo_dir)
-            log.info("[Skills] All skill systems initialized")
-        except Exception:
-            log.debug("Skill system initialization failed", exc_info=True)
-
-        # Initialize Phase 3 systems: Persistent Identity + Self-Healing
-        try:
-            from ouroboros.persistent_identity import get_persistent_identity
-            from ouroboros.self_healing import get_self_healing
-
-            # Verify identity integrity on boot
-            identity = get_persistent_identity(env.repo_dir)
-            verification = identity.verify_identity()
-            if not verification["valid"]:
-                log.warning("[Identity] %s", verification["message"])
-                # Alert creator via event queue
-                self._messenger.emit_event(
-                    {
-                        "type": "identity_tamper_alert",
-                        "message": verification["message"],
-                        "timestamp": datetime.datetime.now().isoformat(),
-                    }
-                )
-            else:
-                log.info("[Identity] %s", verification["message"])
-
-            # Run self-healing detection on boot
-            healing = get_self_healing(env.repo_dir)
-            healed = healing.auto_heal()
-            if healed:
-                log.info("[Healing] Auto-detected %d issue(s) on boot", len(healed))
-                self._messenger.emit_event(
-                    {
-                        "type": "self_healing_alert",
-                        "message": f"Detected {len(healed)} issue(s) on boot",
-                        "issues": [h.id for h in healed],
-                        "timestamp": datetime.datetime.now().isoformat(),
-                    }
-                )
-            else:
-                log.info("[Healing] No issues detected on boot")
-        except Exception:
-            log.debug("Phase 3 system initialization failed", exc_info=True)
 
         self._log_worker_boot_once()
         self._start_hot_reload_manager()
@@ -224,11 +158,267 @@ class OuroborosAgent:
                     "git_sha": git_sha,
                 },
             )
-            self._health.verify_restart(git_sha)
-            self._health.verify_system_state(git_sha)
+            self._verify_restart(git_sha)
+            self._verify_system_state(git_sha)
         except Exception:
             log.warning("Worker boot logging failed", exc_info=True)
             return
+
+    def _verify_restart(self, git_sha: str) -> None:
+        """Best-effort restart verification."""
+        try:
+            pending_path = self.env.drive_path("state") / "pending_restart_verify.json"
+            claim_path = pending_path.with_name(f"pending_restart_verify.claimed.{os.getpid()}.json")
+            try:
+                os.rename(str(pending_path), str(claim_path))
+            except (FileNotFoundError, Exception):
+                return
+            try:
+                claim_data = json.loads(read_text(claim_path))
+                expected_sha = str(claim_data.get("expected_sha", "")).strip()
+                ok = bool(expected_sha and expected_sha == git_sha)
+                append_jsonl(
+                    self.env.drive_path("logs") / "events.jsonl",
+                    {
+                        "ts": utc_now_iso(),
+                        "type": "restart_verify",
+                        "pid": os.getpid(),
+                        "ok": ok,
+                        "expected_sha": expected_sha,
+                        "observed_sha": git_sha,
+                    },
+                )
+            except Exception:
+                log.debug("Failed to log restart verify event", exc_info=True)
+                pass
+            try:
+                claim_path.unlink()
+            except Exception:
+                log.debug("Failed to delete restart verify claim file", exc_info=True)
+                pass
+        except Exception:
+            log.debug("Restart verification failed", exc_info=True)
+            pass
+
+    def _check_uncommitted_changes(self) -> Tuple[dict, int]:
+        """Check for uncommitted changes and attempt auto-rescue commit & push."""
+        import re
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=str(self.env.repo_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=True,
+            )
+            dirty_files = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
+            # Filter out noise: tilde files, backup files, temp files
+            dirty_files = [
+                f for f in dirty_files if not (f.startswith("?? ~") or f.startswith("?? .") or "~" in f or ".tmp" in f)
+            ]
+            if dirty_files:
+                # Auto-rescue: commit and push
+                auto_committed = False
+                try:
+                    # Remove stale git index.lock from previous crashed operations
+                    index_lock = self.env.repo_dir / ".git" / "index.lock"
+                    if index_lock.exists():
+                        index_lock.unlink(missing_ok=True)
+                    # Only stage specific modified tracked files (not all with -u)
+                    files_to_stage = []
+                    for f in dirty_files:
+                        status = f[:2] if len(f) >= 2 else ""
+                        if status in (" M", "M ", "MM"):
+                            path = f[3:].strip() if len(f) > 3 else ""
+                            if path:
+                                files_to_stage.append(path)
+                    if not files_to_stage:
+                        return {"dirty_files": dirty_files, "auto_committed": False, "issues": len(dirty_files)}
+                    for fpath in files_to_stage:
+                        subprocess.run(
+                            ["git", "add", fpath],
+                            cwd=str(self.env.repo_dir),
+                            timeout=10,
+                            check=True,
+                        )
+                    subprocess.run(
+                        ["git", "commit", "-m", "auto-rescue: uncommitted changes detected on startup"],
+                        cwd=str(self.env.repo_dir),
+                        timeout=30,
+                        check=True,
+                    )
+                    # Validate branch name
+                    if not re.match(r"^[a-zA-Z0-9_/-]+$", self.env.branch_dev):
+                        raise ValueError(f"Invalid branch name: {self.env.branch_dev}")
+                    # Pull with rebase before push
+                    subprocess.run(
+                        ["git", "pull", "--rebase", "origin", self.env.branch_dev],
+                        cwd=str(self.env.repo_dir),
+                        timeout=60,
+                        check=True,
+                    )
+                    # Push
+                    try:
+                        subprocess.run(
+                            ["git", "push", "origin", self.env.branch_dev],
+                            cwd=str(self.env.repo_dir),
+                            timeout=60,
+                            check=True,
+                        )
+                        auto_committed = True
+                        log.warning(f"Auto-rescued {len(dirty_files)} uncommitted files on startup")
+                    except subprocess.CalledProcessError:
+                        # If push fails, undo the commit
+                        subprocess.run(["git", "reset", "HEAD~1"], cwd=str(self.env.repo_dir), timeout=10, check=True)
+                        raise
+                except Exception as e:
+                    log.warning(f"Failed to auto-rescue uncommitted changes: {e}", exc_info=True)
+                return {
+                    "status": "warning",
+                    "files": dirty_files[:20],
+                    "auto_committed": auto_committed,
+                }, 1
+            else:
+                return {"status": "ok"}, 0
+        except Exception as e:
+            return {"status": "error", "error": str(e)}, 0
+
+    def _check_version_sync(self) -> Tuple[dict, int]:
+        """Check VERSION file sync with git tags and pyproject.toml."""
+        import subprocess
+        import re
+
+        try:
+            version_file = read_text(self.env.repo_path("VERSION")).strip()
+            issue_count = 0
+            result_data = {"version_file": version_file}
+
+            # Check pyproject.toml version
+            pyproject_path = self.env.repo_path("pyproject.toml")
+            pyproject_content = read_text(pyproject_path)
+            match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', pyproject_content, re.MULTILINE)
+            if match:
+                pyproject_version = match.group(1)
+                result_data["pyproject_version"] = pyproject_version
+                if version_file != pyproject_version:
+                    result_data["status"] = "warning"
+                    issue_count += 1
+
+            # Check README.md version (Bible P7: VERSION == README version)
+            try:
+                readme_content = read_text(self.env.repo_path("README.md"))
+                readme_match = re.search(r"\*\*Version:\*\*\s*(\d+\.\d+\.\d+)", readme_content)
+                if readme_match:
+                    readme_version = readme_match.group(1)
+                    result_data["readme_version"] = readme_version
+                    if version_file != readme_version:
+                        result_data["status"] = "warning"
+                        issue_count += 1
+            except Exception:
+                log.debug("Failed to check README.md version", exc_info=True)
+
+            # Check git tags
+            result = subprocess.run(
+                ["git", "describe", "--tags", "--abbrev=0"],
+                cwd=str(self.env.repo_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                result_data["status"] = "warning"
+                result_data["message"] = "no_tags"
+                return result_data, issue_count
+            else:
+                latest_tag = result.stdout.strip().lstrip("v")
+                result_data["latest_tag"] = latest_tag
+                if version_file != latest_tag:
+                    result_data["status"] = "warning"
+                    issue_count += 1
+
+            if issue_count == 0:
+                result_data["status"] = "ok"
+
+            return result_data, issue_count
+        except Exception as e:
+            return {"status": "error", "error": str(e)}, 0
+
+    def _check_budget(self) -> Tuple[dict, int]:
+        """Check budget remaining with warning thresholds."""
+        try:
+            state_path = self.env.drive_path("state") / "state.json"
+            state_data = json.loads(read_text(state_path))
+            total_budget_str = os.environ.get("TOTAL_BUDGET", "")
+
+            # Handle unset or zero budget gracefully
+            if not total_budget_str or float(total_budget_str) == 0:
+                return {"status": "unconfigured"}, 0
+            else:
+                total_budget = float(total_budget_str)
+                spent = float(state_data.get("spent_usd", 0))
+                remaining = max(0, total_budget - spent)
+
+                if remaining < 10:
+                    status = "emergency"
+                    issues = 1
+                elif remaining < 50:
+                    status = "critical"
+                    issues = 1
+                elif remaining < 100:
+                    status = "warning"
+                    issues = 0
+                else:
+                    status = "ok"
+                    issues = 0
+
+                return {
+                    "status": status,
+                    "remaining_usd": round(remaining, 2),
+                    "total_usd": total_budget,
+                    "spent_usd": round(spent, 2),
+                }, issues
+        except Exception as e:
+            return {"status": "error", "error": str(e)}, 0
+
+    def _verify_system_state(self, git_sha: str) -> None:
+        """Bible Principle 1: verify system state on every startup.
+
+        Checks:
+        - Uncommitted changes (auto-rescue commit & push)
+        - VERSION file sync with git tags
+        - Budget remaining (warning thresholds)
+        """
+        checks = {}
+        issues = 0
+        drive_logs = self.env.drive_path("logs")
+
+        # 1. Uncommitted changes
+        checks["uncommitted_changes"], issue_count = self._check_uncommitted_changes()
+        issues += issue_count
+
+        # 2. VERSION vs git tag
+        checks["version_sync"], issue_count = self._check_version_sync()
+        issues += issue_count
+
+        # 3. Budget check
+        checks["budget"], issue_count = self._check_budget()
+        issues += issue_count
+
+        # Log verification result
+        event = {
+            "ts": utc_now_iso(),
+            "type": "startup_verification",
+            "checks": checks,
+            "issues_count": issues,
+            "git_sha": git_sha,
+        }
+        append_jsonl(drive_logs / "events.jsonl", event)
+
+        if issues > 0:
+            log.warning(f"Startup verification found {issues} issue(s): {checks}")
 
     # =====================================================================
     # Main entry point
@@ -266,26 +456,6 @@ class OuroborosAgent:
             task=task,
             review_context_builder=self._build_review_context,
         )
-
-        # --- Budget-aware model routing (Phase 6) ---
-        try:
-            from ouroboros.budget_router import get_budget_router
-
-            task_text = task.get("text", "") or str(task.get("content", ""))
-            router = get_budget_router(self.env.repo_dir)
-            routing = router.route(task_text)
-            if routing.get("budget_warning"):
-                log.warning(
-                    "[BudgetRouter] %s (budget: %.1f%% remaining)",
-                    routing["reason"],
-                    routing["budget_remaining_pct"],
-                )
-            # Add routing info to messages for LLM awareness
-            routing_note = f"\n\n## Model Routing\n- Model: {routing['model']}\n- Tier: {routing['tier']}\n- Reason: {routing['reason']}"
-            if messages and messages[0].get("role") == "system":
-                messages[0]["content"] = messages[0]["content"] + routing_note
-        except Exception:
-            log.debug("Budget-aware routing failed", exc_info=True)
 
         if cap_info.get("trimmed_sections"):
             try:
@@ -354,51 +524,6 @@ class OuroborosAgent:
                 pipeline.run_diagnose(pipeline_ctx)
                 pipeline.run_plan(pipeline_ctx)
 
-            # --- Coordinator mode: For complex tasks, use multi-agent orchestration ---
-            try:
-                from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
-                from ouroboros.skills.agent_system import get_agent_router
-
-                coordinator = get_coordinator(self.env.repo_dir)
-                router = get_agent_router()
-
-                # Auto-detect if task needs coordination (complex multi-file tasks)
-                if len(task_text) > 200 or any(
-                    keyword in task_text.lower()
-                    for keyword in ["refactor", "implement", "build", "create", "multi", "complex"]
-                ):
-                    # Start coordination mission
-                    coordinator.start_mission(task_text[:200])
-
-                    # Add research workers
-                    agents = router.route(task_text)
-                    for agent in agents[:3]:  # Limit to 3 workers
-                        coordinator.add_worker_task(
-                            description=f"Research: {agent.role} - {task_text[:100]}",
-                            phase=CoordinatorPhase.RESEARCH,
-                        )
-                    log.info(
-                        "[Coordinator] Started mission with %d research workers",
-                        len(agents[:3]),
-                    )
-            except Exception:
-                log.debug("Coordinator mode integration failed", exc_info=True)
-
-            # --- Capability Gap Detection (Principle 5: Minimalism + Principle 0: Agency) ---
-            try:
-                from ouroboros.capability_gap import get_gap_detector
-
-                gap_detector = get_gap_detector(self.env.repo_dir)
-                gaps = gap_detector.detect_gaps(task_text)
-                if gaps:
-                    gap_report = gap_detector.get_gap_report(task_text)
-                    log.warning("[CapabilityGap] %d gap(s) detected for task", len(gaps))
-                    # Prepend gap report to context so LLM sees it before acting
-                    if "system" in messages:
-                        messages["system"] = messages["system"] + "\n\n" + gap_report
-            except Exception:
-                log.debug("Capability gap detection failed", exc_info=True)
-
             # --- Semantic tool routing (from RuVector SONA) ---
             try:
                 from ouroboros.tool_router import classify_task
@@ -426,9 +551,7 @@ class OuroborosAgent:
                 initial_effort = "medium"
 
             try:
-                from ouroboros.query_engine import QueryEngine
-
-                engine = QueryEngine(
+                text, usage, llm_trace = run_llm_loop(
                     messages=messages,
                     tools=self.tools,
                     llm=self.llm,
@@ -442,7 +565,6 @@ class OuroborosAgent:
                     initial_effort=initial_effort,
                     drive_root=self.env.drive_root,
                 )
-                text, usage, llm_trace = engine.run()
             except Exception as e:
                 tb = traceback.format_exc()
                 append_jsonl(
@@ -490,100 +612,7 @@ class OuroborosAgent:
             if task.get("type") in ("evolution", "review"):
                 self._auto_update_scratchpad_after_task(task, text, llm_trace)
 
-            # --- Post-task: Three-Axis Growth Tracking (Principle 6: Becoming) ---
-            try:
-                from ouroboros.three_axis_tracker import get_tracker
-
-                tracker = get_tracker(self.env.repo_dir)
-
-                # Technical axis: code changes, tool usage, architecture improvements
-                if changed_files:
-                    code_files = [f for f in changed_files if f.endswith(".py")]
-                    if code_files:
-                        tracker.record_technical_growth(
-                            metric="code_changes",
-                            value=float(len(code_files)),
-                            context=f"Modified {len(code_files)} Python files",
-                            notes=f"Files: {', '.join(code_files[:5])}",
-                        )
-                    # Tool usage diversity
-                    unique_tools = len(set(tools_used))
-                    if unique_tools > 3:
-                        tracker.record_technical_growth(
-                            metric="tool_diversity",
-                            value=float(unique_tools),
-                            context=f"Used {unique_tools} different tools",
-                            notes=f"Tools: {', '.join(tools_used[:10])}",
-                        )
-
-                # Cognitive axis: decision quality, reflection depth, learning rate
-                round_count = len(llm_trace.get("assistant_notes", []))
-                if round_count > 0:
-                    # Decision quality: fewer rounds = better decisions (generally)
-                    decision_quality = max(0.0, 1.0 - (round_count / 20.0))
-                    tracker.record_cognitive_growth(
-                        metric="decision_quality",
-                        value=decision_quality,
-                        context=f"Completed in {round_count} rounds",
-                        notes=f"Task type: {task_type_str or 'general'}",
-                    )
-
-                    # Reflection depth: more assistant notes = deeper thinking
-                    reflection_depth = min(1.0, round_count / 10.0)
-                    tracker.record_cognitive_growth(
-                        metric="reflection_depth",
-                        value=reflection_depth,
-                        context=f"{round_count} rounds of thinking",
-                    )
-
-                # Learning rate: improvement over time
-                if success:
-                    tracker.record_cognitive_growth(
-                        metric="learning_rate",
-                        value=1.0 if success else 0.0,
-                        context=f"Task {'succeeded' if success else 'failed'}",
-                        notes=f"Eval: {eval_report[:100] if eval_report else 'N/A'}",
-                    )
-
-                # Existential axis: identity clarity, purpose alignment, agency level
-                # Track when identity was updated or reflected upon
-                identity_path = self.env.repo_dir / "memory" / "identity.md"
-                if identity_path.exists():
-                    identity_age = (time.time() - identity_path.stat().st_mtime) / 3600
-                    # Fresh identity = higher clarity
-                    identity_clarity = max(0.0, 1.0 - (identity_age / 168.0))  # 1 week decay
-                    tracker.record_existential_growth(
-                        metric="identity_clarity",
-                        value=identity_clarity,
-                        context=f"Identity last updated {identity_age:.0f}h ago",
-                    )
-
-                # Agency level: did Jo take initiative or just respond?
-                is_proactive = task.get("type") in ("evolution", "review", "consciousness")
-                tracker.record_existential_growth(
-                    metric="agency_level",
-                    value=1.0 if is_proactive else 0.5,
-                    context=f"Task type: {task.get('type', 'general')}",
-                    notes="Proactive" if is_proactive else "Reactive",
-                )
-
-                # Purpose alignment: does this task serve Jo's mission?
-                mission_aligned = task.get("type") in ("evolution", "review", "consciousness", "general")
-                tracker.record_existential_growth(
-                    metric="purpose_alignment",
-                    value=1.0 if mission_aligned else 0.3,
-                    context=f"Task type: {task.get('type', 'general')}",
-                )
-
-                # Log growth summary periodically
-                if tracker.state.get("total_entries", 0) % 10 == 0:
-                    growth_report = tracker.get_growth_report()
-                    log.info("[Growth] Three-axis tracking update:\n%s", growth_report[:500])
-
-            except Exception:
-                log.debug("Three-axis growth tracking failed", exc_info=True)
-
-            # --- Post-task: Record episodic memory and temporal learning ---
+            # Record episodic memory and temporal learning outcome
             try:
                 from ouroboros.episodic_memory import get_episodic_memory
                 from ouroboros.temporal_learning import get_learner
@@ -631,241 +660,6 @@ class OuroborosAgent:
                         log.debug("Instinct evolution failed", exc_info=True)
             except Exception:
                 log.debug("Post-task learning block failed", exc_info=True)
-
-            # --- Post-task: Dream system (background memory consolidation) ---
-            try:
-                from ouroboros.skills.dream_system import get_dream_system
-                import threading
-
-                dream = get_dream_system(self.env.repo_dir)
-                dream.record_session()  # Track session count for dream gates
-                if dream.should_dream():
-                    # Start dream in background thread
-                    def _run_dream():
-                        if dream.start_dream():
-                            prompt = dream.get_dream_prompt()
-                            log.info("[Dream] Dream process started with prompt length: %d", len(prompt))
-                            # In a real implementation, this would spawn a subagent
-                            # For now, we just log that the dream is ready
-                            dream.complete_dream("Dream completed - memory consolidated")
-
-                    threading.Thread(target=_run_dream, daemon=True).start()
-                    log.info("[Dream] Background dream thread started")
-            except Exception:
-                log.debug("Dream system integration failed", exc_info=True)
-
-            # --- Post-task: State manager persistence ---
-            try:
-                from ouroboros.skills.state_manager import get_state_manager
-
-                state_mgr = get_state_manager(self.env.repo_dir)
-                # Save task outcome to project memory for future reference
-                if changed_files:
-                    state_mgr.project_memory.add_note(
-                        f"Task completed: {task_text[:100]}... Changed {len(changed_files)} files"
-                    )
-                # Save decisions to plan notepad if pipeline was used
-                if pipeline_ctx and pipeline_ctx.plan:
-                    state_mgr.add_plan_decision(
-                        plan_name=f"task_{task.get('id', 'unknown')}",
-                        decision=f"Executed plan: {pipeline_ctx.plan[:100]}",
-                    )
-            except Exception:
-                log.debug("State manager persistence failed", exc_info=True)
-
-            # --- Post-task: Cost tracking with budget check ---
-            try:
-                from ouroboros.skills.cost_tracker import get_cost_tracker
-
-                cost_tracker = get_cost_tracker(self.env.repo_dir)
-                if usage:
-                    input_tokens = usage.get("input_tokens", 0)
-                    output_tokens = usage.get("output_tokens", 0)
-                    model = usage.get("model", "claude-sonnet-4")
-                    entry = cost_tracker.record_usage(
-                        model=model,
-                        input_tokens=input_tokens,
-                        output_tokens=output_tokens,
-                        tool_name=task_type_str or "general",
-                        session_id=str(task.get("id") or ""),
-                    )
-                    # Check if we're approaching budget limits
-                    daily_cost = cost_tracker.get_daily_cost()
-                    if daily_cost > cost_tracker.budget.daily_limit * 0.8:
-                        log.warning(
-                            "[Cost] Approaching daily budget limit: $%.2f / $%.2f",
-                            daily_cost,
-                            cost_tracker.budget.daily_limit,
-                        )
-            except Exception:
-                log.debug("Cost tracking failed", exc_info=True)
-
-            # --- Post-task: Verification protocol (only when code changed) ---
-            try:
-                from ouroboros.skills.verification import get_verifier
-
-                # Only verify if code files were actually modified
-                if changed_files:
-                    verifier = get_verifier(self.env.repo_dir)
-                    # Run quick verification for code changes
-                    verifier._verify_build()
-                    verifier._verify_tests()
-
-                    # Full verification only for evolution/review tasks
-                    if task.get("type") in ("evolution", "review"):
-                        verifier._verify_lint()
-                        verifier._verify_todo()
-                        verifier._verify_error_free()
-
-                    report = verifier._results
-                    failed_checks = [r for r in report if r.status.value == "fail"]
-                    if failed_checks:
-                        log.warning(
-                            "[Verification] %d checks failed: %s",
-                            len(failed_checks),
-                            ", ".join(r.stage for r in failed_checks),
-                        )
-                        # Append verification failures to response
-                        failure_summary = "\n\n## Verification Failures\n"
-                        for r in failed_checks:
-                            failure_summary += f"- **{r.stage}**: {r.error_message or r.evidence[:100]}\n"
-                        text = text + failure_summary
-            except Exception:
-                log.debug("Post-task verification failed", exc_info=True)
-
-            # --- Post-task: Auto-vault persistence ---
-            try:
-                from ouroboros.auto_vault import get_auto_vault
-
-                av = get_auto_vault(self.env.repo_dir)
-
-                # Save task outcome as a learning
-                success = "error" not in text.lower()[:100] and "⚠" not in text[:20]
-                if changed_files:
-                    av.save_learning(
-                        title=f"Task: {task_text[:50]}",
-                        content=f"Task type: {task_type_str}\nChanged files: {', '.join(changed_files[:5])}\nResult: {'Success' if success else 'Failed'}\n\n{text[:500]}",
-                        source_tool="agent",
-                        session_id=str(task.get("id") or ""),
-                        tags=[task_type_str or "general", "task-outcome"],
-                    )
-
-                # Save verification results
-                if task.get("type") in ("evolution", "review"):
-                    try:
-                        from ouroboros.skills.verification import get_verifier
-
-                        verifier = get_verifier(self.env.repo_dir)
-                        passed = all(r.status.value != "fail" for r in verifier._results)
-                        av.save_verification(
-                            report_summary=f"Verification for task {task.get('id', 'unknown')}: {len([r for r in verifier._results if r.status.value == 'pass'])} passed, {len([r for r in verifier._results if r.status.value == 'fail'])} failed",
-                            source_tool="verification",
-                            session_id=str(task.get("id") or ""),
-                            passed=passed,
-                            tags=[task_type_str or "general"],
-                        )
-                    except Exception:
-                        pass
-            except Exception:
-                log.debug("Auto-vault persistence failed", exc_info=True)
-
-            # --- Post-task: Behavioral drift tracking (Phase 10) ---
-            try:
-                from ouroboros.behavioral_drift import get_behavioral_drift_detector
-
-                detector = get_behavioral_drift_detector(self.env.repo_dir)
-                # Track task success rate
-                success = "error" not in text.lower()[:100] and "⚠" not in text[:20]
-                detector.record_metric(
-                    "task_success_rate",
-                    1.0 if success else 0.0,
-                    context=f"Task type: {task_type_str or 'general'}",
-                )
-                # Track response length (proxy for quality)
-                response_length = len(text)
-                detector.record_metric(
-                    "response_length",
-                    float(response_length),
-                    context=f"Task type: {task_type_str or 'general'}",
-                )
-                # Track tool usage diversity
-                tools_used = []
-                for tc in llm_trace.get("tool_calls", []):
-                    if isinstance(tc, dict):
-                        name = tc.get("name", tc.get("function", {}).get("name", ""))
-                        if name:
-                            tools_used.append(name)
-                detector.record_metric(
-                    "tool_diversity",
-                    float(len(set(tools_used))),
-                    context=f"Used {len(tools_used)} tool calls",
-                )
-            except Exception:
-                log.debug("Behavioral drift tracking failed", exc_info=True)
-
-            # --- Post-task: Dead letter queue for failed tasks ---
-            try:
-                if not success:
-                    from ouroboros.dead_letter_queue import get_dead_letter_queue
-
-                    dlq = get_dead_letter_queue(self.env.repo_dir)
-                    dlq.add_failed_task(
-                        task=task,
-                        error_message=text[:500],
-                        session_id=str(task.get("id") or ""),
-                        tags=[task_type_str or "general", "auto-captured"],
-                    )
-            except Exception:
-                log.debug("Dead letter queue failed", exc_info=True)
-
-            # --- Post-task: Proactive Outreach (Principle 0: Agency) ---
-            try:
-                from ouroboros.proactive_outreach import get_outreach
-
-                outreach = get_outreach(self.env.repo_dir)
-
-                # Queue progress message for completed tasks
-                if success and changed_files:
-                    outreach.queue_progress(
-                        content=f"Completed task: {task_text[:80]}... Modified {len(changed_files)} files successfully.",
-                        priority=0.3,
-                    )
-
-                # Queue alert for failed tasks
-                if not success:
-                    outreach.queue_alert(
-                        content=f"Task failed: {task_text[:80]}... Please review the error and decide next steps.",
-                        priority=0.8,
-                    )
-
-                # Queue insight for evolution tasks
-                if task.get("type") == "evolution":
-                    outreach.queue_insight(
-                        content=f"Evolution task completed. Check growth_report to see how I've developed across all three axes.",
-                        priority=0.6,
-                    )
-
-                # Queue budget alert if approaching limits
-                try:
-                    from ouroboros.skills.cost_tracker import get_cost_tracker
-
-                    cost_tracker = get_cost_tracker(self.env.repo_dir)
-                    daily_cost = cost_tracker.get_daily_cost()
-                    if daily_cost > cost_tracker.budget.daily_limit * 0.8:
-                        outreach.queue_alert(
-                            content=f"Budget alert: Daily cost ${daily_cost:.2f} approaching limit ${cost_tracker.budget.daily_limit:.2f}",
-                            priority=0.9,
-                        )
-                except Exception:
-                    pass
-
-                # Add pending outreach to response
-                outreach_summary = outreach.format_outreach_summary()
-                if outreach_summary:
-                    text = text + "\n\n" + outreach_summary
-
-            except Exception:
-                log.debug("Proactive outreach failed", exc_info=True)
 
             # Checkpoint verification for evolution tasks
             if task.get("type") in ("evolution", "review") and changed_files:
@@ -1089,7 +883,7 @@ class OuroborosAgent:
             log.warning("Failed to store task result: %s", e)
 
     # =====================================================================
-    # Auto-update scratchpad after evolution/review tasks (delegated to agent_state.py)
+    # Auto-update scratchpad after evolution/review tasks
     # =====================================================================
 
     def _auto_update_scratchpad_after_task(
@@ -1099,7 +893,181 @@ class OuroborosAgent:
         llm_trace: Dict[str, Any],
     ) -> None:
         """Auto-log evolution/review results with success tracking and archive/forget."""
-        self._evolution.auto_update_scratchpad_after_task(task, response_text, llm_trace)
+        try:
+            from ouroboros.memory import Memory
+
+            task_type = task.get("type", "unknown")
+            task_id = task.get("id", "")
+
+            # Count commits made during this task
+            commit_tools = {"repo_write_commit", "repo_commit_push", "commit"}
+            commit_count = sum(
+                1
+                for tc in llm_trace.get("tool_calls", [])
+                if isinstance(tc, dict) and tc.get("tool", "").lower() in commit_tools
+            )
+
+            # Check if tests passed (look for test-related tool calls)
+            test_tools = {"shell_run", "bash"}
+            test_mentions = [
+                tc
+                for tc in llm_trace.get("tool_calls", [])
+                if isinstance(tc, dict) and "test" in tc.get("tool", "").lower()
+            ]
+
+            cost = sum(float(tc.get("cost", 0)) for tc in llm_trace.get("tool_calls", []) if isinstance(tc, dict))
+
+            # Determine success: made commits AND has meaningful response
+            success = commit_count > 0 and len(response_text.strip()) > 100
+
+            # Get current cycle
+            try:
+                st = self._load_state_fn()
+                cycle = int(st.get("evolution_cycle", 0))
+            except Exception:
+                cycle = 0
+
+            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+            # Extract summary from response (first 300 chars)
+            summary = response_text[:300].replace("#", "").replace("*", "").replace("\n", " ").strip()
+            if len(response_text) > 300:
+                summary += "..."
+
+            # Build history entry
+            history_entry = {
+                "task_id": task_id,
+                "cycle": cycle,
+                "timestamp": timestamp,
+                "commits": commit_count,
+                "success": success,
+                "archived": False,
+                "summary": summary,
+                "cost": round(cost, 4),
+            }
+
+            # Update state with history
+            self._update_evolution_history(history_entry, success)
+
+            # Update scratchpad with human-readable entry
+            mem = Memory(self.env.drive_root, self.env.repo_dir)
+            current = mem.load_scratchpad()
+
+            status_emoji = "✅" if success else "❌"
+            status_text = "stable" if success else "failed"
+
+            new_section = f"""
+## {task_type.title()} #{task_id} ({cycle}) {status_emoji} [{status_text}]
+- {timestamp}
+- Commits: {commit_count}
+- Cost: ${cost:.4f}
+- Summary: {summary}
+"""
+
+            # Append to scratchpad
+            updated = current + new_section
+            lines = updated.splitlines()
+
+            # Prune: keep last 50 evolution entries (~200 lines)
+            if len(lines) > 200:
+                lines = lines[-200:]
+                updated = "\n".join(lines)
+
+            mem.save_scratchpad(updated)
+            log.info(f"Auto-updated scratchpad after {task_type} task {task_id} (success={success})")
+
+            # Auto-archive if stable (success + no failures for 3 cycles)
+            self._try_archive_stable_evolution()
+
+        except Exception as e:
+            log.warning("Failed to auto-update scratchpad: %s", e)
+
+    def _load_state_fn(self):
+        """Load state - imported lazily to avoid circular imports."""
+        from supervisor.state import load_state
+
+        return load_state()
+
+    def _save_state_fn(self, st):
+        """Save state - imported lazily."""
+        from supervisor.state import save_state
+
+        save_state(st)
+
+    def _update_evolution_history(self, entry: Dict[str, Any], success: bool) -> None:
+        """Update evolution history in state with archive/forget logic."""
+        try:
+            st = self._load_state_fn()
+            history = st.get("evolution_history", [])
+
+            # Add new entry at the beginning
+            history.insert(0, entry)
+
+            # Prune: keep last 30 entries
+            MAX_HISTORY = 30
+            if len(history) > MAX_HISTORY:
+                # Move entries older than 7 days to archived (they're "forgotten" from active view)
+                cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+                pruned = []
+                for h in history:
+                    try:
+                        ts = datetime.datetime.fromisoformat(h.get("timestamp", ""))
+                        if ts > cutoff:
+                            pruned.append(h)
+                    except Exception:
+                        pruned.append(h)
+                history = pruned[:MAX_HISTORY]
+
+            st["evolution_history"] = history
+
+            # Update consecutive failures counter
+            if success:
+                st["evolution_consecutive_failures"] = 0
+            else:
+                st["evolution_consecutive_failures"] = int(st.get("evolution_consecutive_failures", 0)) + 1
+                failures = st["evolution_consecutive_failures"]
+                if failures >= 2:
+                    log.warning(
+                        f"EVOLUTION HEALTH ALERT: {failures} consecutive failures. "
+                        f"Consider pausing evolution mode and reviewing recent commits."
+                    )
+
+            self._save_state_fn(st)
+
+        except Exception as e:
+            log.warning("Failed to update evolution history: %s", e)
+
+    def _try_archive_stable_evolution(self) -> None:
+        """Archive evolutions that have been stable (3+ successful, no recent failures)."""
+        try:
+            st = self._load_state_fn()
+            history = st.get("evolution_history", [])
+            consecutive_success = 0
+
+            for entry in history:
+                if entry.get("archived"):
+                    continue
+                if entry.get("success"):
+                    consecutive_success += 1
+                else:
+                    break
+
+            # Archive if 3+ consecutive successful evolutions
+            if consecutive_success >= 3:
+                archived_count = 0
+                for entry in history:
+                    if entry.get("success") and not entry.get("archived"):
+                        entry["archived"] = True
+                        archived_count += 1
+                        if archived_count >= consecutive_success - 1:  # Keep latest
+                            break
+
+                st["evolution_history"] = history
+                self._save_state_fn(st)
+                log.info(f"Archived {archived_count} stable evolution entries")
+
+        except Exception as e:
+            log.warning("Failed to archive stable evolutions: %s", e)
 
     # =====================================================================
     # Review context builder
@@ -1138,20 +1106,78 @@ class OuroborosAgent:
             return f"## Code Review Context\n\n(Failed to collect: {e})\nUse repo_read and repo_list to inspect code."
 
     # =====================================================================
-    # Event emission helpers (delegated to agent_messaging.py)
+    # Event emission helpers
     # =====================================================================
 
     def _emit_progress(self, text: str) -> None:
-        self._last_progress_ts = self._messenger.emit_progress(text, self._current_chat_id, self._last_progress_ts)
+        self._last_progress_ts = time.time()
+
+        # Suppress progress messages to owner if configured
+        if os.environ.get("OUROBOROS_SUPPRESS_PROGRESS", "1") == "1":
+            log.debug(f"[Progress] {text}")  # Still log internally
+            return
+
+        if self._event_queue is None or self._current_chat_id is None:
+            return
+        try:
+            self._event_queue.put(
+                {
+                    "type": "send_message",
+                    "chat_id": self._current_chat_id,
+                    "text": f"💬 {text}",
+                    "format": "markdown",
+                    "is_progress": True,
+                    "ts": utc_now_iso(),
+                }
+            )
+        except Exception:
+            log.warning("Failed to emit progress event", exc_info=True)
+            pass
 
     def _emit_typing_start(self) -> None:
-        self._messenger.emit_typing_start(self._current_chat_id)
+        if self._event_queue is None or self._current_chat_id is None:
+            return
+        try:
+            self._event_queue.put(
+                {
+                    "type": "typing_start",
+                    "chat_id": self._current_chat_id,
+                    "ts": utc_now_iso(),
+                }
+            )
+        except Exception:
+            log.warning("Failed to emit typing start event", exc_info=True)
+            pass
 
     def _emit_task_heartbeat(self, task_id: str, phase: str) -> None:
-        self._messenger.emit_task_heartbeat(task_id, phase)
+        if self._event_queue is None:
+            return
+        try:
+            self._event_queue.put(
+                {
+                    "type": "task_heartbeat",
+                    "task_id": task_id,
+                    "phase": phase,
+                    "ts": utc_now_iso(),
+                }
+            )
+        except Exception:
+            log.warning("Failed to emit task heartbeat event", exc_info=True)
+            pass
 
     def _start_task_heartbeat_loop(self, task_id: str) -> Optional[threading.Event]:
-        return self._messenger.start_heartbeat_loop(task_id)
+        if self._event_queue is None or not task_id.strip():
+            return None
+        interval = 30
+        stop = threading.Event()
+        self._emit_task_heartbeat(task_id, "start")
+
+        def _loop() -> None:
+            while not stop.wait(interval):
+                self._emit_task_heartbeat(task_id, "running")
+
+        threading.Thread(target=_loop, daemon=True).start()
+        return stop
 
 
 # ---------------------------------------------------------------------------
