@@ -466,6 +466,24 @@ def _budget_stats(ctx: ToolContext) -> str:
     return f"## Budget Router Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _semantic_filter_test(ctx: ToolContext, task_text: str, section_text: str) -> str:
+    """Test semantic relevance scoring for a section."""
+    from ouroboros.semantic_filter import get_semantic_filter
+
+    sf = get_semantic_filter(ctx.repo_dir)
+    score = sf.score_relevance(section_text, task_text)
+    return f"## Semantic Relevance Score\n\nScore: {score:.2f} (threshold: {sf._relevance_threshold})\n{'✅ Would be included' if score >= sf._relevance_threshold else '❌ Would be filtered out'}"
+
+
+def _semantic_filter_stats(ctx: ToolContext) -> str:
+    """Get semantic filter statistics."""
+    from ouroboros.semantic_filter import get_semantic_filter
+
+    sf = get_semantic_filter(ctx.repo_dir)
+    stats = sf.get_stats()
+    return f"## Semantic Filter Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -1032,5 +1050,31 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _budget_stats,
+        ),
+        # Semantic Context Filtering tools
+        ToolEntry(
+            "semantic_filter_test",
+            {
+                "name": "semantic_filter_test",
+                "description": "Test semantic relevance scoring for a context section.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_text": {"type": "string", "description": "Task description"},
+                        "section_text": {"type": "string", "description": "Context section to score"},
+                    },
+                    "required": ["task_text", "section_text"],
+                },
+            },
+            _semantic_filter_test,
+        ),
+        ToolEntry(
+            "semantic_filter_stats",
+            {
+                "name": "semantic_filter_stats",
+                "description": "Get semantic filter statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _semantic_filter_stats,
         ),
     ]

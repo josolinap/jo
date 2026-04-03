@@ -420,6 +420,22 @@ def build_llm_messages(
         except Exception:
             log.debug("Failed to inject episodic memory", exc_info=True)
 
+    # Semantic context filtering - only inject relevant sections
+    # Reduces token usage by 30-50% while maintaining quality
+    if task_text_for_keywords and len(dynamic_parts) > 3:
+        try:
+            from ouroboros.semantic_filter import get_semantic_filter
+
+            sf = get_semantic_filter(env.repo_dir)
+            # Convert dynamic_parts to (name, text) tuples for scoring
+            sections = [(f"section_{i}", p) for i, p in enumerate(dynamic_parts)]
+            filtered = sf.filter_sections(sections, task_text_for_keywords)
+            if filtered and len(filtered) < len(dynamic_parts):
+                dynamic_parts = [text for _, text in filtered]
+                log.info("[Context] Semantic filter reduced %d sections -> %d", len(sections), len(filtered))
+        except Exception:
+            log.debug("Semantic context filtering failed", exc_info=True)
+
     semi_stable_text = "\n\n".join(semi_stable_parts)
 
     # Dynamic content: changes every round

@@ -539,6 +539,19 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: budget router", exc_info=True)
 
+    # 22. Semantic Context Filtering (Token optimization)
+    try:
+        from ouroboros.semantic_filter import get_semantic_filter
+
+        sf = get_semantic_filter(repo_dir=env.repo_dir)
+        sf_stats = sf.get_stats()
+        checks.append(
+            f"OK: semantic filter - threshold {sf_stats['relevance_threshold']}, "
+            f"max {sf_stats['max_sections']} sections"
+        )
+    except Exception:
+        log.debug("Health check failed: semantic filter", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
