@@ -35,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python -c "import sys; sys.exit(0)" || exit 1
 
 # Start command (customizable via Dokploy)
-CMD ["python", "colab_launcher.py"]
+CMD ["python", "scripts/colab_launcher.py"]

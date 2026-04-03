@@ -15,11 +15,12 @@ services:
       - jo_data:/app/data
       - ./memory:/app/memory:ro
       - ./vault:/app/vault:ro
-      - ./constitution.json:/app/constitution.json:ro
+      - ./config/constitution.json:/app/config/constitution.json:ro
+      - ./config/drift_baseline.json:/app/config/drift_baseline.json:ro
       - ./BIBLE.md:/app/BIBLE.md:ro
       - ./.jo_protected:/app/.jo_protected:ro
     working_dir: /app
-    command: python colab_launcher.py
+    command: python scripts/colab_launcher.py
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s

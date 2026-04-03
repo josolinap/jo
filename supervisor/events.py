@@ -188,6 +188,7 @@ def _handle_restart_request(evt: Dict[str, Any], ctx: Any) -> None:
         )
     # Bug #2: safe_restart is never attached to the workers module — call git_ops directly.
     from supervisor import git_ops
+
     ok, msg = git_ops.safe_restart(reason="agent_restart_request", unsynced_policy="rescue_and_reset")
     if not ok:
         if st.get("owner_chat_id"):
@@ -200,7 +201,7 @@ def _handle_restart_request(evt: Dict[str, Any], ctx: Any) -> None:
     ctx.save_state(st2)  # save_state IS attached to workers module by colab_launcher
     ctx.persist_queue_snapshot(reason="pre_restart_exit")
     # Entry point - kept in root for backward compatibility with GitHub Actions
-    launcher = os.path.join(os.getcwd(), "colab_launcher.py")
+    launcher = os.path.join(os.getcwd(), "scripts", "colab_launcher.py")
     os.execv(sys.executable, [sys.executable, launcher])
 
 

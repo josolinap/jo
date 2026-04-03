@@ -333,7 +333,7 @@ jobs:
 
           # Run the bot with a 330-minute (5.5-hour) timeout.
           # 'timeout' returns exit code 124 on timeout — that's expected and OK.
-          timeout 330m python colab_launcher.py || EXIT_CODE=$?
+          timeout 330m python scripts/colab_launcher.py || EXIT_CODE=$?
           EXIT_CODE=${EXIT_CODE:-0}
 
           if [ "$EXIT_CODE" -eq 124 ]; then
