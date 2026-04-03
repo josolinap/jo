@@ -208,6 +208,7 @@ class MemoryExtractor:
 
             mgr = CerebrumManager(self.repo_dir)
             saved = 0
+            vault_saved = 0
             for m in memories:
                 if m.confidence >= 0.6:
                     if m.category == "mistake":
@@ -217,7 +218,25 @@ class MemoryExtractor:
                     else:
                         mgr.add_learning(m.content, m.tags, m.source)
                     saved += 1
-            return f"Saved {saved}/{len(memories)} memories to cerebrum"
+
+                    # Auto-save to vault
+                    try:
+                        from ouroboros.auto_vault import get_auto_vault
+
+                        av = get_auto_vault(self.repo_dir)
+                        av.save_memory(
+                            title=f"Memory: {m.content[:50]}",
+                            content=m.content,
+                            category=m.category,
+                            source_tool="memory_extractor",
+                            session_id="",
+                            tags=m.tags + ["auto-saved"],
+                        )
+                        vault_saved += 1
+                    except Exception:
+                        log.debug("Failed to auto-save memory to vault", exc_info=True)
+
+            return f"Saved {saved}/{len(memories)} memories to cerebrum, {vault_saved} to vault"
         except Exception as e:
             return f"Failed to save to cerebrum: {e}"
 

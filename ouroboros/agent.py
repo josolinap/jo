@@ -612,6 +612,42 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Post-task verification failed", exc_info=True)
 
+            # --- Post-task: Auto-vault persistence ---
+            try:
+                from ouroboros.auto_vault import get_auto_vault
+
+                av = get_auto_vault(self.env.repo_dir)
+
+                # Save task outcome as a learning
+                success = "error" not in text.lower()[:100] and "⚠" not in text[:20]
+                if changed_files:
+                    av.save_learning(
+                        title=f"Task: {task_text[:50]}",
+                        content=f"Task type: {task_type_str}\nChanged files: {', '.join(changed_files[:5])}\nResult: {'Success' if success else 'Failed'}\n\n{text[:500]}",
+                        source_tool="agent",
+                        session_id=str(task.get("id") or ""),
+                        tags=[task_type_str or "general", "task-outcome"],
+                    )
+
+                # Save verification results
+                if task.get("type") in ("evolution", "review"):
+                    try:
+                        from ouroboros.skills.verification import get_verifier
+
+                        verifier = get_verifier(self.env.repo_dir)
+                        passed = all(r.status.value != "fail" for r in verifier._results)
+                        av.save_verification(
+                            report_summary=f"Verification for task {task.get('id', 'unknown')}: {len([r for r in verifier._results if r.status.value == 'pass'])} passed, {len([r for r in verifier._results if r.status.value == 'fail'])} failed",
+                            source_tool="verification",
+                            session_id=str(task.get("id") or ""),
+                            passed=passed,
+                            tags=[task_type_str or "general"],
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                log.debug("Auto-vault persistence failed", exc_info=True)
+
             # Checkpoint verification for evolution tasks
             if task.get("type") in ("evolution", "review") and changed_files:
                 try:

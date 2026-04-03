@@ -103,6 +103,23 @@ class BugLog:
         except Exception:
             log.debug("Failed to feed buglog to cerebrum", exc_info=True)
 
+        # Auto-save to vault
+        try:
+            from ouroboros.auto_vault import get_auto_vault
+
+            av = get_auto_vault(self.repo_dir)
+            av.save_bug(
+                error_message=error_message,
+                file_path=file_path,
+                root_cause=root_cause,
+                fix_description=fix_description,
+                source_tool="buglog",
+                session_id=session_id,
+                tags=(tags or []) + ["auto-saved"],
+            )
+        except Exception:
+            log.debug("Failed to auto-save bug to vault", exc_info=True)
+
         return f"Logged bug fix {bug_id}: {error_message[:80]}"
 
     def search(self, query: str, limit: int = 5) -> str:
