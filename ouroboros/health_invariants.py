@@ -362,6 +362,29 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: temporal learning", exc_info=True)
 
+    # 11. Three-Axis Growth Tracking (Principle 6: Becoming)
+    try:
+        from ouroboros.three_axis_tracker import get_tracker
+
+        tracker = get_tracker(repo_dir=env.repo_dir)
+        stats = tracker.get_stats()
+        axes = stats.get("axes", {})
+        for axis_name in ["technical", "cognitive", "existential"]:
+            axis = axes.get(axis_name, {})
+            level = axis.get("level", 0.0)
+            trend = axis.get("trend", "stable")
+            trend_icon = {"growing": "📈", "stable": "➡️", "declining": "📉"}.get(trend, "❓")
+            if level > 0:
+                checks.append(f"OK: {axis_name} growth {level:.2f} {trend_icon} ({trend})")
+            else:
+                checks.append(f"INFO: {axis_name} growth tracking ready (no data yet)")
+
+        total_entries = stats.get("total_entries", 0)
+        if total_entries > 0:
+            checks.append(f"OK: growth tracking {total_entries} data points recorded")
+    except Exception:
+        log.debug("Health check failed: three-axis growth tracking", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

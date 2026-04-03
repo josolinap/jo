@@ -464,6 +464,99 @@ class OuroborosAgent:
             if task.get("type") in ("evolution", "review"):
                 self._auto_update_scratchpad_after_task(task, text, llm_trace)
 
+            # --- Post-task: Three-Axis Growth Tracking (Principle 6: Becoming) ---
+            try:
+                from ouroboros.three_axis_tracker import get_tracker
+
+                tracker = get_tracker(self.env.repo_dir)
+
+                # Technical axis: code changes, tool usage, architecture improvements
+                if changed_files:
+                    code_files = [f for f in changed_files if f.endswith(".py")]
+                    if code_files:
+                        tracker.record_technical_growth(
+                            metric="code_changes",
+                            value=float(len(code_files)),
+                            context=f"Modified {len(code_files)} Python files",
+                            notes=f"Files: {', '.join(code_files[:5])}",
+                        )
+                    # Tool usage diversity
+                    unique_tools = len(set(tools_used))
+                    if unique_tools > 3:
+                        tracker.record_technical_growth(
+                            metric="tool_diversity",
+                            value=float(unique_tools),
+                            context=f"Used {unique_tools} different tools",
+                            notes=f"Tools: {', '.join(tools_used[:10])}",
+                        )
+
+                # Cognitive axis: decision quality, reflection depth, learning rate
+                round_count = len(llm_trace.get("assistant_notes", []))
+                if round_count > 0:
+                    # Decision quality: fewer rounds = better decisions (generally)
+                    decision_quality = max(0.0, 1.0 - (round_count / 20.0))
+                    tracker.record_cognitive_growth(
+                        metric="decision_quality",
+                        value=decision_quality,
+                        context=f"Completed in {round_count} rounds",
+                        notes=f"Task type: {task_type_str or 'general'}",
+                    )
+
+                    # Reflection depth: more assistant notes = deeper thinking
+                    reflection_depth = min(1.0, round_count / 10.0)
+                    tracker.record_cognitive_growth(
+                        metric="reflection_depth",
+                        value=reflection_depth,
+                        context=f"{round_count} rounds of thinking",
+                    )
+
+                # Learning rate: improvement over time
+                if success:
+                    tracker.record_cognitive_growth(
+                        metric="learning_rate",
+                        value=1.0 if success else 0.0,
+                        context=f"Task {'succeeded' if success else 'failed'}",
+                        notes=f"Eval: {eval_report[:100] if eval_report else 'N/A'}",
+                    )
+
+                # Existential axis: identity clarity, purpose alignment, agency level
+                # Track when identity was updated or reflected upon
+                identity_path = self.env.repo_dir / "memory" / "identity.md"
+                if identity_path.exists():
+                    identity_age = (time.time() - identity_path.stat().st_mtime) / 3600
+                    # Fresh identity = higher clarity
+                    identity_clarity = max(0.0, 1.0 - (identity_age / 168.0))  # 1 week decay
+                    tracker.record_existential_growth(
+                        metric="identity_clarity",
+                        value=identity_clarity,
+                        context=f"Identity last updated {identity_age:.0f}h ago",
+                    )
+
+                # Agency level: did Jo take initiative or just respond?
+                is_proactive = task.get("type") in ("evolution", "review", "consciousness")
+                tracker.record_existential_growth(
+                    metric="agency_level",
+                    value=1.0 if is_proactive else 0.5,
+                    context=f"Task type: {task.get('type', 'general')}",
+                    notes="Proactive" if is_proactive else "Reactive",
+                )
+
+                # Purpose alignment: does this task serve Jo's mission?
+                mission_aligned = task.get("type") in ("evolution", "review", "consciousness", "general")
+                tracker.record_existential_growth(
+                    metric="purpose_alignment",
+                    value=1.0 if mission_aligned else 0.3,
+                    context=f"Task type: {task.get('type', 'general')}",
+                )
+
+                # Log growth summary periodically
+                if tracker.state.get("total_entries", 0) % 10 == 0:
+                    growth_report = tracker.get_growth_report()
+                    log.info("[Growth] Three-axis tracking update:\n%s", growth_report[:500])
+
+            except Exception:
+                log.debug("Three-axis growth tracking failed", exc_info=True)
+
             # --- Post-task: Record episodic memory and temporal learning ---
             try:
                 from ouroboros.episodic_memory import get_episodic_memory
