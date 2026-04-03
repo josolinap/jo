@@ -1123,4 +1123,14 @@ def get_tools() -> List[ToolEntry]:
             },
             _stability_reset,
         ),
+        # Bulkhead Resource Isolation tools
+        ToolEntry(
+            "bulkhead_stats",
+            {
+                "name": "bulkhead_stats",
+                "description": "Get bulkhead resource isolation statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _bulkhead_stats,
+        ),
     ]

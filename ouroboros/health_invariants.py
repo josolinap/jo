@@ -578,6 +578,18 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: stability manager", exc_info=True)
 
+    # 24. Bulkhead Resource Isolation (Zylos Research pattern)
+    try:
+        from ouroboros.bulkhead_executor import get_bulkhead_executor
+
+        executor = get_bulkhead_executor()
+        exec_stats = executor.get_stats()
+        pools = exec_stats.get("pools", {})
+        pool_info = ", ".join(f"{k}: {v['max_workers']}w" for k, v in pools.items())
+        checks.append(f"OK: bulkhead isolation - {pool_info}")
+    except Exception:
+        log.debug("Health check failed: bulkhead executor", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
