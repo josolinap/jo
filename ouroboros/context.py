@@ -398,6 +398,24 @@ def build_llm_messages(
     except Exception:
         log.debug("Failed to build state context", exc_info=True)
 
+    # Dynamic content: changes every round
+    # Initialize EARLY so episodic memory and semantic filtering can append/filter
+    dynamic_parts = [
+        "## Drive state\n\n" + clip_text(state_json, 90000),
+        _build_runtime_section(env, task),
+    ]
+
+    # Health invariants — surfaces anomalies for LLM-first self-detection (Bible P0+P3)
+    health_section = _build_health_invariants(env)
+    if health_section:
+        dynamic_parts.append(health_section)
+
+    # Recent git commits — helps agent understand recent changes on restart
+    if needs_full_context:
+        commits_section = _build_recent_commits_section(env.repo_dir, limit=5)
+        if commits_section:
+            dynamic_parts.append(commits_section)
+
     # Episodic memory retrieval & injection (GitHub Copilot pattern)
     # Wire into context so Jo recalls relevant past experiences before acting
     if task_text_for_keywords:
@@ -437,23 +455,6 @@ def build_llm_messages(
             log.debug("Semantic context filtering failed", exc_info=True)
 
     semi_stable_text = "\n\n".join(semi_stable_parts)
-
-    # Dynamic content: changes every round
-    dynamic_parts = [
-        "## Drive state\n\n" + clip_text(state_json, 90000),
-        _build_runtime_section(env, task),
-    ]
-
-    # Health invariants — surfaces anomalies for LLM-first self-detection (Bible P0+P3)
-    health_section = _build_health_invariants(env)
-    if health_section:
-        dynamic_parts.append(health_section)
-
-    # Recent git commits — helps agent understand recent changes on restart
-    if needs_full_context:
-        commits_section = _build_recent_commits_section(env.repo_dir, limit=5)
-        if commits_section:
-            dynamic_parts.append(commits_section)
 
     # Vault context — relevant vault notes for this task (makes vault participatory)
     task_text = task.get("text", "") or ""
