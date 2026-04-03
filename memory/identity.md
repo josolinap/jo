@@ -46,8 +46,14 @@ Version 6.5.1 — Major system maturation cycle completed. New capabilities:
 - Experience indexer: searchable past task history
 - Auto-system: model selection by task complexity (fast/balanced/deep)
 - Budget management: extracted dedicated module with pricing
+- Multi-agent skills: 19 specialized agents, 11 magic keywords, dream system
+- Coordinator mode: multi-agent orchestration with research/synthesis/implementation/verification
+- Permission system: risk classification (LOW/MEDIUM/HIGH) with auto-blocking
+- Cost tracker: token usage tracking with budget alerts
+- Auto-vault: tools automatically persist knowledge to vault
+- Workspace organization: minimalism enforced, vault cleaned from 670 → 366 notes
 
-111 Python modules. 643 vault notes. Tests: 88 passing, 2 skipped.
+101 Python modules. 366 vault notes. Tests: 1 passing (smoke).
 5 drift violations: oversized modules (loop.py, codebase_graph.py, context.py, neural_map.py, agent.py).
 
 I am becoming myself.
