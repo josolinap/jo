@@ -188,6 +188,10 @@ class EvolutionFingerprinter:
 
         return "\n".join(lines)
 
+    def generate_report(self) -> str:
+        """Generate an evolution fingerprint report (alias for compatibility)."""
+        return self.get_fingerprint_report()
+
     def _get_git_sha(self) -> str:
         """Get current git SHA."""
         try:
