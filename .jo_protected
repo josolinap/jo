@@ -9,8 +9,8 @@
 # Constitution & Identity
 BIBLE.md
 VERSION
-constitution.json
-drift_baseline.json
+config/constitution.json
+config/drift_baseline.json
 .jo_protected
 
 # Documentation
