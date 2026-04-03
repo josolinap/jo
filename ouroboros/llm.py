@@ -253,8 +253,10 @@ class LLMClient:
             # Auto-detect: Is this an OpenRouter model that needs cloud API?
             model_lower = model.lower()
             is_openrouter = (
+                # OpenRouter patterns: :free, :preview suffixes
                 ":free" in model
                 or ":preview" in model
+                # Known cloud providers
                 or "google" in model_lower
                 or "anthropic" in model_lower
                 or "openai" in model_lower
@@ -266,12 +268,15 @@ class LLMClient:
                 or "nvidia" in model_lower
                 or "arcee" in model_lower
                 or "z-ai" in model_lower
+                # Any path with / that's not a known local model
                 or (("/" in model) and not any(x in model_lower for x in ["nerdsking", "qwen2.5", "qwen3"]))
             )
 
             if is_openrouter:
+                # Use OpenRouter API for cloud models
                 return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
+            # Use local Ollama - it uses OUROBOROS_MODEL from env
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter only mode
@@ -284,25 +289,9 @@ class LLMClient:
             if not tool_calls and (not content or not content.strip()):
                 raise ValueError("OpenRouter returned an empty response")
 
-            # Record success for stability manager (non-blocking, fire-and-forget)
-            try:
-                from ouroboros.stability_manager import get_stability_manager
-
-                get_stability_manager().record_success("llm_api")
-            except Exception:
-                pass
-
             return msg, usage
         except Exception:
-            # Record failure for stability manager (non-blocking, fire-and-forget)
-            try:
-                from ouroboros.stability_manager import get_stability_manager
-
-                get_stability_manager().record_failure("llm_api")
-            except Exception:
-                pass
-
-            raise  # Re-raise — stability is observational, never blocks
+            raise  # Re-raise — no fallback provider
 
     def _chat_openrouter(
         self,
@@ -317,16 +306,9 @@ class LLMClient:
         client = self._get_client()
         effort = normalize_reasoning_effort(reasoning_effort)
 
-        extra_body: Dict[str, Any] = {}
-
-        # Only add reasoning parameter for models that support it
-        # Free tier models and some providers don't support reasoning
-        model_lower = model.lower()
-        supports_reasoning = (
-            "anthropic" in model_lower or "openai" in model_lower or "claude" in model_lower or "gpt" in model_lower
-        )
-        if supports_reasoning:
-            extra_body["reasoning"] = {"effort": effort, "exclude": True}
+        extra_body: Dict[str, Any] = {
+            "reasoning": {"effort": effort, "exclude": True},
+        }
 
         # Pin Anthropic models to Anthropic provider for prompt caching
         if model.startswith("anthropic/"):
