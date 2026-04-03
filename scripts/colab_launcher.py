@@ -139,17 +139,13 @@ def _setup_paths():
     # Standard layout
     for sub in ["state", "logs", "memory", "index", "locks", "archive"]:
         (DRIVE_ROOT / sub).mkdir(parents=True, exist_ok=True)
-    
+
     # Initialize basic state.json if missing to prevent worker startup crash
     state_file = DRIVE_ROOT / "state" / "state.json"
     if not state_file.exists():
         import json
-        default_state = {
-            "spent_usd": 0.0,
-            "total_tasks": 0,
-            "last_active": "",
-            "active_tasks": []
-        }
+
+        default_state = {"spent_usd": 0.0, "total_tasks": 0, "last_active": "", "active_tasks": []}
         state_file.write_text(json.dumps(default_state, indent=2), encoding="utf-8")
         print(f"[*] Initialized default state at {state_file}")
     REPO_DIR.mkdir(parents=True, exist_ok=True)
@@ -441,12 +437,18 @@ def main():
             time.sleep(1)
 
         # Process all pending events from workers — use workers module as ctx
+        events_processed = 0
         while True:
             try:
                 evt = event_q.get_nowait()
             except Exception:
                 break
+            events_processed += 1
+            evt_type = evt.get("type", "unknown") if isinstance(evt, dict) else "not_dict"
+            log.info("[MAIN] Dispatching event #%d: type=%s", events_processed, evt_type)
             dispatch_event(evt, supervisor.workers)
+        if events_processed > 0:
+            log.info("[MAIN] Processed %d events this cycle", events_processed)
 
         # Periodic health check (every 5 min)
         if time.time() - _last_health_check > 300:

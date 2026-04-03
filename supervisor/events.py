@@ -67,23 +67,33 @@ def _handle_typing_start(evt: Dict[str, Any], ctx: Any) -> None:
 
 def _handle_send_message(evt: Dict[str, Any], ctx: Any) -> None:
     try:
+        chat_id = int(evt["chat_id"])
+        text = str(evt.get("text") or "")
         log_text = evt.get("log_text")
         fmt = str(evt.get("format") or "")
         is_progress = bool(evt.get("is_progress"))
+        task_id = str(evt.get("task_id") or "")
+        log.info("[EVENT] send_message: chat_id=%d, text_len=%d, fmt=%s, task_id=%s", chat_id, len(text), fmt, task_id)
         ctx.send_with_budget(
-            int(evt["chat_id"]),
-            str(evt.get("text") or ""),
+            chat_id,
+            text,
             log_text=(str(log_text) if isinstance(log_text, str) else None),
             fmt=fmt,
             is_progress=is_progress,
         )
     except Exception as e:
+        log.error(
+            "[EVENT] send_message handler error: %s, evt_keys=%s",
+            repr(e),
+            list(evt.keys()) if isinstance(evt, dict) else "not_dict",
+        )
         ctx.append_jsonl(
             ctx.DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {
                 "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "type": "send_message_event_error",
                 "error": repr(e),
+                "evt_keys": list(evt.keys()) if isinstance(evt, dict) else "not_dict",
             },
         )
 
@@ -417,6 +427,7 @@ EVENT_HANDLERS = {
 
 def dispatch_event(evt: Dict[str, Any], ctx: Any) -> None:
     if not isinstance(evt, dict):
+        log.warning("[DISPATCH] Event is not a dict: %r", repr(evt)[:200])
         ctx.append_jsonl(
             ctx.DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {
@@ -430,6 +441,7 @@ def dispatch_event(evt: Dict[str, Any], ctx: Any) -> None:
 
     event_type = str(evt.get("type") or "").strip()
     if not event_type:
+        log.warning("[DISPATCH] Event missing type: %r", repr(evt)[:200])
         ctx.append_jsonl(
             ctx.DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {
@@ -443,6 +455,7 @@ def dispatch_event(evt: Dict[str, Any], ctx: Any) -> None:
 
     handler = EVENT_HANDLERS.get(event_type)
     if handler is None:
+        log.warning("[DISPATCH] Unknown event type: %s", event_type)
         ctx.append_jsonl(
             ctx.DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {
@@ -454,9 +467,12 @@ def dispatch_event(evt: Dict[str, Any], ctx: Any) -> None:
         )
         return
 
+    log.info("[DISPATCH] Calling handler for: %s", event_type)
     try:
         handler(evt, ctx)
+        log.info("[DISPATCH] Handler completed for: %s", event_type)
     except Exception as e:
+        log.error("[DISPATCH] Handler error for %s: %s", event_type, repr(e))
         ctx.append_jsonl(
             ctx.DRIVE_ROOT / "logs" / "supervisor.jsonl",
             {

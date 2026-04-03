@@ -788,6 +788,15 @@ class OuroborosAgent:
         # that would double-count in update_budget_from_usage.
         # Cost/token summaries are carried by task_metrics and task_done events.
 
+        log.info(
+            "[AGENT] _emit_task_results: task_id=%s, type=%s, chat_id=%s, text_len=%d, text_preview=%r",
+            task.get("id"),
+            task.get("type"),
+            task.get("chat_id"),
+            len(text),
+            text[:120] if text else "(empty)",
+        )
+
         self._pending_events.append(
             {
                 "type": "send_message",
@@ -798,6 +807,9 @@ class OuroborosAgent:
                 "task_id": task.get("id"),
                 "ts": utc_now_iso(),
             }
+        )
+        log.info(
+            "[AGENT] send_message event appended: chat_id=%s, text_len=%d", task.get("chat_id"), len(text or "\u200b")
         )
 
         duration_sec = round(time.time() - start_time, 3)

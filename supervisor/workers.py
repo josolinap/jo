@@ -405,27 +405,40 @@ def worker_main(wid: int, in_q: Any, out_q: Any, repo_dir: str, drive_root: str)
     import sys as _sys
     import traceback as _tb
     import pathlib as _pathlib
+    import logging as _logging
 
     _sys.path.insert(0, repo_dir)
     _drive = _pathlib.Path(drive_root)
+    _log = _logging.getLogger(f"ouroboros.worker.{wid}")
     try:
         from ouroboros.agent import make_agent
 
         agent = make_agent(repo_dir=repo_dir, drive_root=drive_root, event_queue=out_q)
+        _log.info("[WORKER-%d] Agent initialized successfully", wid)
     except Exception as _e:
+        _log.error("[WORKER-%d] make_agent FAILED: %s", wid, repr(_e))
         _log_worker_crash(wid, _drive, "make_agent", _e, _tb.format_exc())
         return
     while True:
         try:
             task = in_q.get()
             if task is None or task.get("type") == "shutdown":
+                _log.info("[WORKER-%d] Received shutdown task, exiting", wid)
                 break
+            task_id = task.get("id", "unknown")
+            task_type = task.get("type", "unknown")
+            _log.info("[WORKER-%d] Processing task: id=%s, type=%s", wid, task_id, task_type)
             events = agent.handle_task(task)
+            _log.info("[WORKER-%d] handle_task returned %d events for task %s", wid, len(events), task_id)
             for e in events:
                 e2 = dict(e)
                 e2["worker_id"] = wid
                 out_q.put(e2)
+                _log.info(
+                    "[WORKER-%d] Forwarded event: type=%s, task_id=%s", wid, e2.get("type"), e2.get("task_id", "")
+                )
         except Exception as _e:
+            _log.error("[WORKER-%d] handle_task EXCEPTION: %s", wid, repr(_e))
             _log_worker_crash(wid, _drive, "handle_task", _e, _tb.format_exc())
 
 
