@@ -111,6 +111,10 @@ class HealthPredictor:
 
         return "\n".join(lines)
 
+    def generate_report(self) -> str:
+        """Generate a predictive health report (alias for compatibility)."""
+        return self.get_health_report()
+
     def take_snapshot_now(self) -> Dict[str, float]:
         """Take a health snapshot right now."""
         metrics = {}
