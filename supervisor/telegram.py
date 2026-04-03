@@ -27,8 +27,7 @@ BUDGET_REPORT_EVERY_MESSAGES: int = 10
 _TG: Optional["TelegramClient"] = None
 
 
-def init(drive_root, total_budget_limit: float, budget_report_every: int,
-         tg_client: "TelegramClient") -> None:
+def init(drive_root, total_budget_limit: float, budget_report_every: int, tg_client: "TelegramClient") -> None:
     global DRIVE_ROOT, TOTAL_BUDGET_LIMIT, BUDGET_REPORT_EVERY_MESSAGES, _TG
     DRIVE_ROOT = drive_root
     TOTAL_BUDGET_LIMIT = total_budget_limit
@@ -45,6 +44,7 @@ def get_tg() -> "TelegramClient":
 # TelegramClient
 # ---------------------------------------------------------------------------
 
+
 class TelegramClient:
     def __init__(self, token: str):
         self.base = f"https://api.telegram.org/bot{token}"
@@ -56,8 +56,7 @@ class TelegramClient:
             try:
                 r = requests.get(
                     f"{self.base}/getUpdates",
-                    params={"offset": offset, "timeout": timeout,
-                            "allowed_updates": ["message", "edited_message"]},
+                    params={"offset": offset, "timeout": timeout, "allowed_updates": ["message", "edited_message"]},
                     timeout=timeout + 5,
                 )
                 r.raise_for_status()
@@ -69,6 +68,7 @@ class TelegramClient:
                 last_err = repr(e)
                 if attempt < 2:
                     import time
+
                     time.sleep(0.8 * (attempt + 1))
         raise RuntimeError(f"Telegram getUpdates failed after retries: {last_err}")
 
@@ -76,8 +76,7 @@ class TelegramClient:
         last_err = "unknown"
         for attempt in range(3):
             try:
-                payload: Dict[str, Any] = {"chat_id": chat_id, "text": text,
-                                           "disable_web_page_preview": True}
+                payload: Dict[str, Any] = {"chat_id": chat_id, "text": text, "disable_web_page_preview": True}
                 if parse_mode:
                     payload["parse_mode"] = parse_mode
                 r = requests.post(f"{self.base}/sendMessage", data=payload, timeout=30)
@@ -90,6 +89,7 @@ class TelegramClient:
                 last_err = repr(e)
             if attempt < 2:
                 import time
+
                 time.sleep(0.8 * (attempt + 1))
         return False, last_err
 
@@ -106,8 +106,7 @@ class TelegramClient:
             log.debug("Failed to send chat action to chat_id=%d", chat_id, exc_info=True)
             return False
 
-    def send_photo(self, chat_id: int, photo_bytes: bytes,
-                   caption: str = "") -> Tuple[bool, str]:
+    def send_photo(self, chat_id: int, photo_bytes: bytes, caption: str = "") -> Tuple[bool, str]:
         """Send a photo to a chat. photo_bytes is raw PNG/JPEG data."""
         last_err = "unknown"
         for attempt in range(3):
@@ -118,7 +117,9 @@ class TelegramClient:
                     data["caption"] = caption[:1024]
                 r = requests.post(
                     f"{self.base}/sendPhoto",
-                    data=data, files=files, timeout=30,
+                    data=data,
+                    files=files,
+                    timeout=30,
                 )
                 r.raise_for_status()
                 resp = r.json()
@@ -129,6 +130,7 @@ class TelegramClient:
                 last_err = repr(e)
             if attempt < 2:
                 import time
+
                 time.sleep(0.8 * (attempt + 1))
         return False, last_err
 
@@ -152,12 +154,19 @@ class TelegramClient:
             r2.raise_for_status()
 
             import base64
+
             b64 = base64.b64encode(r2.content).decode("ascii")
 
             # Guess mime type from extension
             ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
-            mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
-                        "gif": "image/gif", "webp": "image/webp", "bmp": "image/bmp"}
+            mime_map = {
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "png": "image/png",
+                "gif": "image/gif",
+                "webp": "image/webp",
+                "bmp": "image/bmp",
+            }
             mime = mime_map.get(ext, "image/jpeg")  # default to jpeg
 
             return b64, mime
@@ -169,6 +178,7 @@ class TelegramClient:
 # ---------------------------------------------------------------------------
 # Message splitting + formatting
 # ---------------------------------------------------------------------------
+
 
 def split_telegram(text: str, limit: int = 3800) -> List[str]:
     chunks: List[str] = []
@@ -187,10 +197,7 @@ def _sanitize_telegram_text(text: str) -> str:
     if text is None:
         return ""
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return "".join(
-        c for c in text
-        if (ord(c) >= 32 or c in ("\n", "\t")) and not (0xD800 <= ord(c) <= 0xDFFF)
-    )
+    return "".join(c for c in text if (ord(c) >= 32 or c in ("\n", "\t")) and not (0xD800 <= ord(c) <= 0xDFFF))
 
 
 def _tg_utf16_len(text: str) -> int:
@@ -234,6 +241,7 @@ def _markdown_to_telegram_html(md: str) -> str:
     Handles unmatched markers gracefully. Telegram only allows: b, i, u, s, code, pre, a.
     """
     import html as _html
+
     md = md or ""
 
     # --- Step 1: extract fenced code blocks into placeholders ---
@@ -277,7 +285,7 @@ def _markdown_to_telegram_html(md: str) -> str:
         link_text = m.group(1)
         url = m.group(2)
         # URL must not contain quotes or special chars that break HTML
-        url_safe = url.replace('"', '%22').replace('<', '%3C').replace('>', '%3E')
+        url_safe = url.replace('"', "%22").replace("<", "%3C").replace(">", "%3E")
         return f'<a href="{url_safe}">{link_text}</a>'
 
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", _replace_link, text)
@@ -356,23 +364,31 @@ def _send_markdown_telegram(chat_id: int, text: str) -> Tuple[bool, str]:
     if not chunks:
         return False, "empty_chunks"
     last_err = "ok"
+    failed_chunks = 0
     for md_part in chunks:
         html_text = _markdown_to_telegram_html(md_part)
         ok, err = tg.send_message(chat_id, _sanitize_telegram_text(html_text), parse_mode="HTML")
         if not ok:
             plain = _strip_markdown(md_part)
             if not plain.strip():
-                return False, err
+                failed_chunks += 1
+                last_err = err
+                continue
             ok2, err2 = tg.send_message(chat_id, _sanitize_telegram_text(plain))
             if not ok2:
-                return False, err2
+                failed_chunks += 1
+                last_err = err2
+                continue
         last_err = err
+    if failed_chunks == len(chunks):
+        return False, last_err
     return True, last_err
 
 
 # ---------------------------------------------------------------------------
 # Budget + logging
 # ---------------------------------------------------------------------------
+
 
 def _format_budget_line(st: Dict[str, Any]) -> str:
     spent = float(st.get("spent_usd") or 0.0)
@@ -407,37 +423,51 @@ def budget_line(force: bool = False) -> str:
 
 
 def log_chat(direction: str, chat_id: int, user_id: int, text: str) -> None:
-    append_jsonl(DRIVE_ROOT / "logs" / "chat.jsonl", {
-        "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "session_id": load_state().get("session_id"),
-        "direction": direction,
-        "chat_id": chat_id,
-        "user_id": user_id,
-        "text": text,
-    })
+    append_jsonl(
+        DRIVE_ROOT / "logs" / "chat.jsonl",
+        {
+            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "session_id": load_state().get("session_id"),
+            "direction": direction,
+            "chat_id": chat_id,
+            "user_id": user_id,
+            "text": text,
+        },
+    )
 
 
-def send_with_budget(chat_id: int, text: str, log_text: Optional[str] = None,
-                     force_budget: bool = False, fmt: str = "",
-                     is_progress: bool = False) -> None:
+def send_with_budget(
+    chat_id: int,
+    text: str,
+    log_text: Optional[str] = None,
+    force_budget: bool = False,
+    fmt: str = "",
+    is_progress: bool = False,
+) -> None:
     st = load_state()
     owner_id = int(st.get("owner_id") or 0)
     # Progress messages go to progress.jsonl instead of chat.jsonl
     # This keeps chat history clean for context building
     if is_progress:
-        append_jsonl(DRIVE_ROOT / "logs" / "progress.jsonl", {
-            "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "direction": "out", "chat_id": chat_id, "user_id": owner_id,
-            "text": text if log_text is None else log_text,
-        })
+        append_jsonl(
+            DRIVE_ROOT / "logs" / "progress.jsonl",
+            {
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "direction": "out",
+                "chat_id": chat_id,
+                "user_id": owner_id,
+                "text": text if log_text is None else log_text,
+            },
+        )
     else:
         log_chat("out", chat_id, owner_id, text if log_text is None else log_text)
     budget = budget_line(force=force_budget)
     _text = str(text or "")
     if not budget:
         if _text.strip() in ("", "\u200b"):
-            return
-        full = _text
+            full = "\u200b"
+        else:
+            full = _text
     else:
         base = _text.rstrip()
         if base in ("", "\u200b"):
@@ -458,6 +488,25 @@ def send_with_budget(chat_id: int, text: str, log_text: Optional[str] = None,
                     "format": "markdown",
                 },
             )
+            tg = get_tg()
+            plain_fallback = _strip_markdown(full)
+            if plain_fallback.strip():
+                for idx, part in enumerate(split_telegram(plain_fallback)):
+                    ok2, err2 = tg.send_message(chat_id, part)
+                    if not ok2:
+                        append_jsonl(
+                            DRIVE_ROOT / "logs" / "supervisor.jsonl",
+                            {
+                                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                                "type": "telegram_send_error",
+                                "chat_id": chat_id,
+                                "part_index": idx,
+                                "error": err2,
+                                "format": "markdown_fallback",
+                            },
+                        )
+                        break
+            return
         return
 
     tg = get_tg()
