@@ -278,6 +278,155 @@ def _verify_tests(ctx: ToolContext) -> str:
     return verifier._results[-1].evidence if verifier._results else "No result"
 
 
+def _dream_status(ctx: ToolContext) -> str:
+    """Get dream system status."""
+    from ouroboros.skills.dream_system import get_dream_system
+    import json
+
+    dream = get_dream_system(ctx.repo_dir)
+    status = dream.get_status()
+    return f"## Dream System Status\n\n```json\n{json.dumps(status, indent=2)}\n```"
+
+
+def _dream_start(ctx: ToolContext) -> str:
+    """Start the dream process."""
+    from ouroboros.skills.dream_system import get_dream_system
+
+    dream = get_dream_system(ctx.repo_dir)
+    if dream.start_dream():
+        return "✅ Dream process started. Use dream_get_prompt to get the subagent prompt."
+    return "⏭️ Dream gates not satisfied. Check dream_status for details."
+
+
+def _dream_get_prompt(ctx: ToolContext) -> str:
+    """Get the prompt for the dream subagent."""
+    from ouroboros.skills.dream_system import get_dream_system
+
+    dream = get_dream_system(ctx.repo_dir)
+    return dream.get_dream_prompt()
+
+
+def _coordinator_start(ctx: ToolContext, mission: str) -> str:
+    """Start a multi-agent coordination mission."""
+    from ouroboros.skills.coordinator import get_coordinator
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    return coordinator.start_mission(mission)
+
+
+def _coordinator_status(ctx: ToolContext) -> str:
+    """Get coordinator mission status."""
+    from ouroboros.skills.coordinator import get_coordinator
+    import json
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    status = coordinator.get_status()
+    return f"## Coordinator Status\n\n```json\n{json.dumps(status, indent=2)}\n```"
+
+
+def _coordinator_add_worker(ctx: ToolContext, description: str, phase: str) -> str:
+    """Add a worker task to the current mission."""
+    from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    phase_enum = {
+        "research": CoordinatorPhase.RESEARCH,
+        "synthesis": CoordinatorPhase.SYNTHESIS,
+        "implementation": CoordinatorPhase.IMPLEMENTATION,
+        "verification": CoordinatorPhase.VERIFICATION,
+    }.get(phase.lower(), CoordinatorPhase.RESEARCH)
+
+    task_id = coordinator.add_worker_task(description, phase_enum)
+    return f"✅ Worker task added: {task_id}"
+
+
+def _coordinator_get_worker_prompt(ctx: ToolContext, task_id: str) -> str:
+    """Get the prompt for a specific worker task."""
+    from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    # Find the task to determine its phase
+    status = coordinator.get_status()
+    task = next((w for w in status.get("workers", []) if w["task_id"] == task_id), None)
+    if not task:
+        return f"⚠️ Task not found: {task_id}"
+
+    phase = task.get("phase", "research")
+    if phase == "research":
+        return coordinator.get_research_prompt(task_id)
+    elif phase == "implementation":
+        return coordinator.get_implementation_prompt(task_id)
+    elif phase == "verification":
+        return coordinator.get_verification_prompt(task_id)
+    else:
+        return f"No prompt needed for {phase} phase"
+
+
+def _coordinator_complete_worker(ctx: ToolContext, task_id: str, result: str) -> str:
+    """Mark a worker task as completed."""
+    from ouroboros.skills.coordinator import get_coordinator
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    if coordinator.complete_worker(task_id, result):
+        return f"✅ Worker {task_id} marked as completed"
+    return f"⚠️ Task not found: {task_id}"
+
+
+def _coordinator_advance_phase(ctx: ToolContext) -> str:
+    """Advance to the next coordination phase."""
+    from ouroboros.skills.coordinator import get_coordinator
+
+    coordinator = get_coordinator(ctx.repo_dir)
+    if coordinator.advance_phase():
+        status = coordinator.get_status()
+        return f"✅ Advanced to phase: {status['current_phase']}"
+    return "⏭️ Cannot advance phase yet. Current phase workers not complete."
+
+
+def _permission_status(ctx: ToolContext) -> str:
+    """Get permission system status."""
+    from ouroboros.skills.permission_system import get_permission_system
+    import json
+
+    perm = get_permission_system(ctx.repo_dir)
+    status = perm.get_status()
+    return f"## Permission System Status\n\n```json\n{json.dumps(status, indent=2)}\n```"
+
+
+def _permission_classify(ctx: ToolContext, tool_name: str, args: Optional[Dict[str, Any]] = None) -> str:
+    """Classify the risk level of a tool action."""
+    from ouroboros.skills.permission_system import get_permission_system
+
+    perm = get_permission_system(ctx.repo_dir)
+    action = perm.classify_risk(tool_name, args or {})
+
+    status_icon = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(action.risk_level.value, "⚪")
+    blocked_icon = "🚫" if action.blocked else "✅"
+
+    return (
+        f"## Risk Classification: {tool_name}\n\n"
+        f"- **Risk Level**: {status_icon} {action.risk_level.value.upper()}\n"
+        f"- **Blocked**: {blocked_icon} {'Yes' if action.blocked else 'No'}\n"
+        f"- **Explanation**: {action.explanation}\n"
+        f"{'- **Block Reason**: ' + action.block_reason if action.blocked else ''}"
+    )
+
+
+def _permission_set_mode(ctx: ToolContext, mode: str) -> str:
+    """Set the permission mode."""
+    from ouroboros.skills.permission_system import get_permission_system, PermissionMode
+
+    perm = get_permission_system(ctx.repo_dir)
+    mode_enum = {
+        "default": PermissionMode.DEFAULT,
+        "auto": PermissionMode.AUTO,
+        "bypass": PermissionMode.BYPASS,
+        "yolo": PermissionMode.YOLO,
+    }.get(mode.lower(), PermissionMode.DEFAULT)
+
+    return perm.set_mode(mode_enum)
+
+
 def get_tools() -> List[ToolEntry]:
     """Get skills tools."""
     return [
@@ -508,5 +657,155 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _verify_tests,
+        ),
+        ToolEntry(
+            "dream_status",
+            {
+                "name": "dream_status",
+                "description": "Get dream system status (background memory consolidation).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _dream_status,
+        ),
+        ToolEntry(
+            "dream_start",
+            {
+                "name": "dream_start",
+                "description": "Start the dream process (background memory consolidation).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _dream_start,
+        ),
+        ToolEntry(
+            "dream_get_prompt",
+            {
+                "name": "dream_get_prompt",
+                "description": "Get the prompt for the dream subagent.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _dream_get_prompt,
+        ),
+        ToolEntry(
+            "coordinator_start",
+            {
+                "name": "coordinator_start",
+                "description": "Start a multi-agent coordination mission.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "mission": {"type": "string", "description": "Mission description"},
+                    },
+                    "required": ["mission"],
+                },
+            },
+            _coordinator_start,
+        ),
+        ToolEntry(
+            "coordinator_status",
+            {
+                "name": "coordinator_status",
+                "description": "Get coordinator mission status.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _coordinator_status,
+        ),
+        ToolEntry(
+            "coordinator_add_worker",
+            {
+                "name": "coordinator_add_worker",
+                "description": "Add a worker task to the current mission.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "description": {"type": "string", "description": "Task description"},
+                        "phase": {
+                            "type": "string",
+                            "description": "Phase: research, synthesis, implementation, verification",
+                        },
+                    },
+                    "required": ["description", "phase"],
+                },
+            },
+            _coordinator_add_worker,
+        ),
+        ToolEntry(
+            "coordinator_get_worker_prompt",
+            {
+                "name": "coordinator_get_worker_prompt",
+                "description": "Get the prompt for a specific worker task.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string", "description": "Worker task ID"},
+                    },
+                    "required": ["task_id"],
+                },
+            },
+            _coordinator_get_worker_prompt,
+        ),
+        ToolEntry(
+            "coordinator_complete_worker",
+            {
+                "name": "coordinator_complete_worker",
+                "description": "Mark a worker task as completed.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string", "description": "Worker task ID"},
+                        "result": {"type": "string", "description": "Task result"},
+                    },
+                    "required": ["task_id", "result"],
+                },
+            },
+            _coordinator_complete_worker,
+        ),
+        ToolEntry(
+            "coordinator_advance_phase",
+            {
+                "name": "coordinator_advance_phase",
+                "description": "Advance to the next coordination phase.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _coordinator_advance_phase,
+        ),
+        ToolEntry(
+            "permission_status",
+            {
+                "name": "permission_status",
+                "description": "Get permission system status.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _permission_status,
+        ),
+        ToolEntry(
+            "permission_classify",
+            {
+                "name": "permission_classify",
+                "description": "Classify the risk level of a tool action.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {"type": "string", "description": "Tool name"},
+                        "args": {"type": "object", "description": "Tool arguments"},
+                    },
+                    "required": ["tool_name"],
+                },
+            },
+            _permission_classify,
+        ),
+        ToolEntry(
+            "permission_set_mode",
+            {
+                "name": "permission_set_mode",
+                "description": "Set the permission mode (default, auto, bypass, yolo).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "mode": {"type": "string", "description": "Permission mode"},
+                    },
+                    "required": ["mode"],
+                },
+            },
+            _permission_set_mode,
         ),
     ]
