@@ -2,13 +2,16 @@
 # This file contains default configuration that can be overridden in overrides.yaml
 
 llm:
-  default_model: "anthropic/claude-sonnet-4"
+  default_model: "openrouter/free"
   temperature: 0.3
   max_tokens: 8192
   reasoning_effort: "medium"
   # Fallback chain: models to try when primary fails (ordered by priority)
-  # Can be overridden via env vars: LLM_FALLBACK_1, LLM_FALLBACK_2, etc.
-  # Or via GitHub secrets for your deployment
+  # Priority 1: OUROBOROS_MODEL env var (GitHub secret)
+  # Priority 2: OUROBOROS_MODEL_LIGHT env var
+  # Priority 3: OUROBOROS_MODEL_CODE env var
+  # Priority 4: This config fallback_chain
+  # Priority 5: Hardcoded openrouter/free defaults
   fallback_chain:
     - name: "openrouter/free"
       priority: 1

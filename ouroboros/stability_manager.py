@@ -217,16 +217,36 @@ class StabilityManager:
         self.degradation_mode = DegradationMode.FULL
 
     def _load_fallback_chain(self) -> None:
-        """Load fallback chain from environment variables, config, or defaults.
+        """Load fallback chain from Jo env vars, config, or defaults.
 
         Priority:
-        1. Environment variables: LLM_FALLBACK_1, LLM_FALLBACK_2, LLM_FALLBACK_3
-        2. Config file: llm.fallback_chain
-        3. Defaults: openrouter/free models
+        1. Jo env vars: OUROBOROS_MODEL → OUROBOROS_MODEL_LIGHT → OUROBOROS_MODEL_CODE
+        2. Generic env vars: LLM_FALLBACK_1, LLM_FALLBACK_2, LLM_FALLBACK_3
+        3. Config file: llm.fallback_chain
+        4. Defaults: openrouter/free models
         """
-        # 1. Try environment variables first (GitHub secrets)
+        # 1. Try Jo-specific env vars (GitHub secrets)
+        primary = os.environ.get("OUROBOROS_MODEL", "").strip()
+        light = os.environ.get("OUROBOROS_MODEL_LIGHT", "").strip()
+        code = os.environ.get("OUROBOROS_MODEL_CODE", "").strip()
+
+        jo_fallbacks = []
+        if primary:
+            jo_fallbacks.append((primary, 1))
+        if light and light != primary:
+            jo_fallbacks.append((light, 2))
+        if code and code != primary and code != light:
+            jo_fallbacks.append((code, 3))
+
+        if jo_fallbacks:
+            for name, priority in jo_fallbacks:
+                self.fallback_chain.add_model(name, priority)
+            log.info("[Stability] Loaded fallback chain from Jo env vars: %s", [m[0] for m in jo_fallbacks])
+            return
+
+        # 2. Try generic env vars
         env_fallbacks = []
-        for i in range(1, 6):  # Support up to 5 fallback models
+        for i in range(1, 6):
             env_var = f"LLM_FALLBACK_{i}"
             model = os.environ.get(env_var, "").strip()
             if model:
@@ -238,7 +258,7 @@ class StabilityManager:
             log.info("[Stability] Loaded fallback chain from env vars: %s", [m[0] for m in env_fallbacks])
             return
 
-        # 2. Try config file
+        # 3. Try config file
         try:
             from ouroboros.config_manager import get_config
 
@@ -252,13 +272,12 @@ class StabilityManager:
         except Exception:
             pass
 
-        # 3. Defaults: openrouter/free models (no hardcoded Anthropic/OpenAI)
-        # These are free models available on OpenRouter
+        # 4. Defaults: openrouter/free models
         default_fallbacks = [
-            ("openrouter/free", 1),  # Primary free model
-            ("openrouter/google/gemini-2.0-flash-exp:free", 2),  # Gemini flash free
-            ("openrouter/meta-llama/llama-3.3-70b-instruct:free", 3),  # Llama free
-            ("openrouter/mistralai/mistral-7b-instruct:free", 4),  # Mistral free
+            ("openrouter/free", 1),
+            ("openrouter/google/gemini-2.0-flash-exp:free", 2),
+            ("openrouter/meta-llama/llama-3.3-70b-instruct:free", 3),
+            ("openrouter/mistralai/mistral-7b-instruct:free", 4),
         ]
         for name, priority in default_fallbacks:
             self.fallback_chain.add_model(name, priority)
