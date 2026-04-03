@@ -552,6 +552,32 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: semantic filter", exc_info=True)
 
+    # 23. Stability Manager (Circuit Breaker + Fallback Chain)
+    try:
+        from ouroboros.stability_manager import get_stability_manager
+
+        sm = get_stability_manager(repo_dir=env.repo_dir)
+        sm_stats = sm.get_stats()
+        mode = sm_stats.get("degradation_mode", "full")
+        llm_cb = sm_stats.get("circuit_breakers", {}).get("llm_api", {})
+        cb_state = llm_cb.get("state", "closed")
+        current_model = sm_stats.get("current_model", "unknown")
+
+        if mode == "full" and cb_state == "closed":
+            checks.append(f"OK: stability - FULL mode, LLM circuit {cb_state}, model {current_model}")
+        elif mode == "reduced":
+            checks.append(f"⚠️ DEGRADED: REDUCED mode - using fallback model {current_model}")
+        elif mode == "minimal":
+            checks.append(f"🚨 CRITICAL: MINIMAL mode - no fallback models available")
+        elif cb_state == "open":
+            checks.append(
+                f"🚨 CIRCUIT OPEN: LLM API circuit breaker tripped - {llm_cb.get('recent_failures_5m', 0)} failures in 5m"
+            )
+        else:
+            checks.append(f"⚠️ STABILITY: mode={mode}, circuit={cb_state}")
+    except Exception:
+        log.debug("Health check failed: stability manager", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

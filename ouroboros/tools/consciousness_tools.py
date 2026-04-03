@@ -484,6 +484,24 @@ def _semantic_filter_stats(ctx: ToolContext) -> str:
     return f"## Semantic Filter Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _stability_status(ctx: ToolContext) -> str:
+    """Get stability manager status (circuit breakers, fallback chain, degradation mode)."""
+    from ouroboros.stability_manager import get_stability_manager
+
+    sm = get_stability_manager(ctx.repo_dir)
+    stats = sm.get_stats()
+    return f"## Stability Status\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
+def _stability_reset(ctx: ToolContext, service: str = "") -> str:
+    """Reset circuit breakers and/or fallback chain."""
+    from ouroboros.stability_manager import get_stability_manager
+
+    sm = get_stability_manager(ctx.repo_dir)
+    sm.reset(service if service else None)
+    return f"✅ Stability manager reset{' for ' + service if service else ''}"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -1076,5 +1094,33 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _semantic_filter_stats,
+        ),
+        # Stability tools
+        ToolEntry(
+            "stability_status",
+            {
+                "name": "stability_status",
+                "description": "Get stability manager status (circuit breakers, fallback chain, degradation mode).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _stability_status,
+        ),
+        ToolEntry(
+            "stability_reset",
+            {
+                "name": "stability_reset",
+                "description": "Reset circuit breakers and/or fallback chain.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "service": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Service to reset (llm_api, tool_execution, memory_access) or all if empty",
+                        },
+                    },
+                },
+            },
+            _stability_reset,
         ),
     ]

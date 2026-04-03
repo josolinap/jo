@@ -248,15 +248,19 @@ class LLMClient:
         max_tokens: int = 16384,
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
+        """Single LLM call. Returns: (response_message_dict, usage_dict with cost).
+
+        Stability integration:
+        - Checks circuit breaker before making API call
+        - Falls back to backup models on failure
+        - Records success/failure for circuit breaker tracking
+        """
         if self._is_local:
             # Auto-detect: Is this an OpenRouter model that needs cloud API?
             model_lower = model.lower()
             is_openrouter = (
-                # OpenRouter patterns: :free, :preview suffixes
                 ":free" in model
                 or ":preview" in model
-                # Known cloud providers
                 or "google" in model_lower
                 or "anthropic" in model_lower
                 or "openai" in model_lower
@@ -268,15 +272,12 @@ class LLMClient:
                 or "nvidia" in model_lower
                 or "arcee" in model_lower
                 or "z-ai" in model_lower
-                # Any path with / that's not a known local model
                 or (("/" in model) and not any(x in model_lower for x in ["nerdsking", "qwen2.5", "qwen3"]))
             )
 
             if is_openrouter:
-                # Use OpenRouter API for cloud models
                 return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-            # Use local Ollama - it uses OUROBOROS_MODEL from env
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter only mode
@@ -289,9 +290,41 @@ class LLMClient:
             if not tool_calls and (not content or not content.strip()):
                 raise ValueError("OpenRouter returned an empty response")
 
+            # Record success for stability manager
+            try:
+                from ouroboros.stability_manager import get_stability_manager
+
+                sm = get_stability_manager()
+                sm.record_success("llm_api")
+            except Exception:
+                pass
+
             return msg, usage
-        except Exception:
-            raise  # Re-raise — no fallback provider
+        except Exception as e:
+            # Record failure for stability manager
+            try:
+                from ouroboros.stability_manager import get_stability_manager
+
+                sm = get_stability_manager()
+                sm.record_failure("llm_api")
+
+                # Try fallback model if available
+                fallback_model = sm.get_current_model()
+                if fallback_model and fallback_model != model:
+                    log.warning("[LLM] Primary model %s failed, trying fallback %s", model, fallback_model)
+                    try:
+                        msg, usage = self._chat_openrouter(
+                            messages, fallback_model, tools, reasoning_effort, max_tokens, tool_choice
+                        )
+                        sm.record_success("llm_api")
+                        return msg, usage
+                    except Exception as fallback_error:
+                        log.error("[LLM] Fallback model %s also failed: %s", fallback_model, fallback_error)
+                        sm.record_failure("llm_api")
+            except Exception:
+                pass
+
+            raise  # Re-raise if no fallback available
 
     def _chat_openrouter(
         self,
