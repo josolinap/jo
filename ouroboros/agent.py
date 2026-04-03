@@ -126,6 +126,24 @@ class OuroborosAgent:
         except Exception:
             log.debug("Skill system initialization failed", exc_info=True)
 
+        # Initialize new skill systems
+        try:
+            from ouroboros.skills.dream_system import get_dream_system
+            from ouroboros.skills.coordinator import get_coordinator
+            from ouroboros.skills.permission_system import get_permission_system
+            from ouroboros.skills.cost_tracker import get_cost_tracker
+            from ouroboros.skills.state_manager import get_state_manager
+
+            # These initialize global singletons so they're ready for use
+            get_dream_system(env.repo_dir)
+            get_coordinator(env.repo_dir)
+            get_permission_system(env.repo_dir)
+            get_cost_tracker(env.repo_dir)
+            get_state_manager(env.repo_dir)
+            log.info("[Skills] All skill systems initialized")
+        except Exception:
+            log.debug("Skill system initialization failed", exc_info=True)
+
         self._log_worker_boot_once()
         self._start_hot_reload_manager()
 
@@ -325,6 +343,36 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Coordinator mode integration failed", exc_info=True)
 
+            # --- Coordinator mode: For complex tasks, use multi-agent orchestration ---
+            try:
+                from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
+                from ouroboros.skills.agent_system import get_agent_router
+
+                coordinator = get_coordinator(self.env.repo_dir)
+                router = get_agent_router()
+
+                # Auto-detect if task needs coordination (complex multi-file tasks)
+                if len(task_text) > 200 or any(
+                    keyword in task_text.lower()
+                    for keyword in ["refactor", "implement", "build", "create", "multi", "complex"]
+                ):
+                    # Start coordination mission
+                    coordinator.start_mission(task_text[:200])
+
+                    # Add research workers
+                    agents = router.route(task_text)
+                    for agent in agents[:3]:  # Limit to 3 workers
+                        coordinator.add_worker_task(
+                            description=f"Research: {agent.role} - {task_text[:100]}",
+                            phase=CoordinatorPhase.RESEARCH,
+                        )
+                    log.info(
+                        "[Coordinator] Started mission with %d research workers",
+                        len(agents[:3]),
+                    )
+            except Exception:
+                log.debug("Coordinator mode integration failed", exc_info=True)
+
             # --- Semantic tool routing (from RuVector SONA) ---
             try:
                 from ouroboros.tool_router import classify_task
@@ -468,13 +516,12 @@ class OuroborosAgent:
             # --- Post-task: Dream system (background memory consolidation) ---
             try:
                 from ouroboros.skills.dream_system import get_dream_system
+                import threading
 
                 dream = get_dream_system(self.env.repo_dir)
                 dream.record_session()  # Track session count for dream gates
                 if dream.should_dream():
                     # Start dream in background thread
-                    import threading
-
                     def _run_dream():
                         if dream.start_dream():
                             prompt = dream.get_dream_prompt()
