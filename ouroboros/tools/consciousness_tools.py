@@ -408,6 +408,15 @@ def _memory_clear_completed(ctx: ToolContext) -> str:
     return f"✅ Cleared {cleared} completed todos"
 
 
+def _bulkhead_stats(ctx: ToolContext) -> str:
+    """Get bulkhead resource isolation statistics."""
+    from ouroboros.bulkhead_executor import get_bulkhead_executor
+
+    executor = get_bulkhead_executor()
+    stats = executor.get_stats()
+    return f"## Bulkhead Resource Isolation\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def _critique_evaluate(ctx: ToolContext, task_description: str, work_summary: str, threshold: float = 0.7) -> str:
     """Start a self-critique evaluation."""
     from ouroboros.self_critique import get_self_critique_evaluator
