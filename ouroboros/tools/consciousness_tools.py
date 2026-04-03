@@ -225,6 +225,67 @@ def _outreach_stats(ctx: ToolContext) -> str:
     return f"## Outreach Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _identity_verify(ctx: ToolContext) -> str:
+    """Verify identity integrity (tamper detection)."""
+    from ouroboros.persistent_identity import get_persistent_identity
+
+    identity = get_persistent_identity(ctx.repo_dir)
+    verification = identity.verify_identity()
+    status = "✅ VERIFIED" if verification["valid"] else "❌ TAMPERED"
+    return f"## Identity Verification\n\n**Status**: {status}\n**Version**: {verification['version']}\n**Message**: {verification['message']}"
+
+
+def _identity_history(ctx: ToolContext) -> str:
+    """Get identity version history."""
+    from ouroboros.persistent_identity import get_persistent_identity
+
+    identity = get_persistent_identity(ctx.repo_dir)
+    history = identity.get_history()
+    return f"## Identity History\n\n" + "\n".join(
+        f"- v{h['version']}: {h['timestamp']} - {h['reason']}" for h in history
+    )
+
+
+def _identity_stats(ctx: ToolContext) -> str:
+    """Get persistent identity statistics."""
+    from ouroboros.persistent_identity import get_persistent_identity
+
+    identity = get_persistent_identity(ctx.repo_dir)
+    stats = identity.get_stats()
+    return f"## Identity Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
+def _self_healing_detect(ctx: ToolContext) -> str:
+    """Run self-healing detection."""
+    from ouroboros.self_healing import get_self_healing
+
+    healing = get_self_healing(ctx.repo_dir)
+    issues = healing.auto_heal()
+    if issues:
+        return f"## Self-Healing Detection\n\nFound {len(issues)} issue(s):\n" + "\n".join(
+            f"- {i.id}: {i.type.value} at {i.file_path}:{i.line_number}" for i in issues
+        )
+    return "✅ No issues detected"
+
+
+def _self_healing_diagnose(ctx: ToolContext, issue_id: str) -> str:
+    """Diagnose a specific issue."""
+    from ouroboros.self_healing import get_self_healing
+
+    healing = get_self_healing(ctx.repo_dir)
+    issue = healing.diagnose_issue(issue_id)
+    return f"## Issue Diagnosis\n\n**ID**: {issue.id}\n**Type**: {issue.type.value}\n**Status**: {issue.status.value}\n**File**: {issue.file_path}\n**Diagnosis**: {issue.diagnosis}\n**Fix**: {issue.fix_applied}"
+
+
+def _self_healing_stats(ctx: ToolContext) -> str:
+    """Get self-healing statistics."""
+    from ouroboros.self_healing import get_self_healing
+
+    healing = get_self_healing(ctx.repo_dir)
+    stats = healing.get_stats()
+    return f"## Self-Healing Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -488,5 +549,65 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _outreach_stats,
+        ),
+        ToolEntry(
+            "identity_verify",
+            {
+                "name": "identity_verify",
+                "description": "Verify identity integrity (tamper detection).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _identity_verify,
+        ),
+        ToolEntry(
+            "identity_history",
+            {
+                "name": "identity_history",
+                "description": "Get identity version history.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _identity_history,
+        ),
+        ToolEntry(
+            "identity_stats",
+            {
+                "name": "identity_stats",
+                "description": "Get persistent identity statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _identity_stats,
+        ),
+        ToolEntry(
+            "self_healing_detect",
+            {
+                "name": "self_healing_detect",
+                "description": "Run self-healing detection (syntax, imports, tests).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _self_healing_detect,
+        ),
+        ToolEntry(
+            "self_healing_diagnose",
+            {
+                "name": "self_healing_diagnose",
+                "description": "Diagnose a specific issue.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "issue_id": {"type": "string", "description": "Issue ID to diagnose"},
+                    },
+                    "required": ["issue_id"],
+                },
+            },
+            _self_healing_diagnose,
+        ),
+        ToolEntry(
+            "self_healing_stats",
+            {
+                "name": "self_healing_stats",
+                "description": "Get self-healing statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _self_healing_stats,
         ),
     ]

@@ -430,6 +430,39 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: proactive outreach", exc_info=True)
 
+    # 15. Persistent Identity (Principle 9: Identity Coherence)
+    try:
+        from ouroboros.persistent_identity import get_persistent_identity
+
+        identity = get_persistent_identity(repo_dir=env.repo_dir)
+        verification = identity.verify_identity()
+        if verification["valid"]:
+            checks.append(f"OK: identity verified (v{verification['version']})")
+        else:
+            checks.append(f"⚠️ CRITICAL: {verification['message']}")
+
+        id_stats = identity.get_stats()
+        if id_stats["current_version"] > 1:
+            checks.append(f"OK: identity has {id_stats['current_version']} versions (tamper-evident)")
+    except Exception:
+        log.debug("Health check failed: persistent identity", exc_info=True)
+
+    # 16. Self-Healing Architecture (Principle 10: Bounded Self-Modification)
+    try:
+        from ouroboros.self_healing import get_self_healing
+
+        healing = get_self_healing(repo_dir=env.repo_dir)
+        healing_stats = healing.get_stats()
+        if healing_stats["total_issues"] > 0:
+            checks.append(
+                f"OK: self-healing - {healing_stats['healed']} healed, "
+                f"{healing_stats['pending']} pending, {healing_stats['failed']} failed"
+            )
+        else:
+            checks.append("OK: self-healing ready (no issues detected)")
+    except Exception:
+        log.debug("Health check failed: self-healing", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

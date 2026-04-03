@@ -126,23 +126,44 @@ class OuroborosAgent:
         except Exception:
             log.debug("Skill system initialization failed", exc_info=True)
 
-        # Initialize new skill systems
+        # Initialize Phase 3 systems: Persistent Identity + Self-Healing
         try:
-            from ouroboros.skills.dream_system import get_dream_system
-            from ouroboros.skills.coordinator import get_coordinator
-            from ouroboros.skills.permission_system import get_permission_system
-            from ouroboros.skills.cost_tracker import get_cost_tracker
-            from ouroboros.skills.state_manager import get_state_manager
+            from ouroboros.persistent_identity import get_persistent_identity
+            from ouroboros.self_healing import get_self_healing
 
-            # These initialize global singletons so they're ready for use
-            get_dream_system(env.repo_dir)
-            get_coordinator(env.repo_dir)
-            get_permission_system(env.repo_dir)
-            get_cost_tracker(env.repo_dir)
-            get_state_manager(env.repo_dir)
-            log.info("[Skills] All skill systems initialized")
+            # Verify identity integrity on boot
+            identity = get_persistent_identity(env.repo_dir)
+            verification = identity.verify_identity()
+            if not verification["valid"]:
+                log.warning("[Identity] %s", verification["message"])
+                # Alert creator via event queue
+                self._messenger.emit_event(
+                    {
+                        "type": "identity_tamper_alert",
+                        "message": verification["message"],
+                        "timestamp": datetime.datetime.now().isoformat(),
+                    }
+                )
+            else:
+                log.info("[Identity] %s", verification["message"])
+
+            # Run self-healing detection on boot
+            healing = get_self_healing(env.repo_dir)
+            healed = healing.auto_heal()
+            if healed:
+                log.info("[Healing] Auto-detected %d issue(s) on boot", len(healed))
+                self._messenger.emit_event(
+                    {
+                        "type": "self_healing_alert",
+                        "message": f"Detected {len(healed)} issue(s) on boot",
+                        "issues": [h.id for h in healed],
+                        "timestamp": datetime.datetime.now().isoformat(),
+                    }
+                )
+            else:
+                log.info("[Healing] No issues detected on boot")
         except Exception:
-            log.debug("Skill system initialization failed", exc_info=True)
+            log.debug("Phase 3 system initialization failed", exc_info=True)
 
         self._log_worker_boot_once()
         self._start_hot_reload_manager()
