@@ -248,14 +248,7 @@ class LLMClient:
         max_tokens: int = 16384,
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Single LLM call. Returns: (response_message_dict, usage_dict with cost).
-
-        Stability integration:
-        - Checks circuit breaker BEFORE making API call
-        - If circuit is OPEN, uses fallback model immediately
-        - Falls back to backup models on failure
-        - Records success/failure for circuit breaker tracking
-        """
+        """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
         if self._is_local:
             # Auto-detect: Is this an OpenRouter model that needs cloud API?
             model_lower = model.lower()
@@ -277,101 +270,39 @@ class LLMClient:
             )
 
             if is_openrouter:
-                return self._chat_openrouter_with_stability(
-                    messages, model, tools, reasoning_effort, max_tokens, tool_choice
-                )
+                return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # OpenRouter only mode
-        return self._chat_openrouter_with_stability(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
-
-    def _chat_openrouter_with_stability(
-        self,
-        messages: List[Dict[str, Any]],
-        model: str,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        reasoning_effort: str = "medium",
-        max_tokens: int = 16384,
-        tool_choice: str = "auto",
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """OpenRouter call with stability management.
-
-        Checks circuit breaker before call, uses fallback if circuit is open.
-        """
-        # Check circuit breaker BEFORE making the call
         try:
-            from ouroboros.stability_manager import get_stability_manager
+            msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-            sm = get_stability_manager()
-            if not sm.check_circuit("llm_api"):
-                # Circuit is OPEN - use fallback model immediately
-                fallback_model = sm.get_current_model()
-                if fallback_model and fallback_model != model:
-                    log.warning("[LLM] Circuit OPEN for %s, using fallback %s", model, fallback_model)
-                    model = fallback_model
-                else:
-                    log.error("[LLM] Circuit OPEN and no fallback available for %s", model)
-                    raise ConnectionError(f"Circuit breaker OPEN for LLM API. No fallback model available.")
-        except ImportError:
-            pass  # Stability manager not available, proceed normally
-        except ConnectionError:
-            raise  # Re-raise connection errors
-        except Exception:
-            pass  # Other errors, proceed with original model
+            # Detect empty response (no content and no tool calls)
+            tool_calls = msg.get("tool_calls") or []
+            content = msg.get("content")
+            if not tool_calls and (not content or not content.strip()):
+                raise ValueError("OpenRouter returned an empty response")
 
-        # Try the call with retries for transient failures
-        last_error = None
-        for attempt in range(3):
+            # Record success for stability manager (non-blocking, fire-and-forget)
             try:
-                msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                from ouroboros.stability_manager import get_stability_manager
 
-                # Detect empty response (no content and no tool calls)
-                tool_calls = msg.get("tool_calls") or []
-                content = msg.get("content")
-                if not tool_calls and (not content or not content.strip()):
-                    raise ValueError("OpenRouter returned an empty response")
+                get_stability_manager().record_success("llm_api")
+            except Exception:
+                pass
 
-                # Record success for stability manager
-                try:
-                    from ouroboros.stability_manager import get_stability_manager
+            return msg, usage
+        except Exception:
+            # Record failure for stability manager (non-blocking, fire-and-forget)
+            try:
+                from ouroboros.stability_manager import get_stability_manager
 
-                    sm = get_stability_manager()
-                    sm.record_success("llm_api")
-                except Exception:
-                    pass
+                get_stability_manager().record_failure("llm_api")
+            except Exception:
+                pass
 
-                return msg, usage
-            except Exception as e:
-                last_error = e
-                # Record failure for stability manager
-                try:
-                    from ouroboros.stability_manager import get_stability_manager
-
-                    sm = get_stability_manager()
-                    sm.record_failure("llm_api")
-
-                    # Try fallback model if available
-                    fallback_model = sm.get_current_model()
-                    if fallback_model and fallback_model != model:
-                        log.warning(
-                            "[LLM] Model %s failed (attempt %d), trying fallback %s", model, attempt + 1, fallback_model
-                        )
-                        model = fallback_model
-                    else:
-                        log.error("[LLM] Model %s failed (attempt %d), no fallback available", model, attempt + 1)
-                        break  # No fallback, stop retrying
-                except Exception:
-                    pass
-
-                # Wait before retry (exponential backoff)
-                if attempt < 2:
-                    import time
-
-                    time.sleep(2**attempt)
-
-        # All attempts failed
-        raise last_error if last_error else ConnectionError("LLM API call failed after retries")
+            raise  # Re-raise — stability is observational, never blocks
 
     def _chat_openrouter(
         self,
