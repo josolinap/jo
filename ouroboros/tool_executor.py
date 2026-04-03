@@ -159,6 +159,27 @@ def _execute_single_tool(
 
     args_for_log = sanitize_tool_args_for_log(fn_name, args if isinstance(args, dict) else {})
 
+    # Permission system: classify risk and check if blocked
+    try:
+        from ouroboros.skills.permission_system import get_permission_system
+
+        perm = get_permission_system(repo_dir=Path(os.environ.get("REPO_DIR", ".")))
+        action = perm.classify_risk(fn_name, args if isinstance(args, dict) else {})
+        if action.blocked:
+            return {
+                "tool_call_id": tool_call_id,
+                "fn_name": fn_name,
+                "result": f"⚠️ PERMISSION_BLOCKED: {action.block_reason}",
+                "is_error": True,
+                "args_for_log": args_for_log,
+                "is_code_tool": is_code_tool,
+            }
+        # Log risk classification for monitoring
+        if action.risk_level.value == "high":
+            log.warning("[Permission] High risk tool call: %s - %s", fn_name, action.explanation)
+    except Exception:
+        log.debug("Permission system check failed", exc_info=True)
+
     # Hook integration: Pre-tool hooks
     hook_mgr = None
     try:

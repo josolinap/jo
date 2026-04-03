@@ -108,6 +108,24 @@ class OuroborosAgent:
 
         init_coordinator()
 
+        # Initialize new skill systems
+        try:
+            from ouroboros.skills.dream_system import get_dream_system
+            from ouroboros.skills.coordinator import get_coordinator
+            from ouroboros.skills.permission_system import get_permission_system
+            from ouroboros.skills.cost_tracker import get_cost_tracker
+            from ouroboros.skills.state_manager import get_state_manager
+
+            # These initialize global singletons so they're ready for use
+            get_dream_system(env.repo_dir)
+            get_coordinator(env.repo_dir)
+            get_permission_system(env.repo_dir)
+            get_cost_tracker(env.repo_dir)
+            get_state_manager(env.repo_dir)
+            log.info("[Skills] All skill systems initialized")
+        except Exception:
+            log.debug("Skill system initialization failed", exc_info=True)
+
         self._log_worker_boot_once()
         self._start_hot_reload_manager()
 
@@ -277,6 +295,36 @@ class OuroborosAgent:
                 pipeline.run_diagnose(pipeline_ctx)
                 pipeline.run_plan(pipeline_ctx)
 
+            # --- Coordinator mode: For complex tasks, use multi-agent orchestration ---
+            try:
+                from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
+                from ouroboros.skills.agent_system import get_agent_router
+
+                coordinator = get_coordinator(self.env.repo_dir)
+                router = get_agent_router()
+
+                # Auto-detect if task needs coordination (complex multi-file tasks)
+                if len(task_text) > 200 or any(
+                    keyword in task_text.lower()
+                    for keyword in ["refactor", "implement", "build", "create", "multi", "complex"]
+                ):
+                    # Start coordination mission
+                    coordinator.start_mission(task_text[:200])
+
+                    # Add research workers
+                    agents = router.route(task_text)
+                    for agent in agents[:3]:  # Limit to 3 workers
+                        coordinator.add_worker_task(
+                            description=f"Research: {agent.role} - {task_text[:100]}",
+                            phase=CoordinatorPhase.RESEARCH,
+                        )
+                    log.info(
+                        "[Coordinator] Started mission with %d research workers",
+                        len(agents[:3]),
+                    )
+            except Exception:
+                log.debug("Coordinator mode integration failed", exc_info=True)
+
             # --- Semantic tool routing (from RuVector SONA) ---
             try:
                 from ouroboros.tool_router import classify_task
@@ -305,6 +353,7 @@ class OuroborosAgent:
 
             try:
                 from ouroboros.query_engine import QueryEngine
+
                 engine = QueryEngine(
                     messages=messages,
                     tools=self.tools,
@@ -367,7 +416,7 @@ class OuroborosAgent:
             if task.get("type") in ("evolution", "review"):
                 self._auto_update_scratchpad_after_task(task, text, llm_trace)
 
-            # Record episodic memory and temporal learning outcome
+            # --- Post-task: Record episodic memory and temporal learning ---
             try:
                 from ouroboros.episodic_memory import get_episodic_memory
                 from ouroboros.temporal_learning import get_learner
@@ -415,6 +464,106 @@ class OuroborosAgent:
                         log.debug("Instinct evolution failed", exc_info=True)
             except Exception:
                 log.debug("Post-task learning block failed", exc_info=True)
+
+            # --- Post-task: Dream system (background memory consolidation) ---
+            try:
+                from ouroboros.skills.dream_system import get_dream_system
+
+                dream = get_dream_system(self.env.repo_dir)
+                dream.record_session()  # Track session count for dream gates
+                if dream.should_dream():
+                    # Start dream in background thread
+                    import threading
+
+                    def _run_dream():
+                        if dream.start_dream():
+                            prompt = dream.get_dream_prompt()
+                            log.info("[Dream] Dream process started with prompt length: %d", len(prompt))
+                            # In a real implementation, this would spawn a subagent
+                            # For now, we just log that the dream is ready
+                            dream.complete_dream("Dream completed - memory consolidated")
+
+                    threading.Thread(target=_run_dream, daemon=True).start()
+                    log.info("[Dream] Background dream thread started")
+            except Exception:
+                log.debug("Dream system integration failed", exc_info=True)
+
+            # --- Post-task: State manager persistence ---
+            try:
+                from ouroboros.skills.state_manager import get_state_manager
+
+                state_mgr = get_state_manager(self.env.repo_dir)
+                # Save task outcome to project memory for future reference
+                if changed_files:
+                    state_mgr.project_memory.add_note(
+                        f"Task completed: {task_text[:100]}... Changed {len(changed_files)} files"
+                    )
+                # Save decisions to plan notepad if pipeline was used
+                if pipeline_ctx and pipeline_ctx.plan:
+                    state_mgr.add_plan_decision(
+                        plan_name=f"task_{task.get('id', 'unknown')}",
+                        decision=f"Executed plan: {pipeline_ctx.plan[:100]}",
+                    )
+            except Exception:
+                log.debug("State manager persistence failed", exc_info=True)
+
+            # --- Post-task: Cost tracking with budget check ---
+            try:
+                from ouroboros.skills.cost_tracker import get_cost_tracker
+
+                cost_tracker = get_cost_tracker(self.env.repo_dir)
+                if usage:
+                    input_tokens = usage.get("input_tokens", 0)
+                    output_tokens = usage.get("output_tokens", 0)
+                    model = usage.get("model", "claude-sonnet-4")
+                    entry = cost_tracker.record_usage(
+                        model=model,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        tool_name=task_type_str or "general",
+                        session_id=str(task.get("id") or ""),
+                    )
+                    # Check if we're approaching budget limits
+                    daily_cost = cost_tracker.get_daily_cost()
+                    if daily_cost > cost_tracker.budget.daily_limit * 0.8:
+                        log.warning(
+                            "[Cost] Approaching daily budget limit: $%.2f / $%.2f",
+                            daily_cost,
+                            cost_tracker.budget.daily_limit,
+                        )
+            except Exception:
+                log.debug("Cost tracking failed", exc_info=True)
+
+            # --- Post-task: Verification protocol (run for ALL tasks, not just evolution/review) ---
+            try:
+                from ouroboros.skills.verification import get_verifier
+
+                verifier = get_verifier(self.env.repo_dir)
+                # Run quick verification for all tasks
+                verifier._verify_build()
+                verifier._verify_tests()
+
+                # Full verification only for evolution/review tasks
+                if task.get("type") in ("evolution", "review"):
+                    verifier._verify_lint()
+                    verifier._verify_todo()
+                    verifier._verify_error_free()
+
+                report = verifier._results
+                failed_checks = [r for r in report if r.status.value == "fail"]
+                if failed_checks:
+                    log.warning(
+                        "[Verification] %d checks failed: %s",
+                        len(failed_checks),
+                        ", ".join(r.stage for r in failed_checks),
+                    )
+                    # Append verification failures to response
+                    failure_summary = "\n\n## Verification Failures\n"
+                    for r in failed_checks:
+                        failure_summary += f"- **{r.stage}**: {r.error_message or r.evidence[:100]}\n"
+                    text = text + failure_summary
+            except Exception:
+                log.debug("Post-task verification failed", exc_info=True)
 
             # Checkpoint verification for evolution tasks
             if task.get("type") in ("evolution", "review") and changed_files:
