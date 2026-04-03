@@ -217,71 +217,67 @@ class StabilityManager:
         self.degradation_mode = DegradationMode.FULL
 
     def _load_fallback_chain(self) -> None:
-        """Load fallback chain from Jo env vars, config, or defaults.
+        """Load fallback chain from Jo env vars, always supplemented with free tier defaults.
 
-        Priority:
-        1. Jo env vars: OUROBOROS_MODEL → OUROBOROS_MODEL_LIGHT → OUROBOROS_MODEL_CODE
-        2. Generic env vars: LLM_FALLBACK_1, LLM_FALLBACK_2, LLM_FALLBACK_3
-        3. Config file: llm.fallback_chain
-        4. Defaults: openrouter/free models
+        Always builds a complete chain:
+        1. OUROBOROS_MODEL (priority 1) - your primary model
+        2. OUROBOROS_MODEL_LIGHT (priority 2) - lighter/cheaper fallback
+        3. OUROBOROS_MODEL_CODE (priority 3) - code-optimized fallback
+        4. openrouter/free defaults (priority 4+) - always included as safety net
+
+        Duplicates are automatically skipped.
         """
-        # 1. Try Jo-specific env vars (GitHub secrets)
+        # Collect all models, deduplicating
+        seen = set()
+        priority = 0
+
+        def add_model(name: str, pri: int) -> None:
+            nonlocal priority
+            name = name.strip()
+            if not name or name in seen:
+                return
+            seen.add(name)
+            self.fallback_chain.add_model(name, pri)
+
+        # 1. Jo-specific env vars (GitHub secrets)
         primary = os.environ.get("OUROBOROS_MODEL", "").strip()
         light = os.environ.get("OUROBOROS_MODEL_LIGHT", "").strip()
         code = os.environ.get("OUROBOROS_MODEL_CODE", "").strip()
 
-        jo_fallbacks = []
         if primary:
-            jo_fallbacks.append((primary, 1))
-        if light and light != primary:
-            jo_fallbacks.append((light, 2))
-        if code and code != primary and code != light:
-            jo_fallbacks.append((code, 3))
+            add_model(primary, 1)
+        if light:
+            add_model(light, 2)
+        if code:
+            add_model(code, 3)
 
-        if jo_fallbacks:
-            for name, priority in jo_fallbacks:
-                self.fallback_chain.add_model(name, priority)
-            log.info("[Stability] Loaded fallback chain from Jo env vars: %s", [m[0] for m in jo_fallbacks])
-            return
-
-        # 2. Try generic env vars
-        env_fallbacks = []
+        # 2. Generic env vars
         for i in range(1, 6):
-            env_var = f"LLM_FALLBACK_{i}"
-            model = os.environ.get(env_var, "").strip()
+            model = os.environ.get(f"LLM_FALLBACK_{i}", "").strip()
             if model:
-                env_fallbacks.append((model, i))
+                add_model(model, 10 + i)
 
-        if env_fallbacks:
-            for name, priority in env_fallbacks:
-                self.fallback_chain.add_model(name, priority)
-            log.info("[Stability] Loaded fallback chain from env vars: %s", [m[0] for m in env_fallbacks])
-            return
-
-        # 3. Try config file
+        # 3. Config file
         try:
             from ouroboros.config_manager import get_config
 
             config = get_config()
-            fallback_config = config.get("llm", {}).get("fallback_chain", [])
-            if fallback_config:
-                for item in fallback_config:
-                    self.fallback_chain.add_model(item["name"], item.get("priority", 99))
-                log.info("[Stability] Loaded fallback chain from config: %s", [m["name"] for m in fallback_config])
-                return
+            for item in config.get("llm", {}).get("fallback_chain", []):
+                add_model(item["name"], item.get("priority", 50))
         except Exception:
             pass
 
-        # 4. Defaults: openrouter/free models
+        # 4. Always include free tier defaults as safety net (deduped)
         default_fallbacks = [
-            ("openrouter/free", 1),
-            ("openrouter/google/gemini-2.0-flash-exp:free", 2),
-            ("openrouter/meta-llama/llama-3.3-70b-instruct:free", 3),
-            ("openrouter/mistralai/mistral-7b-instruct:free", 4),
+            "openrouter/free",
+            "openrouter/google/gemini-2.0-flash-exp:free",
+            "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+            "openrouter/mistralai/mistral-7b-instruct:free",
         ]
-        for name, priority in default_fallbacks:
-            self.fallback_chain.add_model(name, priority)
-        log.info("[Stability] Using default openrouter/free fallback chain")
+        for i, name in enumerate(default_fallbacks):
+            add_model(name, 100 + i)
+
+        log.info("[Stability] Fallback chain loaded: %s", list(seen))
 
     def check_circuit(self, service: str) -> bool:
         """Check if a service circuit allows execution."""
