@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pathlib
 import time
 from collections import deque
@@ -216,7 +217,28 @@ class StabilityManager:
         self.degradation_mode = DegradationMode.FULL
 
     def _load_fallback_chain(self) -> None:
-        """Load fallback chain from config or defaults."""
+        """Load fallback chain from environment variables, config, or defaults.
+
+        Priority:
+        1. Environment variables: LLM_FALLBACK_1, LLM_FALLBACK_2, LLM_FALLBACK_3
+        2. Config file: llm.fallback_chain
+        3. Defaults: openrouter/free models
+        """
+        # 1. Try environment variables first (GitHub secrets)
+        env_fallbacks = []
+        for i in range(1, 6):  # Support up to 5 fallback models
+            env_var = f"LLM_FALLBACK_{i}"
+            model = os.environ.get(env_var, "").strip()
+            if model:
+                env_fallbacks.append((model, i))
+
+        if env_fallbacks:
+            for name, priority in env_fallbacks:
+                self.fallback_chain.add_model(name, priority)
+            log.info("[Stability] Loaded fallback chain from env vars: %s", [m[0] for m in env_fallbacks])
+            return
+
+        # 2. Try config file
         try:
             from ouroboros.config_manager import get_config
 
@@ -225,15 +247,22 @@ class StabilityManager:
             if fallback_config:
                 for item in fallback_config:
                     self.fallback_chain.add_model(item["name"], item.get("priority", 99))
-            else:
-                # Defaults
-                self.fallback_chain.add_model("anthropic/claude-sonnet-4", 1)
-                self.fallback_chain.add_model("anthropic/claude-haiku-3", 2)
-                self.fallback_chain.add_model("openai/gpt-4o-mini", 3)
+                log.info("[Stability] Loaded fallback chain from config: %s", [m["name"] for m in fallback_config])
+                return
         except Exception:
-            # Defaults if config fails
-            self.fallback_chain.add_model("anthropic/claude-sonnet-4", 1)
-            self.fallback_chain.add_model("anthropic/claude-haiku-3", 2)
+            pass
+
+        # 3. Defaults: openrouter/free models (no hardcoded Anthropic/OpenAI)
+        # These are free models available on OpenRouter
+        default_fallbacks = [
+            ("openrouter/free", 1),  # Primary free model
+            ("openrouter/google/gemini-2.0-flash-exp:free", 2),  # Gemini flash free
+            ("openrouter/meta-llama/llama-3.3-70b-instruct:free", 3),  # Llama free
+            ("openrouter/mistralai/mistral-7b-instruct:free", 4),  # Mistral free
+        ]
+        for name, priority in default_fallbacks:
+            self.fallback_chain.add_model(name, priority)
+        log.info("[Stability] Using default openrouter/free fallback chain")
 
     def check_circuit(self, service: str) -> bool:
         """Check if a service circuit allows execution."""

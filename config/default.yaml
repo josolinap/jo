@@ -6,6 +6,18 @@ llm:
   temperature: 0.3
   max_tokens: 8192
   reasoning_effort: "medium"
+  # Fallback chain: models to try when primary fails (ordered by priority)
+  # Can be overridden via env vars: LLM_FALLBACK_1, LLM_FALLBACK_2, etc.
+  # Or via GitHub secrets for your deployment
+  fallback_chain:
+    - name: "openrouter/free"
+      priority: 1
+    - name: "openrouter/google/gemini-2.0-flash-exp:free"
+      priority: 2
+    - name: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+      priority: 3
+    - name: "openrouter/mistralai/mistral-7b-instruct:free"
+      priority: 4
 
 workers:
   max_workers: 5
