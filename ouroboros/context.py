@@ -121,16 +121,16 @@ def _build_markdown_skills_context(env: Any) -> str:
         skills_dir = env.repo_path(".jo_skills")
         if not skills_dir.exists() or not skills_dir.is_dir():
             return ""
-            
+
         skill_parts = []
         for md_file in skills_dir.glob("*.md"):
             content = md_file.read_text(encoding="utf-8", errors="ignore")
             if content.strip():
                 skill_parts.append(f"### Skill: {md_file.name}\n\n{content}")
-                
+
         if not skill_parts:
             return ""
-        
+
         return "## Project Skills & Instructions\n\n" + "\n\n".join(skill_parts)
     except Exception:
         log.debug("Failed to read .jo_skills contents", exc_info=True)
@@ -364,6 +364,39 @@ def build_llm_messages(
     skills_ctx = _build_markdown_skills_context(env)
     if skills_ctx:
         semi_stable_parts.append(skills_ctx)
+
+    # Magic keyword detection and skill injection
+    task_text_for_keywords = task.get("text", "") or ""
+    if task_text_for_keywords:
+        try:
+            from ouroboros.skills import get_detector, get_skill_manager
+
+            # Detect magic keywords
+            detector = get_detector()
+            keyword_ctx = detector.build_context_injection(task_text_for_keywords)
+            if keyword_ctx:
+                dynamic_parts_insert = keyword_ctx
+                # Insert before dynamic content
+                semi_stable_parts.append(dynamic_parts_insert)
+
+            # Match and inject skills
+            skill_mgr = get_skill_manager(env.repo_dir)
+            skill_ctx = skill_mgr.get_active_skills(task_text_for_keywords)
+            if skill_ctx:
+                semi_stable_parts.append(skill_ctx)
+        except Exception:
+            log.debug("Failed to build keyword/skill context", exc_info=True)
+
+    # State manager context injection (notepad, project memory, etc.)
+    try:
+        from ouroboros.skills import get_state_manager
+
+        state_mgr = get_state_manager(env.repo_dir)
+        state_ctx = state_mgr.get_full_context()
+        if state_ctx:
+            semi_stable_parts.append(state_ctx)
+    except Exception:
+        log.debug("Failed to build state context", exc_info=True)
 
     semi_stable_text = "\n\n".join(semi_stable_parts)
 
