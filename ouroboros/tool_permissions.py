@@ -11,11 +11,75 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pathlib
+import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 log = logging.getLogger(__name__)
+
+# ── Sensitive environment variables to filter from subprocesses ─────────
+
+SENSITIVE_ENV_PATTERNS = frozenset({
+    "API_KEY", "APIKEY", "SECRET", "SECRET_KEY", "TOKEN", "PASSWORD",
+    "PASSWD", "CREDENTIAL", "PRIVATE_KEY", "ACCESS_KEY", "AUTH",
+    "SIGNING_KEY", "ENCRYPTION_KEY", "MASTER_KEY", "GPG_KEY",
+    "SSH_KEY", "DEPLOY_KEY", "REGISTRATION_TOKEN", "RUNNER_TOKEN",
+})
+
+SENSITIVE_ENV_EXACT = frozenset({
+    "OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN", "GITHUB_TOKEN",
+    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY",
+    "PLAYWRIGHT_BROWSERS_PATH",
+})
+
+# Subprocess-safe environment allowlist
+SUBPROCESS_ENV_ALLOWLIST = frozenset({
+    "HOME", "USER", "PATH", "SHELL", "LANG", "LC_ALL", "TERM",
+    "TMPDIR", "TEMP", "TMP", "PWD", "HOSTNAME", "COLORTERM",
+    "DISPLAY", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME",
+    "REPO_DIR", "PYTHONPATH", "PYTHONIOENCODING",
+    "OUROBOROS_MAX_ROUNDS", "OUROBOROS_CONTEXT_LIMIT",
+    "OUROBOROS_USE_PIPELINE", "OUROBOROS_ENRICH_CONTEXT",
+    "OUROBOROS_SYNTHESIS", "OUROBOROS_TASK_GRAPH",
+    "OUROBOROS_EVAL", "OUROBOROS_NORMALIZE_CODE", "OUROBOROS_DSPY",
+    "GITHUB_REPOSITORY", "GITHUB_REF", "GITHUB_SHA", "GITHUB_HEAD_REF",
+    "GITHUB_BASE_REF", "GITHUB_ACTION", "GITHUB_ACTOR",
+    "CI", "RUNNER_OS", "RUNNER_ARCH", "DEBIAN_FRONTEND",
+    "LD_LIBRARY_PATH", "GITHUB_SERVER_URL", "GITHUB_API_URL",
+    "GITHUB_GRAPHQL_URL", "GITHUB_WORKSPACE", "GITHUB_JOB",
+    "GITHUB_RUN_NUMBER", "GITHUB_RUN_ID", "GITHUB_RETENTION_DAYS",
+})
+
+# ── Path security ─────────────────────────────────────────────────────
+
+MAX_PATH_LENGTH = 4096
+
+FORBIDDEN_ABSOLUTE_PREFIXES = (
+    "/etc/shadow", "/etc/passwd", "/etc/sudoers",
+    "/proc/sys", "/sys/", "/dev/",
+    "/root/.", "/home/runner/.ssh",
+)
+
+# ── Input validation ──────────────────────────────────────────────────
+
+MAX_INPUT_SIZES = {
+    "command": 50000,
+    "content": 100000,
+    "prompt": 50000,
+    "value": 10000,
+    "text": 50000,
+    "query": 5000,
+    "reason": 2000,
+    "commit_message": 2000,
+    "url": 2048,
+    "selector": 500,
+    "file_path": 2000,
+    "path": 2000,
+    "name": 200,
+    "default": 10000,
+}
 
 
 @dataclass
