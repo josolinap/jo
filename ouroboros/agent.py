@@ -581,34 +581,36 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Cost tracking failed", exc_info=True)
 
-            # --- Post-task: Verification protocol (run for ALL tasks, not just evolution/review) ---
+            # --- Post-task: Verification protocol (only when code changed) ---
             try:
                 from ouroboros.skills.verification import get_verifier
 
-                verifier = get_verifier(self.env.repo_dir)
-                # Run quick verification for all tasks
-                verifier._verify_build()
-                verifier._verify_tests()
+                # Only verify if code files were actually modified
+                if changed_files:
+                    verifier = get_verifier(self.env.repo_dir)
+                    # Run quick verification for code changes
+                    verifier._verify_build()
+                    verifier._verify_tests()
 
-                # Full verification only for evolution/review tasks
-                if task.get("type") in ("evolution", "review"):
-                    verifier._verify_lint()
-                    verifier._verify_todo()
-                    verifier._verify_error_free()
+                    # Full verification only for evolution/review tasks
+                    if task.get("type") in ("evolution", "review"):
+                        verifier._verify_lint()
+                        verifier._verify_todo()
+                        verifier._verify_error_free()
 
-                report = verifier._results
-                failed_checks = [r for r in report if r.status.value == "fail"]
-                if failed_checks:
-                    log.warning(
-                        "[Verification] %d checks failed: %s",
-                        len(failed_checks),
-                        ", ".join(r.stage for r in failed_checks),
-                    )
-                    # Append verification failures to response
-                    failure_summary = "\n\n## Verification Failures\n"
-                    for r in failed_checks:
-                        failure_summary += f"- **{r.stage}**: {r.error_message or r.evidence[:100]}\n"
-                    text = text + failure_summary
+                    report = verifier._results
+                    failed_checks = [r for r in report if r.status.value == "fail"]
+                    if failed_checks:
+                        log.warning(
+                            "[Verification] %d checks failed: %s",
+                            len(failed_checks),
+                            ", ".join(r.stage for r in failed_checks),
+                        )
+                        # Append verification failures to response
+                        failure_summary = "\n\n## Verification Failures\n"
+                        for r in failed_checks:
+                            failure_summary += f"- **{r.stage}**: {r.error_message or r.evidence[:100]}\n"
+                        text = text + failure_summary
             except Exception:
                 log.debug("Post-task verification failed", exc_info=True)
 

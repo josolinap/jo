@@ -68,6 +68,8 @@ PROTECTED_FILES: Set[str] = {
     ".env",
     ".jo_protected",
     "memory/identity.md",
+    "config/constitution.json",
+    "constitution.json",  # Legacy path for backward compatibility
 }
 
 # Path traversal patterns to detect
