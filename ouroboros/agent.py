@@ -343,35 +343,20 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Coordinator mode integration failed", exc_info=True)
 
-            # --- Coordinator mode: For complex tasks, use multi-agent orchestration ---
+            # --- Capability Gap Detection (Principle 5: Minimalism + Principle 0: Agency) ---
             try:
-                from ouroboros.skills.coordinator import get_coordinator, CoordinatorPhase
-                from ouroboros.skills.agent_system import get_agent_router
+                from ouroboros.capability_gap import get_gap_detector
 
-                coordinator = get_coordinator(self.env.repo_dir)
-                router = get_agent_router()
-
-                # Auto-detect if task needs coordination (complex multi-file tasks)
-                if len(task_text) > 200 or any(
-                    keyword in task_text.lower()
-                    for keyword in ["refactor", "implement", "build", "create", "multi", "complex"]
-                ):
-                    # Start coordination mission
-                    coordinator.start_mission(task_text[:200])
-
-                    # Add research workers
-                    agents = router.route(task_text)
-                    for agent in agents[:3]:  # Limit to 3 workers
-                        coordinator.add_worker_task(
-                            description=f"Research: {agent.role} - {task_text[:100]}",
-                            phase=CoordinatorPhase.RESEARCH,
-                        )
-                    log.info(
-                        "[Coordinator] Started mission with %d research workers",
-                        len(agents[:3]),
-                    )
+                gap_detector = get_gap_detector(self.env.repo_dir)
+                gaps = gap_detector.detect_gaps(task_text)
+                if gaps:
+                    gap_report = gap_detector.get_gap_report(task_text)
+                    log.warning("[CapabilityGap] %d gap(s) detected for task", len(gaps))
+                    # Prepend gap report to context so LLM sees it before acting
+                    if "system" in messages:
+                        messages["system"] = messages["system"] + "\n\n" + gap_report
             except Exception:
-                log.debug("Coordinator mode integration failed", exc_info=True)
+                log.debug("Capability gap detection failed", exc_info=True)
 
             # --- Semantic tool routing (from RuVector SONA) ---
             try:

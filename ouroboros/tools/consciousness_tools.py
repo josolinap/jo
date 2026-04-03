@@ -116,6 +116,23 @@ def _disclosure_stats(ctx: ToolContext) -> str:
     return f"## Progressive Disclosure Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _capability_detect_gaps(ctx: ToolContext, task_text: str) -> str:
+    """Detect capability gaps in a task description."""
+    from ouroboros.capability_gap import get_gap_detector
+
+    detector = get_gap_detector(ctx.repo_dir)
+    return detector.get_gap_report(task_text)
+
+
+def _capability_stats(ctx: ToolContext) -> str:
+    """Get capability gap detection statistics."""
+    from ouroboros.capability_gap import get_gap_detector
+
+    detector = get_gap_detector(ctx.repo_dir)
+    stats = detector.get_stats()
+    return f"## Capability Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -257,5 +274,29 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _disclosure_stats,
+        ),
+        ToolEntry(
+            "capability_detect_gaps",
+            {
+                "name": "capability_detect_gaps",
+                "description": "Detect capability gaps in a task description before execution.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_text": {"type": "string", "description": "Task description to analyze"},
+                    },
+                    "required": ["task_text"],
+                },
+            },
+            _capability_detect_gaps,
+        ),
+        ToolEntry(
+            "capability_stats",
+            {
+                "name": "capability_stats",
+                "description": "Get capability gap detection statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _capability_stats,
         ),
     ]

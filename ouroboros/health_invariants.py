@@ -385,6 +385,21 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: three-axis growth tracking", exc_info=True)
 
+    # 12. Capability Gap Detection (Principle 5: Minimalism)
+    try:
+        from ouroboros.capability_gap import get_gap_detector
+
+        detector = get_gap_detector(repo_dir=env.repo_dir)
+        cap_stats = detector.get_stats()
+        checks.append(
+            f"OK: capabilities tracked - {cap_stats['known_tools']} tools, "
+            f"{cap_stats['known_skills']} skills, {cap_stats['known_domains']} domains"
+        )
+        if cap_stats["total_gaps_detected"] > 0:
+            checks.append(f"INFO: {cap_stats['total_gaps_detected']} capability gaps detected historically")
+    except Exception:
+        log.debug("Health check failed: capability gap detection", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
