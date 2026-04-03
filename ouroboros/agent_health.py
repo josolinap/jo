@@ -240,6 +240,8 @@ class SystemVerifier:
         """Check budget remaining with warning thresholds."""
         try:
             state_path = self.env.drive_path("state") / "state.json"
+            if not state_path.exists():
+                return {"status": "unconfigured", "message": "state.json not found"}, 0
             state_data = json.loads(read_text(state_path))
             total_budget_str = os.environ.get("TOTAL_BUDGET", "")
 

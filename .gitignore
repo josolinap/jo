@@ -51,3 +51,9 @@ test_*.md
 # Accidental files
 =1.*
 File path*
+
+# Jo runtime data
+state/
+logs/
+.jo_state/
+claude-code-tmp/

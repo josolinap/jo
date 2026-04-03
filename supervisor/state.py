@@ -32,6 +32,7 @@ QUEUE_SNAPSHOT_PATH: pathlib.Path = DRIVE_ROOT / "state" / "queue_snapshot.json"
 def init(drive_root: pathlib.Path, total_budget_limit: float = 0.0) -> None:
     global DRIVE_ROOT, STATE_PATH, STATE_LAST_GOOD_PATH, STATE_LOCK_PATH, QUEUE_SNAPSHOT_PATH
     DRIVE_ROOT = drive_root
+    (DRIVE_ROOT / "state").mkdir(parents=True, exist_ok=True)
     STATE_PATH = drive_root / "state" / "state.json"
     STATE_LAST_GOOD_PATH = drive_root / "state" / "state.last_good.json"
     STATE_LOCK_PATH = drive_root / "locks" / "state.lock"

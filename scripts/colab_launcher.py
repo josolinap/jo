@@ -136,8 +136,22 @@ def _setup_paths():
     DRIVE_ROOT = pathlib.Path(os.environ.get("DATA_ROOT", pathlib.Path.home() / ".jo_data")).resolve()
     REPO_DIR = pathlib.Path(os.environ.get("REPO_DIR", pathlib.Path.cwd())).resolve()
 
+    # Standard layout
     for sub in ["state", "logs", "memory", "index", "locks", "archive"]:
         (DRIVE_ROOT / sub).mkdir(parents=True, exist_ok=True)
+    
+    # Initialize basic state.json if missing to prevent worker startup crash
+    state_file = DRIVE_ROOT / "state" / "state.json"
+    if not state_file.exists():
+        import json
+        default_state = {
+            "spent_usd": 0.0,
+            "total_tasks": 0,
+            "last_active": "",
+            "active_tasks": []
+        }
+        state_file.write_text(json.dumps(default_state, indent=2), encoding="utf-8")
+        print(f"[*] Initialized default state at {state_file}")
     REPO_DIR.mkdir(parents=True, exist_ok=True)
 
     # Clear stale owner mailbox files from previous session
