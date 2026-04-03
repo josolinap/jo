@@ -317,9 +317,16 @@ class LLMClient:
         client = self._get_client()
         effort = normalize_reasoning_effort(reasoning_effort)
 
-        extra_body: Dict[str, Any] = {
-            "reasoning": {"effort": effort, "exclude": True},
-        }
+        extra_body: Dict[str, Any] = {}
+
+        # Only add reasoning parameter for models that support it
+        # Free tier models and some providers don't support reasoning
+        model_lower = model.lower()
+        supports_reasoning = (
+            "anthropic" in model_lower or "openai" in model_lower or "claude" in model_lower or "gpt" in model_lower
+        )
+        if supports_reasoning:
+            extra_body["reasoning"] = {"effort": effort, "exclude": True}
 
         # Pin Anthropic models to Anthropic provider for prompt caching
         if model.startswith("anthropic/"):
