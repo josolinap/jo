@@ -479,6 +479,50 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: context compaction", exc_info=True)
 
+    # 18. Tree-of-Thought Reasoning (Yao et al. 2023)
+    try:
+        from ouroboros.tree_of_thought import get_tot_reasoner
+
+        reasoner = get_tot_reasoner(repo_dir=env.repo_dir)
+        tot_stats = reasoner.get_stats()
+        if tot_stats["total_trees"] > 0:
+            checks.append(f"OK: tree-of-thought - {tot_stats['total_trees']} reasoning trees created")
+        else:
+            checks.append("OK: tree-of-thought ready (no trees yet)")
+    except Exception:
+        log.debug("Health check failed: tree-of-thought", exc_info=True)
+
+    # 19. Working Memory (TodoWrite Pattern)
+    try:
+        from ouroboros.working_memory import get_working_memory
+
+        memory = get_working_memory(repo_dir=env.repo_dir)
+        mem_stats = memory.get_stats()
+        if mem_stats["total_todos_created"] > 0:
+            checks.append(
+                f"OK: working memory - {mem_stats['progress_pct']}% progress "
+                f"({mem_stats['completed']}/{mem_stats['total']} completed)"
+            )
+        else:
+            checks.append("OK: working memory ready (no active tasks)")
+    except Exception:
+        log.debug("Health check failed: working memory", exc_info=True)
+
+    # 20. Self-Critique Evaluator (CriticGPT-inspired)
+    try:
+        from ouroboros.self_critique import get_self_critique_evaluator
+
+        evaluator = get_self_critique_evaluator(repo_dir=env.repo_dir)
+        eval_stats = evaluator.get_stats()
+        if eval_stats["total_critiques"] > 0:
+            checks.append(
+                f"OK: self-critique - {eval_stats['pass_rate']}% pass rate, avg score {eval_stats['avg_score']:.2f}"
+            )
+        else:
+            checks.append("OK: self-critique ready (no evaluations yet)")
+    except Exception:
+        log.debug("Health check failed: self-critique", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

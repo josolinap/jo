@@ -304,6 +304,142 @@ def _compaction_reset_circuit(ctx: ToolContext) -> str:
     return "✅ Compaction circuit breaker reset"
 
 
+def _tot_create_tree(ctx: ToolContext, root_content: str, max_depth: int = 3, max_branches: int = 3) -> str:
+    """Create a new tree of thoughts for complex reasoning."""
+    from ouroboros.tree_of_thought import get_tot_reasoner
+
+    reasoner = get_tot_reasoner(ctx.repo_dir)
+    tree = reasoner.create_tree(root_content, max_depth, max_branches)
+    return f"## Tree of Thoughts Created\n\nID: {tree.root_id}\nRoot: {root_content[:100]}\nMax depth: {max_depth}\nMax branches: {max_branches}"
+
+
+def _tot_expand(ctx: ToolContext, tree_id: str, node_id: str, children: str, scores: str) -> str:
+    """Expand a node with child thoughts."""
+    from ouroboros.tree_of_thought import get_tot_reasoner
+    import json
+
+    reasoner = get_tot_reasoner(ctx.repo_dir)
+    children_list = json.loads(children) if isinstance(children, str) else children
+    scores_list = json.loads(scores) if isinstance(scores, str) else scores
+    success = reasoner.expand_node(tree_id, node_id, children_list, scores_list)
+    return f"✅ Node expanded: {success}"
+
+
+def _tot_prune(ctx: ToolContext, tree_id: str, threshold: float = 0.3) -> str:
+    """Prune weak branches from a tree."""
+    from ouroboros.tree_of_thought import get_tot_reasoner
+
+    reasoner = get_tot_reasoner(ctx.repo_dir)
+    pruned = reasoner.prune_weak_branches(tree_id, threshold)
+    return f"✅ Pruned {pruned} weak branches"
+
+
+def _tot_select_best(ctx: ToolContext, tree_id: str) -> str:
+    """Select the best path through a tree."""
+    from ouroboros.tree_of_thought import get_tot_reasoner
+
+    reasoner = get_tot_reasoner(ctx.repo_dir)
+    path = reasoner.select_best_path(tree_id)
+    return f"## Best Path Selected\n\nPath: {' -> '.join(path)}"
+
+
+def _tot_stats(ctx: ToolContext) -> str:
+    """Get tree-of-thought statistics."""
+    from ouroboros.tree_of_thought import get_tot_reasoner
+
+    reasoner = get_tot_reasoner(ctx.repo_dir)
+    stats = reasoner.get_stats()
+    return f"## Tree-of-Thought Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
+def _memory_create_todo(ctx: ToolContext, content: str, parent_id: str = "") -> str:
+    """Create a new todo in working memory."""
+    from ouroboros.working_memory import get_working_memory
+
+    memory = get_working_memory(ctx.repo_dir)
+    todo_id = memory.create_todo(content, parent_id if parent_id else None)
+    return f"✅ Todo created: {todo_id}"
+
+
+def _memory_update_todo(ctx: ToolContext, todo_id: str, status: str = "", notes: str = "", content: str = "") -> str:
+    """Update a todo in working memory."""
+    from ouroboros.working_memory import get_working_memory, TodoStatus
+
+    memory = get_working_memory(ctx.repo_dir)
+    status_enum = {
+        "pending": TodoStatus.PENDING,
+        "in_progress": TodoStatus.IN_PROGRESS,
+        "completed": TodoStatus.COMPLETED,
+        "failed": TodoStatus.FAILED,
+        "cancelled": TodoStatus.CANCELLED,
+    }.get(status.lower(), None)
+    success = memory.update_todo(
+        todo_id,
+        status=status_enum,
+        notes=notes if notes else None,
+        content=content if content else None,
+    )
+    return f"✅ Todo updated: {success}"
+
+
+def _memory_view(ctx: ToolContext) -> str:
+    """View the current working memory (todo tree)."""
+    from ouroboros.working_memory import get_working_memory
+
+    memory = get_working_memory(ctx.repo_dir)
+    return memory.format_todos()
+
+
+def _memory_progress(ctx: ToolContext) -> str:
+    """Get working memory progress."""
+    from ouroboros.working_memory import get_working_memory
+
+    memory = get_working_memory(ctx.repo_dir)
+    progress = memory.get_progress()
+    return f"## Working Memory Progress\n\n```json\n{json.dumps(progress, indent=2)}\n```"
+
+
+def _memory_clear_completed(ctx: ToolContext) -> str:
+    """Clear completed todos from working memory."""
+    from ouroboros.working_memory import get_working_memory
+
+    memory = get_working_memory(ctx.repo_dir)
+    cleared = memory.clear_completed()
+    return f"✅ Cleared {cleared} completed todos"
+
+
+def _critique_evaluate(ctx: ToolContext, task_description: str, work_summary: str, threshold: float = 0.7) -> str:
+    """Start a self-critique evaluation."""
+    from ouroboros.self_critique import get_self_critique_evaluator
+
+    evaluator = get_self_critique_evaluator(ctx.repo_dir)
+    critique = evaluator.evaluate(task_description, work_summary, [], threshold)
+    prompt = evaluator.get_critique_prompt(critique.id)
+    return f"## Self-Critique Started\n\nID: {critique.id}\nThreshold: {threshold}\n\nUse this prompt to evaluate:\n\n{prompt}"
+
+
+def _critique_update_dimension(
+    ctx: ToolContext, critique_id: str, dimension: str, score: float, issues: str = "", recommendations: str = ""
+) -> str:
+    """Update a critique dimension score."""
+    from ouroboros.self_critique import get_self_critique_evaluator
+
+    evaluator = get_self_critique_evaluator(ctx.repo_dir)
+    issues_list = [i.strip() for i in issues.split("|") if i.strip()] if issues else []
+    recs_list = [r.strip() for r in recommendations.split("|") if r.strip()] if recommendations else []
+    success = evaluator.update_dimension(critique_id, dimension, score, issues_list, recs_list)
+    return f"✅ Dimension updated: {success}"
+
+
+def _critique_stats(ctx: ToolContext) -> str:
+    """Get self-critique statistics."""
+    from ouroboros.self_critique import get_self_critique_evaluator
+
+    evaluator = get_self_critique_evaluator(ctx.repo_dir)
+    stats = evaluator.get_stats()
+    return f"## Self-Critique Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -645,5 +781,200 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _compaction_reset_circuit,
+        ),
+        # Tree-of-Thought tools
+        ToolEntry(
+            "tot_create_tree",
+            {
+                "name": "tot_create_tree",
+                "description": "Create a new tree of thoughts for complex reasoning (Yao et al. 2023).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "root_content": {"type": "string", "description": "Root problem/thought"},
+                        "max_depth": {"type": "integer", "default": 3, "description": "Max tree depth"},
+                        "max_branches": {"type": "integer", "default": 3, "description": "Max branches per node"},
+                    },
+                    "required": ["root_content"],
+                },
+            },
+            _tot_create_tree,
+        ),
+        ToolEntry(
+            "tot_expand",
+            {
+                "name": "tot_expand",
+                "description": "Expand a node with child thoughts.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tree_id": {"type": "string", "description": "Tree ID"},
+                        "node_id": {"type": "string", "description": "Node ID to expand"},
+                        "children": {"type": "string", "description": "JSON array of child thoughts"},
+                        "scores": {"type": "string", "description": "JSON array of scores (0.0-1.0)"},
+                    },
+                    "required": ["tree_id", "node_id", "children", "scores"],
+                },
+            },
+            _tot_expand,
+        ),
+        ToolEntry(
+            "tot_prune",
+            {
+                "name": "tot_prune",
+                "description": "Prune weak branches from a tree.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tree_id": {"type": "string", "description": "Tree ID"},
+                        "threshold": {"type": "number", "default": 0.3, "description": "Score threshold"},
+                    },
+                    "required": ["tree_id"],
+                },
+            },
+            _tot_prune,
+        ),
+        ToolEntry(
+            "tot_select_best",
+            {
+                "name": "tot_select_best",
+                "description": "Select the best path through a tree.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tree_id": {"type": "string", "description": "Tree ID"},
+                    },
+                    "required": ["tree_id"],
+                },
+            },
+            _tot_select_best,
+        ),
+        ToolEntry(
+            "tot_stats",
+            {
+                "name": "tot_stats",
+                "description": "Get tree-of-thought statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _tot_stats,
+        ),
+        # Working Memory tools
+        ToolEntry(
+            "memory_create_todo",
+            {
+                "name": "memory_create_todo",
+                "description": "Create a new todo in working memory.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string", "description": "Todo content"},
+                        "parent_id": {"type": "string", "default": "", "description": "Parent todo ID"},
+                    },
+                    "required": ["content"],
+                },
+            },
+            _memory_create_todo,
+        ),
+        ToolEntry(
+            "memory_update_todo",
+            {
+                "name": "memory_update_todo",
+                "description": "Update a todo in working memory.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "todo_id": {"type": "string", "description": "Todo ID"},
+                        "status": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Status: pending, in_progress, completed, failed, cancelled",
+                        },
+                        "notes": {"type": "string", "default": "", "description": "Notes"},
+                        "content": {"type": "string", "default": "", "description": "Updated content"},
+                    },
+                    "required": ["todo_id"],
+                },
+            },
+            _memory_update_todo,
+        ),
+        ToolEntry(
+            "memory_view",
+            {
+                "name": "memory_view",
+                "description": "View the current working memory (todo tree).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _memory_view,
+        ),
+        ToolEntry(
+            "memory_progress",
+            {
+                "name": "memory_progress",
+                "description": "Get working memory progress.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _memory_progress,
+        ),
+        ToolEntry(
+            "memory_clear_completed",
+            {
+                "name": "memory_clear_completed",
+                "description": "Clear completed todos from working memory.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _memory_clear_completed,
+        ),
+        # Self-Critique tools
+        ToolEntry(
+            "critique_evaluate",
+            {
+                "name": "critique_evaluate",
+                "description": "Start a self-critique evaluation (CriticGPT-inspired).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_description": {"type": "string", "description": "Task being evaluated"},
+                        "work_summary": {"type": "string", "description": "Summary of work done"},
+                        "threshold": {"type": "number", "default": 0.7, "description": "Pass threshold (0.0-1.0)"},
+                    },
+                    "required": ["task_description", "work_summary"],
+                },
+            },
+            _critique_evaluate,
+        ),
+        ToolEntry(
+            "critique_update_dimension",
+            {
+                "name": "critique_update_dimension",
+                "description": "Update a critique dimension score.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "critique_id": {"type": "string", "description": "Critique ID"},
+                        "dimension": {
+                            "type": "string",
+                            "description": "Dimension: correctness, completeness, safety, quality, efficiency",
+                        },
+                        "score": {"type": "number", "description": "Score (0.0-1.0)"},
+                        "issues": {"type": "string", "default": "", "description": "Issues (pipe-separated)"},
+                        "recommendations": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Recommendations (pipe-separated)",
+                        },
+                    },
+                    "required": ["critique_id", "dimension", "score"],
+                },
+            },
+            _critique_update_dimension,
+        ),
+        ToolEntry(
+            "critique_stats",
+            {
+                "name": "critique_stats",
+                "description": "Get self-critique statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _critique_stats,
         ),
     ]
