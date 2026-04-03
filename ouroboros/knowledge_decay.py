@@ -131,6 +131,10 @@ class KnowledgeDecay:
 
         return "\n".join(lines)
 
+    def generate_report(self) -> str:
+        """Generate a knowledge decay report (alias for compatibility)."""
+        return self.get_decay_report()
+
     def _assess_note(self, md_file: pathlib.Path) -> NoteValue:
         """Assess the value of a single note."""
         try:
