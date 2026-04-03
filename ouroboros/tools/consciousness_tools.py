@@ -440,6 +440,32 @@ def _critique_stats(ctx: ToolContext) -> str:
     return f"## Self-Critique Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _budget_route(ctx: ToolContext, task_text: str, force_tier: str = "") -> str:
+    """Route a task to the appropriate model based on complexity and budget."""
+    from ouroboros.budget_router import get_budget_router, ModelTier
+
+    router = get_budget_router(ctx.repo_dir)
+    force = None
+    if force_tier:
+        force = {
+            "fast": ModelTier.FAST,
+            "balanced": ModelTier.BALANCED,
+            "deep": ModelTier.DEEP,
+        }.get(force_tier.lower(), None)
+
+    routing = router.route(task_text, force_tier=force)
+    return f"## Model Routing\n\n```json\n{json.dumps(routing, indent=2)}\n```"
+
+
+def _budget_stats(ctx: ToolContext) -> str:
+    """Get budget router statistics."""
+    from ouroboros.budget_router import get_budget_router
+
+    router = get_budget_router(ctx.repo_dir)
+    stats = router.get_stats()
+    return f"## Budget Router Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -976,5 +1002,35 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _critique_stats,
+        ),
+        # Budget-Aware Model Routing tools
+        ToolEntry(
+            "budget_route",
+            {
+                "name": "budget_route",
+                "description": "Route a task to the appropriate model based on complexity and budget.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_text": {"type": "string", "description": "Task description to route"},
+                        "force_tier": {
+                            "type": "string",
+                            "default": "",
+                            "description": "Force tier: fast, balanced, deep",
+                        },
+                    },
+                    "required": ["task_text"],
+                },
+            },
+            _budget_route,
+        ),
+        ToolEntry(
+            "budget_stats",
+            {
+                "name": "budget_stats",
+                "description": "Get budget router statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _budget_stats,
         ),
     ]

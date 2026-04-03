@@ -523,6 +523,22 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: self-critique", exc_info=True)
 
+    # 21. Budget-Aware Model Routing (Claude Code-inspired)
+    try:
+        from ouroboros.budget_router import get_budget_router
+
+        router = get_budget_router(repo_dir=env.repo_dir)
+        router_stats = router.get_stats()
+        budget_pct = router_stats.get("current_budget_ratio", 0)
+        if budget_pct < 20:
+            checks.append(f"⚠️ BUDGET CRITICAL: {budget_pct}% daily budget remaining - all tasks routed to FAST model")
+        elif budget_pct < 50:
+            checks.append(f"⚠️ BUDGET WARNING: {budget_pct}% daily budget remaining - DEEP tasks downgraded")
+        else:
+            checks.append(f"OK: budget router - {budget_pct}% daily budget remaining")
+    except Exception:
+        log.debug("Health check failed: budget router", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

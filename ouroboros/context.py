@@ -398,6 +398,28 @@ def build_llm_messages(
     except Exception:
         log.debug("Failed to build state context", exc_info=True)
 
+    # Episodic memory retrieval & injection (GitHub Copilot pattern)
+    # Wire into context so Jo recalls relevant past experiences before acting
+    if task_text_for_keywords:
+        try:
+            from ouroboros.episodic_memory import get_episodic_memory
+
+            em = get_episodic_memory(repo_dir=env.repo_dir)
+            # Recall similar past tasks (success only for positive examples)
+            similar_episodes = em.recall(task_text_for_keywords, limit=3, success_only=True)
+            if similar_episodes:
+                ep_lines = ["## Relevant Past Experiences\n"]
+                for ep in similar_episodes:
+                    icon = "✅" if ep.success else "❌"
+                    ep_lines.append(f"- {icon} **{ep.decision[:80]}**")
+                    ep_lines.append(f"  Action: {ep.action[:100]}")
+                    if ep.tools_used:
+                        ep_lines.append(f"  Tools: {', '.join(ep.tools_used[:5])}")
+                    ep_lines.append(f"  Outcome: {ep.outcome[:100]}")
+                dynamic_parts.append("\n".join(ep_lines))
+        except Exception:
+            log.debug("Failed to inject episodic memory", exc_info=True)
+
     semi_stable_text = "\n\n".join(semi_stable_parts)
 
     # Dynamic content: changes every round

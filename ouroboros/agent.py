@@ -267,6 +267,26 @@ class OuroborosAgent:
             review_context_builder=self._build_review_context,
         )
 
+        # --- Budget-aware model routing (Phase 6) ---
+        try:
+            from ouroboros.budget_router import get_budget_router
+
+            task_text = task.get("text", "") or str(task.get("content", ""))
+            router = get_budget_router(self.env.repo_dir)
+            routing = router.route(task_text)
+            if routing.get("budget_warning"):
+                log.warning(
+                    "[BudgetRouter] %s (budget: %.1f%% remaining)",
+                    routing["reason"],
+                    routing["budget_remaining_pct"],
+                )
+            # Add routing info to messages for LLM awareness
+            routing_note = f"\n\n## Model Routing\n- Model: {routing['model']}\n- Tier: {routing['tier']}\n- Reason: {routing['reason']}"
+            if messages and messages[0].get("role") == "system":
+                messages[0]["content"] = messages[0]["content"] + routing_note
+        except Exception:
+            log.debug("Budget-aware routing failed", exc_info=True)
+
         if cap_info.get("trimmed_sections"):
             try:
                 append_jsonl(
