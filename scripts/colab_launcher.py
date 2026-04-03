@@ -4,8 +4,23 @@
 # Thin orchestrator: secrets, bootstrap, main loop.
 # Heavy logic lives in supervisor/ package.
 
-import logging
-import os, sys, json, time, uuid, pathlib, subprocess, datetime, threading, queue as _queue_mod
+import os
+import sys
+
+# Add repo root to sys.path so supervisor/ and ouroboros/ are importable
+# When this script is in scripts/, Python adds scripts/ to sys.path, not the root
+_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
+import json
+import time
+import uuid
+import pathlib
+import subprocess
+import datetime
+import threading
+import queue as _queue_mod
 from typing import Any, Dict, List, Optional, Set, Tuple
 from dotenv import load_dotenv
 import supervisor.workers
