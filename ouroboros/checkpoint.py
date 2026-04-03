@@ -220,7 +220,7 @@ def _check_required_modules(repo_dir: Path) -> CheckpointResult:
     try:
         import json
 
-        baseline = json.loads((repo_dir / "drift_baseline.json").read_text(encoding="utf-8"))
+        baseline = json.loads((repo_dir / "config" / "drift_baseline.json").read_text(encoding="utf-8"))
         missing = [m for m in baseline.get("required_modules", []) if not (repo_dir / m).exists()]
         elapsed = (time.time() - start) * 1000
         if missing:

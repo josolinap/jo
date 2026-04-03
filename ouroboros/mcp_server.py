@@ -133,7 +133,7 @@ class MCPServer:
             )
         elif uri == "jo://constitution":
             try:
-                const = (self.repo_dir / "constitution.json").read_text(encoding="utf-8")
+                const = (self.repo_dir / "config" / "constitution.json").read_text(encoding="utf-8")
                 return self._response(
                     req_id, {"contents": [{"uri": uri, "mimeType": "application/json", "text": const}]}
                 )

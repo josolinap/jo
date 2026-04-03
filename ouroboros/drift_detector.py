@@ -28,8 +28,8 @@ class DriftDetector:
     def __init__(self, repo_dir: Path, drive_root: Optional[Path] = None):
         self.repo_dir = Path(repo_dir)
         self.drive_root = Path(drive_root) if drive_root else self.repo_dir / ".jo_data"
-        self.constitution = self._load_json("constitution.json")
-        self.baseline = self._load_json("drift_baseline.json")
+        self.constitution = self._load_json("config/constitution.json")
+        self.baseline = self._load_json("config/drift_baseline.json")
 
     def _load_json(self, filename: str) -> Dict[str, Any]:
         path = self.repo_dir / filename

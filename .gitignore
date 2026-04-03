@@ -43,3 +43,11 @@ memory/awareness.jsonl
 
 # Jo runtime data (cache, episodes, patterns, delta history)
 .jo_data/
+
+# Temporary analysis files
+temp_*.md
+test_*.md
+
+# Accidental files
+=1.*
+File path*

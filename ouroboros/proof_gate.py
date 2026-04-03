@@ -77,10 +77,10 @@ class ProofGate:
         protected = self._get_protected_files()
         protected_dirs = {p.rstrip("/").lower() for p in protected if p.endswith("/")}
         protected_exact = {p.lower() for p in protected if not p.endswith("/")}
-        
+
         # Special case: Allow new files in ouroboros/ to fix minimalism violations
         is_ouroboros_refactor = any(f.startswith("ouroboros/") and f not in protected_exact for f in files)
-        
+
         for f in files:
             f_lower = f.lower()
             if f_lower in protected_exact:
@@ -183,13 +183,13 @@ class ProofGate:
 
     def _load_constitution(self) -> Dict[str, Any]:
         try:
-            return json.loads((self.repo_dir / "constitution.json").read_text(encoding="utf-8"))
+            return json.loads((self.repo_dir / "config" / "constitution.json").read_text(encoding="utf-8"))
         except Exception:
             return {}
 
     def _load_baseline(self) -> Dict[str, Any]:
         try:
-            return json.loads((self.repo_dir / "drift_baseline.json").read_text(encoding="utf-8"))
+            return json.loads((self.repo_dir / "config" / "drift_baseline.json").read_text(encoding="utf-8"))
         except Exception:
             return {}
 
