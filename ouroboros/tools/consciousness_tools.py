@@ -133,6 +133,98 @@ def _capability_stats(ctx: ToolContext) -> str:
     return f"## Capability Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
 
 
+def _modification_start(ctx: ToolContext, target: str, trigger: str, description: str, justification: str) -> str:
+    """Start a new self-modification pipeline."""
+    from ouroboros.modification_pipeline import get_modification_pipeline
+
+    pipeline = get_modification_pipeline(ctx.repo_dir)
+    record = pipeline.start_modification(target, trigger, description, justification)
+    return f"## Modification Started\n\nID: {record.id}\nTarget: {target}\nTrigger: {trigger}\nStage: {record.stage.value}\nRollback SHA: {record.rollback_sha}"
+
+
+def _modification_validate(ctx: ToolContext) -> str:
+    """Validate the current modification."""
+    from ouroboros.modification_pipeline import get_modification_pipeline
+
+    pipeline = get_modification_pipeline(ctx.repo_dir)
+    passed = pipeline.validate_change()
+    return f"## Validation {'PASSED' if passed else 'FAILED'}\n\nAll checks must pass before applying."
+
+
+def _modification_apply(ctx: ToolContext, commit_message: str) -> str:
+    """Apply the validated modification."""
+    from ouroboros.modification_pipeline import get_modification_pipeline
+
+    pipeline = get_modification_pipeline(ctx.repo_dir)
+    passed = pipeline.apply_change(commit_message)
+    return f"## Modification {'APPLIED' if passed else 'FAILED'}\n\n{commit_message}"
+
+
+def _modification_verify(ctx: ToolContext) -> str:
+    """Verify the applied modification."""
+    from ouroboros.modification_pipeline import get_modification_pipeline
+
+    pipeline = get_modification_pipeline(ctx.repo_dir)
+    passed = pipeline.verify_change()
+    return f"## Verification {'PASSED' if passed else 'FAILED - ROLLED BACK'}"
+
+
+def _modification_history(ctx: ToolContext) -> str:
+    """Get modification history."""
+    from ouroboros.modification_pipeline import get_modification_pipeline
+
+    pipeline = get_modification_pipeline(ctx.repo_dir)
+    history = pipeline.get_history()
+    stats = pipeline.get_stats()
+    return f"## Modification History\n\n**Stats**: {json.dumps(stats, indent=2)}\n\n**Records**:\n" + "\n".join(
+        f"- {r['id']}: {r['target']} ({r['status']})" for r in history[-10:]
+    )
+
+
+def _outreach_queue(ctx: ToolContext, type: str, content: str, priority: float = 0.5) -> str:
+    """Queue a proactive outreach message."""
+    from ouroboros.proactive_outreach import get_outreach, OutreachType
+
+    outreach = get_outreach(ctx.repo_dir)
+    type_enum = {
+        "insight": OutreachType.INSIGHT,
+        "alert": OutreachType.ALERT,
+        "progress": OutreachType.PROGRESS,
+        "question": OutreachType.QUESTION,
+        "suggestion": OutreachType.SUGGESTION,
+    }.get(type.lower(), OutreachType.INSIGHT)
+
+    if type_enum == OutreachType.INSIGHT:
+        outreach.queue_insight(content, priority)
+    elif type_enum == OutreachType.ALERT:
+        outreach.queue_alert(content, priority)
+    elif type_enum == OutreachType.PROGRESS:
+        outreach.queue_progress(content, priority)
+    elif type_enum == OutreachType.QUESTION:
+        outreach.queue_question(content, priority)
+    elif type_enum == OutreachType.SUGGESTION:
+        outreach.queue_suggestion(content, priority)
+
+    return f"✅ {type.title()} message queued (priority {priority})"
+
+
+def _outreach_pending(ctx: ToolContext) -> str:
+    """Get pending outreach messages."""
+    from ouroboros.proactive_outreach import get_outreach
+
+    outreach = get_outreach(ctx.repo_dir)
+    return outreach.format_outreach_summary() or "No pending outreach messages."
+
+
+def _outreach_stats(ctx: ToolContext) -> str:
+    """Get outreach statistics."""
+    from ouroboros.proactive_outreach import get_outreach
+
+    outreach = get_outreach(ctx.repo_dir)
+    stats = outreach.get_stats()
+    return f"## Outreach Statistics\n\n```json\n{json.dumps(stats, indent=2)}\n```"
+
+
 def get_tools() -> List[ToolEntry]:
     """Get consciousness, growth, and disclosure tools."""
     return [
@@ -298,5 +390,103 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             _capability_stats,
+        ),
+        ToolEntry(
+            "modification_start",
+            {
+                "name": "modification_start",
+                "description": "Start a new self-modification pipeline (Stage 1: DETECT).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "target": {"type": "string", "description": "What is being modified"},
+                        "trigger": {"type": "string", "description": "Why this modification was triggered"},
+                        "description": {"type": "string", "description": "What the change does"},
+                        "justification": {"type": "string", "description": "Why this change is needed"},
+                    },
+                    "required": ["target", "trigger", "description", "justification"],
+                },
+            },
+            _modification_start,
+        ),
+        ToolEntry(
+            "modification_validate",
+            {
+                "name": "modification_validate",
+                "description": "Validate the current modification (Stage 3: VALIDATE).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _modification_validate,
+        ),
+        ToolEntry(
+            "modification_apply",
+            {
+                "name": "modification_apply",
+                "description": "Apply the validated modification (Stage 4: APPLY).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "commit_message": {"type": "string", "description": "Git commit message"},
+                    },
+                    "required": ["commit_message"],
+                },
+            },
+            _modification_apply,
+        ),
+        ToolEntry(
+            "modification_verify",
+            {
+                "name": "modification_verify",
+                "description": "Verify the applied modification (Stage 5: VERIFY).",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _modification_verify,
+        ),
+        ToolEntry(
+            "modification_history",
+            {
+                "name": "modification_history",
+                "description": "Get modification history and statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _modification_history,
+        ),
+        ToolEntry(
+            "outreach_queue",
+            {
+                "name": "outreach_queue",
+                "description": "Queue a proactive outreach message to creator.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "description": "Message type: insight, alert, progress, question, suggestion",
+                        },
+                        "content": {"type": "string", "description": "Message content"},
+                        "priority": {"type": "number", "default": 0.5, "description": "Priority 0.0-1.0"},
+                    },
+                    "required": ["type", "content"],
+                },
+            },
+            _outreach_queue,
+        ),
+        ToolEntry(
+            "outreach_pending",
+            {
+                "name": "outreach_pending",
+                "description": "Get pending outreach messages.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _outreach_pending,
+        ),
+        ToolEntry(
+            "outreach_stats",
+            {
+                "name": "outreach_stats",
+                "description": "Get outreach statistics.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+            _outreach_stats,
         ),
     ]

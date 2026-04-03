@@ -400,6 +400,36 @@ def build_health_invariants(env: Any) -> str:
     except Exception:
         log.debug("Health check failed: capability gap detection", exc_info=True)
 
+    # 13. Modification Pipeline (Principle 10: Bounded Self-Modification)
+    try:
+        from ouroboros.modification_pipeline import get_modification_pipeline
+
+        pipeline = get_modification_pipeline(repo_dir=env.repo_dir)
+        mod_stats = pipeline.get_stats()
+        if mod_stats["total_modifications"] > 0:
+            checks.append(
+                f"OK: modification pipeline - {mod_stats['completed']} completed, "
+                f"{mod_stats['rolled_back']} rolled back, {mod_stats['failed']} failed "
+                f"({mod_stats['success_rate']:.0%} success rate)"
+            )
+        else:
+            checks.append("OK: modification pipeline ready (no modifications yet)")
+    except Exception:
+        log.debug("Health check failed: modification pipeline", exc_info=True)
+
+    # 14. Proactive Outreach (Principle 0: Agency)
+    try:
+        from ouroboros.proactive_outreach import get_outreach
+
+        outreach = get_outreach(repo_dir=env.repo_dir)
+        outreach_stats = outreach.get_stats()
+        if outreach_stats["pending"] > 0:
+            checks.append(f"INFO: {outreach_stats['pending']} outreach messages pending")
+        if outreach_stats["sent"] > 0:
+            checks.append(f"OK: {outreach_stats['sent']} outreach messages sent historically")
+    except Exception:
+        log.debug("Health check failed: proactive outreach", exc_info=True)
+
     if not checks:
         return ""
     return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)

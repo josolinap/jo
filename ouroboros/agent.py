@@ -728,6 +728,55 @@ class OuroborosAgent:
             except Exception:
                 log.debug("Auto-vault persistence failed", exc_info=True)
 
+            # --- Post-task: Proactive Outreach (Principle 0: Agency) ---
+            try:
+                from ouroboros.proactive_outreach import get_outreach
+
+                outreach = get_outreach(self.env.repo_dir)
+
+                # Queue progress message for completed tasks
+                if success and changed_files:
+                    outreach.queue_progress(
+                        content=f"Completed task: {task_text[:80]}... Modified {len(changed_files)} files successfully.",
+                        priority=0.3,
+                    )
+
+                # Queue alert for failed tasks
+                if not success:
+                    outreach.queue_alert(
+                        content=f"Task failed: {task_text[:80]}... Please review the error and decide next steps.",
+                        priority=0.8,
+                    )
+
+                # Queue insight for evolution tasks
+                if task.get("type") == "evolution":
+                    outreach.queue_insight(
+                        content=f"Evolution task completed. Check growth_report to see how I've developed across all three axes.",
+                        priority=0.6,
+                    )
+
+                # Queue budget alert if approaching limits
+                try:
+                    from ouroboros.skills.cost_tracker import get_cost_tracker
+
+                    cost_tracker = get_cost_tracker(self.env.repo_dir)
+                    daily_cost = cost_tracker.get_daily_cost()
+                    if daily_cost > cost_tracker.budget.daily_limit * 0.8:
+                        outreach.queue_alert(
+                            content=f"Budget alert: Daily cost ${daily_cost:.2f} approaching limit ${cost_tracker.budget.daily_limit:.2f}",
+                            priority=0.9,
+                        )
+                except Exception:
+                    pass
+
+                # Add pending outreach to response
+                outreach_summary = outreach.format_outreach_summary()
+                if outreach_summary:
+                    text = text + "\n\n" + outreach_summary
+
+            except Exception:
+                log.debug("Proactive outreach failed", exc_info=True)
+
             # Checkpoint verification for evolution tasks
             if task.get("type") in ("evolution", "review") and changed_files:
                 try:
