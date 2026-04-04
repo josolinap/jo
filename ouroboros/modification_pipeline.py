@@ -116,14 +116,14 @@ class ModificationPipeline:
     def _get_current_health(self) -> float:
         """Get current system health score (0.0-1.0)."""
         try:
-            from ouroboros.health_invariants import run_checks
-            from ouroboros.context import Env
+            from ouroboros.health_invariants import build_health_invariants
+            from ouroboros.agent import Env
 
             env = Env(
                 repo_dir=self.repo_dir,
                 drive_root=self.repo_dir,
             )
-            checks = run_checks(env)
+            checks = build_health_invariants(env)
             # Count passing checks
             passing = sum(1 for c in checks if c.startswith("OK:"))
             total = len(checks)

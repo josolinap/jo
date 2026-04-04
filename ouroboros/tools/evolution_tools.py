@@ -206,6 +206,27 @@ def _check_evolution_readiness(ctx: ToolContext) -> str:
     return "\n".join(lines)
 
 
+def _evolution_policy(ctx: ToolContext) -> str:
+    """Show current evolution policy and constraints."""
+    try:
+        from ouroboros.policy import create_default_policy
+
+        policy = create_default_policy()
+        lines = [
+            "## Evolution Policy",
+            "",
+            f"**Max module lines:** {policy.max_module_lines}",
+            f"**Max function lines:** {policy.max_function_lines}",
+            f"**Require docstrings:** {policy.require_docstrings}",
+            f"**No secrets:** {policy.no_secrets}",
+            f"**No bare except:** {policy.no_bare_except}",
+            f"**No print statements:** {policy.no_print_statements}",
+        ]
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Policy unavailable: {e}"
+
+
 def _synthesize_lessons(ctx: ToolContext) -> str:
     """Synthesize lessons from recent cycles into wisdom."""
     vault_dir = ctx.repo_path("vault/journal")
@@ -248,7 +269,7 @@ def _knowledge_decay_report(ctx: ToolContext) -> str:
 
         repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
         decay = KnowledgeDecay(repo_dir=repo_dir)
-        return decay.generate_report()
+        return decay.get_decay_report()
     except Exception as e:
         return f"Knowledge decay analysis unavailable: {e}"
 
@@ -261,7 +282,7 @@ def _predictive_health(ctx: ToolContext) -> str:
         repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
         drive_root = pathlib.Path(ctx.drive_root) if ctx.drive_root else pathlib.Path("~/.jo_data")
         predictor = HealthPredictor(repo_dir=repo_dir, drive_root=drive_root)
-        return predictor.generate_report()
+        return predictor.get_health_report()
     except Exception as e:
         return f"Predictive health unavailable: {e}"
 
@@ -272,7 +293,7 @@ def _confidence_report(ctx: ToolContext) -> str:
         from ouroboros.tools.evolution_loop import EvolutionLoop
 
         loop = EvolutionLoop(ctx)
-        return loop._strategy.get_confidence_report()
+        return loop._scorer.get_confidence_report()
     except Exception as e:
         return f"Confidence report unavailable: {e}"
 
@@ -280,11 +301,11 @@ def _confidence_report(ctx: ToolContext) -> str:
 def _evolution_fingerprint(ctx: ToolContext) -> str:
     """Generate evolution fingerprint."""
     try:
-        from ouroboros.evolution_fingerprint import EvolutionFingerprint
+        from ouroboros.evolution_fingerprint import EvolutionFingerprinter
 
         repo_dir = pathlib.Path(ctx.repo_dir) if ctx.repo_dir else pathlib.Path(".")
-        fp = EvolutionFingerprint(repo_dir=repo_dir)
-        return fp.generate_report()
+        fp = EvolutionFingerprinter(repo_dir=repo_dir)
+        return fp.get_fingerprint_report()
     except Exception as e:
         return f"Evolution fingerprint unavailable: {e}"
 
@@ -292,10 +313,10 @@ def _evolution_fingerprint(ctx: ToolContext) -> str:
 def _decision_trace_report(ctx: ToolContext) -> str:
     """Generate decision trace report."""
     try:
-        from ouroboros.decision_tracer import get_decision_tracer
+        from ouroboros.decision_trace import DecisionTracer
 
-        tracer = get_decision_tracer()
-        return tracer.generate_report()
+        tracer = DecisionTracer()
+        return tracer.get_decision_report()
     except Exception as e:
         return f"Decision trace unavailable: {e}"
 

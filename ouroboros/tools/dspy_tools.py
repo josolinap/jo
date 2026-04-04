@@ -151,6 +151,15 @@ def _dspy_optimize(ctx: ToolContext, examples_json: str = "", optimizer: str = "
     if classifier is None:
         return json.dumps({"error": "Failed to create DSPy classifier"})
 
+    # Try to load previously optimized module as starting point
+    save_path = str(ctx.drive_path("state") / "dspy_optimized_classifier.json")
+    try:
+        from ouroboros.dspy_integration import load_optimized_module
+
+        classifier = load_optimized_module(classifier, save_path)
+    except Exception:
+        pass
+
     # Build metric
     def classify_metric(example, prediction, trace=None):
         expected = getattr(example, "task_type", "")

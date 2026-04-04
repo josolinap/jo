@@ -192,6 +192,24 @@ def _execute_single_tool(
             "is_code_tool": is_code_tool,
         }
 
+    # Auto-system sandbox check for analysis task detection
+    try:
+        from ouroboros.auto_system import sandbox_check
+
+        is_analysis = getattr(tools._ctx, "is_analysis_task", False)
+        ok, reason = sandbox_check(fn_name, is_analysis)
+        if not ok:
+            return {
+                "tool_call_id": tool_call_id,
+                "fn_name": fn_name,
+                "result": f"⚠️ {reason}",
+                "is_error": True,
+                "args_for_log": {},
+                "is_code_tool": is_code_tool,
+            }
+    except Exception:
+        pass
+
     try:
         args = json.loads(tc["function"]["arguments"] or "{}")
     except (json.JSONDecodeError, ValueError) as e:
@@ -254,7 +272,7 @@ def _execute_single_tool(
     # Proof gate: check for violations before file writes
     if fn_name in ("repo_write_commit", "repo_commit_push", "code_edit", "vault_write", "vault_create"):
         try:
-            from ouroboros.proof_gate import get_gate
+            from ouroboros.proof_gate import validate_files
 
             files_to_write = []
             if isinstance(args, dict):
@@ -266,19 +284,17 @@ def _execute_single_tool(
                         files_to_write.extend(val)
 
             if files_to_write:
-                gate = get_gate(repo_dir=Path(os.environ.get("REPO_DIR", ".")))
-                if gate:
-                    report = gate.validate_and_report(files_to_write)
-                    if "FAILED" in report:
-                        log.warning("[ProofGate] %s blocked: %s", fn_name, report[:200])
-                        return {
-                            "tool_call_id": tool_call_id,
-                            "fn_name": fn_name,
-                            "result": f"PROOF GATE BLOCKED: {report[:500]}",
-                            "is_error": True,
-                            "args_for_log": args_for_log,
-                            "is_code_tool": is_code_tool,
-                        }
+                report = validate_files(files_to_write, repo_dir=Path(os.environ.get("REPO_DIR", ".")))
+                if "FAILED" in report:
+                    log.warning("[ProofGate] %s blocked: %s", fn_name, report[:200])
+                    return {
+                        "tool_call_id": tool_call_id,
+                        "fn_name": fn_name,
+                        "result": f"PROOF GATE BLOCKED: {report[:500]}",
+                        "is_error": True,
+                        "args_for_log": args_for_log,
+                        "is_code_tool": is_code_tool,
+                    }
         except Exception:
             log.debug("Unexpected error", exc_info=True)
 
@@ -561,6 +577,15 @@ def _process_tool_results(
                 "is_error": is_error,
             }
         )
+
+    # Record tool chain for learning patterns
+    try:
+        from ouroboros.auto_system import record_tool_chain
+
+        tool_sequence = [r["fn_name"] for r in results]
+        record_tool_chain(tool_sequence, success=(error_count == 0))
+    except Exception:
+        pass
 
     return error_count
 

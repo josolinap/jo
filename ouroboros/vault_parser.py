@@ -124,10 +124,10 @@ class WikilinkParser:
         return FRONTMATTER_RE.sub("", content)
 
     def _extract_frontmatter(self, content: str) -> dict:
-        match = FRONTMATTER_RE.search(content)
-        if not match:
-            return {}
-        return self._parse_yaml_simple(match.group(1))
+        """Extract YAML frontmatter using pi_prompts utility."""
+        from ouroboros.pi_prompts import extract_frontmatter
+
+        return extract_frontmatter(content)
 
     def _parse_yaml_simple(self, yaml_str: str) -> dict:
         result = {}

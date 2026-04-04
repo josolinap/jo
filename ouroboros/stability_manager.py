@@ -259,9 +259,9 @@ class StabilityManager:
 
         # 3. Config file
         try:
-            from ouroboros.config_manager import get_config
+            from ouroboros.config_manager import get_config_manager
 
-            config = get_config()
+            config = get_config_manager().as_dict()
             for item in config.get("llm", {}).get("fallback_chain", []):
                 add_model(item["name"], item.get("priority", 50))
         except Exception:

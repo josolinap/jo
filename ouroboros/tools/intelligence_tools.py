@@ -98,6 +98,33 @@ def _codebase_impact(
     return json.dumps(impact, indent=2)
 
 
+def _codebase_cohesion(
+    ctx: ToolContext,
+    file_path: str,
+) -> str:
+    """Analyze cohesion of a specific module.
+
+    Measures how focused a module is on a single responsibility.
+    High cohesion = focused module. Low cohesion = god class / god module.
+
+    Args:
+        file_path: Path to file relative to repo root
+
+    Returns:
+        JSON with cohesion metrics and recommendations
+    """
+    from ouroboros.codebase_cohesion import analyze_module_cohesion
+
+    ctx.emit_progress_fn(f"Analyzing cohesion of {file_path}...")
+
+    full_path = ctx.repo_dir / file_path
+    if not full_path.exists():
+        return json.dumps({"error": f"File not found: {file_path}"})
+
+    result = analyze_module_cohesion(str(full_path))
+    return json.dumps(result, indent=2)
+
+
 def _extract_from_code(
     ctx: ToolContext,
     file_path: str,
@@ -142,21 +169,64 @@ def _extract_from_text(
     ctx: ToolContext,
     text: str,
     extraction_classes: List[str],
+    examples: Optional[str] = "",
 ) -> str:
     """Extract structured information from text.
 
-    Extracts emails, URLs, filepaths, function calls, etc.
+    Extracts emails, URLs, filepaths, function calls, imports, etc.
+    Optionally provide few-shot examples as JSON to improve extraction quality.
 
     Args:
         text: Text to extract from
         extraction_classes: Classes to extract (email, url, filepath, function_call, import, variable)
+        examples: Optional JSON array of examples for few-shot prompting
 
     Returns:
         JSON with extractions
     """
-    from ouroboros.extraction import extract_from_text
+    from ouroboros.extraction import (
+        Extraction,
+        ExampleData,
+        extract_from_text,
+        extract_with_examples,
+        parse_llm_extraction,
+    )
 
     ctx.emit_progress_fn("Extracting from text...")
+
+    # If examples provided, use enhanced extraction pipeline
+    if examples:
+        try:
+            examples_data = json.loads(examples)
+            example_objects = []
+            for ex in examples_data:
+                ext_list = []
+                for item in ex.get("extractions", []):
+                    ext_list.append(
+                        Extraction(
+                            extraction_class=item.get("class", item.get("extraction_class", "")),
+                            extraction_text=item.get("text", item.get("extraction_text", "")),
+                            attributes=item.get("attributes", {}),
+                        )
+                    )
+                example_objects.append(
+                    ExampleData(
+                        text=ex.get("text", ""),
+                        extractions=ext_list,
+                    )
+                )
+            prompt, _ = extract_with_examples(text, extraction_classes, example_objects)
+            return json.dumps(
+                {
+                    "prompt": prompt[:3000],
+                    "message": "Prompt generated for LLM extraction. Send this prompt to the LLM and use parse_extraction_response to parse the response.",
+                    "total_classes": len(extraction_classes),
+                    "examples_used": len(example_objects),
+                },
+                indent=2,
+            )
+        except json.JSONDecodeError as e:
+            return json.dumps({"error": f"Invalid examples JSON: {e}"})
 
     result = extract_from_text(text, extraction_classes)
 
@@ -164,6 +234,40 @@ def _extract_from_text(
         {
             "extractions": [e.to_dict() for e in result.extractions],
             "total": len(result.extractions),
+        },
+        indent=2,
+    )
+
+
+def _parse_extraction_response(
+    ctx: ToolContext,
+    llm_response: str,
+    source_text: str,
+    source_file: str = "",
+) -> str:
+    """Parse LLM extraction response into structured extractions.
+
+    Use this after sending an extract_with_examples prompt to the LLM.
+
+    Args:
+        llm_response: Raw LLM response containing JSON extractions
+        source_text: Original source text for grounding
+        source_file: Optional source file path
+
+    Returns:
+        JSON with parsed, grounded extractions
+    """
+    from ouroboros.extraction import parse_llm_extraction
+
+    ctx.emit_progress_fn("Parsing extraction response...")
+
+    result = parse_llm_extraction(llm_response, source_text, source_file)
+
+    return json.dumps(
+        {
+            "extractions": [e.to_dict() for e in result.extractions],
+            "total": len(result.extractions),
+            "classes_used": result.extraction_classes,
         },
         indent=2,
     )
@@ -584,6 +688,21 @@ def get_tools() -> List[ToolEntry]:
             _codebase_impact,
         ),
         ToolEntry(
+            "codebase_cohesion",
+            {
+                "name": "codebase_cohesion",
+                "description": "Analyze cohesion of a specific module. Measures how focused a module is on a single responsibility.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "File path relative to repo root"},
+                    },
+                    "required": ["file_path"],
+                },
+            },
+            _codebase_cohesion,
+        ),
+        ToolEntry(
             "extract_from_code",
             {
                 "name": "extract_from_code",
@@ -607,7 +726,7 @@ def get_tools() -> List[ToolEntry]:
             "extract_from_text",
             {
                 "name": "extract_from_text",
-                "description": "Extract emails, URLs, filepaths, function calls from text.",
+                "description": "Extract emails, URLs, filepaths, function calls from text. Optionally provide few-shot examples as JSON array.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -617,11 +736,33 @@ def get_tools() -> List[ToolEntry]:
                             "items": {"type": "string"},
                             "description": "Classes: email, url, filepath, function_call, import, variable",
                         },
+                        "examples": {
+                            "type": "string",
+                            "default": "",
+                            "description": 'Optional JSON array of examples: [{"text": "...", "extractions": [...]}]',
+                        },
                     },
                     "required": ["text", "extraction_classes"],
                 },
             },
             _extract_from_text,
+        ),
+        ToolEntry(
+            "parse_extraction_response",
+            {
+                "name": "parse_extraction_response",
+                "description": "Parse LLM response from extract_with_examples prompt into structured, grounded extractions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "llm_response": {"type": "string", "description": "Raw LLM response with JSON extractions"},
+                        "source_text": {"type": "string", "description": "Original source text for grounding"},
+                        "source_file": {"type": "string", "default": "", "description": "Optional source file path"},
+                    },
+                    "required": ["llm_response", "source_text"],
+                },
+            },
+            _parse_extraction_response,
         ),
         ToolEntry(
             "blind_validate",

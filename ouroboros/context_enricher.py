@@ -281,17 +281,13 @@ class ContextEnricher:
     def _get_vault_context(self, task: str) -> str:
         """Get relevant knowledge from vault."""
         try:
-            from ouroboros.vault import vault_search
-            
-            results = vault_search(
-                query=task,
-                field="content",
-                max_results=self._max_vault_notes
-            )
-            
+            from ouroboros.vault_search import vault_semantic_search
+
+            results = vault_semantic_search(query=task, max_results=self._max_vault_notes)
+
             if not results:
                 return ""
-            
+
             context_parts = []
             for result in results:
                 note = result.get("note", {})
@@ -299,7 +295,7 @@ class ContextEnricher:
                 content = note.get("content", "")
                 preview = content[:500] + ("..." if len(content) > 500 else "")
                 context_parts.append(f"#### {title}\n{preview}")
-            
+
             return "\n\n".join(context_parts)
         except Exception as e:
             log.debug(f"Failed to search vault: {e}")

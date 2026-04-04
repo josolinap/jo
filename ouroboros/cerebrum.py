@@ -82,9 +82,9 @@ class CerebrumManager:
 
         # Load configuration
         try:
-            from ouroboros.config_manager import get_config
+            from ouroboros.config_manager import get_config_manager
 
-            config = get_config()
+            config = get_config_manager().as_dict()
             cerebrum_config = config.get("cerebrum", {})
             self._max_do_not_repeat = cerebrum_config.get("max_do_not_repeat", 100)
             self._max_preferences = cerebrum_config.get("max_preferences", 200)

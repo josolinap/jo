@@ -228,12 +228,26 @@ def route_tools(
     defaults = get_default_tool_order(task_type)
     ordered = [t for t in defaults if t in available_tools]
 
+    # Use learned tool chain patterns to improve ordering
+    try:
+        from ouroboros.auto_system import suggest_tool_chain
+
+        suggested_chain = suggest_tool_chain(ordered[:2])
+        if suggested_chain:
+            # Reorder to prioritize learned patterns
+            for tool in suggested_chain:
+                if tool in ordered:
+                    ordered.remove(tool)
+            ordered = suggested_chain + ordered
+    except Exception:
+        pass
+
     # Fill remaining slots with any available tools not yet included
     remaining = [t for t in available_tools if t not in ordered]
     ordered.extend(remaining)
 
     selected = ordered[:top_n]
-    
+
     # Make DSPy tools always available to Jo
     for t in available_tools:
         if t.startswith("dspy_") and t not in selected:

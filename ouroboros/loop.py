@@ -528,7 +528,7 @@ def run_llm_loop(
                 should_continue, reason = engine.preflight_checks()
             else:
                 should_continue, reason = _preflight_checks(budget_remaining_usd)
-                
+
             if not should_continue:
                 return f"⚠️ {reason}", {}, {"error": reason}
 
@@ -605,6 +605,15 @@ def run_llm_loop(
                 if spice:
                     messages.append({"role": "system", "content": f"[Spice] {spice}"})
 
+            # Use differential context for efficient token usage on first round
+            if round_idx == 1:
+                try:
+                    from ouroboros.context import get_differential_context
+
+                    messages, _tracker, _diff_stats = get_differential_context(messages)
+                except Exception:
+                    log.debug("Differential context failed", exc_info=True)
+
             pending_compaction = getattr(tools._ctx, "_pending_compaction", None)
             if pending_compaction is not None:
                 messages = compact_tool_history_llm(messages, keep_recent=pending_compaction)
@@ -614,6 +623,18 @@ def run_llm_loop(
             elif round_idx > 3:
                 if len(messages) > 60:
                     messages = compact_tool_history(messages, keep_recent=6)
+
+            # Use smart context optimization when messages are large
+            try:
+                from ouroboros.context import smart_context_optimize
+
+                estimated = estimate_tokens(json.dumps(messages))
+                if estimated > 12000:
+                    messages, _, stats = smart_context_optimize(messages, max_tokens=10000)
+                    if stats.get("compaction_applied"):
+                        emit_progress(f"Context optimized: {stats.get('estimated_tokens', '?')} tokens")
+            except Exception:
+                log.debug("Smart context optimization failed", exc_info=True)
 
             msg, cost = _call_llm_with_retry(
                 llm,
@@ -702,6 +723,25 @@ def run_llm_loop(
                 emit_progress,
                 traceability,
             )
+
+            # Self-healing: detect tool errors and suggest recovery
+            if error_count > 0:
+                try:
+                    from ouroboros.auto_system import self_heal_check
+
+                    for tc in tool_calls:
+                        fn = tc.get("function", {})
+                        name = fn.get("name", "")
+                        # Find the error result for this tool call
+                        for note in llm_trace.get("tool_calls", []):
+                            if note.get("tool") == name and note.get("is_error"):
+                                error_msg = note.get("result", "")
+                                should_heal, action, msg = self_heal_check(error_msg, name, None)
+                                if should_heal:
+                                    log.info("[Self-Heal] %s: %s", name, msg)
+                                    break
+                except Exception:
+                    log.debug("Self-heal check failed", exc_info=True)
 
             # Record tool calls for temporal learning
             try:
@@ -964,8 +1004,12 @@ def run_llm_loop(
                 log.warning("Failed to shutdown stateful executor", exc_info=True)
         if drive_root is not None and task_id:
             try:
-                from ouroboros.owner_inject import cleanup_task_mailbox
+                from ouroboros.owner_inject import cleanup_task_mailbox, get_pending_path
 
                 cleanup_task_mailbox(drive_root, task_id)
+                # Clean up legacy pending file from old format
+                legacy = get_pending_path(drive_root)
+                if legacy.exists():
+                    legacy.unlink()
             except Exception:
                 log.debug("Failed to cleanup task mailbox", exc_info=True)

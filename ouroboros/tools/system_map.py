@@ -343,6 +343,16 @@ def _system_map_json(ctx: ToolContext) -> str:
             "extended_tools": sum(1 for t in tools.values() if not t["is_core"]),
         },
     }
+
+    # Augment stats with auto-system metrics
+    try:
+        from ouroboros.auto_system import get_system_status
+
+        auto_stats = get_system_status()
+        result["auto_system"] = auto_stats
+    except Exception:
+        pass
+
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 

@@ -56,9 +56,9 @@ class QualityGateRunner:
 
         # Load configuration
         try:
-            from ouroboros.config_manager import get_config
+            from ouroboros.config_manager import get_config_manager
 
-            config = get_config()
+            config = get_config_manager().as_dict()
             gates_config = config.get("quality_gates", {})
             self._enabled_gates = gates_config.get("enabled_gates", [])
             self._auto_run_on_error = gates_config.get("auto_run_on_error", True)
@@ -193,6 +193,25 @@ class QualityGateRunner:
             if r.details and r.status == GateStatus.FAIL:
                 lines.append(f"  {r.details[:200]}")
         return "\n".join(lines)
+
+    def quick_evaluate_file(self, file_path: str) -> Dict[str, Any]:
+        """Quick quality evaluation for a single file using quality_metrics."""
+        try:
+            from ouroboros.quality_metrics import quick_evaluate
+
+            score = quick_evaluate(file_path)
+            return {
+                "file": file_path,
+                "overall": score.overall,
+                "complexity": score.complexity,
+                "cohesion": score.cohesion,
+                "coupling": score.coupling,
+                "test_coverage": score.test_coverage,
+                "doc_coverage": score.doc_coverage,
+                "security": score.security_score,
+            }
+        except Exception as e:
+            return {"file": file_path, "error": str(e)}
 
     def all_passed(self, results: Optional[List[GateResult]] = None) -> bool:
         if results is None:

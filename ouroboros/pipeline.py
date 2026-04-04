@@ -173,11 +173,25 @@ class ExecuteHandler(PhaseHandler):
         return ctx.current_phase == PipelinePhase.EXECUTE
 
     def execute(self, ctx: PipelineContext) -> PhaseResult:
+        from ouroboros.task_graph import get_active_graph
+        from ouroboros.sparse_executor import get_executor
+
         ctx.metadata["execution_started"] = True
+
+        # Use active task graph for execution ordering if available
+        graph = get_active_graph()
+        executor = get_executor()
+
+        if graph:
+            ordered = graph.get_topo_order()
+            ctx.metadata["execution_order"] = [t.description for t in ordered]
+            ctx.metadata["sparse_execution_active"] = True
+            executor.reset()
+
         return PhaseResult(
             phase=PipelinePhase.EXECUTE,
             success=True,
-            output={"status": "ready_for_execution"},
+            output={"status": "ready_for_execution", "has_graph": graph is not None},
         )
 
 
@@ -192,6 +206,7 @@ class VerifyHandler(PhaseHandler):
 
     def execute(self, ctx: PipelineContext) -> PhaseResult:
         from ouroboros.eval import evaluate_task
+        from ouroboros.task_graph import get_active_graph
         from pathlib import Path
 
         repo_dir = os.environ.get("REPO_DIR", ".")
@@ -204,6 +219,12 @@ class VerifyHandler(PhaseHandler):
         )
 
         passed = eval_result is None
+
+        # Report task graph status if one was active
+        graph = get_active_graph()
+        if graph:
+            ctx.metadata["task_graph_completed"] = True
+            ctx.metadata["task_graph_nodes"] = len(list(graph.nodes)) if hasattr(graph, "nodes") else 0
 
         return PhaseResult(
             phase=PipelinePhase.VERIFY,

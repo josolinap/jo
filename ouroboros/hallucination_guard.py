@@ -51,9 +51,9 @@ class HallucinationGuard:
     def __init__(self):
         # Load configuration
         try:
-            from ouroboros.config_manager import get_config
+            from ouroboros.config_manager import get_config_manager
 
-            config = get_config()
+            config = get_config_manager().as_dict()
             guard_config = config.get("hallucination_guard", {})
             self._enabled = guard_config.get("enabled", True)
             self._confidence_threshold = guard_config.get("confidence_threshold", 0.7)

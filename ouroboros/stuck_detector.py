@@ -42,9 +42,9 @@ class SlidingWindowStuckDetector:
     def __init__(self, window_size: int = 10, repeat_threshold: int = 3):
         # Load configuration
         try:
-            from ouroboros.config_manager import get_config
+            from ouroboros.config_manager import get_config_manager
 
-            config = get_config()
+            config = get_config_manager().as_dict()
             stuck_config = config.get("stuck_detector", {})
             window_size = stuck_config.get("window_size", window_size)
             repeat_threshold = stuck_config.get("repeat_threshold", repeat_threshold)

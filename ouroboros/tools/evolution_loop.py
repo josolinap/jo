@@ -442,6 +442,7 @@ def get_tools() -> List[ToolEntry]:
         _system_dashboard,
         _enable_evolution_mode,
         _get_evolution_status,
+        _evolution_policy,
     )
 
     return [
@@ -594,6 +595,20 @@ def get_tools() -> List[ToolEntry]:
                 "parameters": {"type": "object", "properties": {}},
             },
             handler=_decision_trace_report,
+            timeout_sec=10,
+        ),
+        ToolEntry(
+            name="evolution_policy",
+            schema={
+                "name": "evolution_policy",
+                "description": (
+                    "Show current evolution policy and constraints. "
+                    "Displays max module/function line limits, docstring requirements, "
+                    "and code quality rules that evolution cycles must follow."
+                ),
+                "parameters": {"type": "object", "properties": {}},
+            },
+            handler=_evolution_policy,
             timeout_sec=10,
         ),
     ]
