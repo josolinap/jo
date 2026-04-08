@@ -13,6 +13,7 @@ from typing import Any, Dict, List
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
 from ouroboros.utils import utc_now_iso, run_cmd, append_jsonl, truncate_for_log, safe_relpath
+from ouroboros.compression import compress_shell_output
 
 log = logging.getLogger(__name__)
 
@@ -129,8 +130,11 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
             timeout=120,
         )
         out = res.stdout + ("\n--- STDERR ---\n" + res.stderr if res.stderr else "")
-        if len(out) > 50000:
-            out = out[:25000] + "\n...(truncated)...\n" + out[-25000:]
+        
+        # Apply internal token compression
+        cmd_str = " ".join(cmd)
+        out = compress_shell_output(out, command=cmd_str)
+        
         prefix = f"exit_code={res.returncode}\n"
         return prefix + out
     except subprocess.TimeoutExpired:

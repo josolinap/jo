@@ -34,6 +34,9 @@ from ouroboros.utils import (
 )
 from ouroboros.tool_executor import _StatefulToolExecutor, _handle_tool_calls
 from ouroboros.traceability import get_traceability_layer
+from ouroboros.rules import get_rule_engine
+from ouroboros.memory_extractor import MemoryExtractor
+from ouroboros.agent_index import get_agent_index
 
 # PIPELINE_PLAN.md Feature Flags
 USE_STRUCTURED_PIPELINE = os.environ.get("OUROBOROS_USE_PIPELINE", "0") == "1"
@@ -431,6 +434,24 @@ def _setup_loop_context(
     _td.set_registry(tools)
 
     tool_schemas = tools.schemas(core_only=True)
+    
+    # Prune extended tools based on Task Type awareness (TOON pattern)
+    if len(tools.available_tools()) > 50:
+        try:
+            index = get_agent_index(tools._ctx.repo_dir)
+            # Only inject tools from relevant categories for this task type
+            task_type = tools._ctx.current_task_type or "general"
+            relevant_tools = index.get_tools_by_category(task_type)
+            # Merge with core schemas
+            core_names = set(s["function"]["name"] for s in tool_schemas)
+            for s in tools.schemas():
+                if s["function"]["name"] in relevant_tools and s["function"]["name"] not in core_names:
+                    tool_schemas.append(s)
+            
+            log.info(f"[Registry] Pruned tools: {len(tools.available_tools())} -> {len(tool_schemas)} relevant tools")
+        except Exception:
+            pass
+
     tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, [])
 
     tools._ctx.event_queue = event_queue
@@ -585,6 +606,19 @@ def run_llm_loop(
                     _last_reevaluation_round = last_reeval_from_setup
                 _ontology_task_type = ontology_task_type
 
+            # Inject Soft Rules (TTSR) — round 1 only to avoid message spam
+            if round_idx == 1:
+                try:
+                    engine_rules = get_rule_engine(tools._ctx.repo_dir)
+                    active_tags = {_ontology_task_type}
+                    if task_type:
+                        active_tags.add(task_type)
+                    rules_text = engine_rules.get_relevant_rules(active_tags)
+                    if rules_text:
+                        messages.append({"role": "system", "content": f"[Rules of Engagement]\n{rules_text}"})
+                except Exception:
+                    pass
+
             from ouroboros.spice import get_spice_for_round, get_spice_for_analysis
 
             # Only inject targeted spice for HIGH severity issues (reduce spam)
@@ -703,7 +737,41 @@ def run_llm_loop(
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls:
-                task_text = ""
+                # Self-Reflection Step (PraisonAI pattern) — only on longer tasks
+                if content and round_idx > 2:
+                    try:
+                        reflection_prompt = (
+                            f"Review my previous response:\n\n{content}\n\n"
+                            "Does this actually solve the user's original goal? "
+                            "If there are clear errors or missing parts, provide a correction. "
+                            "Otherwise, just say 'PROCEED'."
+                        )
+                        # Use active model — it's already loaded in context
+                        reflect_model = active_model
+                        reflect_msg, _ = _call_llm_with_retry(
+                            llm,
+                            messages + [{"role": "user", "content": reflection_prompt}],
+                            reflect_model,
+                            None,
+                            "low",
+                            1, drive_logs, task_id, round_idx, event_queue, accumulated_usage, "reflection"
+                        )
+                        if reflect_msg and reflect_msg.get("content") and "PROCEED" not in reflect_msg.get("content").upper():
+                            messages.append({"role": "system", "content": f"[Self-Reflection Critique] {reflect_msg.get('content')}"})
+                            continue  # One more round to address critique
+                    except Exception:
+                        pass
+
+                # Automated Memory Extraction (Claude Code pattern)
+                try:
+                    extractor = MemoryExtractor(tools._ctx.repo_dir)
+                    memories = extractor.extract_from_text(content, source="loop_auto_extraction")
+                    if memories:
+                        res = extractor.save_to_cerebrum(memories)
+                        log.info(f"[Memory] Automated extraction: {res}")
+                except Exception:
+                    pass
+
                 return _handle_text_response(content, llm_trace, accumulated_usage, messages)
 
             messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
@@ -724,8 +792,18 @@ def run_llm_loop(
                 traceability,
             )
 
-            # Self-healing: detect tool errors and suggest recovery
+            # Self-healing & Reaction-based Routing (ComposioHQ pattern)
             if error_count > 0:
+                # Check for CI-critical tool failures
+                ci_tools = {"repo_commit_push", "verify_build", "verify_tests", "run_shell"}
+                is_ci_failure = any(tc.get("function", {}).get("name") in ci_tools for tc in tool_calls)
+                
+                if is_ci_failure:
+                    messages.append({
+                        "role": "system", 
+                        "content": "[REACTION] CI/Build tool failed. Diagnose the root cause immediately and propose a repair before attempting again."
+                    })
+
                 try:
                     from ouroboros.auto_system import self_heal_check
 

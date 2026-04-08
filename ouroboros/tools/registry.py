@@ -135,6 +135,9 @@ CORE_TOOL_NAMES = {
     "exit_worktree",
     "task_create",
     "task_check",
+    "worktree_create",
+    "worktree_list",
+    "worktree_remove",
 }
 
 
@@ -171,6 +174,13 @@ class ToolRegistry:
                 import logging
 
                 logging.getLogger(__name__).warning("Failed to load tool module %s", modname, exc_info=True)
+
+        # Build/Update the Agent Index after all tools are loaded
+        try:
+            from ouroboros.agent_index import get_agent_index
+            get_agent_index(self._ctx.repo_dir).build(self)
+        except Exception:
+            logging.getLogger(__name__).debug("Failed to build agent index during registry load", exc_info=True)
 
     def set_context(self, ctx: ToolContext) -> None:
         self._ctx = ctx

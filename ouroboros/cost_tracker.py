@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,7 @@ class CostReport:
     by_task_type: Dict[str, float]
     rounds: int
     estimated_completion_cost: float = 0.0
+    total_chars_saved: int = 0
 
 
 class CostTracker:
@@ -52,7 +54,9 @@ class CostTracker:
 
     def __init__(self, storage_path: Optional[Path] = None):
         self.storage_path = storage_path or Path.home() / ".jo_data" / "cost_history.jsonl"
+        self.stats_path = self.storage_path.parent / "compression_stats.json"
         self.entries: List[CostEntry] = []
+        self.total_chars_saved: int = 0
         self._load()
 
     def is_enabled(self) -> bool:
@@ -109,6 +113,32 @@ class CostTracker:
             task_type=task_type,
         )
 
+    def record_compression_savings(self, chars_saved: int) -> None:
+        """Record how many characters/tokens were saved by internal compression."""
+        if not self.is_enabled():
+            return
+        self.total_chars_saved += chars_saved
+        self._save_stats()
+
+    def calculate_burn_rate(self, window_minutes: int = 60) -> float:
+        """Calculate cost burn rate (USD/hr) over the last X minutes."""
+        if not self.entries:
+            return 0.0
+        
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cutoff_dt = datetime.now(timezone.utc).timestamp() - (window_minutes * 60)
+        
+        recent_cost = 0.0
+        for e in self.entries:
+            try:
+                entry_ts = datetime.fromisoformat(e.timestamp.replace('Z', '+00:00')).timestamp()
+                if entry_ts >= cutoff_dt:
+                    recent_cost += e.cost
+            except Exception:
+                pass
+        
+        return (recent_cost / window_minutes) * 60 if window_minutes > 0 else 0.0
+
     def generate_report(self, budget_remaining: Optional[float] = None) -> CostReport:
         """Generate a cost report."""
         if not self.entries:
@@ -149,6 +179,7 @@ class CostTracker:
             by_task_type=by_task_type,
             rounds=rounds,
             estimated_completion_cost=estimated,
+            total_chars_saved=self.total_chars_saved,
         )
 
     def estimate_task_cost(
@@ -178,6 +209,8 @@ class CostTracker:
             f"- Total: ${report.total_cost:.4f}",
             f"- Tokens: {report.total_input_tokens:,} in / {report.total_output_tokens:,} out",
             f"- Rounds: {report.rounds}",
+            f"- Saved (internal): {report.total_chars_saved:,} chars",
+            f"- Burn Rate: ${self.calculate_burn_rate():.4f}/hr",
         ]
 
         if budget:
@@ -199,7 +232,7 @@ class CostTracker:
         return "\n".join(lines)
 
     def _load(self) -> None:
-        """Load entries from disk."""
+        """Load entries and stats from disk."""
         if self.storage_path.exists():
             try:
                 with open(self.storage_path, "r") as f:
@@ -208,6 +241,21 @@ class CostTracker:
             except Exception as e:
                 log.debug(f"Failed to load cost history: {e}")
                 self.entries = []
+        
+        if self.stats_path.exists():
+            try:
+                stats = json.loads(self.stats_path.read_text())
+                self.total_chars_saved = stats.get("total_chars_saved", 0)
+            except Exception:
+                self.total_chars_saved = 0
+ 
+    def _save_stats(self) -> None:
+        """Save compression stats to disk."""
+        try:
+            self.stats_path.parent.mkdir(parents=True, exist_ok=True)
+            self.stats_path.write_text(json.dumps({"total_chars_saved": self.total_chars_saved}))
+        except Exception:
+            pass
 
     def _save(self) -> None:
         """Save entries to disk."""

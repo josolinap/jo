@@ -105,7 +105,15 @@ def extract_frontmatter(raw_content: str) -> Dict[str, str]:
 
         if ":" in line:
             key, value = line.split(":", 1)
-            frontmatter[key.strip()] = value.strip()
+            key = key.strip()
+            value = value.strip()
+            
+            # Simple list parsing for tags/aliases
+            if value.startswith("[") and value.endswith("]"):
+                items = [i.strip().strip("'\"") for i in value[1:-1].split(",") if i.strip()]
+                frontmatter[key] = items
+            else:
+                frontmatter[key] = value.strip("'\"")
 
     return frontmatter
 

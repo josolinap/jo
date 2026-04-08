@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
@@ -172,6 +173,16 @@ def smart_context_compress(
 
     if completed_tasks:
         task_summary = "[Context Summary] Completed tasks: " + "; ".join(t[:50] for t in completed_tasks[-5:])
+        
+        # Inject Agent Index Summary (Soul continuity)
+        try:
+            from ouroboros.agent_index import get_agent_index
+            repo_dir = Path(os.environ.get("REPO_DIR", "."))
+            index_summary = get_agent_index(repo_dir).get_summary()
+            task_summary = f"{index_summary}\n{task_summary}"
+        except Exception:
+            pass
+
         insert_idx = 0
         for i, msg in enumerate(compacted):
             if msg.get("role") != "system":

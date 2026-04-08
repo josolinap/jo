@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from ouroboros.compression import smart_truncate, get_compression_stats
 from ouroboros.utils import (
     utc_now_iso,
     append_jsonl,
@@ -90,23 +91,8 @@ STATEFUL_BROWSER_TOOLS = frozenset({"browse_page", "browser_action"})
 
 
 def _truncate_tool_result(result: Any, max_chars: int = 15000) -> str:
-    result_str = str(result)
-    if len(result_str) <= max_chars:
-        return result_str
-
-    original_len = len(result_str)
-    separator = f"\n\n... ({original_len - max_chars} chars omitted) ...\n\n"
-    separator_len = len(separator)
-    available = max_chars - separator_len
-    if available <= 0:
-        return separator[:max_chars]
-
-    begin_size = int(available * 0.6)
-    end_size = available - begin_size
-    begin_part = result_str[:begin_size]
-    end_part = result_str[-end_size:] if end_size > 0 else ""
-
-    return begin_part + separator + end_part
+    """Use smart internal compression for all tool results."""
+    return smart_truncate(str(result), max_chars=max_chars)
 
 
 def _summarize_tool_result(fn_name: str, result: str) -> str:

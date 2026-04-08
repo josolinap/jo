@@ -19,6 +19,7 @@ class TaskStatus(Enum):
     DONE = "done"
     FAILED = "failed"
     SKIPPED = "skipped"
+    CANCELLED = "cancelled"
 
 
 @dataclass
@@ -106,9 +107,20 @@ class TaskGraph:
                 if self.nodes[dep].status == TaskStatus.FAILED:
                     node.status = TaskStatus.SKIPPED
                     node.error = f"Blocked by failed dependency: {dep}"
+                    self.cancel_dependents(node.id, reason=f"Dependency {dep} failed")
                     blocked.append(node)
                     break
         return blocked
+
+    def cancel_dependents(self, task_id: str, reason: str = "") -> None:
+        """Recursively cancel all tasks that depend on the given task."""
+        dependents = self._dependents.get(task_id, set())
+        for dep_id in dependents:
+            node = self.nodes.get(dep_id)
+            if node and node.status not in (TaskStatus.DONE, TaskStatus.FAILED, TaskStatus.CANCELLED):
+                node.status = TaskStatus.CANCELLED
+                node.error = reason or f"Cancelled due to upstream failure of {task_id}"
+                self.cancel_dependents(dep_id, reason=node.error)
 
     def get_topo_order(self) -> List[TaskNode]:
         """Return topological order of tasks."""

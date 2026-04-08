@@ -30,7 +30,10 @@ except ImportError:
 # Default configuration (used when no config files exist)
 DEFAULTS: Dict[str, Any] = {
     "llm": {
-        "default_model": "anthropic/claude-sonnet-4",
+        # NOTE: default_model is intentionally left as empty string here.
+        # The actual default is set via the OUROBOROS_MODEL environment variable.
+        # If not set, llm.py falls back to 'openrouter/free' (best current free model).
+        "default_model": "",
         "temperature": 0.3,
         "max_tokens": 8192,
         "reasoning_effort": "medium",
@@ -280,6 +283,7 @@ class ConfigurationManager:
             "OUROBOROS_MODEL": ("llm", "default_model"),
             "OUROBOROS_MODEL_CODE": ("llm", "code_model"),
             "OUROBOROS_MODEL_LIGHT": ("llm", "light_model"),
+            "OUROBOROS_MODEL_FALLBACK_LIST": ("llm", "fallback_model_list"),
             "TOTAL_BUDGET": ("budget", "total_budget_limit"),
             "OUROBOROS_SUPPRESS_PROGRESS": ("logging", "suppress_progress"),
         }

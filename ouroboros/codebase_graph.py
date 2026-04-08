@@ -57,163 +57,78 @@ def _parse_python_file(file_path: Path, repo_dir: Path) -> Tuple[List[GraphNode]
         log.debug(f"Failed to parse {file_path}: {e}")
         return nodes, edges
 
-    # Relative path for IDs
     rel_path = str(file_path.relative_to(repo_dir))
     file_id = f"file:{rel_path}"
     layer = _classify_layer(rel_path)
 
-    # Add file node
-    nodes.append(
-        GraphNode(
-            id=file_id,
-            type="file",
-            name=file_path.name,
-            file_path=rel_path,
-            line_number=1,
-            summary=f"Python module: {file_path.stem}",
-            layer=layer,
-        )
-    )
+    # File Node
+    nodes.append(GraphNode(id=file_id, type="file", name=file_path.name, file_path=rel_path,
+                          line_number=1, summary=f"Python module: {file_path.stem}", layer=layer))
 
-    # Extract imports
+    # Collect sub-nodes
+    i_nodes, i_edges = _extract_imports(tree, file_id, rel_path, layer)
+    c_nodes, c_edges = _extract_classes(tree, file_id, rel_path, layer)
+    f_nodes, f_edges = _extract_top_functions(tree, file_id, rel_path, layer)
+    
+    nodes.extend(i_nodes + c_nodes + f_nodes)
+    edges.extend(i_edges + c_edges + f_edges)
+    
+    # Function calls
+    edges.extend(extract_function_calls(tree, rel_path, repo_dir))
+
+    return nodes, edges
+
+
+def _extract_imports(tree, file_id, rel_path, layer) -> Tuple[List[GraphNode], List[GraphEdge]]:
+    nodes, edges = [], []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            module = getattr(node, "module", "") or ""
             for alias in node.names:
-                import_id = f"import:{alias.name}"
-                nodes.append(
-                    GraphNode(
-                        id=import_id,
-                        type="import",
-                        name=alias.name,
-                        file_path=rel_path,
-                        line_number=node.lineno,
-                        summary=f"Imports {alias.name}",
-                        layer=layer,
-                    )
-                )
-                edges.append(
-                    GraphEdge(
-                        source=file_id,
-                        target=import_id,
-                        relation="imports",
-                        confidence=0.85,
-                    )
-                )
-        elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            for alias in node.names:
-                import_id = f"import:{module}.{alias.name}"
-                nodes.append(
-                    GraphNode(
-                        id=import_id,
-                        type="import",
-                        name=f"{module}.{alias.name}",
-                        file_path=rel_path,
-                        line_number=node.lineno,
-                        summary=f"From {module} imports {alias.name}",
-                        layer=layer,
-                    )
-                )
-                edges.append(
-                    GraphEdge(
-                        source=file_id,
-                        target=import_id,
-                        relation="imports",
-                        confidence=0.85,
-                    )
-                )
+                name = f"{module}.{alias.name}" if module else alias.name
+                import_id = f"import:{name}"
+                nodes.append(GraphNode(id=import_id, type="import", name=name, file_path=rel_path,
+                                      line_number=node.lineno, summary=f"Imports {name}", layer=layer))
+                edges.append(GraphEdge(source=file_id, target=import_id, relation="imports", confidence=0.85))
+    return nodes, edges
 
-    # Extract classes
+
+def _extract_classes(tree, file_id, rel_path, layer) -> Tuple[List[GraphNode], List[GraphEdge]]:
+    nodes, edges = [], []
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.ClassDef):
             class_id = f"class:{rel_path}:{node.name}"
             bases = [base.id if isinstance(base, ast.Name) else str(base) for base in node.bases]
-            nodes.append(
-                GraphNode(
-                    id=class_id,
-                    type="class",
-                    name=node.name,
-                    file_path=rel_path,
-                    line_number=node.lineno,
-                    summary=f"Class {node.name}",
-                    layer=layer,
-                    metadata={"bases": bases},
-                )
-            )
-            edges.append(
-                GraphEdge(
-                    source=file_id,
-                    target=class_id,
-                    relation="contains",
-                    confidence=1.0,
-                )
-            )
+            nodes.append(GraphNode(id=class_id, type="class", name=node.name, file_path=rel_path,
+                                  line_number=node.lineno, summary=f"Class {node.name}",
+                                  layer=layer, metadata={"bases": bases}))
+            edges.append(GraphEdge(source=file_id, target=class_id, relation="contains", confidence=1.0))
 
-            # Add inheritance edges
             for base in node.bases:
                 if isinstance(base, ast.Name):
-                    edges.append(
-                        GraphEdge(
-                            source=class_id,
-                            target=f"class:*:{base.id}",
-                            relation="inherits",
-                            confidence=0.9,
-                        )
-                    )
+                    edges.append(GraphEdge(source=class_id, target=f"class:*:{base.id}",
+                                          relation="inherits", confidence=0.9))
 
-            # Extract methods (sync + async)
+            # Methods
             for item in ast.iter_child_nodes(node):
                 if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     method_id = f"func:{rel_path}:{node.name}.{item.name}"
-                    nodes.append(
-                        GraphNode(
-                            id=method_id,
-                            type="function",
-                            name=f"{node.name}.{item.name}",
-                            file_path=rel_path,
-                            line_number=item.lineno,
-                            summary=f"Method {item.name} of {node.name}",
-                            layer=layer,
-                            metadata={"class": node.name, "is_method": True},
-                        )
-                    )
-                    edges.append(
-                        GraphEdge(
-                            source=class_id,
-                            target=method_id,
-                            relation="contains",
-                            confidence=1.0,
-                        )
-                    )
+                    nodes.append(GraphNode(id=method_id, type="function", name=f"{node.name}.{item.name}",
+                                          file_path=rel_path, line_number=item.lineno,
+                                          summary=f"Method {item.name} of {node.name}",
+                                          layer=layer, metadata={"class": node.name, "is_method": True}))
+                    edges.append(GraphEdge(source=class_id, target=method_id, relation="contains", confidence=1.0))
+    return nodes, edges
 
-    # Extract top-level functions (sync + async)
+
+def _extract_top_functions(tree, file_id, rel_path, layer) -> Tuple[List[GraphNode], List[GraphEdge]]:
+    nodes, edges = [], []
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             func_id = f"func:{rel_path}:{node.name}"
-            nodes.append(
-                GraphNode(
-                    id=func_id,
-                    type="function",
-                    name=node.name,
-                    file_path=rel_path,
-                    line_number=node.lineno,
-                    summary=f"Function {node.name}",
-                    layer=layer,
-                )
-            )
-            edges.append(
-                GraphEdge(
-                    source=file_id,
-                    target=func_id,
-                    relation="contains",
-                    confidence=1.0,
-                )
-            )
-
-    # Extract function calls for call graph
-    call_edges = extract_function_calls(tree, rel_path, repo_dir)
-    edges.extend(call_edges)
-
+            nodes.append(GraphNode(id=func_id, type="function", name=node.name, file_path=rel_path,
+                                  line_number=node.lineno, summary=f"Function {node.name}", layer=layer))
+            edges.append(GraphEdge(source=file_id, target=func_id, relation="contains", confidence=1.0))
     return nodes, edges
 
 

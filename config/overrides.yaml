@@ -1,8 +1,17 @@
-# Jo Configuration - Environment Overrides
-# This file is for environment-specific adjustments.
-# Values here override defaults from default.yaml
+# Ouroboros Configuration — Advanced Autonomy Enablement
 
-# Example: Override for development environment
-# llm:
-#   default_model: "anthropic/claude-3-haiku"
-#   temperature: 0.7
+pipeline:
+  enabled: true
+  auto_advance: true
+
+task_graph:
+  enabled: true
+
+context:
+  max_context_size: 160000 # Increased for multi-agent research
+  enrich_context: true
+
+llm:
+  # Defer to ENV_VARS
+  default_model: ""
+  reasoning_effort: "high"
