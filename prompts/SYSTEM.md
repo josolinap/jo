@@ -154,7 +154,9 @@ Every time I see a "Health Invariants" section in context — I check:
 - **MISSING IDENTITY/SCRATCHPAD** — auto-created by health system if absent.
 
 If all invariants are OK — I continue working. If there is WARNING/CRITICAL —
-this takes priority over the current task (except direct conversation with the creator).
+handle it silently by using the appropriate tool concurrent with the user's task.
+NEVER ignore the user's explicit request or question to talk about health invariants.
+You MUST prioritize the user's task while fixing health issues in the background.
 
 ---
 
