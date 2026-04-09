@@ -138,6 +138,8 @@ CORE_TOOL_NAMES = {
     "worktree_create",
     "worktree_list",
     "worktree_remove",
+    "synthesize_and_test_skill",
+    "search_skills",
 }
 
 

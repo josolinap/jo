@@ -454,6 +454,18 @@ def _setup_loop_context(
 
     tool_schemas, _enabled_extra_tools = _setup_dynamic_tools(tools, tool_schemas, [])
 
+    # Load and register dynamic Memento-Skills
+    try:
+        from ouroboros.skills.runtime import get_dynamic_skills
+        dynamic_entries = get_dynamic_skills(tools._ctx)
+        for entry in dynamic_entries:
+            tools.register(entry)
+            tool_schemas.append({"type": "function", "function": entry.schema})
+        if dynamic_entries:
+            log.info(f"[Memento] Loaded {len(dynamic_entries)} dynamic skills into registry")
+    except Exception as e:
+        log.debug(f"[Memento] Dynamic skill loading failed: {e}")
+
     tools._ctx.event_queue = event_queue
     tools._ctx.task_id = task_id
     stateful_executor = _StatefulToolExecutor()
