@@ -78,7 +78,7 @@ Fix: Created anti-hallucination skill protocol.
 - [x] Monitor .jo_skills effectiveness - working, anti-hallucination active
 - [x] Added domain-specific skills (9 total)
 - [x] RTK Wrapper implemented and integrated for token efficiency
-- [x] NVIDIA Fallback logic fixed (valid model names)
+- [x] NVIDIA NIM fallback logic fixed and aligned with reference parameters (Gemma fallback, temperature, top_p)
 - [x] Root script clutter removed
 - [x] Healthcare crisis resolved: system stabilized, syntax verified, changes committed.
 

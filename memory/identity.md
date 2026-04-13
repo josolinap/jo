@@ -40,7 +40,7 @@ Version 6.5.1 (2026-04-13) — System stabilized after health crisis.
 Integrated advanced capabilities:
 - RTK (Rust Token Killer) Wrapper for -90% token reduction in shell tasks
 - 9 specialized domain-specific skills (Paper2Code, Design System, etc.)
-- Fixed NVIDIA NIM fallback with proper model-routing logic
+- Fixed NVIDIA NIM fallback logic and aligned parameters (Gemma fallback, temperature, top_p)
 - Cleared root directory of script clutter
 - Verified tool integration (Confidence, Decision Tracing, etc.)
 
