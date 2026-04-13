@@ -326,63 +326,73 @@ class LLMClient:
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
+        # 1. Designated NVIDIA provider
         if getattr(self, "_is_nvidia", False):
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-        if self._is_local:
-            # Auto-detect: Is this an OpenRouter model that needs cloud API?
+        # 2. Local provider check
+        attempt_openrouter = True
+        if getattr(self, "_is_local", False):
             model_lower = model.lower()
-            is_openrouter = (
-                # OpenRouter patterns: :free, :preview suffixes
+            is_cloud = (
                 ":free" in model
                 or ":preview" in model
-                # Known cloud providers
-                or "google" in model_lower
-                or "anthropic" in model_lower
-                or "openai" in model_lower
-                or "meta-llama" in model_lower
-                or "x-ai" in model_lower
-                or "cohere" in model_lower
-                or "mistral" in model_lower
-                or "fireworks" in model_lower
-                or "nvidia" in model_lower
-                or "arcee" in model_lower
-                or "z-ai" in model_lower
-                # Any path with / that's not a known local model
+                or any(
+                    x in model_lower
+                    for x in [
+                        "google",
+                        "anthropic",
+                        "openai",
+                        "meta-llama",
+                        "x-ai",
+                        "cohere",
+                        "mistral",
+                        "fireworks",
+                        "nvidia",
+                        "arcee",
+                        "z-ai",
+                    ]
+                )
                 or (("/" in model) and not any(x in model_lower for x in ["nerdsking", "qwen2.5", "qwen3"]))
             )
 
-            if is_openrouter:
-                # Use OpenRouter API for cloud models
-                return self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+            if not is_cloud:
+                # Use local model directly, no fallback
+                return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+            # Else: it's a cloud model requested in local mode, attempt OpenRouter with fallback
 
-            # Use local Ollama - it uses OUROBOROS_MODEL from env
-            return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
-
-        # OpenRouter only mode
+        # 3. OpenRouter execution with NVIDIA fallback
         try:
+            # Check for missing key upfront to trigger fallback faster
+            if not self._api_key or not self._api_key.strip():
+                raise ValueError("OPENROUTER_API_KEY is missing or empty")
+
             msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-            # Detect empty response (no content and no tool calls)
+            # Detect empty response
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
             if not tool_calls and (not content or not content.strip()):
                 raise ValueError("OpenRouter returned an empty response")
 
             return msg, usage
+
         except Exception as e:
-            # Fallback to NVIDIA if available
+            # Fallback to NVIDIA if available and we haven't already tried it as primary
             nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
             if nvidia_key:
-                log.warning(f"OpenRouter failed ({e}), falling back to NVIDIA NIM")
+                log.warning(f"OpenRouter attempt failed ({e}), falling back to NVIDIA NIM")
                 try:
+                    # Initialize a fresh client for the fallback
                     nvidia_client = NvidiaLLMClient()
-                    # OpenRouter model IDs will fail on NVIDIA, so use a dedicated fallback model or a safe default.
-                    nvidia_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "meta/llama-3.1-70b-instruct")
-                    return nvidia_client.chat(messages, nvidia_model, tools, reasoning_effort, max_tokens, tool_choice)
+                    # Use fallback model as OpenRouter IDs won't work on NVIDIA
+                    fallback_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "meta/llama-3.1-70b-instruct")
+                    return nvidia_client.chat(messages, fallback_model, tools, reasoning_effort, max_tokens, tool_choice)
                 except Exception as nvidia_err:
                     log.warning(f"NVIDIA fallback also failed: {nvidia_err}")
-            raise  # Re-raise if no NVIDIA fallback
+
+            # If no fallback or fallback failed, re-raise original error
+            raise
 
     def _chat_openrouter(
         self,
