@@ -321,30 +321,13 @@ def _decision_trace_report(ctx: ToolContext) -> str:
         return f"Decision trace unavailable: {e}"
 
 
+# Removed duplicate - using dashboard.py version instead
 def _system_dashboard(ctx: ToolContext) -> str:
-    """Generate comprehensive system dashboard."""
-    lines = ["# System Dashboard", ""]
+    """Generate comprehensive system dashboard - DEPRECATED, use dashboard.py version."""
+    # Import and delegate to the dashboard version to avoid duplication
+    from ouroboros.tools.dashboard import system_dashboard
 
-    sections = [
-        ("Evolution Status", _get_evolution_status),
-        ("Knowledge Decay", _knowledge_decay_report),
-        ("Predictive Health", _predictive_health),
-        ("Confidence", _confidence_report),
-        ("Evolution Fingerprint", _evolution_fingerprint),
-        ("Decision Trace", _decision_trace_report),
-    ]
-
-    for title, func in sections:
-        try:
-            result = func(ctx)
-            if result and not result.startswith(("Unavailable", "Error")):
-                lines.append(f"\n## {title}\n")
-                lines.append(result)
-        except Exception as e:
-            lines.append(f"\n## {title}\n")
-            lines.append(f"Error: {e}")
-
-    return "\n".join(lines)
+    return system_dashboard(ctx, comprehensive=True)
 
 
 def _enable_evolution_mode(ctx: ToolContext) -> str:

@@ -765,23 +765,6 @@ def get_tools() -> List[ToolEntry]:
             _parse_extraction_response,
         ),
         ToolEntry(
-            "blind_validate",
-            {
-                "name": "blind_validate",
-                "description": "Validate task result without seeing implementation. Checks task addressing, substance, code quality.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "task": {"type": "string", "description": "Original task description"},
-                        "result": {"type": "string", "description": "Final output to validate"},
-                        "code": {"type": "string", "default": "", "description": "Optional code content"},
-                    },
-                    "required": ["task", "result"],
-                },
-            },
-            _blind_validate,
-        ),
-        ToolEntry(
             "get_task_ontology",
             {
                 "name": "get_task_ontology",

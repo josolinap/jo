@@ -85,7 +85,7 @@ class EvolutionLoop:
             for v in violations:
                 issues.append(f"Drift [{v['severity']}]: {v['rule']}: {v['detail']}")
         except Exception as e:
-            errors.append("Drift check failed: %s" % e)
+            errors.append(f"Drift check failed: {e}")
         return issues
 
     def _check_tests(self, errors: List[str]) -> List[str]:

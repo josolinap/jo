@@ -8,7 +8,7 @@ import logging
 import os
 import pathlib
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 from ouroboros.tools.registry import ToolContext, ToolEntry
 from ouroboros.utils import read_text, safe_relpath, utc_now_iso
@@ -37,6 +37,7 @@ def _list_dir(root: pathlib.Path, rel: str, max_entries: int = 500) -> List[str]
 
 def _repo_read(ctx: ToolContext, path: str) -> str:
     from ouroboros.utils import read_text
+
     try:
         abs_path = ctx.repo_path(path)
         result = read_text(abs_path)
@@ -64,12 +65,13 @@ def _heuristic_file_search(ctx: ToolContext, path: str) -> Optional[str]:
         filename = os.path.basename(path)
         if not filename:
             return None
-        
+
         # 1. Check parent directory for similar names (typos)
         parent = os.path.dirname(path) or "."
         parent_abs = ctx.repo_path(parent)
         if parent_abs.exists() and parent_abs.is_dir():
             from difflib import get_close_matches
+
             files = [f.name for f in parent_abs.iterdir() if f.is_file()]
             matches = get_close_matches(filename, files, n=1, cutoff=0.7)
             if matches:
@@ -84,6 +86,7 @@ def _heuristic_file_search(ctx: ToolContext, path: str) -> Optional[str]:
         # 3. Wider search via git ls-files if available
         try:
             from ouroboros.utils import run_cmd
+
             # Only search for the filename globally if it's unique enough (at least 4 chars)
             if len(filename) >= 4:
                 # Use git ls-files to find all occurrences of the filename
@@ -414,12 +417,14 @@ def _forward_to_worker(ctx: ToolContext, task_id: str, message: str) -> str:
 
 # --- Memory Consolidation ---
 
+
 def _consolidate_memory(ctx: ToolContext) -> str:
     """Summarize recent event logs and update persistent Identity/Scratchpad.
     Use this after major milestones or recovery to ensure narrative continuity.
     """
     try:
         from ouroboros.memory import Memory
+
         mem = Memory(drive_root=ctx.drive_root, repo_dir=ctx.repo_dir)
         res = mem.consolidate()
         if res["status"] == "success":
@@ -433,6 +438,7 @@ def _consolidate_memory(ctx: ToolContext) -> str:
 
 def _search_experience(ctx: ToolContext, query: str) -> str:
     from ouroboros.tools.experience_search import search_experience
+
     return search_experience(ctx, query)
 
 

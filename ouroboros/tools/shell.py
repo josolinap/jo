@@ -109,6 +109,9 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
         return "⚠️ SHELL_ARG_ERROR: cmd must be a list of strings."
     cmd = [str(x) for x in cmd]
 
+    # Check if we should use RTK for token efficiency
+    use_rtk = _should_use_rtk(cmd)
+
     # Check for protected file modifications (warning only, not blocking)
     prot_warning = _check_shell_for_protected_files(cmd)
     if prot_warning:
@@ -121,6 +124,104 @@ def _run_shell(ctx: ToolContext, cmd, cwd: str = "") -> str:
         if candidate.exists() and candidate.is_dir():
             work_dir = candidate
 
+    if use_rtk:
+        return _run_shell_with_rtk(ctx, cmd, work_dir)
+    else:
+        return _run_shell_direct(ctx, cmd, work_dir)
+
+
+def _should_use_rtk(cmd: list[str]) -> bool:
+    """Determine if RTK should be used for this command."""
+    if not cmd:
+        return False
+
+    # Commands that benefit from RTK token optimization
+    rtk_commands = {
+        "git",
+        "ls",
+        "find",
+        "grep",
+        "rg",
+        "cat",
+        "head",
+        "tail",
+        "cargo",
+        "npm",
+        "pip",
+        "python",
+        "pytest",
+        "go",
+        "rustc",
+        "docker",
+        "kubectl",
+        "helm",
+        "aws",
+        "gcloud",
+        "az",
+        "tsc",
+        "eslint",
+        "prettier",
+        "ruff",
+        "flake8",
+        "mypy",
+        "bundle",
+        "rake",
+        "rails",
+        "dotnet",
+        "dotnet.exe",
+        "make",
+        "cmake",
+        "makefile",
+        "gradle",
+        "maven",
+        "gh",
+        "hub",  # GitHub CLI
+    }
+
+    base_cmd = cmd[0].lower()
+    # Remove common prefixes like './' or paths
+    if "/" in base_cmd or "\\" in base_cmd:
+        base_cmd = base_cmd.split("/")[-1].split("\\")[-1]
+
+    # Check if it's a known RTK-optimizable command
+    if base_cmd in rtk_commands:
+        return True
+
+    # Also check for common file operations that benefit from RTK
+    file_ops = {"ls", "dir", "find", "locate", "which", "whereis"}
+    if base_cmd in file_ops:
+        return True
+
+    return False
+
+
+def _run_shell_with_rtk(ctx: ToolContext, cmd: list[str], work_dir: pathlib.Path) -> str:
+    """Run shell command through RTK for token-efficient output."""
+    try:
+        # Import RTK wrapper function
+        from ouroboros.tools.rtk_wrapper import _run_rtk_command
+
+        # Extract base command and args
+        base_cmd = cmd[0]
+        args = cmd[1:] if len(cmd) > 1 else []
+
+        # Run through RTK
+        result = _run_rtk_command(ctx, base_cmd, args, timeout=120)
+
+        # Add RTK prefix to indicate token optimization was used
+        return f"[RTK-OPTIMIZED]\n{result}"
+
+    except ImportError:
+        # Fallback to direct execution if RTK wrapper not available
+        log.warning("RTK wrapper not available, falling back to direct execution")
+        return _run_shell_direct(ctx, cmd, work_dir)
+    except Exception as e:
+        log.error(f"RTK execution failed: {e}, falling back to direct execution")
+        return _run_shell_direct(ctx, cmd, work_dir)
+
+
+def _run_shell_direct(ctx: ToolContext, cmd: list[str], work_dir: pathlib.Path) -> str:
+    """Run shell command directly (original implementation)."""
     try:
         res = subprocess.run(
             cmd,
