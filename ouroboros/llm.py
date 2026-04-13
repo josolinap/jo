@@ -105,6 +105,75 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
         return {}
 
 
+class NvidiaLLMClient:
+    """NVIDIA NIM API wrapper."""
+
+    def __init__(self):
+        self._api_key = os.environ.get("NVIDIA_API_KEY", "")
+        self._base_url = os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+        self._default_model = os.environ.get("OUROBOROS_MODEL", "google/gemma-4-31b-it")
+        self._client = None
+
+    def _get_client(self):
+        if self._client is None:
+            from openai import OpenAI
+
+            self._client = OpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key,
+            )
+        return self._client
+
+    def default_model(self) -> str:
+        return self._default_model
+
+    def available_models(self) -> List[str]:
+        return [self._default_model]
+
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        client = self._get_client()
+
+        extra_body: Dict[str, Any] = {
+            "stream": False,
+        }
+
+        if "gemma" in model.lower():
+            extra_body["chat_template_kwargs"] = {"enable_thinking": True}
+
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "extra_body": extra_body,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = tool_choice
+
+        try:
+            resp = client.chat.completions.create(**kwargs)
+        except Exception as e:
+            log.warning(f"NvidiaLLMClient chat failed: {e}")
+            raise
+
+        resp_dict = resp.model_dump()
+        usage = resp_dict.get("usage") or {}
+        choices = resp_dict.get("choices") or [{}]
+        msg = (choices[0] if choices else {}).get("message") or {}
+
+        usage["cost"] = 0.0
+
+        return msg, usage
+
+
 class LocalLLMClient:
     """Local Ollama/vLLM API wrapper. Compatible with OpenAI API format."""
 
@@ -178,7 +247,7 @@ class LocalLLMClient:
 
 
 class LLMClient:
-    """LLM client with provider support (OpenRouter or local vLLM)."""
+    """LLM client with provider support (OpenRouter, NVIDIA NIM, or local vLLM)."""
 
     def __init__(
         self,
@@ -190,8 +259,15 @@ class LLMClient:
         if provider == "local":
             self._impl = LocalLLMClient()
             self._is_local = True
-            # Initialize OpenRouter attributes for fallback
+            self._is_nvidia = False
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
+            self._base_url = base_url
+            self._client = None
+        elif provider == "nvidia":
+            self._impl = NvidiaLLMClient()
+            self._is_local = True
+            self._is_nvidia = True
+            self._api_key = api_key or os.environ.get("NVIDIA_API_KEY", "")
             self._base_url = base_url
             self._client = None
         else:
@@ -199,6 +275,7 @@ class LLMClient:
             self._base_url = base_url
             self._client = None
             self._is_local = False
+            self._is_nvidia = False
 
     def _get_client(self):
         if self._client is None:
@@ -249,6 +326,9 @@ class LLMClient:
         tool_choice: str = "auto",
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
+        if getattr(self, "_is_nvidia", False):
+            return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
         if self._is_local:
             # Auto-detect: Is this an OpenRouter model that needs cloud API?
             model_lower = model.lower()
@@ -290,8 +370,17 @@ class LLMClient:
                 raise ValueError("OpenRouter returned an empty response")
 
             return msg, usage
-        except Exception:
-            raise  # Re-raise — no fallback provider
+        except Exception as e:
+            # Fallback to NVIDIA if available
+            nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
+            if nvidia_key:
+                log.warning(f"OpenRouter failed ({e}), falling back to NVIDIA NIM")
+                try:
+                    nvidia_client = NvidiaLLMClient()
+                    return nvidia_client.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                except Exception as nvidia_err:
+                    log.warning(f"NVIDIA fallback also failed: {nvidia_err}")
+            raise  # Re-raise if no NVIDIA fallback
 
     def _chat_openrouter(
         self,
