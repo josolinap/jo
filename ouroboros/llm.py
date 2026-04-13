@@ -377,7 +377,9 @@ class LLMClient:
                 log.warning(f"OpenRouter failed ({e}), falling back to NVIDIA NIM")
                 try:
                     nvidia_client = NvidiaLLMClient()
-                    return nvidia_client.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                    # OpenRouter model IDs will fail on NVIDIA, so use a dedicated fallback model or a safe default.
+                    nvidia_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "meta/llama-3.1-70b-instruct")
+                    return nvidia_client.chat(messages, nvidia_model, tools, reasoning_effort, max_tokens, tool_choice)
                 except Exception as nvidia_err:
                     log.warning(f"NVIDIA fallback also failed: {nvidia_err}")
             raise  # Re-raise if no NVIDIA fallback
