@@ -152,6 +152,8 @@ class NvidiaLLMClient:
             "model": model,
             "messages": messages,
             "max_tokens": max_tokens,
+            "temperature": 1.0,
+            "top_p": 0.95,
             "extra_body": extra_body,
         }
         if tools:
@@ -385,7 +387,7 @@ class LLMClient:
                     # Initialize a fresh client for the fallback
                     nvidia_client = NvidiaLLMClient()
                     # Use fallback model as OpenRouter IDs won't work on NVIDIA
-                    fallback_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "meta/llama-3.1-70b-instruct")
+                    fallback_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "google/gemma-4-31b-it")
                     return nvidia_client.chat(messages, fallback_model, tools, reasoning_effort, max_tokens, tool_choice)
                 except Exception as nvidia_err:
                     log.warning(f"NVIDIA fallback also failed: {nvidia_err}")
