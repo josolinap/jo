@@ -331,7 +331,6 @@ class LLMClient:
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
         # 2. Local provider check
-        attempt_openrouter = True
         if getattr(self, "_is_local", False):
             model_lower = model.lower()
             is_cloud = (
