@@ -113,6 +113,7 @@ class NvidiaLLMClient:
         self._base_url = os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
         self._default_model = os.environ.get("OUROBOROS_MODEL", "google/gemma-4-31b-it")
         self._client = None
+        self._cached_models = None
 
     def _get_client(self):
         if self._client is None:
@@ -121,8 +122,46 @@ class NvidiaLLMClient:
             self._client = OpenAI(
                 base_url=self._base_url,
                 api_key=self._api_key,
+                timeout=30.0,
+                max_retries=0,
             )
         return self._client
+
+    def _fetch_available_models(self) -> List[str]:
+        if self._cached_models:
+            return self._cached_models
+
+        try:
+            import requests
+            resp = requests.get(
+                "https://integrate.api.nvidia.com/v1/models",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                timeout=10.0
+            )
+            resp.raise_for_status()
+            models = [m["id"] for m in resp.json().get("data", [])]
+
+            preferred = [
+                "meta/llama-3.1-8b-instruct",
+                "google/gemma-3-27b-it",
+                "deepseek-ai/deepseek-r1-distill-llama-8b",
+                "meta/llama-3.1-70b-instruct"
+            ]
+
+            valid = []
+            for p in preferred:
+                if p in models:
+                    valid.append(p)
+            for m in models:
+                if m not in valid and ("llama" in m.lower() or "gemma" in m.lower() or "mixtral" in m.lower()):
+                    valid.append(m)
+
+            self._cached_models = valid if valid else models
+            return self._cached_models
+        except Exception as e:
+            log.warning(f"Failed to dynamically fetch NVIDIA models: {e}")
+            env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "google/gemma-4-31b-it")
+            return [env_fallback, "meta/llama-3.1-8b-instruct", "google/gemma-3-27b-it"]
 
     def default_model(self) -> str:
         return self._default_model
@@ -386,11 +425,35 @@ class LLMClient:
                 try:
                     # Initialize a fresh client for the fallback
                     nvidia_client = NvidiaLLMClient()
-                    # Use fallback model as OpenRouter IDs won't work on NVIDIA
-                    fallback_model = os.environ.get("NVIDIA_FALLBACK_MODEL", "google/gemma-4-31b-it")
-                    return nvidia_client.chat(messages, fallback_model, tools, reasoning_effort, max_tokens, tool_choice)
+                    
+                    env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
+                    available_nvidia = nvidia_client._fetch_available_models()
+                    
+                    candidates = []
+                    if env_fallback:
+                        candidates.append(env_fallback)
+                    
+                    for m in available_nvidia:
+                        if m not in candidates:
+                            candidates.append(m)
+                            
+                    # Try up to 3 candidates sequentially
+                    candidates = candidates[:3]
+                    
+                    last_err = None
+                    for candidate in candidates:
+                        try:
+                            log.info(f"Attempting NVIDIA fallback with model: {candidate}")
+                            return nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                        except Exception as try_err:
+                            log.warning(f"NVIDIA fallback candidate {candidate} failed: {try_err}")
+                            last_err = try_err
+                            
+                    if last_err:
+                        raise last_err
+                        
                 except Exception as nvidia_err:
-                    log.warning(f"NVIDIA fallback also failed: {nvidia_err}")
+                    log.warning(f"NVIDIA fallback process failed entirely: {nvidia_err}")
 
             # If no fallback or fallback failed, re-raise original error
             raise
