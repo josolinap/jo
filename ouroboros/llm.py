@@ -1,20 +1,46 @@
 """
 Ouroboros — LLM client.
 
-The only module that communicates with the LLM API (OpenRouter).
+The only module that communicates with LLM APIs (OpenRouter, NVIDIA NIM, local).
 Contract: chat(), default_model(), available_models(), add_usage().
+
+Features inspired by free-claude-code:
+- Multi-provider fallback chain (OpenRouter -> NVIDIA -> Local)
+- Model routing by task type (reasoning, coding, light)
+- Retry with downgrading on 400 errors
+- Thinking token support
+- Request optimization (trivial calls handled locally)
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
 DEFAULT_LIGHT_MODEL = "openrouter/free"
+
+REASONING_PATTERNS = ("deepseek-r1", "gemma-4", "gemma-3-27b", "llama-3.1-70b", "phi-4", "nemotron", "reasoning")
+CODING_PATTERNS = ("coder", "code", "starcoder", "deepseek-coder")
+LIGHT_PATTERNS = ("llama-3.2", "llama-3.3", "gemma-2-2b", "gemma-2-9b", "phi-3-mini", "phi-3-small", "qwen-")
+
+TRIVIAL_PATTERNS = (
+    r"^hi$",
+    r"^hello$",
+    r"^hey$",
+    r"^ok$",
+    r"^yes$",
+    r"^no$",
+    r"^thanks?$",
+    r"^thank you$",
+    r"^how are you\??$",
+    r"^what time is it\??$",
+    r"^date\??$",
+)
 
 
 def normalize_reasoning_effort(value: str, default: str = "medium") -> str:
@@ -26,6 +52,57 @@ def normalize_reasoning_effort(value: str, default: str = "medium") -> str:
 def reasoning_rank(value: str) -> int:
     order = {"none": 0, "minimal": 1, "low": 2, "medium": 3, "high": 4, "xhigh": 5}
     return int(order.get(str(value or "").strip().lower(), 3))
+
+
+def is_trivial_request(messages: List[Dict[str, Any]]) -> bool:
+    """Check if request is trivial (greeting, thanks, etc.) - can be handled locally."""
+    if not messages:
+        return False
+    last_msg = messages[-1]
+    content = last_msg.get("content", "")
+    if not content or not isinstance(content, str):
+        return False
+    content = content.strip().lower()
+    for pattern in TRIVIAL_PATTERNS:
+        if re.match(pattern, content):
+            return True
+    return False
+
+
+def get_task_type(model: str, reasoning_effort: str = "medium") -> str:
+    """Determine task type based on model name and reasoning effort."""
+    model_lower = model.lower()
+    if reasoning_effort in ("high", "xhigh"):
+        return "reasoning"
+    if any(x in model_lower for x in REASONING_PATTERNS):
+        return "reasoning"
+    if any(x in model_lower for x in CODING_PATTERNS):
+        return "coding"
+    if any(x in model_lower for x in LIGHT_PATTERNS):
+        return "light"
+    return "general"
+
+
+def get_trivial_response(content: str) -> str:
+    """Generate response for trivial requests without API call."""
+    content = content.strip().lower()
+    responses = {
+        "hi": "Hi! How can I help you today?",
+        "hello": "Hello! What would you like me to help with?",
+        "hey": "Hey! Ready to work on some code?",
+        "ok": "Got it! What's next?",
+        "yes": "Great! What would you like to do?",
+        "no": "No problem. Let me know if you change your mind.",
+        "thanks": "You're welcome! Anything else?",
+        "thank you": "You're welcome! Happy to help.",
+        "how are you?": "I'm doing well, thanks for asking! Ready to code.",
+        "what time is it?": "I don't have access to the current time, but I'm always ready to help!",
+        "date?": "I don't have access to the current date, but I'm ready to work on your code!",
+    }
+    for pattern, response in responses.items():
+        if re.match(pattern, content):
+            return response
+    return "Got it! What would you like me to do?"
 
 
 def add_usage(total: Dict[str, Any], usage: Dict[str, Any]) -> None:
@@ -491,8 +568,18 @@ class LLMClient:
         reasoning_effort: str = "medium",
         max_tokens: int = 16384,
         tool_choice: str = "auto",
+        _skip_trivial: bool = False,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """Single LLM call. Returns: (response_message_dict, usage_dict with cost)."""
+        """Single LLM call with multi-provider fallback chain.
+        
+        Provider chain: OpenRouter -> NVIDIA NIM -> Local Ollama
+        """
+        # Handle trivial requests locally to save API quota
+        if not _skip_trivial and is_trivial_request(messages):
+            content = messages[-1].get("content", "")
+            response = get_trivial_response(content)
+            return {"content": response}, {"cost": 0.0, "prompt_tokens": 0, "completion_tokens": 3, "total_tokens": 3}
+
         # 1. Designated NVIDIA provider
         if getattr(self, "_is_nvidia", False):
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
@@ -523,66 +610,92 @@ class LLMClient:
             )
 
             if not is_cloud:
-                # Use local model directly, no fallback
                 return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
-            # Else: it's a cloud model requested in local mode, attempt OpenRouter with fallback
 
-        # 3. OpenRouter execution with NVIDIA fallback
-        try:
-            # Check for missing key upfront to trigger fallback faster
-            if not self._api_key or not self._api_key.strip():
-                raise ValueError("OPENROUTER_API_KEY is missing or empty")
+        # 3. OpenRouter execution with fallback chain
+        for provider_attempt in range(3):
+            try:
+                if not self._api_key or not self._api_key.strip():
+                    raise ValueError("OPENROUTER_API_KEY is missing or empty")
 
-            msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-            # Detect empty response
-            tool_calls = msg.get("tool_calls") or []
-            content = msg.get("content")
-            if not tool_calls and (not content or not content.strip()):
-                raise ValueError("OpenRouter returned an empty response")
+                tool_calls = msg.get("tool_calls") or []
+                content = msg.get("content")
+                if not tool_calls and (not content or not content.strip()):
+                    raise ValueError("OpenRouter returned an empty response")
 
-            return msg, usage
+                return msg, usage
 
-        except Exception as e:
-            nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
-            if nvidia_key:
-                log.warning(f"OpenRouter attempt failed ({e}), falling back to NVIDIA NIM")
-                try:
-                    nvidia_client = NvidiaLLMClient()
-                    nvidia_client._fetch_available_models()
+            except Exception as e:
+                err_str = str(e)
+                is_rate_limited = "429" in err_str or "rate_limit" in err_str.lower()
+                is_auth_error = "401" in err_str or "403" in err_str or "authentication" in err_str.lower()
+                is_missing_key = "missing" in err_str.lower() or "empty" in err_str.lower()
+                
+                # Don't retry auth errors or missing key - fall back to next provider
+                if is_auth_error or is_missing_key or provider_attempt >= 2:
+                    pass  # Continue to fallback
+                elif is_rate_limited:
+                    log.warning(f"OpenRouter rate limited, waiting before retry...")
+                    time.sleep(5 * (provider_attempt + 1))
+                    continue
+                else:
+                    pass  # Continue to fallback
 
-                    task_type = "reasoning" if reasoning_effort in ("high", "xhigh") else "light"
-                    
-                    candidates = []
-                    env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
-                    if env_fallback:
-                        candidates.append(env_fallback)
-                    
-                    task_models = nvidia_client.get_models_for_task(task_type)
-                    for m in task_models:
-                        if m not in candidates:
-                            candidates.append(m)
-                    
-                    candidates = candidates[:5]
-                    last_err = None
-                    for candidate in candidates:
-                        try:
-                            log.info(f"Attempting NVIDIA fallback with model: {candidate}")
-                            msg, usage = nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
-                            nvidia_client.mark_model_success(candidate)
-                            return msg, usage
-                        except Exception as try_err:
-                            log.warning(f"NVIDIA fallback candidate {candidate} failed: {try_err}")
-                            nvidia_client.mark_model_failure(candidate)
-                            last_err = try_err
+                # Fallback to NVIDIA NIM
+                nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
+                if nvidia_key and provider_attempt < 2:
+                    log.warning(f"OpenRouter failed ({e}), falling back to NVIDIA NIM")
+                    try:
+                        nvidia_client = NvidiaLLMClient()
+                        nvidia_client._fetch_available_models()
 
-                    if last_err:
-                        raise last_err
+                        task_type = get_task_type(model, reasoning_effort)
+                        
+                        candidates = []
+                        env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
+                        if env_fallback:
+                            candidates.append(env_fallback)
+                        
+                        task_models = nvidia_client.get_models_for_task(task_type)
+                        for m in task_models:
+                            if m not in candidates:
+                                candidates.append(m)
+                        
+                        candidates = candidates[:5]
+                        last_err = None
+                        for candidate in candidates:
+                            try:
+                                log.info(f"Att NVIDIA fallback: {candidate}")
+                                msg, usage = nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                                nvidia_client.mark_model_success(candidate)
+                                return msg, usage
+                            except Exception as try_err:
+                                log.warning(f"NVIDIA {candidate} failed: {try_err}")
+                                nvidia_client.mark_model_failure(candidate)
+                                last_err = try_err
 
-                except Exception as nvidia_err:
-                    log.warning(f"NVIDIA fallback process failed entirely: {nvidia_err}")
+                        if last_err:
+                            log.warning(f"All NVIDIA candidates failed, continuing...")
 
-            raise
+                    except Exception as nvidia_err:
+                        log.warning(f"NVIDIA fallback failed: {nvidia_err}")
+
+                # Fallback to local Ollama
+                local_key = os.environ.get("LOCAL_API_KEY", "")
+                if local_key or os.environ.get("LOCAL_BASE_URL"):
+                    log.warning(f"Trying local Ollama...")
+                    try:
+                        local_client = LocalLLMClient()
+                        return local_client.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                    except Exception as local_err:
+                        log.warning(f"Local Ollama failed: {local_err}")
+
+                # All providers failed
+                raise
+
+        raise ValueError("All providers exhausted")
 
     def _chat_openrouter(
         self,
