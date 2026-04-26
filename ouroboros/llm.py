@@ -106,14 +106,37 @@ def fetch_openrouter_pricing() -> Dict[str, Tuple[float, float, float]]:
 
 
 class NvidiaLLMClient:
-    """NVIDIA NIM API wrapper."""
+    """NVIDIA NIM API wrapper with dynamic model discovery and task routing."""
+
+    REASONING_MODELS = [
+        "deepseek-ai/deepseek-r1-distill-llama-8b",
+        "google/gemma-4-31b-it",
+        "meta/llama-3.1-70b-instruct",
+    ]
+
+    CODING_MODELS = [
+        "deepseek-ai/deepseek-coder-33b-instruct",
+        "meta/llama-3.1-8b-instruct",
+        "google/gemma-3-27b-it",
+    ]
+
+    LIGHT_MODELS = [
+        "meta/llama-3.2-1b-instruct",
+        "meta/llama-3.2-3b-instruct",
+        "google/gemma-2-2b-it",
+        "phi-3-mini-instruct",
+    ]
 
     def __init__(self):
         self._api_key = os.environ.get("NVIDIA_API_KEY", "")
         self._base_url = os.environ.get("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
-        self._default_model = os.environ.get("OUROBOROS_MODEL", "google/gemma-4-31b-it")
+        self._default_model = os.environ.get("NVIDIA_MODEL", "meta/llama-3.1-8b-instruct")
         self._client = None
-        self._cached_models = None
+        self._cached_models: Optional[List[str]] = None
+        self._last_refresh = 0.0
+        self._refresh_interval = 3600.0
+        self._model_failure_count: Dict[str, int] = {}
+        self._current_model_index = 0
 
     def _get_client(self):
         if self._client is None:
@@ -127,47 +150,144 @@ class NvidiaLLMClient:
             )
         return self._client
 
-    def _fetch_available_models(self) -> List[str]:
-        if self._cached_models:
-            return self._cached_models
+    def _fetch_available_models(self, force: bool = False) -> List[str]:
+        if self._cached_models and not force:
+            age = time.time() - self._last_refresh
+            if age < self._refresh_interval:
+                return self._cached_models
 
         try:
             import requests
+
             resp = requests.get(
                 "https://integrate.api.nvidia.com/v1/models",
                 headers={"Authorization": f"Bearer {self._api_key}"},
-                timeout=10.0
+                timeout=10.0,
             )
             resp.raise_for_status()
-            models = [m["id"] for m in resp.json().get("data", [])]
+            all_models = [m["id"] for m in resp.json().get("data", [])]
 
-            preferred = [
-                "meta/llama-3.1-8b-instruct",
-                "google/gemma-3-27b-it",
-                "deepseek-ai/deepseek-r1-distill-llama-8b",
-                "meta/llama-3.1-70b-instruct"
-            ]
+            categories = {
+                "reasoning": [],
+                "coding": [],
+                "light": [],
+                "other": [],
+            }
 
-            valid = []
-            for p in preferred:
-                if p in models:
-                    valid.append(p)
-            for m in models:
-                if m not in valid and ("llama" in m.lower() or "gemma" in m.lower() or "mixtral" in m.lower()):
-                    valid.append(m)
+            for m in all_models:
+                m_lower = m.lower()
+                if any(
+                    x in m_lower
+                    for x in [
+                        "deepseek-r1",
+                        "deepseekreasoning",
+                        "r1",
+                        "gemma-4",
+                        "gemma-3-27b",
+                        "llama-3.1-70b",
+                        "phi-4",
+                        "nemotron",
+                    ]
+                ):
+                    categories["reasoning"].append(m)
+                elif any(x in m_lower for x in ["coder", "code", "starcoder"]):
+                    categories["coding"].append(m)
+                elif any(
+                    x in m_lower
+                    for x in [
+                        "llama-3.2-1b",
+                        "llama-3.2-3b",
+                        "llama-3.3-70b",
+                        "llama-3.1-8b",
+                        "gemma-2-2b",
+                        "gemma-2-9b",
+                        "gemma-3-4b",
+                        "phi-3-mini",
+                        "phi-3-small",
+                        "phi-4-mini",
+                        "mistral-nemo",
+                        "qwen-",
+                    ]
+                ):
+                    categories["light"].append(m)
+                else:
+                    categories["other"].append(m)
 
-            self._cached_models = valid if valid else models
-            return self._cached_models
+            self._cached_models = all_models
+            self._model_categories = categories
+            self._last_refresh = time.time()
+            log.info(
+                f"Fetched {len(all_models)} NVIDIA models: "
+                f"{len(categories['reasoning'])} reasoning, "
+                f"{len(categories['coding'])} coding, "
+                f"{len(categories['light'])} light"
+            )
+            return all_models
+
         except Exception as e:
             log.warning(f"Failed to dynamically fetch NVIDIA models: {e}")
-            env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "google/gemma-4-31b-it")
-            return [env_fallback, "meta/llama-3.1-8b-instruct", "google/gemma-3-27b-it"]
+            return self._get_fallback_models()
+
+    def _get_fallback_models(self) -> List[str]:
+        env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
+        fallbacks = []
+        if env_fallback:
+            fallbacks.append(env_fallback)
+        fallbacks.extend(self.LIGHT_MODELS[:2])
+        return fallbacks
+
+    def get_models_for_task(self, task_type: str = "general") -> List[str]:
+        """Return best models for a given task type."""
+        self._fetch_available_models()
+        categories = getattr(self, "_model_categories", {})
+
+        if task_type == "reasoning":
+            return categories.get("reasoning", [])[:5] or self.REASONING_MODELS
+        if task_type == "coding":
+            return categories.get("coding", [])[:3] or self.CODING_MODELS
+        if task_type == "light":
+            return categories.get("light", [])[:5] or self.LIGHT_MODELS
+        return categories.get("light", [])[:3] or self.LIGHT_MODELS
+
+    def select_model_for_task(self, task_type: str = "general") -> str:
+        """Select the best model for a task with rotation to handle rate limits."""
+        candidates = self.get_models_for_task(task_type)
+
+        failed_threshold = 3
+        available = [
+            m
+            for m in candidates
+            if self._model_failure_count.get(m, 0) < failed_threshold
+        ]
+        if not available:
+            available = candidates[:1]
+            for m in available:
+                self._model_failure_count[m] = 0
+
+        idx = self._current_model_index % len(available)
+        selected = available[idx]
+        self._current_model_index += 1
+        return selected
+
+    def mark_model_success(self, model: str) -> None:
+        """Mark a model as successful (reset failure count)."""
+        self._model_failure_count[model] = 0
+
+    def mark_model_failure(self, model: str) -> None:
+        """Mark a model as failed (increment failure count)."""
+        self._model_failure_count[model] = self._model_failure_count.get(model, 0) + 1
+        if self._model_failure_count[model] >= 3:
+            log.warning(f"Model {model} marked as failing (3+ failures)")
+
+    def refresh_models(self) -> None:
+        """Force refresh the model list."""
+        self._fetch_available_models(force=True)
 
     def default_model(self) -> str:
-        return self._default_model
+        return self.select_model_for_task("general")
 
     def available_models(self) -> List[str]:
-        return [self._default_model]
+        return self.get_models_for_task("light")[:5]
 
     def chat(
         self,
@@ -418,44 +538,44 @@ class LLMClient:
             return msg, usage
 
         except Exception as e:
-            # Fallback to NVIDIA if available and we haven't already tried it as primary
             nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
             if nvidia_key:
                 log.warning(f"OpenRouter attempt failed ({e}), falling back to NVIDIA NIM")
                 try:
-                    # Initialize a fresh client for the fallback
                     nvidia_client = NvidiaLLMClient()
-                    
-                    env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
-                    available_nvidia = nvidia_client._fetch_available_models()
+                    nvidia_client._fetch_available_models()
+
+                    task_type = "reasoning" if reasoning_effort in ("high", "xhigh") else "light"
                     
                     candidates = []
+                    env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
                     if env_fallback:
                         candidates.append(env_fallback)
                     
-                    for m in available_nvidia:
+                    task_models = nvidia_client.get_models_for_task(task_type)
+                    for m in task_models:
                         if m not in candidates:
                             candidates.append(m)
-                            
-                    # Try up to 3 candidates sequentially
-                    candidates = candidates[:3]
                     
+                    candidates = candidates[:5]
                     last_err = None
                     for candidate in candidates:
                         try:
                             log.info(f"Attempting NVIDIA fallback with model: {candidate}")
-                            return nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                            msg, usage = nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                            nvidia_client.mark_model_success(candidate)
+                            return msg, usage
                         except Exception as try_err:
                             log.warning(f"NVIDIA fallback candidate {candidate} failed: {try_err}")
+                            nvidia_client.mark_model_failure(candidate)
                             last_err = try_err
-                            
+
                     if last_err:
                         raise last_err
-                        
+
                 except Exception as nvidia_err:
                     log.warning(f"NVIDIA fallback process failed entirely: {nvidia_err}")
 
-            # If no fallback or fallback failed, re-raise original error
             raise
 
     def _chat_openrouter(
