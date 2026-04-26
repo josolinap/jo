@@ -304,7 +304,7 @@ class NvidiaLLMClient:
             "stream": False,
         }
 
-        if "gemma" in model.lower():
+        if "gemma" in model.lower() and "4" in model:
             extra_body["chat_template_kwargs"] = {"enable_thinking": True}
 
         kwargs: Dict[str, Any] = {
@@ -322,8 +322,14 @@ class NvidiaLLMClient:
         try:
             resp = client.chat.completions.create(**kwargs)
         except Exception as e:
-            log.warning(f"NvidiaLLMClient chat failed: {e}")
-            raise
+            err_str = str(e)
+            if "extra_forbidden" in err_str or "Extra inputs" in err_str:
+                log.warning(f"Model {model} doesn't support extra_body, retrying without...")
+                clean_kwargs = {k: v for k, v in kwargs.items() if k != "extra_body"}
+                resp = client.chat.completions.create(**clean_kwargs)
+            else:
+                log.warning(f"NvidiaLLMClient chat failed: {e}")
+                raise
 
         resp_dict = resp.model_dump()
         usage = resp_dict.get("usage") or {}
