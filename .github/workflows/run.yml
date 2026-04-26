@@ -274,6 +274,9 @@ jobs:
           # --- Owner ID (needed for auto-resume notifications) ---
           TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
 
+          # --- NVIDIA NIM (free 40 req/min fallback) ---
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
           # --- Optional model overrides ---
           OUROBOROS_MODEL: ${{ secrets.OUROBOROS_MODEL || 'openrouter/free' }}
           OUROBOROS_MODEL_CODE: ${{ secrets.OUROBOROS_MODEL_CODE || 'openrouter/free' }}
