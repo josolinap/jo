@@ -1,0 +1,26 @@
+{
+  "entries": {
+    "978feade077d": {
+      "title": "Memory: Never run `rm -rf /` or similar destructive comman",
+      "category": "memories",
+      "file": "memory--never-run--rm--rf----or-similar-destructive-comman-20260509.md",
+      "source": "memory_extractor",
+      "created": "2026-05-09T20:31:41.236953"
+    },
+    "364fcb67b355": {
+      "title": "Memory: Always check `git status` before committing.",
+      "category": "memories",
+      "file": "memory--always-check--git-status--before-committing--20260509.md",
+      "source": "memory_extractor",
+      "created": "2026-05-09T20:31:41.237292"
+    },
+    "e2089671f949": {
+      "title": "Memory: Always refer to yourself as Jo, the autonomous age",
+      "category": "memories",
+      "file": "memory--always-refer-to-yourself-as-jo--the-autonomous-age-20260509.md",
+      "source": "memory_extractor",
+      "created": "2026-05-09T20:31:41.237653"
+    }
+  },
+  "last_cleanup": ""
+}
