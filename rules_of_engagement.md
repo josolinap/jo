@@ -1,0 +1,1 @@
+Never run `rm -rf /` or similar destructive commands on host without explicit confirmation in thought.
