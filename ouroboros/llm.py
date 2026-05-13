@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
-DEFAULT_LIGHT_MODEL = "openrouter/free"
+"openrouter/free"
 
 REASONING_PATTERNS = ("deepseek-r1", "gemma-4", "gemma-3-27b", "llama-3.1-70b", "phi-4", "nemotron", "reasoning")
 CODING_PATTERNS = ("coder", "code", "starcoder", "deepseek-coder")
