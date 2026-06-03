@@ -526,6 +526,34 @@ class OuroborosAgent:
                 pipeline.run_diagnose(pipeline_ctx)
                 pipeline.run_plan(pipeline_ctx)
 
+            # --- Orchestrator: classification + parallel reasoning + deliberation ---
+            orchestrator_result = None
+            use_orchestrator = os.environ.get("OUROBOROS_USE_ORCHESTRATOR", "0") == "1"
+            if use_orchestrator:
+                try:
+                    from ouroboros.orchestrator import get_orchestrator
+
+                    orchestrator = get_orchestrator(llm_chat_fn=self.llm.chat)
+                    orchestrator_result = orchestrator.process_complex_task(
+                        task_text=task_text,
+                        force_parallel=task.get("type") in ("evolution", "review"),
+                    )
+                    log.info(
+                        f"[Orchestrator] Task classified: {orchestrator_result.task_type}, "
+                        f"parallel={orchestrator_result.parallel_used} ({orchestrator_result.parallel_count} paths), "
+                        f"deliberation confidence={orchestrator_result.deliberation_confidence:.2f}"
+                    )
+                    # Inject deliberation consensus into messages
+                    if orchestrator_result.consensus:
+                        messages.append(
+                            {
+                                "role": "system",
+                                "content": f"[Parallel Deliberation]\n{orchestrator_result.consensus}",
+                            }
+                        )
+                except Exception:
+                    log.debug("Orchestrator execution failed", exc_info=True)
+
             # --- Semantic tool routing (from RuVector SONA) ---
             try:
                 from ouroboros.tool_router import classify_task
@@ -599,13 +627,11 @@ class OuroborosAgent:
             synth_report = synthesize_task(task_text, text, changed_files, self.env.repo_dir)
             eval_report = evaluate_task(task_text, text, changed_files, self.env.repo_dir)
 
-            if synth_report or eval_report:
-                parts = [text]
-                if eval_report:
-                    parts.append(eval_report)
-                if synth_report:
-                    parts.append(synth_report)
-                text = "\n\n".join(parts)
+            # Store reports in llm_trace only (for logs/telemetry) — never append to user-facing text
+            if synth_report:
+                llm_trace["synthesis_report"] = synth_report
+            if eval_report:
+                llm_trace["eval_report"] = eval_report
 
             # Emit events for supervisor
             self._emit_task_results(task, text, usage, llm_trace, start_time, drive_logs)

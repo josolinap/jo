@@ -624,4 +624,11 @@ def build_health_invariants(env: Any) -> str:
 
     if not checks:
         return ""
-    return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in checks)
+
+    # Filter: only show warnings and criticals for user-facing prompts
+    # "OK:" entries are internal noise that distracts the LLM
+    non_ok = [c for c in checks if not c.startswith("OK:")]
+    if not non_ok:
+        return ""
+
+    return "## Health Invariants\n\n" + "\n".join(f"- {c}" for c in non_ok)

@@ -479,8 +479,8 @@ class DoublewordLLMClient:
             self._client = OpenAI(
                 base_url=self._base_url,
                 api_key=self._api_key,
-                timeout=30.0,
-                max_retries=0,
+                timeout=60.0,
+                max_retries=1,
             )
         return self._client
 
@@ -496,7 +496,7 @@ class DoublewordLLMClient:
             resp = requests.get(
                 f"{self._base_url.rstrip('/')}/models",
                 headers={"Authorization": f"Bearer {self._api_key}"},
-                timeout=15.0,
+                timeout=30.0,
             )
             resp.raise_for_status()
             all_models = [m["id"] for m in resp.json().get("data", [])]
