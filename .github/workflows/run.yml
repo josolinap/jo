@@ -274,13 +274,16 @@ jobs:
           # --- Owner ID (needed for auto-resume notifications) ---
           TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
 
+          # --- Doubleword.ai (efficient model pool fallback) ---
+          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
+
           # --- NVIDIA NIM (free 40 req/min fallback) ---
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
           # --- Optional model overrides ---
-          OUROBOROS_MODEL: ${{ secrets.OUROBOROS_MODEL || 'openrouter/free' }}
-          OUROBOROS_MODEL_CODE: ${{ secrets.OUROBOROS_MODEL_CODE || 'openrouter/free' }}
-          OUROBOROS_MODEL_LIGHT: ${{ secrets.OUROBOROS_MODEL_LIGHT || 'openrouter/free' }}
+          OUROBOROS_MODEL: ${{ secrets.OUROBOROS_MODEL || 'google/gemini-2.0-flash-exp:free' }}
+          OUROBOROS_MODEL_CODE: ${{ secrets.OUROBOROS_MODEL_CODE || 'qwen/qwen-2.5-coder-32b-instruct:free' }}
+          OUROBOROS_MODEL_LIGHT: ${{ secrets.OUROBOROS_MODEL_LIGHT || 'meta-llama/llama-3.3-70b-instruct:free' }}
 
           # --- Behavior flags ---
           # Skip git-sync: the runner already has the code checked out
@@ -316,6 +319,12 @@ jobs:
           OUROBOROS_BG_BUDGET_PCT: "30"
           # Enable health auto-fix (version sync, stale identity, uncommitted)
           AUTO_FIX_ENABLED: "0"
+
+          # Deterministic mode: disables spice, temporal learning, model fallback,
+          # self-reflection, memory extraction, and forces temperature=0.
+          # Pin models above (OUROBOROS_MODEL/*_CODE/*_LIGHT) to specific free models.
+          OUROBOROS_DETERMINISTIC: "1"
+          OUROBOROS_LLM_TEMPERATURE: "0"
 
           # Playwright in headless server environment
           PLAYWRIGHT_BROWSERS_PATH: /tmp/ms-playwright

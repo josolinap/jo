@@ -22,7 +22,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
-"openrouter/free"
+# Deterministic mode: disables all variable features (spice, learning, fallback, etc.)
+_DETERMINISTIC = os.environ.get("OUROBOROS_DETERMINISTIC", "0") == "1"
+
+# LLM temperature: lower = more deterministic. 0 = fully deterministic (same prompt = same output)
+_LLM_TEMPERATURE = float(os.environ.get("OUROBOROS_LLM_TEMPERATURE", "0.0" if _DETERMINISTIC else "0.7"))
+
+DEFAULT_LIGHT_MODEL = "google/gemini-2.0-flash-exp:free"
 
 REASONING_PATTERNS = ("deepseek-r1", "gemma-4", "gemma-3-27b", "llama-3.1-70b", "phi-4", "nemotron", "reasoning")
 CODING_PATTERNS = ("coder", "code", "starcoder", "deepseek-coder")
@@ -388,8 +394,7 @@ class NvidiaLLMClient:
             "model": model,
             "messages": messages,
             "max_tokens": max_tokens,
-            "temperature": 1.0,
-            "top_p": 0.95,
+            "temperature": _LLM_TEMPERATURE,
             "extra_body": extra_body,
         }
         if tools:
@@ -415,6 +420,182 @@ class NvidiaLLMClient:
 
         usage["cost"] = 0.0
 
+        return msg, usage
+
+
+class DoublewordLLMClient:
+    """Doubleword.ai API wrapper — OpenAI-compatible, efficient model pool.
+
+    Provider chain position: OpenRouter -> Doubleword -> NVIDIA -> Local
+    Activated when DOUBLEWORD_API_KEY env var is set.
+
+    Model IDs are case-sensitive — must match exact IDs from GET /v1/models.
+    """
+
+    # Efficient model pool (verified against Doubleword API)
+    REASONING_MODELS = [
+        "deepseek-ai/DeepSeek-V4-Flash",
+        "google/gemma-4-31B-it",
+        "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+        "moonshotai/Kimi-K2.6",
+    ]
+
+    CODING_MODELS = [
+        "Qwen/Qwen3.5-35B-A3B-FP8",
+        "Qwen/Qwen3.6-35B-A3B-FP8",
+        "Qwen/Qwen3.5-9B",
+    ]
+
+    LIGHT_MODELS = [
+        "openai/gpt-oss-20b",
+        "Qwen/Qwen3-14B-FP8",
+        "Qwen/Qwen3.5-4B",
+    ]
+
+    DEFAULT_POOL = [
+        "deepseek-ai/DeepSeek-V4-Flash",
+        "google/gemma-4-31B-it",
+        "openai/gpt-oss-20b",
+        "Qwen/Qwen3.5-35B-A3B-FP8",
+        "Qwen/Qwen3-14B-FP8",
+        "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+    ]
+
+    def __init__(self):
+        self._api_key = os.environ.get("DOUBLEWORD_API_KEY", "")
+        self._base_url = os.environ.get("DOUBLEWORD_BASE_URL", "https://api.doubleword.ai/v1")
+        self._default_model = os.environ.get("DOUBLEWORD_MODEL", "deepseek-ai/DeepSeek-V4-Flash")
+        self._client = None
+        self._cached_models: Optional[List[str]] = None
+        self._last_refresh = 0.0
+        self._refresh_interval = 3600.0
+        self._model_failure_count: Dict[str, int] = {}
+        self._current_model_index = 0
+
+    def _get_client(self):
+        if self._client is None:
+            from openai import OpenAI
+
+            self._client = OpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key,
+                timeout=30.0,
+                max_retries=0,
+            )
+        return self._client
+
+    def _fetch_available_models(self, force: bool = False) -> List[str]:
+        if self._cached_models and not force:
+            age = time.time() - self._last_refresh
+            if age < self._refresh_interval:
+                return self._cached_models
+
+        try:
+            import requests
+
+            resp = requests.get(
+                f"{self._base_url.rstrip('/')}/models",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            all_models = [m["id"] for m in resp.json().get("data", [])]
+
+            categories = {"reasoning": [], "coding": [], "light": [], "other": []}
+
+            for m in all_models:
+                m_lower = m.lower()
+                if any(x in m_lower for x in ["deepseek-v4", "gemma-4", "nemotron", "kimi-k2"]):
+                    categories["reasoning"].append(m)
+                elif any(x in m_lower for x in ["coder", "code", "starcoder"]):
+                    categories["coding"].append(m)
+                elif any(x in m_lower for x in ["gpt-oss", "qwen3.5-4b", "qwen3.5-9b", "qwen3-14b"]):
+                    categories["light"].append(m)
+                else:
+                    categories["other"].append(m)
+
+            self._cached_models = all_models
+            self._model_categories = categories
+            self._last_refresh = time.time()
+            log.info(f"Fetched {len(all_models)} Doubleword models")
+
+            return all_models
+        except Exception as e:
+            log.warning(f"Failed to fetch Doubleword models: {e}")
+            return self.DEFAULT_POOL
+
+    def get_models_for_task(self, task_type: str = "general") -> List[str]:
+        self._fetch_available_models()
+        categories = getattr(self, "_model_categories", {})
+
+        if task_type == "reasoning":
+            return categories.get("reasoning", [])[:5] or self.REASONING_MODELS
+        if task_type == "coding":
+            return categories.get("coding", [])[:3] or self.CODING_MODELS
+        if task_type == "light":
+            return categories.get("light", [])[:5] or self.LIGHT_MODELS
+        return self.DEFAULT_POOL
+
+    def select_model_for_task(self, task_type: str = "general") -> str:
+        candidates = self.get_models_for_task(task_type)
+        failed_threshold = 3
+        available = [m for m in candidates if self._model_failure_count.get(m, 0) < failed_threshold]
+        if not available:
+            available = candidates[:1]
+            for m in available:
+                self._model_failure_count[m] = 0
+        idx = self._current_model_index % len(available)
+        selected = available[idx]
+        self._current_model_index += 1
+        return selected
+
+    def mark_model_success(self, model: str) -> None:
+        self._model_failure_count[model] = 0
+
+    def mark_model_failure(self, model: str) -> None:
+        self._model_failure_count[model] = self._model_failure_count.get(model, 0) + 1
+        if self._model_failure_count[model] >= 3:
+            log.warning(f"Doubleword model {model} marked as failing (3+ failures)")
+
+    def default_model(self) -> str:
+        return self._default_model
+
+    def available_models(self) -> List[str]:
+        return self.DEFAULT_POOL[:5]
+
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        client = self._get_client()
+
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": _LLM_TEMPERATURE,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = tool_choice
+
+        try:
+            resp = client.chat.completions.create(**kwargs)
+        except Exception as e:
+            log.warning(f"DoublewordLLMClient chat failed: {e}")
+            raise
+
+        resp_dict = resp.model_dump()
+        usage = resp_dict.get("usage") or {}
+        choices = resp_dict.get("choices") or [{}]
+        msg = (choices[0] if choices else {}).get("message") or {}
+
+        usage["cost"] = 0.0
         return msg, usage
 
 
@@ -504,6 +685,7 @@ class LLMClient:
             self._impl = LocalLLMClient()
             self._is_local = True
             self._is_nvidia = False
+            self._is_doubleword = False
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
             self._base_url = base_url
             self._client = None
@@ -511,7 +693,16 @@ class LLMClient:
             self._impl = NvidiaLLMClient()
             self._is_local = True
             self._is_nvidia = True
+            self._is_doubleword = False
             self._api_key = api_key or os.environ.get("NVIDIA_API_KEY", "")
+            self._base_url = base_url
+            self._client = None
+        elif provider == "doubleword":
+            self._impl = DoublewordLLMClient()
+            self._is_local = False
+            self._is_nvidia = False
+            self._is_doubleword = True
+            self._api_key = api_key or os.environ.get("DOUBLEWORD_API_KEY", "")
             self._base_url = base_url
             self._client = None
         else:
@@ -520,6 +711,7 @@ class LLMClient:
             self._client = None
             self._is_local = False
             self._is_nvidia = False
+            self._is_doubleword = False
 
     def _get_client(self):
         if self._client is None:
@@ -571,8 +763,8 @@ class LLMClient:
         _skip_trivial: bool = False,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call with multi-provider fallback chain.
-        
-        Provider chain: OpenRouter -> NVIDIA NIM -> Local Ollama
+
+        Provider chain: OpenRouter -> Doubleword.ai -> NVIDIA NIM -> Local Ollama
         """
         # Handle trivial requests locally to save API quota
         if not _skip_trivial and is_trivial_request(messages):
@@ -584,7 +776,11 @@ class LLMClient:
         if getattr(self, "_is_nvidia", False):
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
-        # 2. Local provider check
+        # 2. Designated Doubleword provider
+        if getattr(self, "_is_doubleword", False):
+            return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
+        # 3. Local provider check
         if getattr(self, "_is_local", False):
             model_lower = model.lower()
             is_cloud = (
@@ -618,7 +814,7 @@ class LLMClient:
                 if not self._api_key or not self._api_key.strip():
                     raise ValueError("OPENROUTER_API_KEY is missing or empty")
 
-                msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice, temperature=_LLM_TEMPERATURE)
 
                 tool_calls = msg.get("tool_calls") or []
                 content = msg.get("content")
@@ -632,16 +828,49 @@ class LLMClient:
                 is_rate_limited = "429" in err_str or "rate_limit" in err_str.lower()
                 is_auth_error = "401" in err_str or "403" in err_str or "authentication" in err_str.lower()
                 is_missing_key = "missing" in err_str.lower() or "empty" in err_str.lower()
-                
+
                 # Don't retry auth errors or missing key - fall back to next provider
                 if is_auth_error or is_missing_key or provider_attempt >= 2:
                     pass  # Continue to fallback
                 elif is_rate_limited:
-                    log.warning(f"OpenRouter rate limited, waiting before retry...")
+                    log.warning("OpenRouter rate limited, waiting before retry...")
                     time.sleep(5 * (provider_attempt + 1))
                     continue
                 else:
                     pass  # Continue to fallback
+
+                # Fallback to Doubleword.ai
+                doubleword_key = os.environ.get("DOUBLEWORD_API_KEY", "")
+                if doubleword_key:
+                    log.warning(f"OpenRouter failed ({e}), falling back to Doubleword.ai")
+                    try:
+                        dw_client = DoublewordLLMClient()
+                        dw_client._fetch_available_models()
+
+                        task_type = get_task_type(model, reasoning_effort)
+
+                        candidates = dw_client.get_models_for_task(task_type)
+                        env_fallback = os.environ.get("DOUBLEWORD_FALLBACK_MODEL", "")
+                        if env_fallback and env_fallback not in candidates:
+                            candidates.insert(0, env_fallback)
+                        candidates = candidates[:5]
+
+                        last_err = None
+                        for candidate in candidates:
+                            try:
+                                log.info(f"Att Doubleword fallback: {candidate}")
+                                msg, usage = dw_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                                dw_client.mark_model_success(candidate)
+                                return msg, usage
+                            except Exception as try_err:
+                                log.warning(f"Doubleword {candidate} failed: {try_err}")
+                                dw_client.mark_model_failure(candidate)
+                                last_err = try_err
+
+                        if last_err:
+                            log.warning("All Doubleword candidates failed, continuing to NVIDIA...")
+                    except Exception as dw_err:
+                        log.warning(f"Doubleword fallback failed: {dw_err}")
 
                 # Fallback to NVIDIA NIM
                 nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
@@ -652,17 +881,17 @@ class LLMClient:
                         nvidia_client._fetch_available_models()
 
                         task_type = get_task_type(model, reasoning_effort)
-                        
+
                         candidates = []
                         env_fallback = os.environ.get("NVIDIA_FALLBACK_MODEL", "")
                         if env_fallback:
                             candidates.append(env_fallback)
-                        
+
                         task_models = nvidia_client.get_models_for_task(task_type)
                         for m in task_models:
                             if m not in candidates:
                                 candidates.append(m)
-                        
+
                         candidates = candidates[:5]
                         last_err = None
                         for candidate in candidates:
@@ -677,7 +906,7 @@ class LLMClient:
                                 last_err = try_err
 
                         if last_err:
-                            log.warning(f"All NVIDIA candidates failed, continuing...")
+                            log.warning("All NVIDIA candidates failed, continuing...")
 
                     except Exception as nvidia_err:
                         log.warning(f"NVIDIA fallback failed: {nvidia_err}")
@@ -685,7 +914,7 @@ class LLMClient:
                 # Fallback to local Ollama
                 local_key = os.environ.get("LOCAL_API_KEY", "")
                 if local_key or os.environ.get("LOCAL_BASE_URL"):
-                    log.warning(f"Trying local Ollama...")
+                    log.warning("Trying local Ollama...")
                     try:
                         local_client = LocalLLMClient()
                         return local_client.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
@@ -705,6 +934,7 @@ class LLMClient:
         reasoning_effort: str = "medium",
         max_tokens: int = 16384,
         tool_choice: str = "auto",
+        temperature: Optional[float] = None,
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """OpenRouter implementation."""
         client = self._get_client()
@@ -728,6 +958,8 @@ class LLMClient:
             "max_tokens": max_tokens,
             "extra_body": extra_body,
         }
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         if tools:
             # Add cache_control to last tool for Anthropic prompt caching
             # This caches all tool schemas (they never change between calls)
@@ -836,14 +1068,18 @@ class LLMClient:
         """Return the single default model from env. LLM switches via tool if needed."""
         if self._is_local:
             return self._impl.default_model()
-        return os.environ.get("OUROBOROS_MODEL", "openrouter/free")
+        if self._is_doubleword:
+            return self._impl.default_model()
+        return os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
 
     def available_models(self) -> List[str]:
         """Return list of available models from env (for switch_model tool schema)."""
         if self._is_local:
             return self._impl.available_models()
+        if self._is_doubleword:
+            return self._impl.available_models()
 
-        main = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
+        main = os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
         code = os.environ.get("OUROBOROS_MODEL_CODE", "")
         light = os.environ.get("OUROBOROS_MODEL_LIGHT", "")
         models = [main]
