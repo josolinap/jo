@@ -1,4 +1,4 @@
 ```python
-# Code block with language hint
+# language: python
 print('Hello, World!')
 ```
