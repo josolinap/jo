@@ -10,3 +10,5 @@ tags: [concept]
 Knowledge Base.
 
 This could be added to the knowledge base
+
+This could be added to the knowledge base.
