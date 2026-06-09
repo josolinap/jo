@@ -8,3 +8,5 @@ tags: [concept]
 # Knowledge Base
 
 Knowledge Base.
+
+This could be added to the knowledge base
