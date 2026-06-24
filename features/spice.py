@@ -1,2 +1,1 @@
-def spice(text):
-    return text + ' [Spice]' 
+def spice(text): return text + " [Spice]"
