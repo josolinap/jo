@@ -1,2 +1,2 @@
 def spice(text):
-    return text + " [Spice]"
+    return text + ' [Spice]' 
