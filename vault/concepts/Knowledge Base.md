@@ -18,3 +18,5 @@ Consider: Could this be added to the knowledge base?
 This could be added to the knowledge base
 
 This could be added to the knowledge base.
+
+This could be added to the knowledge base
