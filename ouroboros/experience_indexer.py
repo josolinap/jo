@@ -35,7 +35,7 @@ class ExperienceIndexer:
                         etype = ev.get("type")
                         if etype in ("task_done", "task_error", "task_eval", "task_received"):
                             self._index_event(ev, index)
-                    except:
+                    except (json.JSONDecodeError, KeyError, TypeError):
                         continue
             
             self._save_index(index)

@@ -130,7 +130,7 @@ def _summarize_tool_result(fn_name: str, result: str) -> str:
         try:
             data = json.loads(result_str)
             return f"[GRAPH] {data.get('nodes', 0)} nodes, {data.get('edges', 0)} edges"
-        except:
+        except (json.JSONDecodeError, TypeError, AttributeError):
             return f"[ANALYZE] {result_str[:200]}..."
 
     if "error" in result_str.lower() or result_str.startswith("!"):
