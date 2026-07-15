@@ -41,7 +41,7 @@ class MemoryConsolidator:
                             "restart_verify",
                         ):
                             important_events.append(ev)
-                    except:
+                    except (json.JSONDecodeError, KeyError, TypeError):
                         continue
         except Exception as e:
             log.error(f"Failed to read events for distillation: {e}")

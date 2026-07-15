@@ -13,7 +13,7 @@ def get_runtime_state(ctx):
     if p.exists():
         try:
             return json.loads(p.read_text(encoding="utf-8"))
-        except:
+        except (json.JSONDecodeError, OSError):
             pass
     return {}
 
@@ -29,9 +29,9 @@ def get_tool_usage(ctx):
                     if ev.get("type") == "tool_called":
                         name = ev.get("tool", "unknown")
                         usage[name] = usage.get(name, 0) + 1
-                except:
+                except (json.JSONDecodeError, KeyError, TypeError):
                     continue
-        except:
+        except (OSError, UnicodeDecodeError):
             pass
     return usage
 
@@ -84,7 +84,7 @@ def runtime_health(ctx):
                 queue = json.loads(queue_path.read_text(encoding="utf-8"))
                 pending = queue.get("pending", [])
                 lines.append("- Queue: " + str(len(pending)) + " pending")
-            except:
+            except (json.JSONDecodeError, OSError, KeyError, TypeError):
                 pass
 
         budget = float(os.environ.get("TOTAL_BUDGET", "1"))
@@ -106,7 +106,7 @@ def runtime_health(ctx):
                 today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
                 today_ver = sum(1 for l in vlines if today in l)
                 lines.append("- Verifications today: " + str(today_ver))
-            except:
+            except (json.JSONDecodeError, OSError, KeyError, TypeError):
                 pass
 
         drift_path = ctx.drive_path("state/drift.json")
@@ -115,7 +115,7 @@ def runtime_health(ctx):
                 drift = json.loads(drift_path.read_text(encoding="utf-8"))
                 if drift.get("drift_detected"):
                     lines.append("  DRIFT DETECTED: " + drift.get("message", "")[:50])
-            except:
+            except (json.JSONDecodeError, OSError, KeyError, TypeError):
                 pass
 
         p = ctx.drive_path("logs/events.jsonl")
@@ -135,9 +135,9 @@ def runtime_health(ctx):
                                     hour_calls += 1
                                 elif ev.get("type") == "task_error":
                                     hour_errors += 1
-                        except:
+                        except (json.JSONDecodeError, OSError, KeyError, TypeError):
                             pass
-                except:
+                except (json.JSONDecodeError, OSError, KeyError, TypeError):
                     pass
             if hour_calls:
                 lines.append("- Last hour: " + str(hour_calls) + " calls, " + str(hour_errors) + " errors")
@@ -171,9 +171,9 @@ def get_verifications(ctx, hours=24):
                                         "result": ev.get("result", "?"),
                                     }
                                 )
-                        except:
+                        except (json.JSONDecodeError, OSError, KeyError, TypeError):
                             pass
-                except:
+                except (json.JSONDecodeError, OSError, KeyError, TypeError):
                     pass
 
         lines = ["## Verifications (last " + str(hours) + "h)", "- Count: " + str(len(results))]
@@ -234,12 +234,12 @@ def query_tools(ctx, category="", min_usage=0, time_hours=24, search=""):
                             ev_time = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
                             if ev_time < cutoff:
                                 continue
-                        except:
+                        except (json.JSONDecodeError, OSError, KeyError, TypeError):
                             pass
                     if ev.get("type") == "tool_called":
                         name = ev.get("tool", "unknown")
                         recent[name] = recent.get(name, 0) + 1
-                except:
+                except (json.JSONDecodeError, OSError, KeyError, TypeError):
                     continue
 
         results = []
@@ -297,7 +297,7 @@ def trend_analytics(ctx, metric="tool_usage", days=7):
                         daily[d]["tools"] += 1
                     elif ev.get("type") in ["task_done", "task_error"]:
                         daily[d]["tasks"] += 1
-                except:
+                except (json.JSONDecodeError, OSError, KeyError, TypeError):
                     continue
 
         if metric == "tool_usage":
