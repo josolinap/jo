@@ -263,6 +263,28 @@ def _vault_check_conventions(ctx: ToolContext) -> str:
 
     notes = vault.get_all_notes()
 
+    # Stub-note detection: notes with very short bodies pollute search and inflate counts
+    STUB_THRESHOLD_WORDS = 10  # notes with fewer than 10 words in body are stubs
+    stub_count = 0
+    for note in notes:
+        path = pathlib.Path(note["path"])
+        try:
+            content = path.read_text(encoding="utf-8")
+            # Strip frontmatter before counting
+            if content.startswith("---"):
+                end = content.find("---", 3)
+                if end != -1:
+                    content = content[end + 3:]
+            word_count = len(content.split())
+            if word_count < STUB_THRESHOLD_WORDS:
+                stub_count += 1
+                issues.append(f"Stub note ({word_count} words): {path.name}")
+                suggestions.append(f"Expand or delete: {path.name}")
+        except (OSError, UnicodeDecodeError):
+            continue
+    if stub_count > 0:
+        issues.insert(0, f"Found {stub_count} stub notes (under {STUB_THRESHOLD_WORDS} words)")
+
     for note in notes:
         path = pathlib.Path(note["path"])
 

@@ -131,8 +131,13 @@ def _vault_semantic_search(
     results: List[Dict[str, Any]] = []
     for note_path in vault_dir.rglob("*.md"):
         try:
-            # Try to load existing embedding sidecar
-            embedding_path = note_path.with_suffix(".md.embedding.json")
+            # Try to load existing embedding sidecar (in .vault/embeddings/ to avoid git pollution)
+            embeddings_dir = vault_dir / ".vault" / "embeddings"
+            embeddings_dir.mkdir(parents=True, exist_ok=True)
+            # Use a hashed filename to handle notes with special characters
+            import hashlib
+            note_hash = hashlib.md5(str(note_path.relative_to(vault_dir)).encode()).hexdigest()
+            embedding_path = embeddings_dir / f"{note_hash}.json"
             if embedding_path.exists():
                 with open(embedding_path, "r", encoding="utf-8") as f:
                     embedding_data = json.load(f)

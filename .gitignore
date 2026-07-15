@@ -57,3 +57,8 @@ state/
 logs/
 .jo_state/
 claude-code-tmp/
+.venv/
+
+# Vault embedding sidecars (should live in .vault/, not git-tracked)
+vault/.vault/embeddings/
+*.md.embedding.json

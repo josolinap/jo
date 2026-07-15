@@ -63,7 +63,14 @@ class VaultManager:
             (self.vault_root / folder).mkdir(parents=True, exist_ok=True)
 
     def resolve_path(self, note_name_or_path: str) -> Optional[pathlib.Path]:
-        """Resolve a note name or path to an absolute path."""
+        """Resolve a note name or path to an absolute path.
+
+        Resolution order:
+        1. Direct path (if file exists)
+        2. Exact stem match (case-insensitive)
+        3. Space/underscore variant match
+        4. Alias match (consults frontmatter `aliases:` field)
+        """
         p = pathlib.Path(note_name_or_path)
         if p.exists() and p.is_file():
             return p
@@ -78,6 +85,20 @@ class VaultManager:
                     continue
                 if md_file.stem.lower() == variant or str(md_file) == note_name_or_path:
                     return md_file
+
+        # Alias resolution: check if any note has this name in its `aliases:` frontmatter
+        for md_file in self.vault_root.rglob("*.md"):
+            if ".vault" in md_file.parts:
+                continue
+            try:
+                content = md_file.read_text(encoding="utf-8")
+                parsed = self.parser.parse(content)
+                if parsed.aliases:
+                    for alias in parsed.aliases:
+                        if alias.lower().strip() == name_lower:
+                            return md_file
+            except (OSError, UnicodeDecodeError):
+                continue
         return None
 
     def note_name(self, path: pathlib.Path) -> str:
