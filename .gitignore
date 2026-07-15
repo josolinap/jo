@@ -57,3 +57,4 @@ state/
 logs/
 .jo_state/
 claude-code-tmp/
+.venv/
