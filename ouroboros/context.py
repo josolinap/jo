@@ -304,6 +304,62 @@ def _build_health_invariants(env: Any) -> str:
     return build_health_invariants(env)
 
 
+def _build_codebase_overview(env: Any) -> str:
+    """Build a compressed codebase overview using repo_pack.
+
+    Gives Jo a signature-level map of its own code (~90% token reduction
+    via AST compression). Only the directory tree + compressed Python
+    signatures are included — full file contents are omitted.
+
+    This lets Jo reason about its own architecture without reading
+    files one-by-one, which is critical for evolution/review tasks
+    where understanding the codebase structure matters.
+    """
+    try:
+        from ouroboros.repo_pack import pack_repository
+
+        result = pack_repository(
+            root=env.repo_dir,
+            output_format="plain",
+            compress=True,
+            include_patterns=["ouroboros/**/*.py", "supervisor/**/*.py"],
+            security_check=False,  # Skip for self-introspection
+            max_files=100,
+            max_tokens=15000,  # Budget: ~15K tokens for codebase map
+        )
+
+        if result.total_files == 0:
+            return ""
+
+        lines = [
+            "## Codebase Overview (compressed)",
+            f"_{result.total_files} files, ~{result.total_tokens:,} tokens_",
+            "",
+            "### Directory Structure",
+            "```",
+            result.directory_tree[:3000],
+            "```",
+            "",
+            "### File Signatures (AST-compressed)",
+            "",
+        ]
+
+        # Include compressed content for each file
+        for pf in result.files:
+            if pf.is_binary or not pf.content:
+                continue
+            lines.append(f"--- {pf.path} ---")
+            # Truncate individual files to keep total under budget
+            content = pf.content[:2000]
+            lines.append(content)
+            lines.append("")
+
+        return "\n".join(lines)
+    except Exception as e:
+        log.debug(f"Failed to build codebase overview: {e}")
+        return ""
+
+
 def build_llm_messages(
     env: Any,
     memory: Memory,
@@ -415,6 +471,13 @@ def build_llm_messages(
         commits_section = _build_recent_commits_section(env.repo_dir, limit=5)
         if commits_section:
             dynamic_parts.append(commits_section)
+
+        # Compressed codebase overview — gives Jo a signature-level map of its own code
+        # Uses repo_pack with AST compression (~90% token reduction)
+        # Only for evolution/review/scheduled tasks where codebase awareness matters
+        codebase_overview = _build_codebase_overview(env)
+        if codebase_overview:
+            dynamic_parts.append(codebase_overview)
 
     # Episodic memory retrieval & injection (GitHub Copilot pattern)
     # Wire into context so Jo recalls relevant past experiences before acting
