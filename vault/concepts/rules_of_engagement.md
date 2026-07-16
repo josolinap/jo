@@ -7,4 +7,4 @@ status: active
 ---
 
 
-Minimalism (Principle 5): Prefer small, focused edits over large rewrites.
+Rules of Engagement: Minimalism (Principle 5), Safety, Git Flow, Identity
