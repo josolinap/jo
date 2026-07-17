@@ -26,15 +26,15 @@ def main():
 
     # Load config files — fail closed if corrupted
     try:
-        constitution = json.loads((repo / "constitution.json").read_text(encoding="utf-8"))
+        constitution = json.loads((repo / "config" / "constitution.json").read_text(encoding="utf-8"))
     except Exception as e:
-        print(f"PRE-COMMIT: Cannot read constitution.json: {e}", file=sys.stderr)
+        print(f"PRE-COMMIT: Cannot read config/constitution.json: {e}", file=sys.stderr)
         sys.exit(1)
 
     try:
-        baseline = json.loads((repo / "drift_baseline.json").read_text(encoding="utf-8"))
+        baseline = json.loads((repo / "config" / "drift_baseline.json").read_text(encoding="utf-8"))
     except Exception as e:
-        print(f"PRE-COMMIT: Cannot read drift_baseline.json: {e}", file=sys.stderr)
+        print(f"PRE-COMMIT: Cannot read config/drift_baseline.json: {e}", file=sys.stderr)
         sys.exit(1)
 
     # 1. Version sync (VERSION == git tag == pyproject.toml)
