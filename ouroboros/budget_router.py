@@ -65,11 +65,11 @@ class BudgetAwareRouter:
 
     def __init__(self, repo_dir: pathlib.Path):
         self.repo_dir = repo_dir
-        self._default_model = "anthropic/claude-sonnet-4"
+        self._default_model = "openrouter/free"
         self._model_map = {
-            ModelTier.FAST: "anthropic/claude-haiku-3",
-            ModelTier.BALANCED: "anthropic/claude-sonnet-4",
-            ModelTier.DEEP: "anthropic/claude-opus-4",
+            ModelTier.FAST: "openrouter/free",
+            ModelTier.BALANCED: "poolside/laguna-s-2.1:free",
+            ModelTier.DEEP: "nvidia/nemotron-3-ultra-550b-a55b:free",
         }
 
     def classify_complexity(self, task_text: str) -> int:
