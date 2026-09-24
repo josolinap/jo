@@ -30,7 +30,7 @@ class TestLLMVisionQuery(unittest.TestCase):
         text, usage = client.vision_query(
             prompt="What do you see?",
             images=[{"url": "https://example.com/test.png"}],
-            model="anthropic/claude-sonnet-4.6",
+            model="inclusionai/ling-3.0-flash-vl:free",
         )
 
         self.assertEqual(text, "I see a test image.")
