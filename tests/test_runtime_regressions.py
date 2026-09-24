@@ -226,3 +226,17 @@ def test_no_placeholder_python_stubs():
         if text.startswith('```') or text in {'New file content', 'Added a brief summary at the start'}:
             suspicious.append(str(path))
     assert not suspicious, f'Placeholder/non-Python Python files found: {suspicious}'
+
+
+def test_plugin_install_rejects_unsafe_names_and_symlinks(tmp_path):
+    from ouroboros.plugins import PluginManager
+
+    manager = PluginManager(tmp_path / 'plugins')
+    assert 'Invalid plugin name' in manager.install('../escape', tmp_path)
+    assert 'Invalid plugin name' in manager.install('bad/name', tmp_path)
+
+    source = tmp_path / 'source'
+    source.mkdir()
+    (source / 'safe.py').write_text('VALUE = 1\n', encoding='utf-8')
+    (source / 'link.py').symlink_to(source / 'safe.py')
+    assert 'unsupported symlink' in manager.install('safe-plugin', source)
