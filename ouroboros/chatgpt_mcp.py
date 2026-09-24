@@ -140,7 +140,7 @@ def build_server() -> Server:
             Tool(
                 name=entry.name,
                 description=str(schema.get("description") or "")[:2000],
-                inputSchema=schema.get(
+                input_schema=schema.get(
                     "parameters",
                     {"type": "object", "properties": {}, "additionalProperties": False},
                 ),
@@ -181,8 +181,6 @@ def build_server() -> Server:
 
 
 def build_app() -> Any:
-    from starlette.responses import PlainTextResponse
-
     server = build_server()
     app = server.streamable_http_app(
         streamable_http_path="/mcp",
@@ -216,8 +214,6 @@ def build_app() -> Any:
             }
         )
 
-    async def health_plain(request: Request):
-        return PlainTextResponse("ok")
 
     app.router.routes.append(__import__("starlette.routing", fromlist=["Route"]).Route("/", root, methods=["GET"]))
     app.router.routes.append(__import__("starlette.routing", fromlist=["Route"]).Route("/healthz", health, methods=["GET"]))
