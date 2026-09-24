@@ -37,14 +37,15 @@ def test_github_inbox_marks_evolve_issue_as_evolution(tmp_path, monkeypatch):
 
     assert len(tasks) == 1
     assert tasks[0]["type"] == "evolution"
-    assert tasks[0]["id"] == "ghf"
+    assert tasks[0]["id"].startswith("ghf-")
+    assert len(tasks[0]["id"]) == 12
 
 
 def test_github_inbox_keeps_claim_when_close_fails(tmp_path, monkeypatch):
     _enable_inbox(monkeypatch)
     inbox = GitHubInbox(tmp_path)
     inbox._state["claims"] = {
-        "15": {"task_id": "ghf", "claimed_at": 1, "title": "[JO] Evolve"}
+        "15": {"task_id": "ghf-abcdef12", "claimed_at": 1, "title": "[JO] Evolve"}
     }
     inbox._save_state()
 
@@ -58,9 +59,31 @@ def test_github_inbox_keeps_claim_when_close_fails(tmp_path, monkeypatch):
         return Response() if method == "POST" else None
 
     inbox._request = request
-    assert inbox.complete("ghf", "done") is False
+    assert inbox.complete("ghf-abc12345", "done") is False
     assert "15" in inbox._state["claims"]
+    assert inbox._state["claims"]["15"]["status"] == "pending_close"
+    assert inbox._state["claims"]["15"]["completion_posted"] is True
     assert calls[0][0] == "POST"
+
+    def retry_request(method, path, **kwargs):
+        if method == "GET":
+            class GetResponse:
+                def json(self):
+                    return [{
+                        "number": 15,
+                        "title": "[JO] Evolve",
+                        "body": "Improve yourself.",
+                        "user": {"login": "josolinap"},
+                        "html_url": "https://github.com/josolinap/jo/issues/15",
+                    }]
+            return GetResponse()
+        class Response:
+            pass
+        return Response()
+
+    inbox._request = retry_request
+    inbox.poll()
+    assert "15" not in inbox._state["claims"]
 
 
 def test_github_inbox_removes_claim_after_comment_and_close(tmp_path, monkeypatch):
@@ -74,7 +97,7 @@ def test_github_inbox_removes_claim_after_comment_and_close(tmp_path, monkeypatc
         pass
 
     inbox._request = lambda method, path, **kwargs: Response()
-    assert inbox.complete("ghf", "done") is True
+    assert inbox.complete("ghf-abcdef12", "done") is True
     assert "15" not in inbox._state["claims"]
 
 
