@@ -681,9 +681,20 @@ class LLMClient:
     ):
         provider = os.environ.get("LLM_PROVIDER", "openrouter").lower()
 
-        if provider == "local":
+        if provider == "openai":
+            from ouroboros.openai_provider import OpenAILLMClient
+            self._impl = OpenAILLMClient(api_key=api_key, base_url=os.environ.get("OPENAI_BASE_URL"))
+            self._is_openai = True
+            self._is_local = False
+            self._is_nvidia = False
+            self._is_doubleword = False
+            self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+            self._base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            self._client = None
+        elif provider == "local":
             self._impl = LocalLLMClient()
             self._is_local = True
+            self._is_openai = False
             self._is_nvidia = False
             self._is_doubleword = False
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
@@ -692,6 +703,7 @@ class LLMClient:
         elif provider == "nvidia":
             self._impl = NvidiaLLMClient()
             self._is_local = True
+            self._is_openai = False
             self._is_nvidia = True
             self._is_doubleword = False
             self._api_key = api_key or os.environ.get("NVIDIA_API_KEY", "")
@@ -700,6 +712,7 @@ class LLMClient:
         elif provider == "doubleword":
             self._impl = DoublewordLLMClient()
             self._is_local = False
+            self._is_openai = False
             self._is_nvidia = False
             self._is_doubleword = True
             self._api_key = api_key or os.environ.get("DOUBLEWORD_API_KEY", "")
@@ -710,6 +723,7 @@ class LLMClient:
             self._base_url = base_url
             self._client = None
             self._is_local = False
+            self._is_openai = False
             self._is_nvidia = False
             self._is_doubleword = False
 
@@ -772,7 +786,11 @@ class LLMClient:
             response = get_trivial_response(content)
             return {"content": response}, {"cost": 0.0, "prompt_tokens": 0, "completion_tokens": 3, "total_tokens": 3}
 
-        # 1. Designated NVIDIA provider
+        # 1. Designated OpenAI provider
+        if getattr(self, "_is_openai", False):
+            return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+
+        # 2. Designated NVIDIA provider
         if getattr(self, "_is_nvidia", False):
             return self._impl.chat(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
 
@@ -1066,6 +1084,8 @@ class LLMClient:
 
     def default_model(self) -> str:
         """Return the single default model from env. LLM switches via tool if needed."""
+        if getattr(self, "_is_openai", False):
+            return self._impl.default_model()
         if self._is_local:
             return self._impl.default_model()
         if self._is_doubleword:
@@ -1074,6 +1094,8 @@ class LLMClient:
 
     def available_models(self) -> List[str]:
         """Return list of available models from env (for switch_model tool schema)."""
+        if getattr(self, "_is_openai", False):
+            return self._impl.available_models()
         if self._is_local:
             return self._impl.available_models()
         if self._is_doubleword:
