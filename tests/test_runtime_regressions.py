@@ -59,7 +59,7 @@ def test_github_inbox_keeps_claim_when_close_fails(tmp_path, monkeypatch):
         return Response() if method == "POST" else None
 
     inbox._request = request
-    assert inbox.complete("ghf-abc12345", "done") is False
+    assert inbox.complete("ghf-abcdef12", "done") is False
     assert "15" in inbox._state["claims"]
     assert inbox._state["claims"]["15"]["status"] == "pending_close"
     assert inbox._state["claims"]["15"]["completion_posted"] is True
