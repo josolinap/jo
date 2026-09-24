@@ -698,13 +698,15 @@ def run_llm_loop(
             )
 
             if msg is None:
-                fallback_list_raw = os.environ.get(
-                    "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "openrouter/free,poolside/laguna-s-2.1:free,inclusionai/ling-3.0-flash:free,nvidia/nemotron-3-ultra-550b-a55b:free",
-                )
+                fallback_list_raw = os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST", "")
+                if fallback_list_raw.strip():
+                    configured_fallbacks = fallback_list_raw.split(",")
+                else:
+                    configured_fallbacks = llm.available_models()
+
                 fallback_candidates = [
                     m.strip()
-                    for m in fallback_list_raw.split(",")
+                    for m in configured_fallbacks
                     if m.strip() and m.strip() != active_model
                 ]
 
