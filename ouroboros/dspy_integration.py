@@ -177,7 +177,7 @@ def configure_dspy() -> bool:
     try:
         dspy = _dspy
         api_key = os.environ.get("OPENROUTER_API_KEY", "")
-        model = os.environ.get("OUROBOROS_MODEL", "anthropic/claude-sonnet-4.6")
+        model = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
 
         _lm = dspy.LM(
             f"openai/{model}",
