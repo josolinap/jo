@@ -7,10 +7,10 @@ Jo reads these automatically at startup — no code changes needed.
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
-| `OUROBOROS_MODEL` | Primary model for all tasks | `google/gemini-2.0-flash-exp:free` |
-| `OUROBOROS_MODEL_CODE` | Code-specific model override | `qwen/qwen-2.5-coder-32b-instruct:free` |
-| `OUROBOROS_MODEL_LIGHT` | Lightweight model for summaries | `meta-llama/llama-3.3-70b-instruct:free` |
-| `OUROBOROS_MODEL_FALLBACK_LIST` | Comma-separated fallback chain | `arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free` |
+| `OUROBOROS_MODEL` | Primary model for all tasks | `openrouter/free` |
+| `OUROBOROS_MODEL_CODE` | Code-specific model override | `poolside/laguna-s-2.1:free` |
+| `OUROBOROS_MODEL_LIGHT` | Lightweight model for summaries | `inclusionai/ling-3.0-flash:free` |
+| `OUROBOROS_MODEL_FALLBACK_LIST` | Comma-separated fallback chain | `openrouter/free,poolside/laguna-s-2.1:free,inclusionai/ling-3.0-flash:free,nvidia/nemotron-3-ultra-550b-a55b:free` |
 | `OUROBOROS_DETERMINISTIC` | `1` to disable spice, learning, fallback, auto-model-select, self-reflection, memory extraction | `1` |
 | `OUROBOROS_LLM_TEMPERATURE` | LLM temperature (0 = deterministic) | `0.0` |
 | `OUROBOROS_TOOL_LEARNING` | `1` to enable temporal tool learning | `1` |
@@ -53,9 +53,10 @@ Jo reads these automatically at startup — no code changes needed.
 
 ```bash
 OPENROUTER_API_KEY=sk-or-...
-OUROBOROS_MODEL=google/gemini-2.0-flash-exp:free
-OUROBOROS_MODEL_CODE=qwen/qwen-2.5-coder-32b-instruct:free
-OUROBOROS_MODEL_LIGHT=meta-llama/llama-3.3-70b-instruct:free
+OUROBOROS_MODEL=openrouter/free
+OUROBOROS_MODEL_CODE=poolside/laguna-s-2.1:free
+OUROBOROS_MODEL_LIGHT=inclusionai/ling-3.0-flash:free
 OUROBOROS_DETERMINISTIC=1
 OUROBOROS_LLM_TEMPERATURE=0
+OUROBOROS_MODEL_FALLBACK_LIST=openrouter/free,poolside/laguna-s-2.1:free,inclusionai/ling-3.0-flash:free,nvidia/nemotron-3-ultra-550b-a55b:free
 ```
