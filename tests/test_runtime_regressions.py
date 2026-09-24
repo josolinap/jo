@@ -240,3 +240,27 @@ def test_plugin_install_rejects_unsafe_names_and_symlinks(tmp_path):
     (source / 'safe.py').write_text('VALUE = 1\n', encoding='utf-8')
     (source / 'link.py').symlink_to(source / 'safe.py')
     assert 'unsupported symlink' in manager.install('safe-plugin', source)
+
+def test_enabled_plugin_tools_restore_into_registry(tmp_path):
+    from ouroboros.plugins import PluginManager
+    from ouroboros.tools.registry import ToolRegistry
+
+    plugin_source = tmp_path / "plugin_source"
+    plugin_source.mkdir()
+    (plugin_source / "__init__.py").write_text(
+        "from ouroboros.tools.registry import ToolEntry\n"
+        "def _hello(ctx): return 'hello from plugin'\n"
+        "def get_tools():\n"
+        "    return [ToolEntry('demo_hello', {'name': 'demo_hello', 'description': 'demo', 'parameters': {'type': 'object', 'properties': {}}}, _hello)]\n",
+        encoding="utf-8",
+    )
+
+    plugins_dir = tmp_path / "ouroboros" / "plugins"
+    manager = PluginManager(plugins_dir)
+    assert "Installed plugin" in manager.install("demo_plugin", plugin_source)
+    assert "Enabled plugin" in manager.enable("demo_plugin")
+
+    registry = ToolRegistry(tmp_path, tmp_path / ".jo_data")
+    registry.set_context(registry._ctx)
+    assert "demo_hello" in registry.available_tools()
+    assert registry.execute("demo_hello", {}) == "hello from plugin"
