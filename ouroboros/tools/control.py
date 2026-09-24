@@ -383,6 +383,8 @@ def _switch_model(ctx: ToolContext, model: str = "", effort: str = "") -> str:
     changes = []
 
     if model:
+        if not (model == "openrouter/free" or model.endswith(":free")):
+            return f"⚠️ Free-only runtime: paid/non-free model blocked: {model}. Use openrouter/free or a :free model."
         if model not in available:
             return f"⚠️ Unknown model: {model}. Available: {', '.join(available)}"
         ctx.active_model_override = model
