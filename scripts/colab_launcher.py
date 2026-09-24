@@ -443,7 +443,7 @@ def main():
             time.sleep(1)
 
         # ChatGPT -> Jo mailbox. GitHub Issues are the free control bus.
-        if github_inbox.enabled and time.time() - _last_github_poll >= 30:
+        if github_inbox.enabled and time.time() - _last_github_poll >= github_inbox.poll_interval_sec:
             try:
                 for task in github_inbox.poll():
                     enqueue_task(task)
