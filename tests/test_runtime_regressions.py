@@ -187,3 +187,19 @@ def test_default_vision_model_is_free():
     from ouroboros.tools import vision
 
     assert vision._DEFAULT_VLM_MODEL == "inclusionai/ling-3.0-flash-vl:free"
+
+
+def test_no_placeholder_python_stubs():
+    from pathlib import Path
+
+    suspicious = []
+    for path in Path('.').rglob('*.py'):
+        if any(part in {'.git', 'archive', '__pycache__'} for part in path.parts):
+            continue
+        try:
+            text = path.read_text(encoding='utf-8').lstrip()
+        except UnicodeDecodeError:
+            continue
+        if text.startswith('```') or text in {'New file content', 'Added a brief summary at the start'}:
+            suspicious.append(str(path))
+    assert not suspicious, f'Placeholder/non-Python Python files found: {suspicious}'
