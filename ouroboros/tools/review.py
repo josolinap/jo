@@ -134,7 +134,7 @@ async def _multi_model_review_async(content: str, prompt: str, models: list, ctx
     if not prompt:
         return {"error": "prompt is required"}
     if not models:
-        return {"error": "models list is required (e.g. ['openai/o3', 'google/gemini-2.5-pro'])"}
+        return {"error": "models list is required (e.g. ['openrouter/free', 'poolside/laguna-s-2.1:free'])"}
 
     if not isinstance(models, list) or not all(isinstance(m, str) for m in models):
         return {"error": "models must be a list of strings"}
