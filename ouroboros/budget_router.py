@@ -9,9 +9,9 @@ and under-powering complex ones.
 
 Solution: Classify task complexity, check remaining budget, and route to
 the appropriate model tier:
-- FAST (haiku): Simple lookups, status checks, formatting
-- BALANCED (sonnet): Most coding tasks, debugging, refactoring
-- DEEP (opus): Complex architecture, strategic planning, security review
+- FAST: Simple lookups, status checks, formatting
+- BALANCED: Most coding tasks, debugging, refactoring
+- DEEP: Complex architecture, strategic planning, security review
 
 Budget awareness: If daily budget is >80% consumed, downgrade non-critical tasks.
 """
@@ -27,9 +27,9 @@ log = logging.getLogger(__name__)
 
 
 class ModelTier(Enum):
-    FAST = "fast"  # Claude Haiku - simple tasks
-    BALANCED = "balanced"  # Claude Sonnet - most tasks
-    DEEP = "deep"  # Claude Opus - complex tasks
+    FAST = "fast"
+    BALANCED = "balanced"
+    DEEP = "deep"
 
 
 # Task complexity keywords
