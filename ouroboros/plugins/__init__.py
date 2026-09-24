@@ -24,6 +24,7 @@ import importlib.util
 import json
 import logging
 import pathlib
+import re
 import shutil
 import sys
 import time
@@ -113,18 +114,32 @@ class PluginManager:
     def install(
         self, name: str, source_path: pathlib.Path, version: str = "0.0.0", description: str = "", author: str = ""
     ) -> str:
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,63}", name or ""):
+            return "Invalid plugin name. Use 1-64 characters: letters, digits, '_', '-', '.'"
         if name in self._registry:
             return f"Plugin '{name}' already installed"
 
-        plugin_dir = self.plugins_dir / name
+        plugins_root = self.plugins_dir.resolve()
+        plugin_dir = (plugins_root / name).resolve()
+        if plugins_root not in plugin_dir.parents:
+            return "Invalid plugin destination"
+
+        source = pathlib.Path(source_path).resolve()
+        if not source.exists():
+            return f"Plugin source not found: {source_path}"
+
         plugin_dir.mkdir(parents=True, exist_ok=True)
 
-        if source_path.is_file():
-            shutil.copy2(source_path, plugin_dir / "__init__.py")
-        elif source_path.is_dir():
-            for item in source_path.iterdir():
+        if source.is_file():
+            shutil.copy2(source, plugin_dir / "__init__.py")
+        elif source.is_dir():
+            for item in source.iterdir():
+                if item.is_symlink():
+                    return f"Plugin source contains unsupported symlink: {item.name}"
                 if item.is_file():
                     shutil.copy2(item, plugin_dir / item.name)
+                elif item.is_dir():
+                    shutil.copytree(item, plugin_dir / item.name, dirs_exist_ok=True)
 
         info = PluginInfo(
             name=name,
