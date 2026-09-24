@@ -1,4 +1,4 @@
-"""Regression tests for the ChatGPT -> Jo mailbox and free-only model routing."""
+""""Regression tests for the ChatGPT -> Jo mailbox and free-only model routing."""
 
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ def test_github_inbox_removes_claim_after_comment_and_close(tmp_path, monkeypatc
     _enable_inbox(monkeypatch)
     inbox = GitHubInbox(tmp_path)
     inbox._state["claims"] = {
-        "15": {"task_id": "ghf", "claimed_at": 1, "title": "[JO] Evolve"}
+        "15": {"task_id": "ghf-abcdef12", "claimed_at": 1, "title": "[JO] Evolve"}
     }
 
     class Response:
