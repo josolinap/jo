@@ -1,11 +1,10 @@
 name: Run Jo Bot
 
-# Allow current run to finish (saves cache) before new run starts
-# Jo's self-restart triggers new run, but old run completes first
-# cancel-in-progress: false ensures old run finishes and saves cache
+# Operator changes should replace a stuck/obsolete worker quickly.
+# Jo's own commits keep the previous run alive so self-restarts do not interrupt themselves.
 concurrency:
   group: jo-bot
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.actor != 'Ouroboros' }}
 
 # Opt into Node.js 24 (Node.js 20 deprecated)
 env:
