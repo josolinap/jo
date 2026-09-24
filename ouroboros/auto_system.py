@@ -4,18 +4,16 @@ import os
 import pathlib
 
 # Model definitions with cost/speed profiles
+# Free-only model profiles. Prevent autonomous runs from silently selecting paid models.
 MODELS = {
     "fast": {
-        "openrouter/free": {"input": 0, "output": 0, "context": 128000, "reasoning": "off"},
-        "openrouter/qwen/qwen-coder-32b": {"input": 0.001, "output": 0.001, "context": 32000, "reasoning": "off"},
+        "openrouter/free": {"input": 0, "output": 0, "context": 200000, "reasoning": "off"},
     },
     "balanced": {
-        "anthropic/claude-sonnet-4.6": {"input": 3.0, "output": 15.0, "context": 200000, "reasoning": "medium"},
-        "openai/gpt-4.1": {"input": 2.0, "output": 8.0, "context": 128000, "reasoning": "medium"},
+        "poolside/laguna-s-2.1:free": {"input": 0, "output": 0, "context": 262144, "reasoning": "medium"},
     },
     "deep": {
-        "anthropic/claude-opus-4.6": {"input": 15.0, "output": 75.0, "context": 200000, "reasoning": "high"},
-        "openai/o3": {"input": 2.0, "output": 8.0, "context": 200000, "reasoning": "high"},
+        "nvidia/nemotron-3-ultra-550b-a55b:free": {"input": 0, "output": 0, "context": 1000000, "reasoning": "high"},
     }
 }
 
