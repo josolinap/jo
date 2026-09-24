@@ -28,7 +28,7 @@ _DETERMINISTIC = os.environ.get("OUROBOROS_DETERMINISTIC", "0") == "1"
 # LLM temperature: lower = more deterministic. 0 = fully deterministic (same prompt = same output)
 _LLM_TEMPERATURE = float(os.environ.get("OUROBOROS_LLM_TEMPERATURE", "0.0" if _DETERMINISTIC else "0.7"))
 
-DEFAULT_LIGHT_MODEL = "google/gemini-2.0-flash-exp:free"
+DEFAULT_LIGHT_MODEL = "openrouter/free"
 
 REASONING_PATTERNS = ("deepseek-r1", "gemma-4", "gemma-3-27b", "llama-3.1-70b", "phi-4", "nemotron", "reasoning")
 CODING_PATTERNS = ("coder", "code", "starcoder", "deepseek-coder")
@@ -1070,7 +1070,7 @@ class LLMClient:
             return self._impl.default_model()
         if self._is_doubleword:
             return self._impl.default_model()
-        return os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
+        return os.environ.get("OUROBOROS_MODEL", "openrouter/free")
 
     def available_models(self) -> List[str]:
         """Return list of available models from env (for switch_model tool schema)."""
@@ -1079,7 +1079,7 @@ class LLMClient:
         if self._is_doubleword:
             return self._impl.available_models()
 
-        main = os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
+        main = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
         code = os.environ.get("OUROBOROS_MODEL_CODE", "")
         light = os.environ.get("OUROBOROS_MODEL_LIGHT", "")
         models = [main]
