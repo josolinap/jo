@@ -35,7 +35,12 @@ class GitHubInbox:
             self.timeout = max(5.0, float(os.environ.get("JO_GITHUB_INBOX_TIMEOUT_SEC", "15")))
         except (TypeError, ValueError):
             self.timeout = 15.0
+        try:
+            self.poll_interval_sec = max(5.0, float(os.environ.get("JO_GITHUB_INBOX_POLL_SEC", "30")))
+        except (TypeError, ValueError):
+            self.poll_interval_sec = 30.0
 
+        self._last_error = ""
         self.base_url = f"https://api.github.com/repos/{self.owner}/{self.repo}"
         self._state = self._load_state()
 
@@ -65,9 +70,12 @@ class GitHubInbox:
         try:
             response = requests.request(method, f"{self.base_url}{path}", headers=self._headers(), timeout=self.timeout, **kwargs)
             if response.status_code >= 400:
+                self._last_error = f"{method} {path}: HTTP {response.status_code} {response.text[:300]}"
                 return None
+            self._last_error = ""
             return response
-        except Exception:
+        except Exception as exc:
+            self._last_error = f"{method} {path}: {type(exc).__name__}: {exc}"
             return None
 
     def poll(self) -> List[Dict[str, Any]]:
@@ -95,8 +103,24 @@ class GitHubInbox:
             if str(number) in claims or not body:
                 continue
             task_id = f"gh{number:x}"
-            claims[str(number)] = {"task_id": task_id, "claimed_at": time.time(), "title": title, "url": issue.get("html_url") or "", "author": author}
-            tasks.append({"id": task_id, "type": "task", "chat_id": 0, "text": body, "_github_issue": int(number), "_github_issue_url": issue.get("html_url") or "", "_github_issue_title": title, "_github_issue_author": author})
+            claims[str(number)] = {
+                "task_id": task_id,
+                "claimed_at": time.time(),
+                "title": title,
+                "url": issue.get("html_url") or "",
+                "author": author,
+            }
+            task_kind = "evolution" if title[len(self.prefix) + 1:].strip().lower() in {"evolve", "evolution"} else "task"
+            tasks.append({
+                "id": task_id,
+                "type": task_kind,
+                "chat_id": 0,
+                "text": body,
+                "_github_issue": int(number),
+                "_github_issue_url": issue.get("html_url") or "",
+                "_github_issue_title": title,
+                "_github_issue_author": author,
+            })
         self._state["last_poll"] = time.time()
         self._save_state()
         return tasks
@@ -117,10 +141,12 @@ class GitHubInbox:
         posted = self._request("POST", f"/issues/{issue_number}/comments", json={"body": comment})
         if posted is None:
             return False
-        closed = self._request("PATCH", f"/issues/{issue_number}", json={"state": "closed"})
+        closed = self._request("PATCH", f"/issues/{issue_number}", json={"state": "closed", "state_reason": "completed"})
+        if closed is None:
+            return False
         claims.pop(issue_number, None)
         self._save_state()
-        return closed is not None
+        return True
 
     def recover_stale_claims(self, max_age_sec: int = 8 * 3600) -> None:
         """Release abandoned claims after a long runner outage."""
