@@ -64,7 +64,7 @@ class MultiVerifier:
 
     def __init__(self):
         self._history: List[VerificationResult] = []
-        self._verifier_model = os.environ.get("OUROBOROS_VERIFY_MODEL", "openrouter/google/gemini-2.0-flash-001")
+        self._verifier_model = os.environ.get("OUROBOROS_VERIFY_MODEL", "openrouter/free")
         self._auto_verify = os.environ.get("OUROBOROS_AUTO_VERIFY", "1") == "1"
 
     def assess_risk(self, operation: str) -> str:
