@@ -344,6 +344,11 @@ def main():
     OWNER_CHAT_ID = st.get("owner_chat_id")
     consciousness = _init_consciousness(REPO_DIR, DRIVE_ROOT, TG, OWNER_CHAT_ID)
 
+    # ChatGPT bridge: GitHub Issues mailbox (no external server/API model required)
+    from ouroboros.github_inbox import GitHubInbox
+    github_inbox = GitHubInbox(DRIVE_ROOT)
+    github_inbox.recover_stale_claims()
+
     # Initialize workers and start the bot
     supervisor.workers.init(
         repo_dir=REPO_DIR,
@@ -372,6 +377,7 @@ def main():
     event_q = supervisor.workers.get_event_q()
     update_offset = 0
     _last_health_check = time.time()
+    _last_github_poll = 0.0
 
     # Attach runtime objects to workers module so event handlers can access them
     supervisor.workers.TG = TG
@@ -436,6 +442,17 @@ def main():
             log.debug("Telegram poll error: %s", e)
             time.sleep(1)
 
+        # ChatGPT -> Jo mailbox. GitHub Issues are the free control bus.
+        if github_inbox.enabled and time.time() - _last_github_poll >= 30:
+            try:
+                for task in github_inbox.poll():
+                    enqueue_task(task)
+                    supervisor.workers.assign_tasks()
+                    log.info("Enqueued ChatGPT/GitHub task: %s", task.get("id"))
+            except Exception as e:
+                log.debug("GitHub inbox poll error: %s", e)
+            _last_github_poll = time.time()
+
         # Process all pending events from workers — use workers module as ctx
         events_processed = 0
         while True:
@@ -447,6 +464,20 @@ def main():
             evt_type = evt.get("type", "unknown") if isinstance(evt, dict) else "not_dict"
             log.info("[MAIN] Dispatching event #%d: type=%s", events_processed, evt_type)
             dispatch_event(evt, supervisor.workers)
+
+            # Publish ChatGPT-originated task results back to the originating issue.
+            if github_inbox.enabled and evt_type in {"task_done", "task_error"}:
+                task_id = str(evt.get("task_id") or "")
+                if task_id:
+                    result_text = str(evt.get("error") or "")
+                    result_file = DRIVE_ROOT / "task_results" / f"{task_id}.json"
+                    try:
+                        if result_file.exists():
+                            payload = json.loads(result_file.read_text(encoding="utf-8"))
+                            result_text = str(payload.get("result") or result_text)
+                    except Exception as e:
+                        log.debug("Failed to read GitHub task result %s: %s", task_id, e)
+                    github_inbox.complete(task_id, result_text, failed=evt_type == "task_error")
         if events_processed > 0:
             log.info("[MAIN] Processed %d events this cycle", events_processed)
 
