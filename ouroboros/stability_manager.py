@@ -270,9 +270,9 @@ class StabilityManager:
         # 4. Always include free tier defaults as safety net (deduped)
         default_fallbacks = [
             "openrouter/free",
-            "openrouter/google/gemini-2.0-flash-exp:free",
-            "openrouter/meta-llama/llama-3.3-70b-instruct:free",
-            "openrouter/mistralai/mistral-7b-instruct:free",
+            "poolside/laguna-s-2.1:free",
+            "inclusionai/ling-3.0-flash:free",
+            "nvidia/nemotron-3-ultra-550b-a55b:free",
         ]
         for i, name in enumerate(default_fallbacks):
             add_model(name, 100 + i)
