@@ -1,10 +1,10 @@
 name: Run Jo Bot
 
-# Operator changes should replace a stuck/obsolete worker quickly.
-# Jo's own commits keep the previous run alive so self-restarts do not interrupt themselves.
+# Keep long-running Jo workers intact across Jo-authored pushes.
+# Manual workflow dispatch can intentionally preempt a stuck worker for repair.
 concurrency:
   group: jo-bot
-  cancel-in-progress: ${{ github.actor != 'Ouroboros' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 
 # Opt into Node.js 24 (Node.js 20 deprecated)
 env:
@@ -43,11 +43,13 @@ jobs:
       - name: Check if we should run
         id: check
         run: |
-          # Skip only on push events from Jo (not on repository_dispatch self-restart)
-          # This prevents workflow from interrupting itself when Jo commits code
-          if [[ "${{ github.event_name }}" == "push" ]] && [[ "${{ github.actor }}" == "Ouroboros" ]]; then
+          # Jo commits with the configured git identity below.
+          # Do not start a second long-lived worker for those pushes.
+          if [[ "${{ github.event_name }}" == "push" ]] && \
+             [[ "${{ github.event.head_commit.author.name }}" == "Jo" ]] && \
+             [[ "${{ github.event.head_commit.author.email }}" == "jo@jo.ai" ]]; then
             echo "should_run=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Skipping: Jo's own commit (push event), prevents workflow interrupting itself"
+            echo "⚠️ Skipping: Jo-authored push; existing worker continues"
           else
             echo "should_run=true" >> $GITHUB_OUTPUT
             echo "✅ Will run: event=${{ github.event_name }}, actor=${{ github.actor }}"
