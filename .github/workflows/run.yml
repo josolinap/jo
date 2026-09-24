@@ -149,6 +149,12 @@ jobs:
           print("✓ All runtime Python files compile successfully")
           PY
 
+      - name: Run runtime regression tests
+        run: |
+          echo "=== Running runtime regression tests ==="
+          python -m pytest tests/test_runtime_regressions.py -v --tb=short
+          echo "=== Runtime regression tests passed ==="
+
       # -----------------------------------------------------------------------
       # 3.2 Validate pipeline features
       # Ensure our PIPELINE_PLAN.md features are properly configured
