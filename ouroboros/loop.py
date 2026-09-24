@@ -700,7 +700,7 @@ def run_llm_loop(
             if msg is None:
                 fallback_list_raw = os.environ.get(
                     "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free",
+                    "openrouter/free,poolside/laguna-s-2.1:free,inclusionai/ling-3.0-flash:free,nvidia/nemotron-3-ultra-550b-a55b:free",
                 )
                 fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
                 fallback_model = None
