@@ -245,7 +245,7 @@ def main():
     install_apply_patch()
 
     # Secrets and configuration
-    OPENROUTER_API_KEY = get_secret("OPENROUTER_API_KEY", required=True)
+    OPENROUTER_API_KEY = get_secret("OPENROUTER_API_KEY", default="")
     TELEGRAM_BOT_TOKEN = get_secret("TELEGRAM_BOT_TOKEN", required=True)
     TOTAL_BUDGET_DEFAULT = get_secret("TOTAL_BUDGET", required=True)
     GITHUB_TOKEN = get_secret("GITHUB_TOKEN", required=True)
@@ -264,15 +264,16 @@ def main():
         TOTAL_BUDGET_LIMIT = 0.0
 
     OPENAI_API_KEY = get_secret("OPENAI_API_KEY", default="")
+    LLM_PROVIDER = get_cfg("LLM_PROVIDER", default="openrouter", allow_legacy_secret=True)
     ANTHROPIC_API_KEY = get_secret("ANTHROPIC_API_KEY", default="")
     GITHUB_USER = get_cfg("GITHUB_USER", default=None, allow_legacy_secret=True)
     GITHUB_REPO = get_cfg("GITHUB_REPO", default=None, allow_legacy_secret=True)
     assert GITHUB_USER and str(GITHUB_USER).strip(), "GITHUB_USER not set. Add it to your config cell (see README)."
     assert GITHUB_REPO and str(GITHUB_REPO).strip(), "GITHUB_REPO not set. Add it to your config cell (see README)."
     MAX_WORKERS = int(get_cfg("OUROBOROS_MAX_WORKERS", default="5", allow_legacy_secret=True) or "5")
-    MODEL_MAIN = get_cfg("OUROBOROS_MODEL", default="openrouter/free", allow_legacy_secret=True)
+    MODEL_MAIN = get_cfg("OUROBOROS_MODEL", default=("gpt-5.6-sol" if str(LLM_PROVIDER).lower() == "openai" else "openrouter/free"), allow_legacy_secret=True)
     MODEL_CODE = get_cfg("OUROBOROS_MODEL_CODE", default="openrouter/free", allow_legacy_secret=True)
-    MODEL_LIGHT = get_cfg("OUROBOROS_MODEL_LIGHT", default="openrouter/free", allow_legacy_secret=True)
+    MODEL_LIGHT = get_cfg("OUROBOROS_MODEL_LIGHT", default=("gpt-5.6-luna" if str(LLM_PROVIDER).lower() == "openai" else "openrouter/free"), allow_legacy_secret=True)
 
     BUDGET_REPORT_EVERY_MESSAGES = 10
     SOFT_TIMEOUT_SEC = max(
@@ -292,7 +293,8 @@ def main():
         minimum=0,
     )
 
-    os.environ["OPENROUTER_API_KEY"] = str(OPENROUTER_API_KEY)
+    os.environ["OPENROUTER_API_KEY"] = str(OPENROUTER_API_KEY or "")
+    os.environ["LLM_PROVIDER"] = str(LLM_PROVIDER or "openrouter")
     os.environ["OPENAI_API_KEY"] = str(OPENAI_API_KEY or "")
     os.environ["ANTHROPIC_API_KEY"] = str(ANTHROPIC_API_KEY or "")
     os.environ["GITHUB_USER"] = str(GITHUB_USER)
