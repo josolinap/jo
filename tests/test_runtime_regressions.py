@@ -114,3 +114,76 @@ def test_llm_detects_empty_provider_response(monkeypatch):
         client.chat([{"role": "user", "content": "test"}], "openrouter/free")
 
     assert "empty response" in client.last_error.lower()
+
+
+def test_budget_router_defaults_are_free():
+    from ouroboros.budget_router import BudgetAwareRouter, ModelTier
+
+    router = BudgetAwareRouter(__import__("pathlib").Path("."))
+    assert router._default_model == "openrouter/free"
+    assert router._model_map[ModelTier.FAST] == "openrouter/free"
+    assert router._model_map[ModelTier.BALANCED].endswith(":free")
+    assert router._model_map[ModelTier.DEEP].endswith(":free")
+
+
+def test_complexity_router_defaults_are_free(monkeypatch):
+    monkeypatch.delenv("OUROBOROS_MODEL_LIGHT", raising=False)
+    monkeypatch.delenv("OUROBOROS_MODEL", raising=False)
+    monkeypatch.delenv("OUROBOROS_MODEL_CODE", raising=False)
+
+    from ouroboros.complexity_router import ModelRouter, ComplexityTier
+
+    router = ModelRouter()
+    for tier in ComplexityTier:
+        model = router._models[tier].name
+        assert model == "openrouter/free" or model.endswith(":free")
+
+
+def test_switch_model_blocks_paid_override(monkeypatch):
+    from unittest.mock import MagicMock
+    from ouroboros.tools.control import _switch_model
+    from ouroboros.llm import LLMClient
+
+    monkeypatch.setattr(LLMClient, "available_models", lambda self: [
+        "openrouter/free",
+        "poolside/laguna-s-2.1:free",
+    ])
+    ctx = MagicMock()
+    assert "paid/non-free model blocked" in _switch_model(ctx, model="anthropic/claude-sonnet-4")
+
+
+def test_multi_model_review_blocks_paid_models():
+    import asyncio
+    from ouroboros.tools.review import _multi_model_review_async
+
+    result = asyncio.run(
+        _multi_model_review_async(
+            content="print('ok')",
+            prompt="Find errors",
+            models=["anthropic/claude-sonnet-4"],
+            ctx=None,
+        )
+    )
+    assert "non-free review models" in result["error"]
+
+
+def test_multi_model_review_accepts_free_models_without_network(monkeypatch):
+    import asyncio
+    from ouroboros.tools.review import _multi_model_review_async
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
+    result = asyncio.run(
+        _multi_model_review_async(
+            content="print('ok')",
+            prompt="Find errors",
+            models=["openrouter/free"],
+            ctx=None,
+        )
+    )
+    assert "OPENROUTER_API_KEY not set" in result["error"]
+
+
+def test_default_vision_model_is_free():
+    from ouroboros.tools import vision
+
+    assert vision._DEFAULT_VLM_MODEL == "inclusionai/ling-3.0-flash-vl:free"
