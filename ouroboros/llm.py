@@ -713,6 +713,17 @@ class LLMClient:
             self._is_nvidia = False
             self._is_doubleword = False
 
+        # Last provider failure for diagnostics and self-healing.
+        # Keep this short and free of request payloads or credentials.
+        self.last_error = ""
+
+    @staticmethod
+    def _describe_error(exc: Exception) -> str:
+        text = str(exc).replace("\n", " ").strip()
+        if len(text) > 500:
+            text = text[:500] + "…"
+        return f"{type(exc).__name__}: {text}"
+
     def _get_client(self):
         if self._client is None:
             from openai import OpenAI
@@ -821,9 +832,11 @@ class LLMClient:
                 if not tool_calls and (not content or not content.strip()):
                     raise ValueError("OpenRouter returned an empty response")
 
+                self.last_error = ""
                 return msg, usage
 
             except Exception as e:
+                self.last_error = self._describe_error(e)
                 err_str = str(e)
                 is_rate_limited = "429" in err_str or "rate_limit" in err_str.lower()
                 is_auth_error = "401" in err_str or "403" in err_str or "authentication" in err_str.lower()
