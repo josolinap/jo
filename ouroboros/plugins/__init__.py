@@ -67,6 +67,7 @@ class PluginManager:
         self._registry: Dict[str, PluginInfo] = {}
         self._loaded_modules: Dict[str, Any] = {}
         self._load_manifest()
+        self._restore_enabled_plugins()
 
     def _manifest_path(self) -> pathlib.Path:
         return self.plugins_dir / "manifest.json"
@@ -92,6 +93,28 @@ class PluginManager:
                     )
             except Exception as e:
                 log.warning("Failed to load plugin manifest: %s", e)
+
+    def _restore_enabled_plugins(self) -> None:
+        """Restore plugins that were explicitly enabled before a restart."""
+        changed = False
+        for name, info in list(self._registry.items()):
+            if info.status != PluginStatus.ENABLED:
+                continue
+            try:
+                module = self._load_plugin_module(name, pathlib.Path(info.path))
+                if module is not None:
+                    self._loaded_modules[name] = module
+                    info.error = None
+                else:
+                    info.status = PluginStatus.ERROR
+                    info.error = "Plugin module could not be loaded"
+                    changed = True
+            except Exception as exc:
+                info.status = PluginStatus.ERROR
+                info.error = str(exc)
+                changed = True
+        if changed:
+            self._save_manifest()
 
     def _save_manifest(self) -> None:
         data = {}
@@ -320,17 +343,44 @@ def get_tools():
         source_path = ctx.repo_path(source)
         return _get_manager(ctx.repo_dir).install(name, source_path, version, description)
 
+    def _sync_registry(ctx, manager: PluginManager, removed_tools: Optional[List[str]] = None) -> None:
+        registry = getattr(ctx, "tool_registry", None)
+        if registry is None:
+            return
+        for tool_name in removed_tools or []:
+            registry.unregister(tool_name)
+        for entry in manager.get_enabled_tools():
+            registry.register(entry)
+
     def plugin_uninstall(ctx, name: str) -> str:
-        return _get_manager(ctx.repo_dir).uninstall(name)
+        manager = _get_manager(ctx.repo_dir)
+        info = manager.get_plugin_info(name)
+        removed = list(info.tools) if info else []
+        result = manager.uninstall(name)
+        _sync_registry(ctx, manager, removed)
+        return result
 
     def plugin_enable(ctx, name: str) -> str:
-        return _get_manager(ctx.repo_dir).enable(name)
+        manager = _get_manager(ctx.repo_dir)
+        result = manager.enable(name)
+        _sync_registry(ctx, manager)
+        return result
 
     def plugin_disable(ctx, name: str) -> str:
-        return _get_manager(ctx.repo_dir).disable(name)
+        manager = _get_manager(ctx.repo_dir)
+        info = manager.get_plugin_info(name)
+        removed = list(info.tools) if info else []
+        result = manager.disable(name)
+        _sync_registry(ctx, manager, removed)
+        return result
 
     def plugin_reload(ctx, name: str) -> str:
-        return _get_manager(ctx.repo_dir).reload(name)
+        manager = _get_manager(ctx.repo_dir)
+        info = manager.get_plugin_info(name)
+        removed = list(info.tools) if info else []
+        result = manager.reload(name)
+        _sync_registry(ctx, manager, removed)
+        return result
 
     return [
         ToolEntry(
