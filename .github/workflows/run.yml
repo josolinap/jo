@@ -17,6 +17,7 @@ env:
 permissions:
   contents: write
   actions: write
+  issues: write
 
 on:
   # Trigger on push to dev (Jo's working branch)
@@ -273,6 +274,13 @@ jobs:
 
           # --- Owner ID (needed for auto-resume notifications) ---
           TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+
+          # --- ChatGPT / GitHub Issues mailbox ---
+          # ChatGPT can create [JO] issues; Jo picks them up and comments results.
+          JO_GITHUB_INBOX_ENABLED: "1"
+          JO_GITHUB_INBOX_PREFIX: "[JO]"
+          JO_GITHUB_ALLOWED_USERS: ${{ github.repository_owner }}
+          JO_GITHUB_INBOX_POLL_SEC: "30"
 
           # --- Doubleword.ai (efficient model pool fallback) ---
           DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
