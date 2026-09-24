@@ -125,6 +125,30 @@ jobs:
           python -m pytest tests/test_smoke.py -v --tb=short || { echo "✗ Smoke tests failed"; exit 1; }
           echo "=== Smoke tests passed ==="
 
+      - name: Compile all runtime Python
+        run: |
+          echo "=== Compiling all runtime Python files ==="
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path(".")
+          excluded = {".git", "archive", "__pycache__"}
+          failures = []
+
+          for path in root.rglob("*.py"):
+              if any(part in excluded for part in path.parts):
+                  continue
+              try:
+                  compile(path.read_text(encoding="utf-8"), str(path), "exec")
+              except Exception as exc:
+                  failures.append(f"{path}: {type(exc).__name__}: {exc}")
+
+          if failures:
+              print("\n".join(failures))
+              raise SystemExit(f"✗ Python compilation failed for {len(failures)} file(s)")
+          print("✓ All runtime Python files compile successfully")
+          PY
+
       # -----------------------------------------------------------------------
       # 3.2 Validate pipeline features
       # Ensure our PIPELINE_PLAN.md features are properly configured
