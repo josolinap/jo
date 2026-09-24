@@ -14,6 +14,7 @@ import json
 import os
 import pathlib
 import time
+import uuid
 from typing import Any, Dict, List, Optional, Set
 
 import requests
@@ -100,15 +101,31 @@ class GitHubInbox:
                 continue
             if self.allowed_users and author not in self.allowed_users:
                 continue
-            if str(number) in claims or not body:
+            if not body:
                 continue
-            task_id = f"gh{number:x}"
-            claims[str(number)] = {
+
+            claim_key = str(number)
+            existing_claim = claims.get(claim_key)
+            if existing_claim:
+                if existing_claim.get("status") == "pending_close":
+                    closed = self._request(
+                        "PATCH",
+                        f"/issues/{number}",
+                        json={"state": "closed", "state_reason": "completed"},
+                    )
+                    if closed is not None:
+                        claims.pop(claim_key, None)
+                        self._save_state()
+                continue
+
+            task_id = f"gh{number:x}-{uuid.uuid4().hex[:8]}"
+            claims[claim_key] = {
                 "task_id": task_id,
                 "claimed_at": time.time(),
                 "title": title,
                 "url": issue.get("html_url") or "",
                 "author": author,
+                "status": "running",
             }
             task_kind = "evolution" if title[len(self.prefix) + 1:].strip().lower() in {"evolve", "evolution"} else "task"
             tasks.append({
@@ -138,12 +155,25 @@ class GitHubInbox:
         status = "FAILED" if failed else "COMPLETED"
         body = str(result or "").strip() or "Jo finished the task without a textual response."
         comment = "### Jo " + status + "\n\n" + body[:7000] + "\n\n---\nTask ID: " + str(task_id)
-        posted = self._request("POST", f"/issues/{issue_number}/comments", json={"body": comment})
-        if posted is None:
-            return False
-        closed = self._request("PATCH", f"/issues/{issue_number}", json={"state": "closed", "state_reason": "completed"})
+        claim = claims[issue_number]
+
+        if claim.get("status") != "pending_close":
+            posted = self._request("POST", f"/issues/{issue_number}/comments", json={"body": comment})
+            if posted is None:
+                return False
+            claim["status"] = "pending_close"
+            claim["completion_posted"] = True
+            claim["completed_at"] = time.time()
+            self._save_state()
+
+        closed = self._request(
+            "PATCH",
+            f"/issues/{issue_number}",
+            json={"state": "closed", "state_reason": "completed"},
+        )
         if closed is None:
             return False
+
         claims.pop(issue_number, None)
         self._save_state()
         return True
