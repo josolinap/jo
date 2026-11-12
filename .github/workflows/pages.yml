@@ -1,26 +1,26 @@
-name: Deploy GUI to GitHub Pages
+name: Validate GUI (Pages static)
 
+# Validates the static GUI. GitHub Pages deployment (with live backend discovery via gui/backend.json)
+# is owned by .github/workflows/web-backend.yml to avoid overwriting the backend-integrated site.
 on:
   push:
     branches:
       - main
       - dev
     paths:
-      - 'gui/**'
-      - '.github/workflows/pages.yml'
+      - "gui/**"
+      - ".github/workflows/pages.yml"
   pull_request:
     paths:
-      - 'gui/**'
-      - '.github/workflows/pages.yml'
+      - "gui/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-validate
   cancel-in-progress: true
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Validate GUI
         run: |
@@ -42,26 +42,15 @@ jobs:
           node --check gui/theme-init.js
           test -f gui/index.html
           test -f gui/styles.css
+          # basic sanity: backend discovery hook present
+          grep -q 'backend.json' gui/app.js
+          grep -q '/v1/chat' gui/app.js
 
-  deploy:
-    if: github.event_name != 'pull_request'
-    needs: validate
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload GUI artifact (for inspection)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
         with:
+          name: gui-static
           path: ./gui
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          if-no-files-found: error
+          retention-days: 7
