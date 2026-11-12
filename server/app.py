@@ -254,7 +254,20 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             from openai import OpenAI
             ocli = OpenAI(base_url=omni_base.rstrip("/"), api_key=_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute", timeout=120.0, max_retries=0)
             last_oe = None
-            for om in [_env("OMNIROUTE_MODEL") or "auto", "auto", "openrouter/free", "gpt-3.5-turbo"]:
+            candidates = [_env("OMNIROUTE_MODEL") or "auto", "auto", "openrouter/free", "gpt-3.5-turbo"]
+            # try to discover available models from OmniRoute
+            try:
+                import urllib.request as _ur, json as _json
+                mreq = _ur.Request(omni_base.rstrip("/") + "/models", headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or "omniroute")})
+                with _ur.urlopen(mreq, timeout=5) as mr:
+                    md = _json.loads(mr.read().decode("utf-8", "replace"))
+                for item in (md.get("data") or [])[:8]:
+                    mid = (item or {}).get("id") if isinstance(item, dict) else item
+                    if mid and mid not in candidates:
+                        candidates.append(str(mid))
+            except Exception:
+                pass
+            for om in candidates:
                 if not om:
                     continue
                 try:
@@ -344,37 +357,43 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"openrouter: {e}")
 
-    # Strategy 7: Public free text endpoints (no key) as last resort
+    # Strategy 7: Public free text endpoints (no key) as last resort — try multiple free sources/models
     try:
         import urllib.request as _ur, json as _json
         prompt = message
-        # Pollinations OpenAI-compatible
-        try:
-            payload = _json.dumps({"model": "openai", "messages": msgs, "temperature": 0.2}).encode()
-            req = _ur.Request("https://text.pollinations.ai/openai", data=payload, headers={"Content-Type": "application/json"})
-            with _ur.urlopen(req, timeout=60) as r:
-                data = _json.loads(r.read().decode("utf-8", "replace"))
-            text = _extract_text(((data.get("choices") or [{}])[0]).get("message") or {})
-            if not text and isinstance(data.get("choices"), list) and data["choices"]:
-                text = str((data["choices"][0] or {}).get("text") or "").strip()
-            if text and not _looks_bad_response(text):
-                return text
-            if text:
-                errors.append("pollinations: rejected bad response")
-        except Exception as pe:
-            errors.append(f"pollinations: {pe}")
-        # Pollinations simple GET
-        try:
-            q = _ur.quote(prompt[:2000])
-            req = _ur.Request(f"https://text.pollinations.ai/{q}?model=openai", headers={"Accept": "text/plain"})
-            with _ur.urlopen(req, timeout=60) as r:
-                text = r.read().decode("utf-8", "replace").strip()
-            if text and not _looks_bad_response(text) and len(text) < 20000:
-                return text
-            if text:
-                errors.append("pollinations-get: rejected bad response")
-        except Exception as pe:
-            errors.append(f"pollinations-get: {pe}")
+        public_endpoints = [
+            ("https://text.pollinations.ai/openai", "openai"),
+            ("https://text.pollinations.ai/openai", "mistral"),
+            ("https://text.pollinations.ai/openai", "unity"),
+        ]
+        for endpoint, model in public_endpoints:
+            try:
+                payload = _json.dumps({"model": model, "messages": msgs, "temperature": 0.3, "max_tokens": 512}).encode()
+                req = _ur.Request(endpoint, data=payload, headers={"Content-Type": "application/json", "User-Agent": "jo-web/1.0"})
+                with _ur.urlopen(req, timeout=45) as r:
+                    data = _json.loads(r.read().decode("utf-8", "replace"))
+                text = _extract_text(((data.get("choices") or [{}])[0]).get("message") or {})
+                if not text and isinstance(data.get("choices"), list) and data["choices"]:
+                    text = str((data["choices"][0] or {}).get("text") or "").strip()
+                if text and not _looks_bad_response(text):
+                    return text
+                if text:
+                    errors.append(f"pollinations({model}): rejected bad response")
+            except Exception as pe:
+                errors.append(f"pollinations({model}): {pe}")
+        # Simple GET fallbacks with different models
+        for model in ["openai", "mistral"]:
+            try:
+                q = _ur.quote(prompt[:1800])
+                req = _ur.Request(f"https://text.pollinations.ai/{q}?model={_ur.quote(model)}", headers={"Accept": "text/plain", "User-Agent": "jo-web/1.0"})
+                with _ur.urlopen(req, timeout=45) as r:
+                    text = r.read().decode("utf-8", "replace").strip()
+                if text and not _looks_bad_response(text) and len(text) < 20000:
+                    return text
+                if text:
+                    errors.append(f"pollinations-get({model}): rejected bad response")
+            except Exception as pe:
+                errors.append(f"pollinations-get({model}): {pe}")
     except Exception as e:
         errors.append(f"public: {e}")
 
