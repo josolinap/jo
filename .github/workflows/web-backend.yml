@@ -1,0 +1,117 @@
+name: Web Backend (Pages API)
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: 'How long to keep backend/tunnel running'
+        required: false
+        default: '330'
+  schedule:
+    - cron: '30 */6 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-api
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  serve-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start backend server
+        env:
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openrouter' }}
+          OUROBOROS_MODEL: ${{ vars.OUROBOROS_MODEL || 'openrouter/free' }}
+          OUROBOROS_MODEL_CODE: ${{ vars.OUROBOROS_MODEL_CODE || '' }}
+          OUROBOROS_MODEL_LIGHT: ${{ vars.OUROBOROS_MODEL_LIGHT || '' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
+          DATA_ROOT: /home/runner/.jo_data
+          REPO_DIR: ${{ github.workspace }}
+          OUROBOROS_DETERMINISTIC: "1"
+          OUROBOROS_LLM_TEMPERATURE: "0"
+        run: |
+          mkdir -p /home/runner/.jo_data
+          python -m uvicorn server.app:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          echo $! > /tmp/uvicorn.pid
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/health >/tmp/health.json; then
+              echo "Backend up"; cat /tmp/health.json; exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend failed to start"; tail -n 200 /tmp/uvicorn.log; exit 1
+
+      - name: Start Cloudflare tunnel
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+          chmod +x /usr/local/bin/cloudflared
+          cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate > /tmp/cloudflared.log 2>&1 &
+          echo $! > /tmp/cloudflared.pid
+          url=""
+          for i in $(seq 1 60); do
+            url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n1 || true)
+            if [ -n "$url" ]; then break; fi
+            sleep 2
+          done
+          if [ -z "$url" ]; then
+            echo "Failed to obtain tunnel URL"; tail -n 200 /tmp/cloudflared.log; exit 1
+          fi
+          echo "TUNNEL_URL=$url" >> $GITHUB_ENV
+          printf '{"apiBase":"%s"}\n' "$url" > gui/backend.json
+          echo "Tunnel: $url"
+          cat gui/backend.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact (GUI + backend discovery)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./gui
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Keep backend alive
+        env:
+          DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '330' }}
+        run: |
+          echo "Backend URL: $TUNNEL_URL"
+          echo "Keeping alive for $DURATION_MINUTES minutes (while job runs)"
+          end=$((SECONDS + DURATION_MINUTES*60))
+          while [ $SECONDS -lt $end ]; do
+            if ! curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              echo "Local backend unhealthy"; tail -n 80 /tmp/uvicorn.log || true
+            fi
+            sleep 30
+          done
+          echo "Duration reached, stopping"
