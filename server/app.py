@@ -57,21 +57,63 @@ def _env(name: str) -> str:
     return os.environ.get(name, "").strip()
 
 
+def _local_reachable() -> bool:
+    base = _env("LOCAL_BASE_URL")
+    if not base:
+        return False
+    try:
+        import urllib.request
+        url = base.rstrip("/") + "/models"
+        req = urllib.request.Request(url, headers={"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")})
+        urllib.request.urlopen(req, timeout=2)
+        return True
+    except Exception:
+        return False
+
+
+def _detect_local_model(base: str) -> str:
+    try:
+        import urllib.request, json as _json
+        url = base.rstrip("/") + "/models"
+        req = urllib.request.Request(url, headers={"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")})
+        with urllib.request.urlopen(req, timeout=2) as r:
+            data = _json.loads(r.read().decode("utf-8", "replace"))
+        models = data.get("data") or data.get("models") or []
+        if isinstance(models, list) and models:
+            m0 = models[0]
+            if isinstance(m0, dict):
+                mid = m0.get("id") or m0.get("name") or ""
+                if mid:
+                    return str(mid)
+            elif isinstance(m0, str):
+                return m0
+    except Exception:
+        pass
+    return "local-model"
+
+
 def _provider_status() -> Dict[str, Any]:
     provider = _env("LLM_PROVIDER") or "openrouter"
+    local_ok = _local_reachable()
     keys = {
         "openrouter": bool(_env("OPENROUTER_API_KEY")),
         "nvidia": bool(_env("NVIDIA_API_KEY")),
         "doubleword": bool(_env("DOUBLEWORD_API_KEY")),
-        "local": bool(_env("LOCAL_BASE_URL") or _env("LOCAL_API_KEY") or _env("OLLAMA_HOST")),
+        "local": bool(_env("LOCAL_BASE_URL") or _env("LOCAL_API_KEY") or _env("OLLAMA_HOST")) or local_ok,
+        "omniroute": bool(_env("OMNIROUTE_BASE_URL")),
     }
     model = _env("OUROBOROS_MODEL") or "openrouter/free"
-    configured = any(keys.values()) or provider == "local"
+    if local_ok:
+        model = _detect_local_model(_env("LOCAL_BASE_URL"))
+    if _env("OMNIROUTE_BASE_URL"):
+        model = _env("OMNIROUTE_MODEL") or "auto"
+    configured = any(keys.values()) or provider in ("local", "omniroute") or local_ok
     return {
         "provider": provider,
         "model": model,
         "keys": keys,
         "configured": configured,
+        "local_reachable": local_ok,
     }
 
 
@@ -213,7 +255,43 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"openrouter: {e}")
 
-    raise RuntimeError(" | ".join(errors[-6:]) if errors else "no provider response")
+    # Strategy 5: Local OpenAI-compatible endpoint (Ollama/llama.cpp), if reachable/configured
+    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
+    if local_base:
+        try:
+            from openai import OpenAI
+            local_model = _detect_local_model(local_base)
+            lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=60.0, max_retries=0)
+            try:
+                resp = lcli.chat.completions.create(model=local_model, messages=msgs, temperature=0, max_tokens=512)
+            except Exception:
+                # some servers require a specific/any model name
+                resp = lcli.chat.completions.create(model="local-model", messages=msgs, temperature=0, max_tokens=512)
+            msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
+            text = _extract_text(msg)
+            if text:
+                return text
+            errors.append("local: empty response")
+        except Exception as e:
+            errors.append(f"local: {e}")
+
+    # Strategy 6: OmniRoute (OpenAI-compatible gateway, can aggregate free providers)
+    omni_base = _env("OMNIROUTE_BASE_URL")
+    if omni_base:
+        try:
+            from openai import OpenAI
+            ocli = OpenAI(base_url=omni_base.rstrip("/"), api_key=_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute", timeout=60.0, max_retries=0)
+            omni_model = _env("OMNIROUTE_MODEL") or "auto"
+            resp = ocli.chat.completions.create(model=omni_model, messages=msgs, temperature=0, max_tokens=1024)
+            msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
+            text = _extract_text(msg)
+            if text:
+                return text
+            errors.append("omniroute: empty response")
+        except Exception as e:
+            errors.append(f"omniroute: {e}")
+
+    raise RuntimeError(" | ".join(errors[-10:]) if errors else "no provider response")
 
 
 def _fallback_response(message: str, err: Optional[str] = None) -> str:
@@ -234,7 +312,8 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
     lines.append("- OpenRouter: set LLM_PROVIDER=openrouter, OPENROUTER_API_KEY, OUROBOROS_MODEL=openrouter/free (or another :free model)")
     lines.append("- NVIDIA NIM: set NVIDIA_API_KEY (and optional NVIDIA_FALLBACK_MODEL) — used as fallback/provider")
     lines.append("- Doubleword: set DOUBLEWORD_API_KEY")
-    lines.append("- Local (Ollama): set LLM_PROVIDER=local and LOCAL_BASE_URL (default http://localhost:11434/v1) with a pulled model")
+    lines.append("- Local (Ollama/llama.cpp): set LOCAL_BASE_URL (e.g. http://127.0.0.1:11434/v1) to a running OpenAI-compatible local server")
+    lines.append("- OmniRoute: set OMNIROUTE_BASE_URL (e.g. http://127.0.0.1:20128/v1) and OMNIROUTE_API_KEY/OMNIROUTE_MODEL=auto to route via OmniRoute's free/connected providers")
     lines.append("")
     preview = (message or "").strip()
     if len(preview) > 200:
