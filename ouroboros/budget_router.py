@@ -9,9 +9,9 @@ and under-powering complex ones.
 
 Solution: Classify task complexity, check remaining budget, and route to
 the appropriate model tier:
-- FAST (haiku): Simple lookups, status checks, formatting
-- BALANCED (sonnet): Most coding tasks, debugging, refactoring
-- DEEP (opus): Complex architecture, strategic planning, security review
+- FAST: Simple lookups, status checks, formatting
+- BALANCED: Most coding tasks, debugging, refactoring
+- DEEP: Complex architecture, strategic planning, security review
 
 Budget awareness: If daily budget is >80% consumed, downgrade non-critical tasks.
 """
@@ -27,9 +27,9 @@ log = logging.getLogger(__name__)
 
 
 class ModelTier(Enum):
-    FAST = "fast"  # Claude Haiku - simple tasks
-    BALANCED = "balanced"  # Claude Sonnet - most tasks
-    DEEP = "deep"  # Claude Opus - complex tasks
+    FAST = "fast"
+    BALANCED = "balanced"
+    DEEP = "deep"
 
 
 # Task complexity keywords
@@ -65,11 +65,11 @@ class BudgetAwareRouter:
 
     def __init__(self, repo_dir: pathlib.Path):
         self.repo_dir = repo_dir
-        self._default_model = "anthropic/claude-sonnet-4"
+        self._default_model = "openrouter/free"
         self._model_map = {
-            ModelTier.FAST: "anthropic/claude-haiku-3",
-            ModelTier.BALANCED: "anthropic/claude-sonnet-4",
-            ModelTier.DEEP: "anthropic/claude-opus-4",
+            ModelTier.FAST: "openrouter/free",
+            ModelTier.BALANCED: "poolside/laguna-s-2.1:free",
+            ModelTier.DEEP: "nvidia/nemotron-3-ultra-550b-a55b:free",
         }
 
     def classify_complexity(self, task_text: str) -> int:

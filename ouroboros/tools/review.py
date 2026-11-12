@@ -134,7 +134,7 @@ async def _multi_model_review_async(content: str, prompt: str, models: list, ctx
     if not prompt:
         return {"error": "prompt is required"}
     if not models:
-        return {"error": "models list is required (e.g. ['openai/o3', 'google/gemini-2.5-pro'])"}
+        return {"error": "models list is required (e.g. ['openrouter/free', 'poolside/laguna-s-2.1:free'])"}
 
     if not isinstance(models, list) or not all(isinstance(m, str) for m in models):
         return {"error": "models must be a list of strings"}
@@ -144,6 +144,14 @@ async def _multi_model_review_async(content: str, prompt: str, models: list, ctx
 
     if len(models) == 0:
         return {"error": "At least one model is required"}
+
+    non_free = [m for m in models if m != "openrouter/free" and not m.endswith(":free")]
+    if non_free:
+        return {
+            "error": "Free-only runtime blocked non-free review models",
+            "blocked_models": non_free,
+            "allowed": "openrouter/free or model IDs ending in :free",
+        }
 
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:

@@ -68,7 +68,7 @@ class MCPServer:
                     {
                         "protocolVersion": "2024-11-05",
                         "capabilities": {"tools": {"listChanged": False}},
-                        "serverInfo": {"name": "jo-mcp", "version": "6.4.0"},
+                        "serverInfo": {"name": "jo-mcp", "version": self._version()},
                     },
                 )
             elif method == "tools/list":
@@ -124,7 +124,7 @@ class MCPServer:
                                 {
                                     "tools": len(self._tools),
                                     "server": "jo-mcp",
-                                    "version": "6.4.0",
+                                    "version": self._version(),
                                 }
                             ),
                         }
@@ -141,6 +141,13 @@ class MCPServer:
                 return self._error(req_id, -32602, "Constitution not found")
         else:
             return self._error(req_id, -32602, f"Unknown resource: {uri}")
+
+    def _version(self) -> str:
+        """Read Jo's version from the canonical VERSION file."""
+        try:
+            return (self.repo_dir / "VERSION").read_text(encoding="utf-8").strip() or "unknown"
+        except Exception:
+            return "unknown"
 
     @staticmethod
     def _response(req_id: int, result: Any) -> Dict[str, Any]:

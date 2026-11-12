@@ -15,11 +15,11 @@ llm:
   fallback_chain:
     - name: "openrouter/free"
       priority: 1
-    - name: "openrouter/google/gemini-2.0-flash-exp:free"
+    - name: "poolside/laguna-s-2.1:free"
       priority: 2
-    - name: "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+    - name: "inclusionai/ling-3.0-flash:free"
       priority: 3
-    - name: "openrouter/mistralai/mistral-7b-instruct:free"
+    - name: "nvidia/nemotron-3-ultra-550b-a55b:free"
       priority: 4
 
 workers:

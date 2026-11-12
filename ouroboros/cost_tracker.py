@@ -43,12 +43,11 @@ class CostTracker:
 
     PRICING = {
         "openrouter": {
-            "openai/gpt-4o": {"input": 2.5, "output": 10.0},
-            "openai/gpt-4o-mini": {"input": 0.15, "output": 0.60},
-            "anthropic/claude-3.5-sonnet": {"input": 3.0, "output": 15.0},
-            "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
-            "google/gemini-2.0-flash": {"input": 0.0, "output": 0.0},
-            "deepseek/deepseek-chat-v3": {"input": 0.27, "output": 1.10},
+            "openrouter/free": {"input": 0.0, "output": 0.0},
+            "poolside/laguna-s-2.1:free": {"input": 0.0, "output": 0.0},
+            "inclusionai/ling-3.0-flash:free": {"input": 0.0, "output": 0.0},
+            "inclusionai/ling-3.0-flash-vl:free": {"input": 0.0, "output": 0.0},
+            "nvidia/nemotron-3-ultra-550b-a55b:free": {"input": 0.0, "output": 0.0},
         },
     }
 

@@ -125,6 +125,82 @@ def _git_push_with_tests(ctx: ToolContext) -> Optional[str]:
 # --- Tool implementations ---
 
 
+def _create_backup_tag(ctx: ToolContext, label: str = "pre-modify") -> str:
+    """Create a git tag as a backup point before modifying code.
+    
+    This allows Jo to roll back to this point if something breaks.
+    Tags are lightweight and don't pollute the commit history.
+    """
+    try:
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        tag_name = f"backup/{label}/{timestamp}"
+        run_cmd(["git", "tag", tag_name], cwd=ctx.repo_dir)
+        log.info(f"Created backup tag: {tag_name}")
+        return tag_name
+    except Exception as e:
+        log.warning(f"Failed to create backup tag: {e}")
+        return ""
+
+
+def _repo_rollback(ctx: ToolContext, ref: str = "HEAD~1", force: bool = False) -> str:
+    """Roll back to a previous commit or backup tag.
+    
+    Args:
+        ref: Git reference to roll back to (e.g., "HEAD~1", "backup/pre-modify/20260101-120000")
+        force: If True, discard current changes (dangerous)
+    
+    Returns:
+        Status message
+    """
+    lock = _acquire_git_lock(ctx)
+    try:
+        # Verify the ref exists
+        try:
+            run_cmd(["git", "rev-parse", "--verify", ref], cwd=ctx.repo_dir)
+        except Exception:
+            return f"⚠️ ERROR: Reference '{ref}' does not exist."
+        
+        # Create a safety tag before rolling back
+        safety_tag = _create_backup_tag(ctx, "pre-rollback")
+        
+        if force:
+            try:
+                run_cmd(["git", "reset", "--hard", ref], cwd=ctx.repo_dir)
+                return f"✓ Hard reset to {ref} (safety tag: {safety_tag}). All changes after this point discarded."
+            except Exception as e:
+                return f"⚠️ GIT_ERROR (hard reset): {e}"
+        else:
+            # Use git revert for safety (creates a new commit that undoes changes)
+            try:
+                run_cmd(["git", "revert", "--no-edit", ref], cwd=ctx.repo_dir)
+                return f"✓ Reverted {ref} (safety tag: {safety_tag}). Created revert commit."
+            except Exception as e:
+                return f"⚠️ GIT_ERROR (revert): {e}\nUse force=True to hard reset instead."
+    finally:
+        _release_git_lock(lock)
+
+
+def _repo_list_backups(ctx: ToolContext) -> str:
+    """List all backup tags created by Jo."""
+    try:
+        result = run_cmd(["git", "tag", "-l", "backup/*"], cwd=ctx.repo_dir)
+        tags = result.strip().splitlines() if result.strip() else []
+        if not tags:
+            return "No backup tags found."
+        lines = [f"Backup tags ({len(tags)}):"]
+        for tag in sorted(tags, reverse=True)[:20]:
+            # Get the commit message for context
+            try:
+                msg = run_cmd(["git", "log", "-1", "--format=%s", tag], cwd=ctx.repo_dir).strip()
+                lines.append(f"  {tag} — {msg[:60]}")
+            except Exception:
+                lines.append(f"  {tag}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"⚠️ ERROR: {e}"
+
+
 def _repo_write_commit(ctx: ToolContext, path: str, content: str, commit_message: str) -> str:
     ctx.last_push_succeeded = False
     if not commit_message.strip():
@@ -135,6 +211,8 @@ def _repo_write_commit(ctx: ToolContext, path: str, content: str, commit_message
             run_cmd(["git", "checkout", ctx.branch_dev], cwd=ctx.repo_dir)
         except Exception as e:
             return f"⚠️ GIT_ERROR (checkout): {e}"
+        # Create backup tag before modifying (breakage protection)
+        _create_backup_tag(ctx, "pre-write")
         try:
             write_text(ctx.repo_path(path), content)
         except Exception as e:
@@ -320,6 +398,46 @@ def get_tools() -> List[ToolEntry]:
                 },
             },
             _git_diff,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "repo_rollback",
+            {
+                "name": "repo_rollback",
+                "description": (
+                    "Roll back to a previous commit or backup tag. "
+                    "Use force=True for hard reset (discards changes), force=False for git revert (safe). "
+                    "ALWAYS creates a safety tag before rolling back. "
+                    "Use repo_list_backups to see available backup tags."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ref": {
+                            "type": "string",
+                            "default": "HEAD~1",
+                            "description": "Git reference to roll back to (e.g., 'HEAD~1', 'backup/pre-write/20260101-120000')",
+                        },
+                        "force": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "If True, hard reset (dangerous, discards changes). If False, git revert (safe).",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+            _repo_rollback,
+            is_code_tool=True,
+        ),
+        ToolEntry(
+            "repo_list_backups",
+            {
+                "name": "repo_list_backups",
+                "description": "List all backup tags created by Jo (for rollback points).",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+            _repo_list_backups,
             is_code_tool=True,
         ),
     ]

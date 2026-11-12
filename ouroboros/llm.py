@@ -28,7 +28,7 @@ _DETERMINISTIC = os.environ.get("OUROBOROS_DETERMINISTIC", "0") == "1"
 # LLM temperature: lower = more deterministic. 0 = fully deterministic (same prompt = same output)
 _LLM_TEMPERATURE = float(os.environ.get("OUROBOROS_LLM_TEMPERATURE", "0.0" if _DETERMINISTIC else "0.7"))
 
-DEFAULT_LIGHT_MODEL = "google/gemini-2.0-flash-exp:free"
+DEFAULT_LIGHT_MODEL = "openrouter/free"
 
 REASONING_PATTERNS = ("deepseek-r1", "gemma-4", "gemma-3-27b", "llama-3.1-70b", "phi-4", "nemotron", "reasoning")
 CODING_PATTERNS = ("coder", "code", "starcoder", "deepseek-coder")
@@ -713,6 +713,17 @@ class LLMClient:
             self._is_nvidia = False
             self._is_doubleword = False
 
+        # Last provider failure for diagnostics and self-healing.
+        # Keep this short and free of request payloads or credentials.
+        self.last_error = ""
+
+    @staticmethod
+    def _describe_error(exc: Exception) -> str:
+        text = str(exc).replace("\n", " ").strip()
+        if len(text) > 500:
+            text = text[:500] + "…"
+        return f"{type(exc).__name__}: {text}"
+
     def _get_client(self):
         if self._client is None:
             from openai import OpenAI
@@ -821,9 +832,11 @@ class LLMClient:
                 if not tool_calls and (not content or not content.strip()):
                     raise ValueError("OpenRouter returned an empty response")
 
+                self.last_error = ""
                 return msg, usage
 
             except Exception as e:
+                self.last_error = self._describe_error(e)
                 err_str = str(e)
                 is_rate_limited = "429" in err_str or "rate_limit" in err_str.lower()
                 is_auth_error = "401" in err_str or "403" in err_str or "authentication" in err_str.lower()
@@ -1070,7 +1083,7 @@ class LLMClient:
             return self._impl.default_model()
         if self._is_doubleword:
             return self._impl.default_model()
-        return os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
+        return os.environ.get("OUROBOROS_MODEL", "openrouter/free")
 
     def available_models(self) -> List[str]:
         """Return list of available models from env (for switch_model tool schema)."""
@@ -1079,7 +1092,7 @@ class LLMClient:
         if self._is_doubleword:
             return self._impl.available_models()
 
-        main = os.environ.get("OUROBOROS_MODEL", "google/gemini-2.0-flash-exp:free")
+        main = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
         code = os.environ.get("OUROBOROS_MODEL_CODE", "")
         light = os.environ.get("OUROBOROS_MODEL_LIGHT", "")
         models = [main]

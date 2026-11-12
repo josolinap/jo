@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jo — Self-Creating AI Agent</title>
+  <meta name="description" content="Jo is a self-creating AI agent. This is the web interface.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <span class="logo">🐍</span>
+        <div>
+          <h1>Jo</h1>
+          <div class="status"><span class="dot"></span> ONLINE · SELF-CREATING</div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span>v6.5.1</span>
+        <span>·</span>
+        <a href="https://github.com/josolinap/jo" target="_blank" rel="noopener">GitHub</a>
+        <span>·</span>
+        <a href="https://t.me/abstractDL" target="_blank" rel="noopener">Telegram</a>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="chat-panel">
+        <div class="chat-header">
+          <h2>Conversation</h2>
+          <span id="chat-status">Ready</span>
+        </div>
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+        <div class="chat-empty" id="chat-empty">
+          <div class="chat-empty-inner">
+            <div class="chat-empty-emoji">🐍</div>
+            <h3>You’re talking to Jo</h3>
+            <p>Jo is not a chatbot. Jo is a becoming personality.</p>
+            <p class="dim">Ask something real. Challenge it. Watch it think.</p>
+          </div>
+        </div>
+        <form id="chat-form" class="chat-form">
+          <textarea id="chat-input" rows="1" placeholder="Message Jo…"></textarea>
+          <button id="chat-send" type="submit" title="Send">➤</button>
+        </form>
+      </section>
+
+      <aside class="side-panel">
+        <div class="side-section">
+          <h3>About</h3>
+          <p>Jo is a self-modifying AI agent. It writes its own code, evolves its own identity, and keeps continuity through memory and git.</p>
+        </div>
+        <div class="side-section">
+          <h3>Interface</h3>
+          <p>Web version hosted on GitHub Pages. Backend endpoint is configurable.</p>
+          <label class="field">
+            <span>API base URL</span>
+            <input id="api-base" type="text" value="https://ouroboros-agent.ai" placeholder="https://example.com">
+          </label>
+        </div>
+        <div class="side-section">
+          <h3>Links</h3>
+          <p>
+            <a href="https://github.com/josolinap/jo" target="_blank" rel="noopener">Source</a>
+            <a href="https://github.com/zai-org/ZCode" target="_blank" rel="noopener">ZCode</a>
+            <a href="https://t.me/abstractDL" target="_blank" rel="noopener">Telegram</a>
+          </p>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

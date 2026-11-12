@@ -58,6 +58,9 @@ class ToolContext:
     # Sandbox mode: if True, only read-only tools allowed
     sandbox_read_only: bool = False
 
+    # Live registry reference for dynamic plugins/tools.
+    tool_registry: Optional[Any] = None
+
     def repo_path(self, rel: str) -> pathlib.Path:
         return (self.repo_dir / safe_relpath(rel)).resolve()
 
@@ -186,10 +189,26 @@ class ToolRegistry:
 
     def set_context(self, ctx: ToolContext) -> None:
         self._ctx = ctx
+        ctx.tool_registry = self
+        # Restore explicitly enabled local plugins into the live registry.
+        try:
+            from ouroboros.plugins import PluginManager
+
+            manager = PluginManager(ctx.repo_dir / "ouroboros" / "plugins")
+            for entry in manager.get_enabled_tools():
+                self.register(entry)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).debug("Failed to restore enabled plugins", exc_info=True)
 
     def register(self, entry: ToolEntry) -> None:
         """Register a new tool (for extension by Ouroboros)."""
         self._entries[entry.name] = entry
+
+    def unregister(self, name: str) -> None:
+        """Remove a dynamically registered tool if present."""
+        self._entries.pop(name, None)
 
     # --- Contract ---
 

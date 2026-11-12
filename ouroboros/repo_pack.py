@@ -456,7 +456,7 @@ def compress_python(source: str) -> str:
                             value = ast.unparse(node.value)
                             if len(value) < 100:
                                 self._emit(f"{target.id} = {value}")
-                        except:
+                        except Exception:
                             self._emit(f"{target.id} = ...")
 
         def visit_AnnAssign(self, node):
@@ -468,7 +468,7 @@ def compress_python(source: str) -> str:
                         val = f" = {ast.unparse(node.value)}"
                         if len(val) > 100:
                             val = " = ..."
-                    except:
+                    except Exception:
                         val = " = ..."
                 self._emit(f"{node.target.id}: {ann}{val}")
 

@@ -510,8 +510,8 @@ def model_breakdown(st: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
 
     Returns dict like:
     {
-        "anthropic/claude-sonnet-4.6": {"cost": 12.5, "calls": 120, "prompt_tokens": 50000, "completion_tokens": 3000},
-        "openai/gpt-4o": {"cost": 3.2, "calls": 15, ...},
+        "poolside/laguna-s-2.1:free": {"cost": 0.0, "calls": 120, "prompt_tokens": 50000, "completion_tokens": 3000},
+        "openrouter/free": {"cost": 0.0, "calls": 15, ...},
     }
     """
     events_path = DRIVE_ROOT / "logs" / "events.jsonl"

@@ -1,0 +1,29 @@
+#!/bin/bash
+# Pre-commit hook — runs constitution checks before allowing commit
+# Installed via: git config core.hooksPath .githooks
+#
+# Checks (via scripts/pre-commit):
+# 1. Version sync (VERSION == git tag == pyproject.toml)
+# 2. Module line limits (no module over 1600 lines)
+# 3. Required modules exist
+# 4. Required vault concepts exist
+# 5. Protected files exist
+# 6. .jo_protected files not modified by staged changes
+# 7. Identity core statements intact
+# 8. Module growth within threshold
+#
+# Bypass: git commit --no-verify
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+    echo "PRE-COMMIT: Cannot find repo root" >&2
+    exit 1
+fi
+
+# Run the constitution checker
+if [ -f "$REPO_ROOT/scripts/pre-commit" ]; then
+    exec python3 "$REPO_ROOT/scripts/pre-commit"
+else
+    echo "PRE-COMMIT: scripts/pre-commit not found" >&2
+    exit 1
+fi

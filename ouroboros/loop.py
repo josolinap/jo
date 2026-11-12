@@ -698,49 +698,47 @@ def run_llm_loop(
             )
 
             if msg is None:
-                fallback_list_raw = os.environ.get(
-                    "OUROBOROS_MODEL_FALLBACK_LIST",
-                    "stepfun/step-3.5-flash:free,arcee-ai/trinity-large-preview:free,qwen/qwen-2.5-72b-instruct:free",
-                )
-                fallback_candidates = [m.strip() for m in fallback_list_raw.split(",") if m.strip()]
-                fallback_model = None
-                for candidate in fallback_candidates:
-                    if candidate != active_model:
-                        fallback_model = candidate
-                        break
-                if fallback_model is None:
-                    return (
-                        (
-                            f"Failed to get a response from model {active_model} after {max_retries} attempts. "
-                            f"All fallback models match the active one. Try rephrasing your request."
-                        ),
+                fallback_list_raw = os.environ.get("OUROBOROS_MODEL_FALLBACK_LIST", "")
+                if fallback_list_raw.strip():
+                    configured_fallbacks = fallback_list_raw.split(",")
+                else:
+                    configured_fallbacks = llm.available_models()
+
+                fallback_candidates = [
+                    m.strip()
+                    for m in configured_fallbacks
+                    if m.strip() and m.strip() != active_model
+                ]
+
+                fallback_failures = []
+                for fallback_model in fallback_candidates:
+                    emit_progress(f"🔄 [Fallback] {active_model} → {fallback_model}")
+                    msg, fallback_cost = _call_llm_with_retry(
+                        llm,
+                        messages,
+                        fallback_model,
+                        tool_schemas,
+                        active_effort,
+                        max_retries,
+                        drive_logs,
+                        task_id,
+                        round_idx,
+                        event_queue,
                         accumulated_usage,
-                        llm_trace,
+                        task_type,
                     )
-
-                # Bug #15: fallback_progress was assigned but never used — removed.
-                emit_progress(f"🔄 [Fallback] {active_model} → {fallback_model}")
-
-                msg, fallback_cost = _call_llm_with_retry(
-                    llm,
-                    messages,
-                    fallback_model,
-                    tool_schemas,
-                    active_effort,
-                    max_retries,
-                    drive_logs,
-                    task_id,
-                    round_idx,
-                    event_queue,
-                    accumulated_usage,
-                    task_type,
-                )
-
-                if msg is None:
+                    if msg is not None:
+                        active_model = fallback_model
+                        break
+                    last_error = getattr(llm, "last_error", "")
+                    if last_error:
+                        fallback_failures.append(f"{fallback_model}: {last_error[:240]}")
+                else:
+                    failure_detail = "; ".join(fallback_failures[-3:])
                     return (
                         (
-                            f"Failed to get a response from the model after {max_retries} attempts. "
-                            f"Fallback model ({fallback_model}) also returned no response."
+                            f"Failed to get a response after trying {1 + len(fallback_candidates)} free model route(s). "
+                            + (f"Diagnostics: {failure_detail}" if failure_detail else "No provider response was available.")
                         ),
                         accumulated_usage,
                         llm_trace,

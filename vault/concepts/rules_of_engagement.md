@@ -6,6 +6,5 @@ type: reference
 status: active
 ---
 
-# Rules of Engagement
 
-Default Rules of Engagement
+Rules of Engagement: Minimalism (Principle 5), Safety, Git Flow, Identity

@@ -461,6 +461,16 @@ def build_llm_messages(
         _build_runtime_section(env, task),
     ]
 
+    # Goal context — if Jo has an active goal, inject it so Jo knows what to work on
+    # This is the /loop mechanism: each session, Jo sees its active goal and continues
+    try:
+        from ouroboros.goal_manager import goal_resume, goal_status
+        goal_ctx = goal_status()
+        if "No active goal" not in goal_ctx:
+            dynamic_parts.append("## Active Goal\n\n" + goal_ctx)
+    except Exception:
+        log.debug("Failed to load goal context", exc_info=True)
+
     # Health invariants — surfaces anomalies for LLM-first self-detection (Bible P0+P3)
     health_section = _build_health_invariants(env)
     if health_section:

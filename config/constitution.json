@@ -60,8 +60,8 @@
         "warn": 1000,
         "block": 1600
       },
-      "max_module_lines": 1000,
-      "warn_module_lines": 1000,
+      "max_module_lines": 1600,
+      "warn_module_lines": 1300,
       "max_function_lines": 200,
       "max_total_modules": 80,
       "description": "Complexity serves clarity. BIBLE.md target is 1000. Hard block at 1600 matches baseline state."

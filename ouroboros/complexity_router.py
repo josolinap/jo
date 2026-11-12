@@ -143,22 +143,22 @@ class ModelRouter:
         self.classifier = ComplexityClassifier()
         self._models: Dict[ComplexityTier, ModelConfig] = {
             ComplexityTier.LIGHT: ModelConfig(
-                name=os.environ.get("OUROBOROS_MODEL_LIGHT", "openrouter/google/gemini-2.0-flash-001"),
+                name=os.environ.get("OUROBOROS_MODEL_LIGHT", "openrouter/free"),
                 tier=ComplexityTier.LIGHT,
                 cost_per_1k_input=0.0,
                 cost_per_1k_output=0.0,
             ),
             ComplexityTier.STANDARD: ModelConfig(
-                name=os.environ.get("OUROBOROS_MODEL", "openrouter/anthropic/claude-sonnet-4"),
+                name=os.environ.get("OUROBOROS_MODEL", "poolside/laguna-s-2.1:free"),
                 tier=ComplexityTier.STANDARD,
-                cost_per_1k_input=3.0,
-                cost_per_1k_output=15.0,
+                cost_per_1k_input=0.0,
+                cost_per_1k_output=0.0,
             ),
             ComplexityTier.HEAVY: ModelConfig(
-                name=os.environ.get("OUROBOROS_MODEL_CODE", "openrouter/anthropic/claude-sonnet-4"),
+                name=os.environ.get("OUROBOROS_MODEL_CODE", "nvidia/nemotron-3-ultra-550b-a55b:free"),
                 tier=ComplexityTier.HEAVY,
-                cost_per_1k_input=3.0,
-                cost_per_1k_output=15.0,
+                cost_per_1k_input=0.0,
+                cost_per_1k_output=0.0,
             ),
         }
         self._budget_remaining: float = float(os.environ.get("TOTAL_BUDGET", "50"))
