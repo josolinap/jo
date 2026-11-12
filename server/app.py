@@ -63,15 +63,16 @@ def _local_reachable() -> bool:
         return False
     try:
         import urllib.request
-        url = base.rstrip("/") + "/models"
-        # try without auth (llama.cpp) then with auth
-        for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
-            try:
-                req = urllib.request.Request(url, headers=headers)
-                urllib.request.urlopen(req, timeout=2)
-                return True
-            except Exception:
-                continue
+        candidates = [base.rstrip("/") + "/models", base.rstrip("/").rsplit("/v1", 1)[0] + "/health", base.rstrip("/") + "/health"]
+        for url in candidates:
+            for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
+                try:
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=2) as r:
+                        if 200 <= getattr(r, "status", 200) < 500:
+                            return True
+                except Exception:
+                    continue
         return False
     except Exception:
         return False
@@ -192,6 +193,31 @@ def _extract_text(msg: Any) -> str:
     return str(content).strip()
 
 
+def _looks_bad_response(text: str) -> bool:
+    if not text:
+        return True
+    t = text.strip()
+    low = t.lower()
+    # reject obvious provider/error/quota banners mistaken as replies
+    bad_markers = [
+        "api key used for this request has reached its budget",
+        "raise the key budget",
+        "missing authentication header",
+        "error code: 401",
+        "error code: 403",
+        "error code: 429",
+        "rate limit",
+        "too many requests",
+        "insufficient credits",
+        "no llm provider is currently available",
+    ]
+    if len(t) < 600 and any(m in low for m in bad_markers):
+        return True
+    if low.startswith("<!doctype html") or low.startswith("<html"):
+        return True
+    return False
+
+
 def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -> str:
     from ouroboros.llm import LLMClient, NvidiaLLMClient, DoublewordLLMClient
 
@@ -211,8 +237,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                     resp = lcli.chat.completions.create(model=lm, messages=msgs, temperature=0, max_tokens=256)
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
                     text = _extract_text(msg)
-                    if text:
+                    if text and not _looks_bad_response(text):
                         return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
                 except Exception as le:
                     last_le = le
             errors.append(f"local({local_model}): {last_le if last_le else 'empty response'}")
@@ -233,8 +261,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                     resp = ocli.chat.completions.create(model=om, messages=msgs, temperature=0, max_tokens=512)
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
                     text = _extract_text(msg)
-                    if text:
+                    if text and not _looks_bad_response(text):
                         return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
                 except Exception as oe:
                     last_oe = oe
             errors.append(f"omniroute: {last_oe if last_oe else 'empty response'}")
@@ -263,8 +293,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                 try:
                     msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
-                    if text:
+                    if text and not _looks_bad_response(text):
                         return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
                 except Exception as e:
                     errors.append(f"nvidia({m}): {e}")
                     n.mark_model_failure(m)
@@ -281,8 +313,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                 try:
                     msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
-                    if text:
+                    if text and not _looks_bad_response(text):
                         return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
                 except Exception as e:
                     errors.append(f"doubleword({m}): {e}")
                     d.mark_model_failure(m)
@@ -301,8 +335,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                 try:
                     msg, _ = client.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
                     text = _extract_text(msg)
-                    if text:
+                    if text and not _looks_bad_response(text):
                         return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
                 except Exception as e:
                     errors.append(f"openrouter({m}): {e}")
         except Exception as e:
@@ -321,8 +357,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             text = _extract_text(((data.get("choices") or [{}])[0]).get("message") or {})
             if not text and isinstance(data.get("choices"), list) and data["choices"]:
                 text = str((data["choices"][0] or {}).get("text") or "").strip()
-            if text:
+            if text and not _looks_bad_response(text):
                 return text
+            if text:
+                errors.append("pollinations: rejected bad response")
         except Exception as pe:
             errors.append(f"pollinations: {pe}")
         # Pollinations simple GET
@@ -331,8 +369,10 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             req = _ur.Request(f"https://text.pollinations.ai/{q}?model=openai", headers={"Accept": "text/plain"})
             with _ur.urlopen(req, timeout=60) as r:
                 text = r.read().decode("utf-8", "replace").strip()
-            if text and len(text) < 20000 and "error" not in text[:40].lower():
+            if text and not _looks_bad_response(text) and len(text) < 20000:
                 return text
+            if text:
+                errors.append("pollinations-get: rejected bad response")
         except Exception as pe:
             errors.append(f"pollinations-get: {pe}")
     except Exception as e:
