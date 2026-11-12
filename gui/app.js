@@ -82,9 +82,12 @@ function updateHeader() {
   const s = currentSession();
   if (chatTitle) chatTitle.textContent = s ? (s.title || 'Chat') : 'New chat';
   if (chatSubtitle) {
+    const base = getApiBase();
     if (healthInfo && healthInfo.status === 'ok') {
       const m = [healthInfo.provider, healthInfo.model].filter(Boolean).join(' · ');
       chatSubtitle.textContent = m || (healthInfo.configured ? 'Connected' : 'Backend reachable (no model configured)');
+    } else if (!base) {
+      chatSubtitle.textContent = 'Set Backend → API base URL';
     } else {
       chatSubtitle.textContent = 'Backend not connected';
     }
@@ -212,8 +215,8 @@ function pushMessage(role, content, error) {
 }
 
 function getApiBase() {
-  const v = (apiBaseInput && apiBaseInput.value ? apiBaseInput.value : 'https://ouroboros-agent.ai').trim().replace(/\/$/, '');
-  return v || 'https://ouroboros-agent.ai';
+  const v = (apiBaseInput && apiBaseInput.value ? apiBaseInput.value : '').trim().replace(/\/$/, '');
+  return v;
 }
 
 async function sendToJo(message, signal, onDelta) {
@@ -282,6 +285,18 @@ async function sendToJo(message, signal, onDelta) {
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text || busy) return;
+  const base = getApiBase();
+  if (!base) {
+    ensureSession();
+    pushMessage('user', text, false);
+    addMessageEl('user', text, { skipStore: true });
+    chatInput.value = ''; chatInput.style.height = 'auto';
+    const em = 'No backend configured. Set "Backend → API base URL" in the sidebar to your Jo web backend (e.g. your deployed server, or http://127.0.0.1:8000 when testing locally), then try again. Check GET <API_BASE>/health.';
+    pushMessage('assistant', em, true);
+    addMessageEl('assistant', em, { error: true, skipStore: true });
+    checkHealth();
+    return;
+  }
   ensureSession();
   pushMessage('user', text, false);
   addMessageEl('user', text, { skipStore: true });
@@ -326,7 +341,6 @@ async function sendMessage() {
       addMessageEl('assistant', 'Stopped.', { error: true, skipStore: true });
     } else {
       let em = 'Could not reach Jo backend: ' + (error && error.message ? error.message : String(error));
-      const base = getApiBase();
       const isNetwork = error && (error.name === 'TypeError' || /NetworkError|Failed to fetch|fetch resource/i.test(String(error && error.message || error)));
       if (isNetwork) {
         const hints = [];
@@ -413,6 +427,14 @@ function getGreeting(date) {
 async function checkHealth() {
   if (!backendStatus) return;
   const base = getApiBase();
+  if (!base) {
+    healthInfo = null;
+    backendStatus.textContent = 'Status: set API base URL';
+    backendStatus.className = 'backend-status err';
+    if (backendMeta) backendMeta.textContent = '';
+    updateHeader();
+    return;
+  }
   backendStatus.textContent = 'Status: checking…';
   backendStatus.className = 'backend-status';
   if (backendMeta) backendMeta.textContent = '';
@@ -443,7 +465,6 @@ async function checkHealth() {
   } catch (e) {
     clearTimeout(t);
     healthInfo = null;
-    const base = getApiBase();
     let msg = 'Status: unreachable';
     if (location.protocol === 'https:' && /^http:\/\//i.test(base)) msg = 'Status: blocked (mixed content)';
     else if (/^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(base) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') msg = 'Status: unreachable (local URL from hosted GUI)';
@@ -467,6 +488,14 @@ function loadState() {
   } catch {}
   if (!currentSessionId && sessions.length) currentSessionId = sessions[0].id;
   if (!sessions.length) createSession(true);
+  // migrate legacy wrong default
+  try {
+    const saved = localStorage.getItem(API_KEY);
+    if (saved && /ouroboros-agent\.ai/i.test(saved)) {
+      localStorage.setItem(API_KEY, '');
+      if (apiBaseInput) apiBaseInput.value = '';
+    }
+  } catch {}
 }
 
 function init() {
