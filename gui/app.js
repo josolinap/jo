@@ -1,15 +1,19 @@
+const appShell = document.getElementById('app-shell');
 const chatLog = document.getElementById('chat-log');
+const chatCollection = document.getElementById('chat-collection');
 const chatEmpty = document.getElementById('chat-empty');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
-const statusDot = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
+const chatStatus = document.getElementById('chat-status');
 const emptyGreeting = document.getElementById('empty-greeting');
 const apiBaseInput = document.getElementById('api-base');
 const newChatBtn = document.getElementById('new-chat');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const brandHome = document.getElementById('brand-home');
 
 let busy = false;
+let workingEl = null;
 
 function scrollToBottom() {
   chatLog.scrollTop = chatLog.scrollHeight;
@@ -19,31 +23,53 @@ function showEmpty() {
   chatEmpty.style.display = 'flex';
 }
 
-function addMessage(role, content) {
-  const message = document.createElement('div');
-  message.className = 'message ' + (role === 'user' ? 'is-user' : 'is-assistant');
-
-  const contentEl = document.createElement('div');
-  contentEl.className = 'message-content';
-
-  const text = document.createElement('div');
-  text.className = 'message-text';
-  text.textContent = content;
-
-  contentEl.appendChild(text);
-  message.appendChild(contentEl);
-  chatLog.appendChild(message);
-  scrollToBottom();
+function hideEmpty() {
+  chatEmpty.style.display = 'none';
 }
 
 function setStatus(state) {
   busy = state === 'thinking';
-  statusDot.classList.toggle('busy', busy);
-  statusText.textContent = state === 'thinking' ? 'THINKING · SELF-CREATING' : 'ONLINE · SELF-CREATING';
+  chatSend.disabled = busy || !chatInput.value.trim();
+  if (busy) {
+    chatStatus.textContent = 'Thinking…';
+    if (!workingEl) {
+      workingEl = document.createElement('div');
+      workingEl.className = 'working';
+      workingEl.setAttribute('role', 'status');
+      workingEl.innerHTML = '<span class="working-dot" aria-hidden="true"></span><span>Jo is thinking…</span>';
+      chatCollection.appendChild(workingEl);
+      scrollToBottom();
+    }
+  } else {
+    chatStatus.textContent = '';
+    if (workingEl) {
+      workingEl.remove();
+      workingEl = null;
+    }
+  }
+}
+
+function addMessage(role, content, isError) {
+  hideEmpty();
+  if (workingEl) {
+    workingEl.remove();
+    workingEl = null;
+  }
+  const message = document.createElement('article');
+  message.className = 'message ' + (role === 'user' ? 'message-user' : 'message-assistant') + (isError ? ' message-error' : '');
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  const body = document.createElement('div');
+  body.className = role === 'user' ? 'message-text' : 'message-content message-text';
+  body.textContent = content;
+  bubble.appendChild(body);
+  message.appendChild(bubble);
+  chatCollection.appendChild(message);
+  scrollToBottom();
 }
 
 async function sendToJo(message) {
-  const base = apiBaseInput.value.trim().replace(/\/$/, '');
+  const base = (apiBaseInput && apiBaseInput.value ? apiBaseInput.value : 'https://ouroboros-agent.ai').trim().replace(/\/$/, '');
   const response = await fetch(base + '/v1/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -59,7 +85,7 @@ async function sendToJo(message) {
 
   if (contentType.includes('application/json')) {
     const data = JSON.parse(content);
-    content = data.response || data.message || data.content || data.reply || JSON.stringify(data);
+    content = data.response || data.message || data.content || data.reply || (typeof data === 'string' ? data : JSON.stringify(data));
   }
 
   return content;
@@ -67,7 +93,7 @@ async function sendToJo(message) {
 
 async function sendMessage() {
   const text = chatInput.value.trim();
-  if (!text) return;
+  if (!text || busy) return;
 
   addMessage('user', text);
   chatInput.value = '';
@@ -78,7 +104,7 @@ async function sendMessage() {
     const content = await sendToJo(text);
     addMessage('assistant', content);
   } catch (error) {
-    addMessage('assistant', '⚠️ Could not reach Jo backend: ' + error.message);
+    addMessage('assistant', 'Could not reach Jo backend: ' + error.message, true);
   } finally {
     setStatus('idle');
   }
@@ -86,53 +112,63 @@ async function sendMessage() {
 
 chatForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!chatInput.value.trim()) return;
   await sendMessage();
 });
 
 chatInput.addEventListener('input', () => {
   chatInput.style.height = 'auto';
-  chatInput.style.height = Math.min(chatInput.scrollHeight, 192) + 'px';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
   chatSend.disabled = busy || !chatInput.value.trim();
 });
 
 chatInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
-    chatForm.requestSubmit();
+    if (!busy && chatInput.value.trim()) chatForm.requestSubmit();
   }
 });
 
-chatSend.addEventListener('click', () => {
-  chatForm.requestSubmit();
-});
-
-newChatBtn.addEventListener('click', () => {
-  while (chatLog.firstChild && chatLog.firstChild !== chatEmpty) {
-    chatLog.removeChild(chatLog.firstChild);
+function clearChat() {
+  const nodes = Array.from(chatCollection.children);
+  for (const node of nodes) {
+    if (node !== chatEmpty) node.remove();
   }
+  workingEl = null;
   chatInput.value = '';
   chatInput.style.height = 'auto';
-  chatSend.disabled = true;
   setStatus('idle');
   showEmpty();
-});
+  chatInput.focus();
+}
+
+if (newChatBtn) newChatBtn.addEventListener('click', clearChat);
+if (brandHome) brandHome.addEventListener('click', () => chatInput.focus());
+
+if (sidebarToggle) {
+  sidebarToggle.addEventListener('click', () => {
+    appShell.classList.toggle('sidebar-collapsed');
+  });
+}
 
 function getGreeting(date) {
   const hour = date.getHours();
-  if (hour >= 5 && hour < 9) return 'Good morning';
-  if (hour >= 9 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 14) return 'Good afternoon';
-  if (hour >= 14 && hour < 18) return 'Good afternoon';
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
   if (hour >= 18 && hour < 23) return 'Good evening';
   return 'Good night';
 }
 
 function init() {
-  setStatus('idle');
-  showEmpty();
-  emptyGreeting.textContent = getGreeting(new Date());
+  if (emptyGreeting) emptyGreeting.textContent = getGreeting(new Date());
   chatSend.disabled = true;
+  showEmpty();
+  if (apiBaseInput) {
+    const saved = (() => { try { return localStorage.getItem('jo.apiBase'); } catch { return null; } })();
+    if (saved) apiBaseInput.value = saved;
+    apiBaseInput.addEventListener('change', () => {
+      try { localStorage.setItem('jo.apiBase', apiBaseInput.value.trim()); } catch {}
+    });
+  }
 }
 
 init();
