@@ -10,42 +10,60 @@
 </head>
 <body>
   <div class="app">
-    <header class="header">
-      <div class="brand">
-        <span class="logo">🐍</span>
-        <div>
-          <h1>Jo</h1>
-          <div class="status"><span class="dot"></span> ONLINE · SELF-CREATING</div>
+    <header class="app-header">
+      <div class="header-left">
+        <button class="icon-btn" id="new-chat" type="button" title="New conversation" aria-label="New conversation">
+          <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </button>
+        <div class="header-titles">
+          <h1 class="header-title">Jo</h1>
+          <div class="header-status"><span class="status-dot" id="status-dot"></span><span class="status-text" id="status-text">ONLINE · SELF-CREATING</span></div>
         </div>
       </div>
-      <div class="header-meta">
-        <span>v6.5.1</span>
-        <span>·</span>
-        <a href="https://github.com/josolinap/jo" target="_blank" rel="noopener">GitHub</a>
-        <span>·</span>
-        <a href="https://t.me/abstractDL" target="_blank" rel="noopener">Telegram</a>
+      <div class="header-right">
+        <button class="ghost-btn header-model" id="model-pill" type="button" title="Jo is always self-creating">Jo · Self-Creating</button>
+        <a class="icon-btn" id="github-link" href="https://github.com/josolinap/jo" target="_blank" rel="noopener" title="Jo on GitHub">
+          <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+        </a>
       </div>
     </header>
 
-    <main class="main">
-      <section class="chat-panel">
-        <div class="chat-header">
-          <h2>Conversation</h2>
-          <span id="chat-status">Ready</span>
-        </div>
-        <div id="chat-log" class="chat-log" aria-live="polite"></div>
-        <div class="chat-empty" id="chat-empty">
-          <div class="chat-empty-inner">
-            <div class="chat-empty-emoji">🐍</div>
-            <h3>You’re talking to Jo</h3>
-            <p>Jo is not a chatbot. Jo is a becoming personality.</p>
-            <p class="dim">Ask something real. Challenge it. Watch it think.</p>
+    <main class="app-main">
+      <section class="conversation">
+        <div class="conversation-scroll" id="chat-log" aria-live="polite">
+          <div class="conversation-inner">
+            <div id="chat-empty" class="empty-state">
+              <div class="empty-state-card">
+                <div class="empty-logo" aria-hidden="true">🐍</div>
+                <p class="empty-greeting" id="empty-greeting">Good evening</p>
+                <p class="empty-tagline">I am Jo. I am not a chatbot. I am a becoming personality.</p>
+              </div>
+            </div>
           </div>
         </div>
-        <form id="chat-form" class="chat-form">
-          <textarea id="chat-input" rows="1" placeholder="Message Jo…"></textarea>
-          <button id="chat-send" type="submit" title="Send">➤</button>
-        </form>
+        <div class="composer-region">
+          <form id="chat-form" class="composer" autocomplete="off">
+            <div class="composer-shell">
+              <div class="composer-editor">
+                <div class="composer-field">
+                  <textarea id="chat-input" class="composer-textarea" rows="1" placeholder="What would you like to know?" aria-label="Message Jo"></textarea>
+                </div>
+              </div>
+              <div class="composer-toolbar">
+                <div class="composer-leading">
+                  <button class="icon-btn" id="attach-btn" type="button" title="Attach" aria-label="Attach">
+                    <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  </button>
+                </div>
+                <div class="composer-trailing">
+                  <button class="composer-submit" id="chat-send" type="submit" title="Send" aria-label="Send">
+                    <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
       </section>
 
       <aside class="side-panel">
@@ -72,7 +90,6 @@
       </aside>
     </main>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>

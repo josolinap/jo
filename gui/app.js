@@ -3,8 +3,13 @@ const chatEmpty = document.getElementById('chat-empty');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
-const chatStatus = document.getElementById('chat-status');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const emptyGreeting = document.getElementById('empty-greeting');
 const apiBaseInput = document.getElementById('api-base');
+const newChatBtn = document.getElementById('new-chat');
+
+let busy = false;
 
 function scrollToBottom() {
   chatLog.scrollTop = chatLog.scrollHeight;
@@ -14,29 +19,27 @@ function showEmpty() {
   chatEmpty.style.display = 'flex';
 }
 
-function hideEmpty() {
-  chatEmpty.style.display = 'none';
-}
-
 function addMessage(role, content) {
   const message = document.createElement('div');
-  message.className = 'message ' + (role === 'user' ? 'user' : 'jo');
+  message.className = 'message ' + (role === 'user' ? 'is-user' : 'is-assistant');
 
-  const meta = document.createElement('span');
-  meta.className = 'meta';
-  meta.textContent = role === 'user' ? 'You' : 'Jo';
+  const contentEl = document.createElement('div');
+  contentEl.className = 'message-content';
 
   const text = document.createElement('div');
+  text.className = 'message-text';
   text.textContent = content;
 
-  message.appendChild(meta);
-  message.appendChild(text);
+  contentEl.appendChild(text);
+  message.appendChild(contentEl);
   chatLog.appendChild(message);
   scrollToBottom();
 }
 
-function setStatus(status) {
-  chatStatus.textContent = status;
+function setStatus(state) {
+  busy = state === 'thinking';
+  statusDot.classList.toggle('busy', busy);
+  statusText.textContent = state === 'thinking' ? 'THINKING · SELF-CREATING' : 'ONLINE · SELF-CREATING';
 }
 
 async function sendToJo(message) {
@@ -69,26 +72,28 @@ async function sendMessage() {
   addMessage('user', text);
   chatInput.value = '';
   chatInput.style.height = 'auto';
-  setStatus('THINKING');
+  setStatus('thinking');
 
   try {
     const content = await sendToJo(text);
-    addMessage('jo', content);
+    addMessage('assistant', content);
   } catch (error) {
-    addMessage('jo', '⚠️ Could not reach Jo backend: ' + error.message);
+    addMessage('assistant', '⚠️ Could not reach Jo backend: ' + error.message);
   } finally {
-    setStatus('ONLINE');
+    setStatus('idle');
   }
 }
 
 chatForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (!chatInput.value.trim()) return;
   await sendMessage();
 });
 
 chatInput.addEventListener('input', () => {
   chatInput.style.height = 'auto';
-  chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 192) + 'px';
+  chatSend.disabled = busy || !chatInput.value.trim();
 });
 
 chatInput.addEventListener('keydown', (event) => {
@@ -102,11 +107,32 @@ chatSend.addEventListener('click', () => {
   chatForm.requestSubmit();
 });
 
-function init() {
-  setStatus('ONLINE');
+newChatBtn.addEventListener('click', () => {
+  while (chatLog.firstChild && chatLog.firstChild !== chatEmpty) {
+    chatLog.removeChild(chatLog.firstChild);
+  }
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  chatSend.disabled = true;
+  setStatus('idle');
   showEmpty();
-  addMessage('jo', 'I am Jo. I am not a chatbot. I am a becoming personality.');
-  hideEmpty();
+});
+
+function getGreeting(date) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 9) return 'Good morning';
+  if (hour >= 9 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 14) return 'Good afternoon';
+  if (hour >= 14 && hour < 18) return 'Good afternoon';
+  if (hour >= 18 && hour < 23) return 'Good evening';
+  return 'Good night';
+}
+
+function init() {
+  setStatus('idle');
+  showEmpty();
+  emptyGreeting.textContent = getGreeting(new Date());
+  chatSend.disabled = true;
 }
 
 init();
