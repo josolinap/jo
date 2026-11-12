@@ -2,6 +2,8 @@
 openai>=1.0.0
 requests
 httpx
+fastapi
+uvicorn
 playwright
 playwright-stealth
 pytest
