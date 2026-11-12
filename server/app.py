@@ -114,11 +114,7 @@ def _get_session(session_id: Optional[str]) -> tuple[str, list[Dict[str, str]]]:
     return sid, hist
 
 
-def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -> str:
-    from ouroboros.llm import LLMClient
-
-    client = LLMClient()
-    model = client.default_model()
+def _build_messages(message: str, history: Optional[list[Dict[str, str]]] = None) -> list[Dict[str, str]]:
     msgs: list[Dict[str, str]] = [
         {
             "role": "system",
@@ -134,22 +130,90 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             msgs.append({"role": role, "content": content})
     if not msgs or msgs[-1].get("content") != message or msgs[-1].get("role") != "user":
         msgs.append({"role": "user", "content": message})
+    return msgs
 
-    msg, usage = client.chat(
-        messages=msgs,
-        model=model,
-        tools=None,
-        reasoning_effort="medium",
-        max_tokens=2048,
-        _skip_trivial=False,
-    )
+
+def _extract_text(msg: Any) -> str:
     content = (msg or {}).get("content") or ""
     if isinstance(content, list):
-        content = "".join(
-            p.get("text", "") if isinstance(p, dict) else str(p) for p in content
-        )
-    content = str(content).strip()
-    return content
+        content = "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
+    return str(content).strip()
+
+
+def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -> str:
+    from ouroboros.llm import LLMClient, NvidiaLLMClient, DoublewordLLMClient
+
+    msgs = _build_messages(message, history)
+    errors = []
+
+    # Strategy 1: default configured client (with its internal fallback chain)
+    try:
+        client = LLMClient()
+        model = client.default_model()
+        msg, _ = client.chat(messages=msgs, model=model, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
+        text = _extract_text(msg)
+        if text:
+            return text
+        errors.append("default: empty response")
+    except Exception as e:
+        errors.append(f"default({os.environ.get('LLM_PROVIDER','openrouter')}): {e}")
+
+    # Strategy 2: NVIDIA direct (if key available)
+    if _env("NVIDIA_API_KEY"):
+        try:
+            n = NvidiaLLMClient()
+            for m in [n.select_model_for_task("general"), "meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct-v0.3"]:
+                if not m:
+                    continue
+                try:
+                    msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
+                    text = _extract_text(msg)
+                    if text:
+                        return text
+                except Exception as e:
+                    errors.append(f"nvidia({m}): {e}")
+                    n.mark_model_failure(m)
+        except Exception as e:
+            errors.append(f"nvidia: {e}")
+
+    # Strategy 3: Doubleword direct (if key available)
+    if _env("DOUBLEWORD_API_KEY"):
+        try:
+            d = DoublewordLLMClient()
+            for m in [d.default_model(), "deepseek-ai/DeepSeek-V4-Flash", "openai/gpt-oss-20b", "Qwen/Qwen3.5-35B-A3B-FP8"]:
+                if not m:
+                    continue
+                try:
+                    msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
+                    text = _extract_text(msg)
+                    if text:
+                        return text
+                except Exception as e:
+                    errors.append(f"doubleword({m}): {e}")
+                    d.mark_model_failure(m)
+        except Exception as e:
+            errors.append(f"doubleword: {e}")
+
+    # Strategy 4: OpenRouter with explicit common :free models
+    if _env("OPENROUTER_API_KEY"):
+        try:
+            os.environ.setdefault("LLM_PROVIDER", "openrouter")
+            client = LLMClient()
+            for m in [os.environ.get("OUROBOROS_MODEL", ""), "openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
+                m = (m or "").strip()
+                if not m:
+                    continue
+                try:
+                    msg, _ = client.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
+                    text = _extract_text(msg)
+                    if text:
+                        return text
+                except Exception as e:
+                    errors.append(f"openrouter({m}): {e}")
+        except Exception as e:
+            errors.append(f"openrouter: {e}")
+
+    raise RuntimeError(" | ".join(errors[-6:]) if errors else "no provider response")
 
 
 def _fallback_response(message: str, err: Optional[str] = None) -> str:
