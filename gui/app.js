@@ -498,6 +498,23 @@ function loadState() {
   } catch {}
 }
 
+async function discoverBackend() {
+  const current = getApiBase();
+  // Only auto-discover if user hasn't explicitly configured a base
+  const saved = (() => { try { return localStorage.getItem(API_KEY) || ''; } catch { return ''; } })();
+  if (saved) return;
+  try {
+    const res = await fetch('./backend.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const url = (data && (data.apiBase || data.api_base || data.url) || '').toString().trim().replace(/\/$/, '');
+    if (url && !getApiBase()) {
+      if (apiBaseInput) apiBaseInput.value = url;
+      updateHeader();
+    }
+  } catch {}
+}
+
 function init() {
   if (emptyGreeting) emptyGreeting.textContent = getGreeting(new Date());
   if (apiBaseInput) {
@@ -513,7 +530,7 @@ function init() {
   updateHeader();
   setStatus('idle');
   if (!getMessages().length) showEmpty();
-  checkHealth();
+  discoverBackend().finally(() => checkHealth());
 }
 
 init();
