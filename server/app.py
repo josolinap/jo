@@ -361,78 +361,84 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"local: {e}")
 
-    # Strategy 3: default configured client (with its internal fallback chain)
-    try:
-        client = LLMClient()
-        model = client.default_model()
-        msg, _ = client.chat(messages=msgs, model=model, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
-        text = _extract_text(msg)
-        if text:
-            return text
-        errors.append("default: empty response")
-    except Exception as e:
-        errors.append(f"default({os.environ.get('LLM_PROVIDER','openrouter')}): {e}")
-
-    # Strategy 4: NVIDIA direct (if key available)
-    if _env("NVIDIA_API_KEY"):
+    strict_omniroute = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
+    if strict_omniroute:
+        # Sole focus: OmniRoute (and local fallback above). Skip direct OpenRouter/NVIDIA/Doubleword
+        # provider chains to avoid auth/cascade errors when OmniRoute is the intended source.
+        pass
+    else:
+        # Strategy 3: default configured client (with its internal fallback chain)
         try:
-            n = NvidiaLLMClient()
-            for m in [n.select_model_for_task("general"), "meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct-v0.3"]:
-                if not m:
-                    continue
-                try:
-                    msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
-                    text = _extract_text(msg)
-                    if text and not _looks_bad_response(text):
-                        return text
-                    if text:
-                        errors.append(f"candidate: rejected bad response")
-                except Exception as e:
-                    errors.append(f"nvidia({m}): {e}")
-                    n.mark_model_failure(m)
-        except Exception as e:
-            errors.append(f"nvidia: {e}")
-
-    # Strategy 5: Doubleword direct (if key available)
-    if _env("DOUBLEWORD_API_KEY"):
-        try:
-            d = DoublewordLLMClient()
-            for m in [d.default_model(), "deepseek-ai/DeepSeek-V4-Flash", "openai/gpt-oss-20b", "Qwen/Qwen3.5-35B-A3B-FP8"]:
-                if not m:
-                    continue
-                try:
-                    msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
-                    text = _extract_text(msg)
-                    if text and not _looks_bad_response(text):
-                        return text
-                    if text:
-                        errors.append(f"candidate: rejected bad response")
-                except Exception as e:
-                    errors.append(f"doubleword({m}): {e}")
-                    d.mark_model_failure(m)
-        except Exception as e:
-            errors.append(f"doubleword: {e}")
-
-    # Strategy 6: OpenRouter with explicit common :free models
-    if _env("OPENROUTER_API_KEY"):
-        try:
-            os.environ.setdefault("LLM_PROVIDER", "openrouter")
             client = LLMClient()
-            for m in [os.environ.get("OUROBOROS_MODEL", ""), "openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
-                m = (m or "").strip()
-                if not m:
-                    continue
-                try:
-                    msg, _ = client.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
-                    text = _extract_text(msg)
-                    if text and not _looks_bad_response(text):
-                        return text
-                    if text:
-                        errors.append(f"candidate: rejected bad response")
-                except Exception as e:
-                    errors.append(f"openrouter({m}): {e}")
+            model = client.default_model()
+            msg, _ = client.chat(messages=msgs, model=model, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
+            text = _extract_text(msg)
+            if text:
+                return text
+            errors.append("default: empty response")
         except Exception as e:
-            errors.append(f"openrouter: {e}")
+            errors.append(f"default({os.environ.get('LLM_PROVIDER','openrouter')}): {e}")
+
+        # Strategy 4: NVIDIA direct (if key available)
+        if _env("NVIDIA_API_KEY"):
+            try:
+                n = NvidiaLLMClient()
+                for m in [n.select_model_for_task("general"), "meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct-v0.3"]:
+                    if not m:
+                        continue
+                    try:
+                        msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
+                        text = _extract_text(msg)
+                        if text and not _looks_bad_response(text):
+                            return text
+                        if text:
+                            errors.append(f"candidate: rejected bad response")
+                    except Exception as e:
+                        errors.append(f"nvidia({m}): {e}")
+                        n.mark_model_failure(m)
+            except Exception as e:
+                errors.append(f"nvidia: {e}")
+
+        # Strategy 5: Doubleword direct (if key available)
+        if _env("DOUBLEWORD_API_KEY"):
+            try:
+                d = DoublewordLLMClient()
+                for m in [d.default_model(), "deepseek-ai/DeepSeek-V4-Flash", "openai/gpt-oss-20b", "Qwen/Qwen3.5-35B-A3B-FP8"]:
+                    if not m:
+                        continue
+                    try:
+                        msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
+                        text = _extract_text(msg)
+                        if text and not _looks_bad_response(text):
+                            return text
+                        if text:
+                            errors.append(f"candidate: rejected bad response")
+                    except Exception as e:
+                        errors.append(f"doubleword({m}): {e}")
+                        d.mark_model_failure(m)
+            except Exception as e:
+                errors.append(f"doubleword: {e}")
+
+        # Strategy 6: OpenRouter with explicit common :free models
+        if _env("OPENROUTER_API_KEY"):
+            try:
+                os.environ.setdefault("LLM_PROVIDER", "openrouter")
+                client = LLMClient()
+                for m in [os.environ.get("OUROBOROS_MODEL", ""), "openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
+                    m = (m or "").strip()
+                    if not m:
+                        continue
+                    try:
+                        msg, _ = client.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
+                        text = _extract_text(msg)
+                        if text and not _looks_bad_response(text):
+                            return text
+                        if text:
+                            errors.append(f"candidate: rejected bad response")
+                    except Exception as e:
+                        errors.append(f"openrouter({m}): {e}")
+            except Exception as e:
+                errors.append(f"openrouter: {e}")
 
     # Strategy 7: Public free text endpoints (no key) as last resort — try multiple free sources/models
     try:
@@ -495,12 +501,21 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
         lines.append("")
         lines.append("Last error: " + short)
     lines.append("")
-    lines.append("To make chat fully functional, configure a free provider on the backend and restart:")
-    lines.append("- OpenRouter: set LLM_PROVIDER=openrouter, OPENROUTER_API_KEY, OUROBOROS_MODEL=openrouter/free (or another :free model)")
-    lines.append("- NVIDIA NIM: set NVIDIA_API_KEY (and optional NVIDIA_FALLBACK_MODEL) — used as fallback/provider")
-    lines.append("- Doubleword: set DOUBLEWORD_API_KEY")
-    lines.append("- Local (Ollama/llama.cpp): set LOCAL_BASE_URL (e.g. http://127.0.0.1:11434/v1) to a running OpenAI-compatible local server")
-    lines.append("- OmniRoute: set OMNIROUTE_BASE_URL (e.g. http://127.0.0.1:20128/v1) and OMNIROUTE_API_KEY/OMNIROUTE_MODEL=auto to route via OmniRoute's free/connected providers")
+    strict = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
+    if strict:
+        lines.append("This backend is configured to use OmniRoute as the primary (and sole direct) model source.")
+        lines.append("To make chat fully functional:")
+        lines.append("- Ensure OmniRoute is running and reachable at OMNIROUTE_BASE_URL (e.g. http://127.0.0.1:20128/v1)")
+        lines.append("- Configure at least one working upstream provider/model inside OmniRoute (and pass required provider keys/secrets to OmniRoute if needed)")
+        lines.append("- Set OMNIROUTE_MODEL=auto (recommended) or a model ID available in OmniRoute")
+        lines.append("- Optional fallback: set LOCAL_BASE_URL to a running local OpenAI-compatible server")
+    else:
+        lines.append("To make chat fully functional, configure a free provider on the backend and restart:")
+        lines.append("- OmniRoute (recommended): set LLM_PROVIDER=omniroute, OMNIROUTE_BASE_URL, OMNIROUTE_MODEL=auto")
+        lines.append("- Local (Ollama/llama.cpp): set LOCAL_BASE_URL (e.g. http://127.0.0.1:11434/v1)")
+        lines.append("- OpenRouter: set LLM_PROVIDER=openrouter, OPENROUTER_API_KEY, OUROBOROS_MODEL=openrouter/free")
+        lines.append("- NVIDIA NIM: set NVIDIA_API_KEY (and optional NVIDIA_FALLBACK_MODEL)")
+        lines.append("- Doubleword: set DOUBLEWORD_API_KEY")
     lines.append("")
     preview = (message or "").strip()
     if len(preview) > 200:
