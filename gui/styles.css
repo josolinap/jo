@@ -181,6 +181,7 @@ ul { list-style: none; }
 .backend-status { font-size: 11px; color: var(--muted-foreground); padding: 0 6px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .backend-meta { font-size: 11px; color: var(--muted-foreground); padding: 0 6px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .backend-hint { font-size: 11px; color: var(--muted-foreground); padding: 0 6px 4px; line-height: 1.35; white-space: normal; }
+.backend-hint:empty { display: none; padding: 0; }
 .backend-status.ok { color: #16a34a; }
 :root[data-theme='dark'] .backend-status.ok { color: #4ade80; }
 .backend-status.err { color: #dc2626; }
@@ -207,9 +208,16 @@ ul { list-style: none; }
 .jo-sprite .brand-glyph svg circle:last-of-type { animation: jo-blink 4.5s ease-in-out infinite; transform-origin: 25px 6px; }
 @keyframes jo-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes jo-blink { 0%,44%,48%,100% { transform: scale(1); opacity: 1; } 46% { transform: scale(0.2); opacity: 0.6; } }
-.message-assistant .message-bubble::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); margin-right: 8px; vertical-align: middle; opacity: 0.7; box-shadow: 0 0 0 0 rgba(255,145,172,0.4); animation: jo-ping 2.6s ease-out infinite; }
-.message-assistant .message-bubble { position: relative; }
-@keyframes jo-ping { 0% { box-shadow: 0 0 0 0 rgba(255,145,172,0.35); } 70% { box-shadow: 0 0 0 6px rgba(255,145,172,0); } 100% { box-shadow: 0 0 0 0 rgba(255,145,172,0); } }
+.message-assistant .message-bubble { position: relative; padding-left: 34px; }
+.message-assistant .message-bubble::before {
+  content: '';
+  position: absolute; left: 0; top: 4px;
+  width: 22px; height: 22px; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--brand-pink) 55%, transparent);
+}
+.message-assistant .message-bubble.streaming-caret::after, .message-assistant .message-bubble .streaming-caret::after { margin-left: 2px; }
 .welcome h2 { font-size: clamp(22px, 4vw, 30px); line-height: 1.2; font-weight: 500; letter-spacing: -0.02em; color: var(--foreground); }
 .welcome-sub { font-size: 15px; color: var(--muted-foreground); max-width: 36rem; }
 .welcome-tips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; max-width: 42rem; }
