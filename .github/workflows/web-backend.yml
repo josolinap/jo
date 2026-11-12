@@ -69,20 +69,41 @@ jobs:
           done
           echo "Backend failed to start"; tail -n 200 /tmp/uvicorn.log; exit 1
 
-      - name: Start Cloudflare tunnel
+      - name: Start tunnel
         run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
-          chmod +x /usr/local/bin/cloudflared
-          cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate > /tmp/cloudflared.log 2>&1 &
-          echo $! > /tmp/cloudflared.pid
+          set -e
           url=""
-          for i in $(seq 1 60); do
-            url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n1 || true)
-            if [ -n "$url" ]; then break; fi
-            sleep 2
-          done
+          # Try cloudflared quick tunnel
           if [ -z "$url" ]; then
-            echo "Failed to obtain tunnel URL"; tail -n 200 /tmp/cloudflared.log; exit 1
+            curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared || true
+            if [ -f /usr/local/bin/cloudflared ]; then
+              chmod +x /usr/local/bin/cloudflared
+              cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate > /tmp/tunnel.log 2>&1 &
+              echo $! > /tmp/tunnel.pid
+              for i in $(seq 1 45); do
+                url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' /tmp/tunnel.log | head -n1 || true)
+                if [ -n "$url" ]; then break; fi
+                sleep 2
+              done
+              if [ -z "$url" ]; then
+                echo "cloudflared did not provide URL, trying localtunnel..."
+                kill "$(cat /tmp/tunnel.pid)" 2>/dev/null || true
+              fi
+            fi
+          fi
+          # Fallback: localtunnel
+          if [ -z "$url" ]; then
+            npx --yes localtunnel --port 8000 > /tmp/tunnel.log 2>&1 &
+            echo $! > /tmp/tunnel.pid
+            for i in $(seq 1 45); do
+              url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.loca\.lt' /tmp/tunnel.log | head -n1 || true)
+              url=${url:-$(grep -oE 'https://[^ ]+' /tmp/tunnel.log | grep -v 'localtunnel.me' | head -n1 || true)}
+              if [ -n "$url" ]; then break; fi
+              sleep 2
+            done
+          fi
+          if [ -z "$url" ]; then
+            echo "Failed to obtain tunnel URL"; tail -n 200 /tmp/tunnel.log || true; exit 1
           fi
           echo "TUNNEL_URL=$url" >> $GITHUB_ENV
           printf '{"apiBase":"%s"}\n' "$url" > gui/backend.json
