@@ -133,8 +133,54 @@ function getApiBase() {
   return v || 'https://ouroboros-agent.ai';
 }
 
-async function sendToJo(message, signal) {
+async function sendToJo(message, signal, onDelta) {
   const base = getApiBase();
+  // Try streaming first
+  try {
+    const res = await fetch(base + '/v1/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+      body: JSON.stringify({ message }),
+      signal,
+    });
+    if (res.ok && res.body && ((res.headers.get('content-type') || '').includes('text/event-stream'))) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+        for (const part of parts) {
+          const lines = part.split('\n');
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const data = line.slice(5).trim();
+            if (!data) continue;
+            let evt;
+            try { evt = JSON.parse(data); } catch { continue; }
+            if (evt.error) throw new Error(evt.error);
+            if (typeof evt.delta === 'string') {
+              full += evt.delta;
+              if (onDelta) onDelta(full);
+            }
+            if (evt.done && typeof evt.response === 'string') {
+              full = evt.response;
+              if (onDelta) onDelta(full);
+            }
+          }
+        }
+      }
+      return full || '(empty response)';
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    // fall through to non-streaming
+  }
+
   const response = await fetch(base + '/v1/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -165,10 +211,48 @@ async function sendMessage() {
   setStatus('thinking');
   controller = new AbortController();
 
+  let msgEl = null;
   try {
-    const content = await sendToJo(text, controller.signal);
-    addMessage('assistant', content);
+    // create streaming placeholder
+    hideEmpty();
+    if (workingEl) { workingEl.remove(); workingEl = null; }
+    msgEl = document.createElement('article');
+    msgEl.className = 'message message-assistant';
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+    const body = document.createElement('div');
+    body.className = 'message-content message-text';
+    body.textContent = '';
+    bubble.appendChild(body);
+    msgEl.appendChild(bubble);
+    chatCollection.appendChild(msgEl);
+    scrollToBottom(true);
+
+    let finalText = '';
+    const content = await sendToJo(text, controller.signal, (partial) => {
+      finalText = partial;
+      renderContent(body, partial, 'assistant');
+      scrollToBottom(false);
+    });
+    finalText = content || finalText || '(empty response)';
+    renderContent(body, finalText, 'assistant');
+    const actions = document.createElement('div');
+    actions.className = 'message-actions';
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'msg-action';
+    copy.textContent = 'Copy';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(finalText); copy.textContent = 'Copied'; setTimeout(()=>{copy.textContent='Copy';},1200); }
+      catch { copy.textContent = 'Copy failed'; setTimeout(()=>{copy.textContent='Copy';},1200); }
+    });
+    actions.appendChild(copy);
+    msgEl.appendChild(actions);
+    messages.push({ role: 'assistant', content: finalText, error: false, ts: Date.now() });
+    saveState();
+    msgEl = null;
   } catch (error) {
+    if (msgEl && msgEl.parentNode) msgEl.remove();
     if (error && error.name === 'AbortError') {
       addMessage('assistant', 'Stopped.', { error: true });
     } else {
