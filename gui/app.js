@@ -325,7 +325,17 @@ async function sendMessage() {
       pushMessage('assistant', 'Stopped.', true);
       addMessageEl('assistant', 'Stopped.', { error: true, skipStore: true });
     } else {
-      const em = 'Could not reach Jo backend: ' + (error && error.message ? error.message : String(error));
+      let em = 'Could not reach Jo backend: ' + (error && error.message ? error.message : String(error));
+      const base = getApiBase();
+      const isNetwork = error && (error.name === 'TypeError' || /NetworkError|Failed to fetch|fetch resource/i.test(String(error && error.message || error)));
+      if (isNetwork) {
+        const hints = [];
+        if (location.protocol === 'https:' && /^http:\/\//i.test(base)) hints.push('page is HTTPS but API base is HTTP (mixed content blocked) — use an HTTPS backend URL or a tunnel');
+        if (/^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(base) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') hints.push('API base points to your local machine, but you are using the hosted GUI — run backend locally and open GUI locally, or deploy the backend and set its public HTTPS URL');
+        hints.push('check that the backend is running and reachable at the API base URL');
+        hints.push('confirm CORS is allowed and the endpoint is /v1/chat (GET /health should work)');
+        em += '\n\nHints:\n- ' + hints.join('\n- ');
+      }
       pushMessage('assistant', em, true);
       addMessageEl('assistant', em, { error: true, skipStore: true });
     }
@@ -433,7 +443,11 @@ async function checkHealth() {
   } catch (e) {
     clearTimeout(t);
     healthInfo = null;
-    backendStatus.textContent = 'Status: unreachable';
+    const base = getApiBase();
+    let msg = 'Status: unreachable';
+    if (location.protocol === 'https:' && /^http:\/\//i.test(base)) msg = 'Status: blocked (mixed content)';
+    else if (/^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(base) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') msg = 'Status: unreachable (local URL from hosted GUI)';
+    backendStatus.textContent = msg;
     backendStatus.className = 'backend-status err';
   }
   updateHeader();
