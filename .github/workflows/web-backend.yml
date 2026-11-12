@@ -44,6 +44,50 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Start OmniRoute (free-model gateway)
+        id: omniroute
+        continue-on-error: true
+        env:
+          PORT: "20128"
+          HOST: "127.0.0.1"
+          OMNIROUTE_HEADLESS: "1"
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -e
+          npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 > /tmp/omniroute.log 2>&1 &
+          echo $! > /tmp/omniroute.pid
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:20128/v1/models >/tmp/omniroute-models.json 2>/dev/null || curl -fsS http://127.0.0.1:20128/health >/dev/null 2>&1; then
+              echo "OmniRoute up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "OmniRoute not ready (may still work if providers configured)"; tail -n 120 /tmp/omniroute.log || true; exit 1
+
+      - name: Start local LLM (llama.cpp, free fallback)
+        id: localllm
+        continue-on-error: true
+        run: |
+          set -e
+          mkdir -p /tmp/llm
+          cd /tmp/llm
+          curl -fsSL https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-b5621-bin-ubuntu-x64.zip -o llama.zip || curl -fsSL https://github.com/ggml-org/llama.cpp/releases/download/b5530/llama-b5530-bin-ubuntu-x64.zip -o llama.zip
+          unzip -o -q llama.zip
+          BIN=$(find . -type f -name 'llama-server' | head -n1)
+          if [ -z "$BIN" ]; then echo "llama-server not found"; find . -maxdepth 3 -type f | head; exit 1; fi
+          chmod +x "$BIN"
+          curl -fL --retry 3 -o model.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          "$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 > /tmp/llama.log 2>&1 &
+          echo $! > /tmp/llama.pid
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1; then
+              echo "Local LLM up"; cat /tmp/llama-models.json 2>/dev/null || true; exit 0
+            fi
+            sleep 2
+          done
+          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; exit 1
+
       - name: Start backend server
         env:
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openrouter' }}
@@ -53,6 +97,10 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
+          OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
+          OMNIROUTE_MODEL: auto
+          LOCAL_BASE_URL: http://127.0.0.1:11434/v1
+          LOCAL_API_KEY: sk-local
           DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}
           OUROBOROS_DETERMINISTIC: "1"
