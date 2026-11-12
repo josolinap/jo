@@ -224,30 +224,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
     msgs = _build_messages(message, history)
     errors = []
 
-    # Strategy 1: Local OpenAI-compatible endpoint (Ollama/llama.cpp) — fastest/free in CI
-    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
-    if local_base:
-        try:
-            from openai import OpenAI
-            local_model = _detect_local_model(local_base)
-            lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=180.0, max_retries=0)
-            last_le = None
-            for lm in [local_model, "local-model", "gpt-3.5-turbo", "model"]:
-                try:
-                    resp = lcli.chat.completions.create(model=lm, messages=msgs, temperature=0, max_tokens=256)
-                    msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
-                    text = _extract_text(msg)
-                    if text and not _looks_bad_response(text):
-                        return text
-                    if text:
-                        errors.append(f"candidate: rejected bad response")
-                except Exception as le:
-                    last_le = le
-            errors.append(f"local({local_model}): {last_le if last_le else 'empty response'}")
-        except Exception as e:
-            errors.append(f"local: {e}")
-
-    # Strategy 2: OmniRoute (OpenAI-compatible gateway, can aggregate free/connected providers)
+    # Strategy 1 (priority): OmniRoute gateway — aggregate/routed free & connected models
     omni_base = _env("OMNIROUTE_BASE_URL")
     if omni_base:
         try:
@@ -261,7 +238,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                 mreq = _ur.Request(omni_base.rstrip("/") + "/models", headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or "omniroute")})
                 with _ur.urlopen(mreq, timeout=5) as mr:
                     md = _json.loads(mr.read().decode("utf-8", "replace"))
-                for item in (md.get("data") or [])[:8]:
+                for item in (md.get("data") or [])[:10]:
                     mid = (item or {}).get("id") if isinstance(item, dict) else item
                     if mid and mid not in candidates:
                         candidates.append(str(mid))
@@ -283,6 +260,29 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             errors.append(f"omniroute: {last_oe if last_oe else 'empty response'}")
         except Exception as e:
             errors.append(f"omniroute: {e}")
+
+    # Strategy 2: Local OpenAI-compatible endpoint (Ollama/llama.cpp) — free/self-hosted fallback
+    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
+    if local_base:
+        try:
+            from openai import OpenAI
+            local_model = _detect_local_model(local_base)
+            lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=180.0, max_retries=0)
+            last_le = None
+            for lm in [local_model, "local-model", "gpt-3.5-turbo", "model"]:
+                try:
+                    resp = lcli.chat.completions.create(model=lm, messages=msgs, temperature=0, max_tokens=256)
+                    msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
+                    text = _extract_text(msg)
+                    if text and not _looks_bad_response(text):
+                        return text
+                    if text:
+                        errors.append(f"candidate: rejected bad response")
+                except Exception as le:
+                    last_le = le
+            errors.append(f"local({local_model}): {last_le if last_le else 'empty response'}")
+        except Exception as e:
+            errors.append(f"local: {e}")
 
     # Strategy 3: default configured client (with its internal fallback chain)
     try:
