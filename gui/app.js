@@ -125,16 +125,19 @@ function updateHeader() {
     const base = getApiBase();
     if (healthInfo && healthInfo.status === 'ok') {
       const parts = [];
-      if (healthInfo.provider) parts.push(healthInfo.provider);
-      if (healthInfo.model) parts.push(healthInfo.model);
-      if (healthInfo.local_reachable) parts.push('local');
       if (healthInfo.keys && healthInfo.keys.omniroute) parts.push('omniroute');
-      if (!parts.length && healthInfo.configured) parts.push('connected');
-      chatSubtitle.textContent = parts.join(' · ') || 'Backend reachable';
+      if (healthInfo.local_reachable) parts.push('local');
+      if (healthInfo.provider) parts.push(healthInfo.provider);
+      if (healthInfo.model && String(healthInfo.model) !== 'auto') parts.push(String(healthInfo.model));
+      const label = parts.length ? parts.slice(0, 3).join(' · ') : (healthInfo.configured ? 'connected' : 'reachable');
+      chatSubtitle.textContent = 'Ready · ' + label;
+      chatSubtitle.dataset.state = healthInfo.configured ? 'ok' : 'warn';
     } else if (!base) {
-      chatSubtitle.textContent = 'Set Backend → API base URL (or auto-discover)';
+      chatSubtitle.textContent = 'Waiting for backend…';
+      chatSubtitle.dataset.state = 'idle';
     } else {
-      chatSubtitle.textContent = 'Backend not connected';
+      chatSubtitle.textContent = 'Connecting to backend…';
+      chatSubtitle.dataset.state = 'err';
     }
   }
 }
@@ -198,7 +201,7 @@ function setStatus(state) {
       workingEl = document.createElement('div');
       workingEl.className = 'working';
       workingEl.setAttribute('role', 'status');
-      workingEl.innerHTML = '<span class="working-dot" aria-hidden="true"></span><span>Jo is thinking…</span>';
+      workingEl.innerHTML = '<span class="working-dot" aria-hidden="true"></span><span>Thinking…</span>';
       chatCollection.appendChild(workingEl);
       scrollToBottom(true);
     }
