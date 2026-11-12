@@ -64,9 +64,15 @@ def _local_reachable() -> bool:
     try:
         import urllib.request
         url = base.rstrip("/") + "/models"
-        req = urllib.request.Request(url, headers={"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")})
-        urllib.request.urlopen(req, timeout=2)
-        return True
+        # try without auth (llama.cpp) then with auth
+        for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                urllib.request.urlopen(req, timeout=2)
+                return True
+            except Exception:
+                continue
+        return False
     except Exception:
         return False
 
@@ -75,18 +81,22 @@ def _detect_local_model(base: str) -> str:
     try:
         import urllib.request, json as _json
         url = base.rstrip("/") + "/models"
-        req = urllib.request.Request(url, headers={"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")})
-        with urllib.request.urlopen(req, timeout=2) as r:
-            data = _json.loads(r.read().decode("utf-8", "replace"))
-        models = data.get("data") or data.get("models") or []
-        if isinstance(models, list) and models:
-            m0 = models[0]
-            if isinstance(m0, dict):
-                mid = m0.get("id") or m0.get("name") or ""
-                if mid:
-                    return str(mid)
-            elif isinstance(m0, str):
-                return m0
+        for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=3) as r:
+                    data = _json.loads(r.read().decode("utf-8", "replace"))
+                models = data.get("data") or data.get("models") or []
+                if isinstance(models, list) and models:
+                    m0 = models[0]
+                    if isinstance(m0, dict):
+                        mid = m0.get("id") or m0.get("name") or ""
+                        if mid:
+                            return str(mid)
+                    elif isinstance(m0, str):
+                        return m0
+            except Exception:
+                continue
     except Exception:
         pass
     return "local-model"
@@ -188,7 +198,50 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
     msgs = _build_messages(message, history)
     errors = []
 
-    # Strategy 1: default configured client (with its internal fallback chain)
+    # Strategy 1: Local OpenAI-compatible endpoint (Ollama/llama.cpp) — fastest/free in CI
+    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
+    if local_base:
+        try:
+            from openai import OpenAI
+            local_model = _detect_local_model(local_base)
+            lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=180.0, max_retries=0)
+            last_le = None
+            for lm in [local_model, "local-model", "gpt-3.5-turbo", "model"]:
+                try:
+                    resp = lcli.chat.completions.create(model=lm, messages=msgs, temperature=0, max_tokens=256)
+                    msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
+                    text = _extract_text(msg)
+                    if text:
+                        return text
+                except Exception as le:
+                    last_le = le
+            errors.append(f"local({local_model}): {last_le if last_le else 'empty response'}")
+        except Exception as e:
+            errors.append(f"local: {e}")
+
+    # Strategy 2: OmniRoute (OpenAI-compatible gateway, can aggregate free/connected providers)
+    omni_base = _env("OMNIROUTE_BASE_URL")
+    if omni_base:
+        try:
+            from openai import OpenAI
+            ocli = OpenAI(base_url=omni_base.rstrip("/"), api_key=_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute", timeout=120.0, max_retries=0)
+            last_oe = None
+            for om in [_env("OMNIROUTE_MODEL") or "auto", "auto", "openrouter/free", "gpt-3.5-turbo"]:
+                if not om:
+                    continue
+                try:
+                    resp = ocli.chat.completions.create(model=om, messages=msgs, temperature=0, max_tokens=512)
+                    msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
+                    text = _extract_text(msg)
+                    if text:
+                        return text
+                except Exception as oe:
+                    last_oe = oe
+            errors.append(f"omniroute: {last_oe if last_oe else 'empty response'}")
+        except Exception as e:
+            errors.append(f"omniroute: {e}")
+
+    # Strategy 3: default configured client (with its internal fallback chain)
     try:
         client = LLMClient()
         model = client.default_model()
@@ -200,7 +253,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
     except Exception as e:
         errors.append(f"default({os.environ.get('LLM_PROVIDER','openrouter')}): {e}")
 
-    # Strategy 2: NVIDIA direct (if key available)
+    # Strategy 4: NVIDIA direct (if key available)
     if _env("NVIDIA_API_KEY"):
         try:
             n = NvidiaLLMClient()
@@ -218,7 +271,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"nvidia: {e}")
 
-    # Strategy 3: Doubleword direct (if key available)
+    # Strategy 5: Doubleword direct (if key available)
     if _env("DOUBLEWORD_API_KEY"):
         try:
             d = DoublewordLLMClient()
@@ -236,7 +289,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"doubleword: {e}")
 
-    # Strategy 4: OpenRouter with explicit common :free models
+    # Strategy 6: OpenRouter with explicit common :free models
     if _env("OPENROUTER_API_KEY"):
         try:
             os.environ.setdefault("LLM_PROVIDER", "openrouter")
@@ -254,42 +307,6 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
                     errors.append(f"openrouter({m}): {e}")
         except Exception as e:
             errors.append(f"openrouter: {e}")
-
-    # Strategy 5: Local OpenAI-compatible endpoint (Ollama/llama.cpp), if reachable/configured
-    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
-    if local_base:
-        try:
-            from openai import OpenAI
-            local_model = _detect_local_model(local_base)
-            lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=60.0, max_retries=0)
-            try:
-                resp = lcli.chat.completions.create(model=local_model, messages=msgs, temperature=0, max_tokens=512)
-            except Exception:
-                # some servers require a specific/any model name
-                resp = lcli.chat.completions.create(model="local-model", messages=msgs, temperature=0, max_tokens=512)
-            msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
-            text = _extract_text(msg)
-            if text:
-                return text
-            errors.append("local: empty response")
-        except Exception as e:
-            errors.append(f"local: {e}")
-
-    # Strategy 6: OmniRoute (OpenAI-compatible gateway, can aggregate free providers)
-    omni_base = _env("OMNIROUTE_BASE_URL")
-    if omni_base:
-        try:
-            from openai import OpenAI
-            ocli = OpenAI(base_url=omni_base.rstrip("/"), api_key=_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute", timeout=60.0, max_retries=0)
-            omni_model = _env("OMNIROUTE_MODEL") or "auto"
-            resp = ocli.chat.completions.create(model=omni_model, messages=msgs, temperature=0, max_tokens=1024)
-            msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
-            text = _extract_text(msg)
-            if text:
-                return text
-            errors.append("omniroute: empty response")
-        except Exception as e:
-            errors.append(f"omniroute: {e}")
 
     raise RuntimeError(" | ".join(errors[-10:]) if errors else "no provider response")
 
