@@ -295,7 +295,7 @@ async function sendToJo(message, signal, onDelta) {
             if (!data) continue;
             let evt;
             try { evt = JSON.parse(data); } catch { continue; }
-            if (evt.session_id) s.id = evt.session_id;
+            if (evt.session_id && evt.session_id !== s.id) { const old = s.id; s.id = evt.session_id; if (currentSessionId === old) currentSessionId = s.id; saveState(); }
             if (evt.error) throw new Error(evt.error);
             if (typeof evt.delta === 'string') { full += evt.delta; if (onDelta) onDelta(full); }
             if (evt.done && typeof evt.response === 'string') { full = evt.response; if (onDelta) onDelta(full); }
@@ -320,7 +320,7 @@ async function sendToJo(message, signal, onDelta) {
   if (contentType.includes('application/json')) {
     try {
       const data = JSON.parse(content);
-      if (data.session_id) s.id = data.session_id;
+      if (data.session_id && data.session_id !== s.id) { const old = s.id; s.id = data.session_id; if (currentSessionId === old) currentSessionId = s.id; saveState(); }
       content = data.response || data.message || data.content || data.reply || (typeof data === 'string' ? data : JSON.stringify(data));
     } catch {}
   }
