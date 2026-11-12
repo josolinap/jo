@@ -220,7 +220,44 @@ jobs:
           " || { echo "✗ Pi prompts validation failed"; exit 1; }
 
       # -----------------------------------------------------------------------
-      # 4. Write a minimal .env from secrets so the app can read them
+      # 4. Start OmniRoute (primary free-model gateway)
+      # -----------------------------------------------------------------------
+      - name: Start OmniRoute (primary free-model gateway)
+        id: omniroute
+        continue-on-error: true
+        env:
+          PORT: "20128"
+          HOST: "127.0.0.1"
+          OMNIROUTE_HEADLESS: "1"
+          OMNIROUTE_API_KEY: omniroute-local
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
+        run: |
+          set -euo pipefail
+          echo "Starting OmniRoute (primary provider)..."
+          npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 > /tmp/omniroute.log 2>&1 &
+          echo $! > /tmp/omniroute.pid
+          up=0
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:20128/v1/models >/dev/null 2>&1 \
+               || curl -fsS http://127.0.0.1:20128/health >/dev/null 2>&1 \
+               || curl -fsS http://127.0.0.1:20128/ >/dev/null 2>&1; then
+              echo "OmniRoute up (primary)"
+              up=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$up" -ne 1 ]; then
+            echo "OmniRoute not ready; bot will fall back to configured providers"
+            tail -n 80 /tmp/omniroute.log || true
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      # -----------------------------------------------------------------------
+      # 4.1 Write a minimal .env from secrets so the app can read them
       #    (load_dotenv() reads this, but env vars below take precedence)
       # -----------------------------------------------------------------------
       - name: Write runtime config
@@ -248,7 +285,7 @@ jobs:
       - name: Initialize vault structure
         run: |
           JO_DATA="/home/runner/.jo_data"
-          
+
           # Check what was restored from cache
           echo "=== Cache debug ==="
           echo "HOME=$HOME"
@@ -266,11 +303,11 @@ jobs:
             echo "jo_data NOT found (fresh start)"
           fi
           echo "=== End cache debug ==="
-          
+
           # Initialize runtime directories in ~/.jo_data/ (cache/runtime only)
           mkdir -p /home/runner/.jo_data/{cache,tmp,locks,task_results,index,archive}
           echo "Runtime directories ready (cache, tmp, locks, task_results, index, archive)"
-          
+
           # Ensure vault/ exists in repo workspace (git-tracked, NOT in ~/.jo_data/)
           mkdir -p ${{ github.workspace }}/vault/{concepts,projects,tools,journal}
           echo "Vault structure ready (in repo, git-tracked)"
@@ -319,7 +356,14 @@ jobs:
           # --- NVIDIA NIM (free 40 req/min fallback) ---
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
-          # --- Optional model overrides ---
+          # --- Primary provider: OmniRoute (gateway over free/connected providers) ---
+          # Route all bot LLM calls through local OmniRoute first; fall back to direct providers only if needed.
+          LLM_PROVIDER: omniroute
+          OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
+          OMNIROUTE_MODEL: auto
+          OMNIROUTE_API_KEY: omniroute-local
+
+          # --- Optional model overrides (hints/fallback context) ---
           # Free-only runtime defaults. Do not inherit stale/paid model IDs from old secrets.
           OUROBOROS_MODEL: "openrouter/free"
           OUROBOROS_MODEL_CODE: "poolside/laguna-s-2.1:free"
@@ -524,7 +568,7 @@ jobs:
           echo "   ALL scheduled runs are kept."
 
           WORKFLOW_NAME="${{ github.workflow }}"
-          
+
           # Get COMPLETED runs for this workflow
           ALL_RUNS=$(gh run list \
             --workflow "$WORKFLOW_NAME" \
@@ -542,7 +586,7 @@ jobs:
           # jq filters out "schedule" events and keeps manual/push runs
           NON_SCHEDULED_RUNS=$(echo "$ALL_RUNS" | jq -c '.[] | select(.event != "schedule")')
           TOTAL_NON_SCHEDULED=$(echo "$NON_SCHEDULED_RUNS" | jq -s length)
-          
+
           echo "   Total non-scheduled completed runs: $TOTAL_NON_SCHEDULED"
 
           if [ "$TOTAL_NON_SCHEDULED" -le "$KEEP_RUNS" ]; then
