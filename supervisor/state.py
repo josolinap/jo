@@ -324,11 +324,18 @@ def check_openrouter_ground_truth() -> Optional[Dict[str, float]]:
     Call OpenRouter API to get ground truth usage.
 
     Returns dict with total_usd and daily_usd spent according to OpenRouter, or None on error.
+    Skipped when running in OmniRoute-only mode or when no OpenRouter key is configured.
     """
     try:
+        import urllib.error
         import urllib.request
 
+        provider = (os.environ.get("LLM_PROVIDER") or "").strip().lower()
         api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+        # When OmniRoute is the selected provider and no direct OpenRouter key is present,
+        # do not hit OpenRouter endpoints (avoids 401 noise in OmniRoute-only deployments).
+        if provider == "omniroute" and not api_key:
+            return None
         if not api_key:
             return None
         req = urllib.request.Request(
@@ -344,8 +351,12 @@ def check_openrouter_ground_truth() -> Optional[Dict[str, float]]:
             "total_usd": float(usage_total),
             "daily_usd": float(usage_daily),
         }
-    except Exception:
-        log.warning("Failed to fetch OpenRouter ground truth", exc_info=True)
+    except urllib.error.HTTPError as e:
+        # Auth/rate errors are expected in some environments; avoid noisy tracebacks.
+        log.warning("OpenRouter ground truth unavailable (HTTP %s)", getattr(e, "code", "?"))
+        return None
+    except Exception as e:
+        log.warning("Failed to fetch OpenRouter ground truth: %s", e)
         return None
 
 

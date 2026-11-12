@@ -5,21 +5,40 @@ HTTP backend for the GitHub Pages GUI (`gui/`).
 ## Endpoints
 - `POST /v1/chat` `{ "message": "...", "history"?: [{"role","content"}], "session_id"?: "..." }` → `{ "response", "session_id", "provider", "model" }`
 - `POST /v1/chat/stream` same body → SSE events (`delta`, `done`, `error`)
-- `GET /health` / `GET /v1/status` → provider/model/config status
+- `GET /health` / `GET /v1/status` → provider/model/config + reachability status
 
 CORS is enabled for the web GUI.
 
+## Provider priority (web chat)
+`server/app.py` is optimized for GitHub-hosted web chat and prioritizes **OmniRoute** as the main source:
+
+1. **OmniRoute** (`OMNIROUTE_BASE_URL`) — primary gateway for routed/free/connected models (`OMNIROUTE_MODEL=auto` by default). Health/reachability is probed; if unreachable it is skipped quickly.
+2. **Local OpenAI-compatible server** (`LOCAL_BASE_URL`, e.g. Ollama/llama.cpp)
+3. **Direct provider fallbacks** via Jo LLM stack/keys (OpenRouter, NVIDIA NIM, Doubleword)
+4. **Public free fallback endpoints** (best-effort, no key)
+
+`/health` reports effective `provider`/`model`, `omniroute_reachable`, `local_reachable`, and key/config flags so the GUI can show real status.
+
 ## Run locally
 ```bash
-pip install -r ../requirements.txt  # or ensure fastapi uvicorn openai pydantic requests
+pip install -r requirements.txt
 python -m uvicorn server.app:app --host 127.0.0.1 --port 8000
 ```
 Then set the GUI **Backend → API base URL** to `http://127.0.0.1:8000` (or your deployed URL).
 
-## Enable real replies (free providers)
-Configure env vars and restart (see `.env.example`). The LLM stack (`ouroboros/llm.py`) supports OpenRouter `:free` models, NVIDIA NIM, Doubleword, and local Ollama with fallback. Keep `:free` suffixes and resolve models from env (see `.jo_rules/free_models.md`).
+## Enable real replies (recommended: OmniRoute)
+Configure env vars and restart (see `.env.example`):
 
-Without a configured provider the backend still responds with a clear setup/status message so the GUI remains functional.
+```bash
+LLM_PROVIDER=omniroute
+OMNIROUTE_BASE_URL=http://127.0.0.1:20128/v1
+OMNIROUTE_MODEL=auto
+OMNIROUTE_API_KEY=omniroute-local
+```
+
+Keep local/direct provider keys configured as fallbacks where possible.
+
+Without a configured/reachable provider the backend still responds with a clear setup/status message so the GUI remains functional.
 
 ## Full agent workflow
-Set `JO_WEB_USE_AGENT=1` to route chat through the direct-chat agent path (`supervisor.workers._get_chat_agent` → `agent.handle_task`). Default is the lighter LLM path for robustness.
+Set `JO_WEB_USE_AGENT=1` to route chat through the direct-chat agent path (`supervisor.workers._get_chat_agent` → `agent.handle_task`). Default is the lighter LLM path for robustness and OmniRoute-first behavior.

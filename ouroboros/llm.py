@@ -337,11 +337,7 @@ class NvidiaLLMClient:
         candidates = self.get_models_for_task(task_type)
 
         failed_threshold = 3
-        available = [
-            m
-            for m in candidates
-            if self._model_failure_count.get(m, 0) < failed_threshold
-        ]
+        available = [m for m in candidates if self._model_failure_count.get(m, 0) < failed_threshold]
         if not available:
             available = candidates[:1]
             for m in available:
@@ -672,7 +668,7 @@ class LocalLLMClient:
 
 
 class LLMClient:
-    """LLM client with provider support (OpenRouter, NVIDIA NIM, or local vLLM)."""
+    """LLM client with provider support (OpenRouter, OmniRoute, NVIDIA NIM, Doubleword, or local vLLM)."""
 
     def __init__(
         self,
@@ -680,12 +676,14 @@ class LLMClient:
         base_url: str = "https://openrouter.ai/api/v1",
     ):
         provider = os.environ.get("LLM_PROVIDER", "openrouter").lower()
+        omni_base = os.environ.get("OMNIROUTE_BASE_URL", "").strip()
 
         if provider == "local":
             self._impl = LocalLLMClient()
             self._is_local = True
             self._is_nvidia = False
             self._is_doubleword = False
+            self._is_omniroute = False
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
             self._base_url = base_url
             self._client = None
@@ -694,6 +692,7 @@ class LLMClient:
             self._is_local = True
             self._is_nvidia = True
             self._is_doubleword = False
+            self._is_omniroute = False
             self._api_key = api_key or os.environ.get("NVIDIA_API_KEY", "")
             self._base_url = base_url
             self._client = None
@@ -702,9 +701,22 @@ class LLMClient:
             self._is_local = False
             self._is_nvidia = False
             self._is_doubleword = True
+            self._is_omniroute = False
             self._api_key = api_key or os.environ.get("DOUBLEWORD_API_KEY", "")
             self._base_url = base_url
             self._client = None
+        elif provider == "omniroute" and omni_base:
+            self._impl = None
+            self._is_local = False
+            self._is_nvidia = False
+            self._is_doubleword = False
+            self._is_omniroute = True
+            self._api_key = (
+                api_key or os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or "omniroute"
+            )
+            self._base_url = omni_base.rstrip("/") + "/v1"
+            self._client = None
+            self._omni_base = omni_base.rstrip("/")
         else:
             self._api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
             self._base_url = base_url
@@ -712,6 +724,7 @@ class LLMClient:
             self._is_local = False
             self._is_nvidia = False
             self._is_doubleword = False
+            self._is_omniroute = bool(omni_base) and provider not in ("local", "nvidia", "doubleword")
 
         # Last provider failure for diagnostics and self-healing.
         # Keep this short and free of request payloads or credentials.
@@ -728,15 +741,139 @@ class LLMClient:
         if self._client is None:
             from openai import OpenAI
 
+            headers = {}
+            if not getattr(self, "_is_omniroute", False):
+                headers = {
+                    "HTTP-Referer": "https://github.com/josolinap/jo",
+                    "X-Title": "Jo",
+                }
             self._client = OpenAI(
                 base_url=self._base_url,
                 api_key=self._api_key,
-                default_headers={
-                    "HTTP-Referer": "https://github.com/josolinap/jo",
-                    "X-Title": "Jo",
-                },
+                default_headers=headers or None,
             )
         return self._client
+
+    def _omniroute_reachable(self) -> bool:
+        if not getattr(self, "_is_omniroute", False):
+            return False
+        base = (getattr(self, "_omni_base", "") or os.environ.get("OMNIROUTE_BASE_URL", "")).rstrip("/")
+        if not base:
+            return False
+        try:
+            import urllib.request
+            auth = {"Authorization": "Bearer " + (os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or "omniroute")}
+            for url in (base + "/v1/models", base + "/models", base + "/health", base + "/"):
+                try:
+                    req = urllib.request.Request(url, headers=auth)
+                    with urllib.request.urlopen(req, timeout=2) as r:
+                        if 200 <= getattr(r, "status", 200) < 500:
+                            return True
+                except Exception:
+                    continue
+        except Exception:
+            return False
+        return False
+
+    def _discover_omniroute_models(self) -> List[str]:
+        base = (getattr(self, "_omni_base", "") or os.environ.get("OMNIROUTE_BASE_URL", "")).rstrip("/")
+        if not base:
+            return []
+        try:
+            import requests
+            auth = {"Authorization": "Bearer " + (os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or "omniroute")}
+            for url in (base + "/v1/models", base + "/models"):
+                try:
+                    resp = requests.get(url, headers=auth, timeout=5)
+                    if resp.status_code >= 400:
+                        continue
+                    data = resp.json() or {}
+                    out = []
+                    for item in (data.get("data") or []):
+                        mid = (item or {}).get("id") if isinstance(item, dict) else item
+                        if mid:
+                            out.append(str(mid))
+                    if out:
+                        return out
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return []
+
+    def _chat_omniroute(
+        self,
+        messages: List[Dict[str, Any]],
+        model: str,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        reasoning_effort: str = "medium",
+        max_tokens: int = 16384,
+        tool_choice: str = "auto",
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        if not self._omniroute_reachable():
+            raise RuntimeError("OmniRoute unreachable")
+
+        client = self._get_client()
+        env_model = (os.environ.get("OMNIROUTE_MODEL") or "").strip()
+        preferred = []
+        if env_model and env_model not in ("", "inherit"):
+            preferred.append(env_model)
+        # honor explicit model arg if it's a concrete routed id
+        if model and model not in preferred and model != "auto":
+            preferred.append(model)
+        for m in ("auto", "openrouter/free"):
+            if m not in preferred:
+                preferred.append(m)
+
+        discovered = self._discover_omniroute_models()
+
+        def _rank(mid: str) -> tuple:
+            ml = mid.lower()
+            return (
+                0 if ml == "auto" else 1 if ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml else 2,
+                0 if any(x in ml for x in ("llama", "qwen", "gemma", "mistral", "gpt", "deepseek")) else 1,
+            )
+        discovered = [d for d in discovered if d not in preferred]
+        discovered = sorted(discovered, key=_rank)
+        candidates = []
+        for m in preferred + discovered:
+            if m and m not in candidates:
+                candidates.append(m)
+        if not candidates:
+            candidates = ["auto"]
+
+        last_err = None
+        for cm in candidates[:15]:
+            try:
+                kwargs: Dict[str, Any] = {
+                    "model": cm,
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                }
+                if tools:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = tool_choice
+                resp = client.chat.completions.create(**kwargs)
+                resp_dict = resp.model_dump()
+                usage = resp_dict.get("usage") or {}
+                choices = resp_dict.get("choices") or [{}]
+                msg = (choices[0] if choices else {}).get("message") or {}
+                usage.setdefault("cost", 0.0)
+                usage.setdefault("provider", "omniroute")
+                usage.setdefault("model", cm)
+                # treat empty as failure to try next
+                content = msg.get("content")
+                tool_calls = msg.get("tool_calls") or []
+                if tool_calls or (content and str(content).strip()):
+                    return msg, usage
+                last_err = ValueError(f"OmniRoute model {cm} returned empty response")
+            except Exception as e:
+                last_err = e
+                log.warning("OmniRoute candidate %s failed: %s", cm, e)
+                continue
+        if last_err:
+            raise last_err
+        raise RuntimeError("OmniRoute returned no usable response")
 
     def _fetch_generation_cost(self, generation_id: str) -> Optional[float]:
         """Fetch cost from OpenRouter Generation API as fallback."""
@@ -775,13 +912,39 @@ class LLMClient:
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Single LLM call with multi-provider fallback chain.
 
-        Provider chain: OpenRouter -> Doubleword.ai -> NVIDIA NIM -> Local Ollama
+        Provider chain: OmniRoute (if configured/reachable) -> OpenRouter -> Doubleword.ai -> NVIDIA NIM -> Local Ollama
         """
         # Handle trivial requests locally to save API quota
         if not _skip_trivial and is_trivial_request(messages):
             content = messages[-1].get("content", "")
             response = get_trivial_response(content)
             return {"content": response}, {"cost": 0.0, "prompt_tokens": 0, "completion_tokens": 3, "total_tokens": 3}
+
+        # 0. OmniRoute primary path (when explicitly selected or configured as preferred gateway)
+        if getattr(self, "_is_omniroute", False) or os.environ.get("OMNIROUTE_BASE_URL", "").strip():
+            try:
+                if getattr(self, "_is_omniroute", False):
+                    msg, usage = self._chat_omniroute(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                    self.last_error = ""
+                    return msg, usage
+                # If not in omniroute provider mode but base is set, prefer it first and fall through on failure
+                if self._omniroute_reachable():
+                    # temporarily reuse omniroute helpers via this instance
+                    self._is_omniroute = True
+                    self._omni_base = os.environ.get("OMNIROUTE_BASE_URL", "").rstrip("/")
+                    self._base_url = self._omni_base + "/v1"
+                    self._api_key = self._api_key or os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or "omniroute"
+                    self._client = None
+                    msg, usage = self._chat_omniroute(messages, model, tools, reasoning_effort, max_tokens, tool_choice)
+                    self.last_error = ""
+                    return msg, usage
+            except Exception as e:
+                self.last_error = self._describe_error(e)
+                # If provider is explicitly omniroute, do NOT cascade into noisy direct-provider fallbacks
+                # unless caller explicitly configured a different path; raise to make failure explicit.
+                if os.environ.get("LLM_PROVIDER", "").strip().lower() == "omniroute":
+                    raise
+                log.warning("OmniRoute preferred path failed, falling back: %s", e)
 
         # 1. Designated NVIDIA provider
         if getattr(self, "_is_nvidia", False):
@@ -825,7 +988,9 @@ class LLMClient:
                 if not self._api_key or not self._api_key.strip():
                     raise ValueError("OPENROUTER_API_KEY is missing or empty")
 
-                msg, usage = self._chat_openrouter(messages, model, tools, reasoning_effort, max_tokens, tool_choice, temperature=_LLM_TEMPERATURE)
+                msg, usage = self._chat_openrouter(
+                    messages, model, tools, reasoning_effort, max_tokens, tool_choice, temperature=_LLM_TEMPERATURE
+                )
 
                 tool_calls = msg.get("tool_calls") or []
                 content = msg.get("content")
@@ -872,7 +1037,9 @@ class LLMClient:
                         for candidate in candidates:
                             try:
                                 log.info(f"Att Doubleword fallback: {candidate}")
-                                msg, usage = dw_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                                msg, usage = dw_client.chat(
+                                    messages, candidate, tools, reasoning_effort, max_tokens, tool_choice
+                                )
                                 dw_client.mark_model_success(candidate)
                                 return msg, usage
                             except Exception as try_err:
@@ -910,7 +1077,9 @@ class LLMClient:
                         for candidate in candidates:
                             try:
                                 log.info(f"Att NVIDIA fallback: {candidate}")
-                                msg, usage = nvidia_client.chat(messages, candidate, tools, reasoning_effort, max_tokens, tool_choice)
+                                msg, usage = nvidia_client.chat(
+                                    messages, candidate, tools, reasoning_effort, max_tokens, tool_choice
+                                )
                                 nvidia_client.mark_model_success(candidate)
                                 return msg, usage
                             except Exception as try_err:
@@ -1083,6 +1252,8 @@ class LLMClient:
             return self._impl.default_model()
         if self._is_doubleword:
             return self._impl.default_model()
+        if getattr(self, "_is_omniroute", False):
+            return os.environ.get("OMNIROUTE_MODEL", "auto") or "auto"
         return os.environ.get("OUROBOROS_MODEL", "openrouter/free")
 
     def available_models(self) -> List[str]:
@@ -1091,6 +1262,17 @@ class LLMClient:
             return self._impl.available_models()
         if self._is_doubleword:
             return self._impl.available_models()
+        if getattr(self, "_is_omniroute", False):
+            models = [os.environ.get("OMNIROUTE_MODEL", "auto") or "auto"]
+            try:
+                for m in self._discover_omniroute_models():
+                    if m and m not in models:
+                        models.append(m)
+                    if len(models) >= 20:
+                        break
+            except Exception:
+                pass
+            return models
 
         main = os.environ.get("OUROBOROS_MODEL", "openrouter/free")
         code = os.environ.get("OUROBOROS_MODEL_CODE", "")

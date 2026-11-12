@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       duration_minutes:
-        description: 'How long to keep backend/tunnel running'
+        description: "How long to keep backend/tunnel running"
         required: false
-        default: '330'
+        default: "330"
   schedule:
-    - cron: '30 */6 * * *'
+    - cron: "30 */6 * * *"
 
 permissions:
   contents: read
@@ -36,35 +36,47 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Start OmniRoute (free-model gateway)
+      - name: Start OmniRoute (primary free-model gateway)
         id: omniroute
         continue-on-error: true
         env:
           PORT: "20128"
           HOST: "127.0.0.1"
           OMNIROUTE_HEADLESS: "1"
+          OMNIROUTE_API_KEY: omniroute-local
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
         run: |
-          set -e
+          set -euo pipefail
+          echo "Starting OmniRoute (primary provider for web backend)..."
           npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 > /tmp/omniroute.log 2>&1 &
           echo $! > /tmp/omniroute.pid
+          up=0
           for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:20128/v1/models >/tmp/omniroute-models.json 2>/dev/null || curl -fsS http://127.0.0.1:20128/health >/dev/null 2>&1; then
-              echo "OmniRoute up"; exit 0
+            if curl -fsS http://127.0.0.1:20128/v1/models >/tmp/omniroute-models.json 2>/dev/null \
+               || curl -fsS http://127.0.0.1:20128/health >/dev/null 2>&1 \
+               || curl -fsS http://127.0.0.1:20128/ >/dev/null 2>&1; then
+              echo "OmniRoute up (primary)"
+              up=1
+              break
             fi
             sleep 2
           done
-          echo "OmniRoute not ready (may still work if providers configured)"; tail -n 120 /tmp/omniroute.log || true; exit 1
+          if [ "$up" -ne 1 ]; then
+            echo "OmniRoute not ready; backend will fall back to local/direct providers"
+            tail -n 120 /tmp/omniroute.log || true
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Start local LLM (llama.cpp, free fallback)
         id: localllm
@@ -89,10 +101,11 @@ jobs:
           done
           echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; exit 1
 
-      - name: Start backend server
+      - name: Start backend server (OmniRoute-prioritized)
         env:
-          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openrouter' }}
-          OUROBOROS_MODEL: ${{ vars.OUROBOROS_MODEL || 'openrouter/free' }}
+          # OmniRoute is the primary source for web chat; direct providers remain as fallbacks.
+          LLM_PROVIDER: omniroute
+          OUROBOROS_MODEL: auto
           OUROBOROS_MODEL_CODE: ${{ vars.OUROBOROS_MODEL_CODE || '' }}
           OUROBOROS_MODEL_LIGHT: ${{ vars.OUROBOROS_MODEL_LIGHT || '' }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -107,13 +120,22 @@ jobs:
           REPO_DIR: ${{ github.workspace }}
           OUROBOROS_DETERMINISTIC: "1"
           OUROBOROS_LLM_TEMPERATURE: "0"
+          JO_WEB_USE_AGENT: "0"
         run: |
           mkdir -p /home/runner/.jo_data
+          echo "=== Effective web-backend provider config ==="
+          echo "LLM_PROVIDER=$LLM_PROVIDER"
+          echo "OUROBOROS_MODEL=$OUROBOROS_MODEL"
+          echo "OMNIROUTE_BASE_URL=$OMNIROUTE_BASE_URL"
+          echo "OMNIROUTE_MODEL=$OMNIROUTE_MODEL"
+          echo "LOCAL_BASE_URL=$LOCAL_BASE_URL"
           python -m uvicorn server.app:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
           echo $! > /tmp/uvicorn.pid
-          for i in $(seq 1 40); do
+          for i in $(seq 1 50); do
             if curl -fsS http://127.0.0.1:8000/health >/tmp/health.json; then
-              echo "Backend up"; cat /tmp/health.json; exit 0
+              echo "Backend up"
+              cat /tmp/health.json
+              exit 0
             fi
             sleep 2
           done
