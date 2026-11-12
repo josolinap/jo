@@ -308,7 +308,41 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
         except Exception as e:
             errors.append(f"openrouter: {e}")
 
-    raise RuntimeError(" | ".join(errors[-10:]) if errors else "no provider response")
+    # Strategy 7: Public free text endpoints (no key) as last resort
+    try:
+        import urllib.request as _ur, json as _json
+        prompt = message
+        # Pollinations OpenAI-compatible
+        try:
+            payload = _json.dumps({"model": "openai", "messages": msgs, "temperature": 0.2}).encode()
+            req = _ur.Request("https://text.pollinations.ai/openai", data=payload, headers={"Content-Type": "application/json"})
+            with _ur.urlopen(req, timeout=60) as r:
+                data = _json.loads(r.read().decode("utf-8", "replace"))
+            text = _extract_text(((data.get("choices") or [{}])[0]).get("message") or {})
+            if not text and isinstance(data.get("choices"), list) and data["choices"]:
+                text = str((data["choices"][0] or {}).get("text") or "").strip()
+            if text:
+                return text
+        except Exception as pe:
+            errors.append(f"pollinations: {pe}")
+        # Pollinations simple GET
+        try:
+            q = _ur.quote(prompt[:2000])
+            req = _ur.Request(f"https://text.pollinations.ai/{q}?model=openai", headers={"Accept": "text/plain"})
+            with _ur.urlopen(req, timeout=60) as r:
+                text = r.read().decode("utf-8", "replace").strip()
+            if text and len(text) < 20000 and "error" not in text[:40].lower():
+                return text
+        except Exception as pe:
+            errors.append(f"pollinations-get: {pe}")
+    except Exception as e:
+        errors.append(f"public: {e}")
+
+    # summarize with priority on local/omniroute
+    priority = [e for e in errors if e.startswith(("local", "omniroute"))]
+    tail = errors[-8:]
+    summary = " | ".join((priority + [x for x in tail if x not in priority])[:12]) if errors else "no provider response"
+    raise RuntimeError(summary)
 
 
 def _fallback_response(message: str, err: Optional[str] = None) -> str:
