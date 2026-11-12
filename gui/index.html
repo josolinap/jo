@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f5f5f5">
   <title>Jo</title>
-  <meta name="description" content="Jo is a self-creating AI agent.">
+  <meta name="description" content="Jo — a self-creating AI agent with a Nod-inspired web GUI, powered by free models and OmniRoute.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -56,10 +56,11 @@
             <div class="nav-link settings-label"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="nav-label">Backend</span></div>
             <label class="api-field">
               <span class="api-label">API base URL</span>
-              <input id="api-base" type="text" value="" placeholder="https://your-jo-backend.example" spellcheck="false">
+              <input id="api-base" type="text" value="" placeholder="auto-discover or https://…" spellcheck="false">
             </label>
             <div class="backend-status" id="backend-status">Status: unknown</div>
             <div class="backend-meta" id="backend-meta"></div>
+            <div class="backend-hint" id="backend-hint">Chat runs via Jo backend (GitHub Actions tunnel) with local llama.cpp, OmniRoute, and free-provider fallbacks.</div>
           </div>
         </div>
       </aside>
@@ -75,6 +76,11 @@
                   <div class="chat-top-title" id="chat-title">New chat</div>
                   <div class="chat-top-sub" id="chat-subtitle">Not connected</div>
                 </div>
+                <div class="chat-top-actions">
+                  <button class="button button-icon tool-button" id="chat-refresh" type="button" aria-label="Refresh connection" title="Refresh connection">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="conversation-scroll" id="chat-log" aria-live="polite">
                 <div class="chat-collection conversation-column" id="chat-collection">
@@ -83,7 +89,12 @@
                       <span class="brand-glyph"><svg viewBox="0 0 32 32" width="30" height="30" fill="none"><circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="4"/><circle cx="25" cy="6" r="4" fill="var(--brand-pink, #ff91ac)"/></svg></span>
                     </span>
                     <h2 id="empty-greeting">Good evening</h2>
-                    <p class="welcome-sub">I am Jo — a self-creating AI agent.</p>
+                    <p class="welcome-sub">Self-creating AI agent. Chat is powered by your Jo backend with free models, local inference, and OmniRoute when available.</p>
+                    <div class="welcome-tips">
+                      <button type="button" class="tip-chip" data-prompt="Who are you and what can you do?">Who are you?</button>
+                      <button type="button" class="tip-chip" data-prompt="Help me plan and build a small web app.">Build something</button>
+                      <button type="button" class="tip-chip" data-prompt="Explain how this GUI connects to the backend and OmniRoute.">How it works</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -108,6 +119,7 @@
                   </div>
                 </form>
                 <div class="chat-status" id="chat-status" aria-live="polite"></div>
+                <div class="chat-footnote">Enter to send · Shift+Enter for newline · Responses may be slow on free/local backends</div>
               </div>
             </div>
           </main>

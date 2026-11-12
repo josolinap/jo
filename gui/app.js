@@ -19,6 +19,7 @@ const mobileMenu = document.getElementById('mobile-menu');
 const sessionListEl = document.getElementById('session-list');
 const chatTitle = document.getElementById('chat-title');
 const chatSubtitle = document.getElementById('chat-subtitle');
+const chatRefresh = document.getElementById('chat-refresh');
 
 let busy = false;
 let workingEl = null;
@@ -57,25 +58,64 @@ function saveState() {
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-
-function renderContent(el, text, role) {
-  if (role === 'user') { el.textContent = text; return; }
-  const parts = String(text).split(/```/);
+function sanitizeHref(href) {
+  try { const u = new URL(href, location.href); if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'mailto:') return u.href; } catch {}
+  return '#';
+}
+function renderInline(text) {
+  let s = escapeHtml(text);
+  const codeSpans = [];
+  s = s.replace(/`([^`\n]+)`/g, (_, c) => { const i = codeSpans.length; codeSpans.push('<code>' + c + '</code>'); return '\u0000C' + i + '\u0000'; });
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => '<a href="' + escapeHtml(sanitizeHref(href)) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+  s = s.replace(/\u0000C(\d+)\u0000/g, (_, i) => codeSpans[Number(i)] || '');
+  return s;
+}
+function renderMarkdown(text) {
+  const src = String(text || '').replace(/\r\n/g, '\n');
+  const parts = src.split(/```/);
   let html = '';
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 === 1) {
-      let code = parts[i];
-      code = code.replace(/^\w*\n/, '');
-      html += '<pre><code>' + escapeHtml(code) + '</code></pre>';
-    } else {
-      let chunk = escapeHtml(parts[i]);
-      chunk = chunk.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-      chunk = chunk.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-      chunk = chunk.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-      html += chunk;
+      let code = parts[i]; let lang = '';
+      const m = code.match(/^([^\n]*)\n/);
+      if (m) { lang = (m[1] || '').trim(); code = code.slice(m[0].length); }
+      const safe = escapeHtml(code.replace(/\n$/, ''));
+      html += '<div class="code-wrap"><button type="button" class="code-copy" data-code-copy>Copy</button><pre><code' + (lang ? ' data-lang="' + escapeHtml(lang) + '"' : '') + '>' + safe + '</code></pre></div>';
+      continue;
+    }
+    const lines = parts[i].split('\n'); let j = 0;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (!line.trim()) { j++; continue; }
+      if (/^###\s+/.test(line)) { html += '<h3>' + renderInline(line.replace(/^###\s+/, '')) + '</h3>'; j++; continue; }
+      if (/^##\s+/.test(line)) { html += '<h2>' + renderInline(line.replace(/^##\s+/, '')) + '</h2>'; j++; continue; }
+      if (/^#\s+/.test(line)) { html += '<h1>' + renderInline(line.replace(/^#\s+/, '')) + '</h1>'; j++; continue; }
+      if (/^(-{3,}|\*{3,})$/.test(line.trim())) { html += '<hr>'; j++; continue; }
+      if (/^>\s?/.test(line)) { let bq=[]; while(j<lines.length && /^>\s?/.test(lines[j])){bq.push(lines[j].replace(/^>\s?/,''));j++;} html += '<blockquote>'+renderInline(bq.join('\n')).replace(/\n/g,'<br>')+'</blockquote>'; continue; }
+      if (/^(\*|-)\s+/.test(line)) { let items=[]; while(j<lines.length && /^(\*|-)\s+/.test(lines[j])){items.push('<li>'+renderInline(lines[j].replace(/^(\*|-)\s+/,''))+'</li>');j++;} html += '<ul>'+items.join('')+'</ul>'; continue; }
+      if (/^\d+\.\s+/.test(line)) { let items=[]; while(j<lines.length && /^\d+\.\s+/.test(lines[j])){items.push('<li>'+renderInline(lines[j].replace(/^\d+\.\s+/,''))+'</li>');j++;} html += '<ol>'+items.join('')+'</ol>'; continue; }
+      let para=[line]; j++; while(j<lines.length && lines[j].trim() && !/^(#{1,3}\s+|>\s?|(\*|-)\s+|\d+\.\s+|```|(-{3,}|\*{3,})$)/.test(lines[j])){para.push(lines[j]);j++;}
+      html += '<p>' + para.map(renderInline).join('<br>') + '</p>';
     }
   }
-  el.innerHTML = html || '&nbsp;';
+  return html || '&nbsp;';
+}
+
+function renderContent(el, text, role, streaming) {
+  if (role === 'user') { el.textContent = text; return; }
+  el.innerHTML = renderMarkdown(text);
+  if (streaming) el.classList.add('streaming-caret'); else el.classList.remove('streaming-caret');
+  el.querySelectorAll('[data-code-copy]').forEach(btn => {
+    if (btn._bound) return; btn._bound = true;
+    btn.addEventListener('click', async () => {
+      const pre = btn.parentElement && btn.parentElement.querySelector('code');
+      const code = pre ? pre.textContent : '';
+      try { await navigator.clipboard.writeText(code); btn.textContent = 'Copied'; setTimeout(()=>{btn.textContent='Copy';},1200); }
+      catch { btn.textContent = 'Failed'; setTimeout(()=>{btn.textContent='Copy';},1200); }
+    });
+  });
 }
 
 function updateHeader() {
@@ -84,10 +124,15 @@ function updateHeader() {
   if (chatSubtitle) {
     const base = getApiBase();
     if (healthInfo && healthInfo.status === 'ok') {
-      const m = [healthInfo.provider, healthInfo.model].filter(Boolean).join(' · ');
-      chatSubtitle.textContent = m || (healthInfo.configured ? 'Connected' : 'Backend reachable (no model configured)');
+      const parts = [];
+      if (healthInfo.provider) parts.push(healthInfo.provider);
+      if (healthInfo.model) parts.push(healthInfo.model);
+      if (healthInfo.local_reachable) parts.push('local');
+      if (healthInfo.keys && healthInfo.keys.omniroute) parts.push('omniroute');
+      if (!parts.length && healthInfo.configured) parts.push('connected');
+      chatSubtitle.textContent = parts.join(' · ') || 'Backend reachable';
     } else if (!base) {
-      chatSubtitle.textContent = 'Set Backend → API base URL';
+      chatSubtitle.textContent = 'Set Backend → API base URL (or auto-discover)';
     } else {
       chatSubtitle.textContent = 'Backend not connected';
     }
@@ -123,7 +168,7 @@ function renderSessionList() {
     });
     item.appendChild(title);
     item.appendChild(del);
-    item.addEventListener('click', () => switchSession(s.id));
+    item.addEventListener('click', () => { switchSession(s.id); if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches && appShell) appShell.classList.add('sidebar-collapsed'); });
     sessionListEl.appendChild(item);
   }
 }
@@ -312,7 +357,7 @@ async function sendMessage() {
     msgEl = document.createElement('article');
     msgEl.className = 'message message-assistant';
     const bubble = document.createElement('div'); bubble.className = 'message-bubble';
-    body = document.createElement('div'); body.className = 'message-content message-text';
+    body = document.createElement('div'); body.className = 'message-content message-text streaming-caret';
     body.textContent = ''; bubble.appendChild(body); msgEl.appendChild(bubble);
     chatCollection.appendChild(msgEl);
     scrollToBottom(true);
@@ -320,11 +365,11 @@ async function sendMessage() {
     let finalText = '';
     const content = await sendToJo(text, controller.signal, (partial) => {
       finalText = partial;
-      renderContent(body, partial, 'assistant');
+      renderContent(body, partial, 'assistant', true);
       scrollToBottom(false);
     });
     finalText = content || finalText || '(empty response)';
-    renderContent(body, finalText, 'assistant');
+    renderContent(body, finalText, 'assistant', false);
     const actions = document.createElement('div'); actions.className = 'message-actions';
     const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'msg-action'; copy.textContent = 'Copy';
     copy.addEventListener('click', async () => {
@@ -335,6 +380,7 @@ async function sendMessage() {
     pushMessage('assistant', finalText, false);
     msgEl = null;
   } catch (error) {
+    if (body) body.classList.remove('streaming-caret');
     if (msgEl && msgEl.parentNode) msgEl.remove();
     if (error && error.name === 'AbortError') {
       pushMessage('assistant', 'Stopped.', true);
@@ -369,6 +415,17 @@ chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy && chatInput.value.trim()) chatForm.requestSubmit(); }
 });
 if (chatStop) chatStop.addEventListener('click', () => { if (controller) controller.abort(); });
+if (chatRefresh) chatRefresh.addEventListener('click', () => checkHealth());
+
+document.querySelectorAll('.tip-chip[data-prompt]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const p = btn.getAttribute('data-prompt') || '';
+    if (!p) return;
+    chatInput.value = p;
+    chatInput.dispatchEvent(new Event('input'));
+    chatInput.focus();
+  });
+});
 
 function createSession(switchTo) {
   const s = { id: uid(), title: 'New chat', messages: [], createdAt: now(), updatedAt: now() };
@@ -429,7 +486,7 @@ async function checkHealth() {
   const base = getApiBase();
   if (!base) {
     healthInfo = null;
-    backendStatus.textContent = 'Status: set API base URL';
+    backendStatus.textContent = 'Status: set API base URL or wait for auto-discovery';
     backendStatus.className = 'backend-status err';
     if (backendMeta) backendMeta.textContent = '';
     updateHeader();
@@ -439,22 +496,24 @@ async function checkHealth() {
   backendStatus.className = 'backend-status';
   if (backendMeta) backendMeta.textContent = '';
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 6000);
+  const t = setTimeout(() => ctrl.abort(), 7000);
   try {
-    const res = await fetch(base + '/health', { signal: ctrl.signal });
+    const res = await fetch(base + '/health', { signal: ctrl.signal, cache: 'no-store' });
     clearTimeout(t);
     const ct = res.headers.get('content-type') || '';
     let data = null;
     if (ct.includes('application/json')) { try { data = await res.json(); } catch {} }
     if (res.ok) {
       healthInfo = data || { status: 'ok' };
-      const configured = healthInfo.configured;
+      const configured = !!(healthInfo.configured || (healthInfo.keys && Object.values(healthInfo.keys).some(Boolean)));
       backendStatus.textContent = configured ? 'Status: online' : 'Status: reachable (no model)';
       backendStatus.className = 'backend-status ' + (configured ? 'ok' : '');
       if (backendMeta) {
         const parts = [];
-        if (healthInfo.provider) parts.push(healthInfo.provider);
-        if (healthInfo.model) parts.push(healthInfo.model);
+        if (healthInfo.provider) parts.push('provider: ' + healthInfo.provider);
+        if (healthInfo.model) parts.push('model: ' + healthInfo.model);
+        if (healthInfo.keys) { const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) parts.push('keys: ' + k.join(',')); }
+        if (healthInfo.local_reachable) parts.push('local: ready');
         backendMeta.textContent = parts.join(' · ');
       }
     } else {
