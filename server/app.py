@@ -105,25 +105,60 @@ def _detect_local_model(base: str) -> str:
     return "local-model"
 
 
+def _probe_http_ok(urls, headers_list, timeout=2):
+    try:
+        import urllib.request as _ur
+    except Exception:
+        return False
+    for _hp in urls:
+        for _hdrs in headers_list:
+            try:
+                _hr = _ur.Request(_hp, headers=_hdrs or {})
+                with _ur.urlopen(_hr, timeout=timeout) as _hresp:
+                    if 200 <= getattr(_hresp, "status", 200) < 500:
+                        return True
+            except Exception:
+                continue
+    return False
+
+
+def _omni_probe_urls(base: str):
+    b = (base or "").rstrip("/")
+    root = b.rsplit("/v1", 1)[0] if b.endswith("/v1") else b
+    urls = [b + "/models", root + "/health", b + "/health", root + "/v1/models", root + "/"]
+    seen = set()
+    out = []
+    for u in urls:
+        if u and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def _omni_auth_header_variants():
+    key = (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute").strip() or "omniroute"
+    variants = []
+    for k in [key, "omniroute-local", "omniroute", "sk-local", "dummy"]:
+        if k:
+            variants.append({"Authorization": "Bearer " + k})
+    variants.append({})
+    uniq = []
+    seen = set()
+    for v in variants:
+        t = tuple(sorted(v.items()))
+        if t not in seen:
+            seen.add(t)
+            uniq.append(v)
+    return uniq
+
+
 def _provider_status() -> Dict[str, Any]:
     env_provider = _env("LLM_PROVIDER") or "openrouter"
     local_ok = _local_reachable()
     omni_base = _env("OMNIROUTE_BASE_URL")
     omni_reachable = False
     if omni_base:
-        try:
-            import urllib.request as _ur
-            for _hp in (omni_base.rstrip("/") + "/models", omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/health", omni_base.rstrip("/") + "/health"):
-                try:
-                    _hr = _ur.Request(_hp, headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute")})
-                    with _ur.urlopen(_hr, timeout=2) as _hresp:
-                        if 200 <= getattr(_hresp, "status", 200) < 500:
-                            omni_reachable = True
-                            break
-                except Exception:
-                    continue
-        except Exception:
-            omni_reachable = False
+        omni_reachable = _probe_http_ok(_omni_probe_urls(omni_base), _omni_auth_header_variants(), timeout=2)
     keys = {
         "openrouter": bool(_env("OPENROUTER_API_KEY")),
         "nvidia": bool(_env("NVIDIA_API_KEY")),
@@ -267,21 +302,12 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
     msgs = _build_messages(message, history)
     errors = []
 
-    # Strategy 1 (priority): OmniRoute gateway — aggregate/routed free & connected models
+    # Strategy 1 (priority): OmniRoute gateway - aggregate/routed free & connected models
     omni_base = _env("OMNIROUTE_BASE_URL")
     omni_ready = False
     if omni_base:
         try:
-            import urllib.request as _ur
-            for _hp in (omni_base.rstrip("/") + "/models", omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/health", omni_base.rstrip("/") + "/health"):
-                try:
-                    _hr = _ur.Request(_hp, headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute")})
-                    with _ur.urlopen(_hr, timeout=3) as _hresp:
-                        if 200 <= getattr(_hresp, "status", 200) < 500:
-                            omni_ready = True
-                            break
-                except Exception:
-                    continue
+            omni_ready = _probe_http_ok(_omni_probe_urls(omni_base), _omni_auth_header_variants(), timeout=3)
         except Exception:
             omni_ready = False
     if omni_base:
@@ -308,23 +334,36 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                 if m not in preferred:
                     preferred.append(m)
             discovered = []
-            # try to discover available models from OmniRoute
+            # try to discover available models from OmniRoute (tolerant auth/endpoints)
             try:
                 import urllib.request as _ur, json as _json
-                mreq = _ur.Request(
-                    omni_base.rstrip("/") + "/models",
-                    headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute")},
-                )
-                with _ur.urlopen(mreq, timeout=6) as mr:
-                    md = _json.loads(mr.read().decode("utf-8", "replace"))
-                for item in (md.get("data") or []):
-                    mid = (item or {}).get("id") if isinstance(item, dict) else item
-                    if not mid:
-                        continue
-                    mid = str(mid).strip()
-                    if not mid or mid in preferred or mid in discovered:
-                        continue
-                    discovered.append(mid)
+                _murls = [omni_base.rstrip("/") + "/models", (omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/v1/models")]
+                _seen_murls = set(); _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
+                md = None
+                for _mu in _murls:
+                    for _mh in _omni_auth_header_variants():
+                        try:
+                            mreq = _ur.Request(_mu, headers=_mh or {})
+                            with _ur.urlopen(mreq, timeout=6) as mr:
+                                md = _json.loads(mr.read().decode("utf-8", "replace"))
+                            if md is not None:
+                                break
+                        except Exception:
+                            md = None
+                            continue
+                    if md is not None:
+                        break
+                if md is not None:
+                    for item in (md.get("data") or md.get("models") or []):
+                        mid = (item or {}).get("id") if isinstance(item, dict) else item
+                        if not mid and isinstance(item, dict):
+                            mid = item.get("name") or item.get("model")
+                        if not mid:
+                            continue
+                        mid = str(mid).strip()
+                        if not mid or mid in preferred or mid in discovered:
+                            continue
+                        discovered.append(mid)
             except Exception:
                 pass
             # prioritize free/auto-like discovered models, then others, cap attempts
@@ -702,16 +741,29 @@ def _list_models() -> Dict[str, Any]:
     if omni_base:
         try:
             import urllib.request as _ur, json as _json
-            mreq = _ur.Request(
-                omni_base.rstrip("/") + "/models",
-                headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute")},
-            )
-            with _ur.urlopen(mreq, timeout=5) as mr:
-                md = _json.loads(mr.read().decode("utf-8", "replace"))
-            for item in (md.get("data") or []):
-                mid = (item or {}).get("id") if isinstance(item, dict) else item
-                if mid:
-                    add(str(mid), "omniroute")
+            md = None
+            _murls = [omni_base.rstrip("/") + "/models", (omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/v1/models")]
+            _seen_murls = set(); _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
+            for _mu in _murls:
+                for _mh in _omni_auth_header_variants():
+                    try:
+                        mreq = _ur.Request(_mu, headers=_mh or {})
+                        with _ur.urlopen(mreq, timeout=5) as mr:
+                            md = _json.loads(mr.read().decode("utf-8", "replace"))
+                        if md is not None:
+                            break
+                    except Exception:
+                        md = None
+                        continue
+                if md is not None:
+                    break
+            if md is not None:
+                for item in (md.get("data") or md.get("models") or []):
+                    mid = (item or {}).get("id") if isinstance(item, dict) else item
+                    if not mid and isinstance(item, dict):
+                        mid = item.get("name") or item.get("model")
+                    if mid:
+                        add(str(mid), "omniroute")
         except Exception:
             pass
 
