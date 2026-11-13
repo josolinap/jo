@@ -318,7 +318,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
             ocli = OpenAI(
                 base_url=omni_base.rstrip("/"),
                 api_key=_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute",
-                timeout=120.0,
+                timeout=30.0,
                 max_retries=0,
             )
             last_oe = None
@@ -330,7 +330,8 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                 preferred.append(req_model)
             if env_model and env_model not in preferred:
                 preferred.append(env_model)
-            for m in ("auto", "openrouter/free"):
+            # prefer concrete/free models over abstract auto aliases to avoid long hangs
+            for m in ("openrouter/free", "auto"):
                 if m not in preferred:
                     preferred.append(m)
             discovered = []
@@ -366,12 +367,15 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                         discovered.append(mid)
             except Exception:
                 pass
-            # prioritize free/auto-like discovered models, then others, cap attempts
+            # prioritize explicit/free/concrete discovered models over many auto aliases, cap attempts
             def _omni_rank(mid: str) -> tuple:
                 ml = mid.lower()
+                is_free = ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml
+                is_auto_alias = ml.startswith("auto")
+                is_concrete = ("/" in ml) and not is_auto_alias
                 return (
-                    0 if ml == "auto" else 1 if ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml else 2,
-                    0 if "gpt" in ml or "llama" in ml or "qwen" in ml or "gemma" in ml or "mistral" in ml else 1,
+                    0 if is_free else 1 if (ml == "auto") else 2 if is_concrete else 3 if is_auto_alias else 4,
+                    0 if "llama" in ml or "qwen" in ml or "gemma" in ml or "mistral" in ml or "gpt" in ml else 1,
                 )
             discovered = sorted(discovered, key=_omni_rank)
             candidates = []
@@ -380,7 +384,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     candidates.append(m)
             if not candidates:
                 candidates = ["auto"]
-            for om in candidates[:12]:
+            for om in candidates[:6]:
                 try:
                     resp = ocli.chat.completions.create(model=om, messages=msgs, temperature=0, max_tokens=512)
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
@@ -665,12 +669,15 @@ async def chat(req: ChatRequest) -> ChatResponse:
     history = [h.model_dump() for h in (req.history or [])]
     t0 = asyncio.get_running_loop().time()
     meta: Dict[str, Any] = {}
+    sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
     try:
-        response, sid, meta = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
+        response, sid, meta = await asyncio.wait_for(
+            asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model),
+            timeout=120.0,
+        )
     except Exception as e:
-        sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
-        response = _fallback_response(req.message, str(e))
-        meta = {"provider": "fallback", "model": "error"}
+        response = _fallback_response(req.message, f"request_timeout_or_error: {e}")
+        meta = {"provider": "fallback", "model": "unavailable"}
     elapsed_ms = int((asyncio.get_running_loop().time() - t0) * 1000)
     return ChatResponse(response=response or "", session_id=sid, provider=(meta or {}).get("provider"), model=(meta or {}).get("model") or req.model, elapsed_ms=elapsed_ms)
 
@@ -684,11 +691,14 @@ async def chat_stream(req: ChatRequest):
         t0 = asyncio.get_running_loop().time()
         meta: Dict[str, Any] = {}
         try:
-            response, sid, meta = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
+            response, sid, meta = await asyncio.wait_for(
+                asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model),
+                timeout=120.0,
+            )
         except Exception as e:
             yield _sse({"error": str(e), "session_id": sid})
-            response = _fallback_response(req.message, str(e))
-            meta = {"provider": "fallback", "model": "error"}
+            response = _fallback_response(req.message, f"request_timeout_or_error: {e}")
+            meta = {"provider": "fallback", "model": "unavailable"}
         response = response or ""
         for part in _chunk_text(response, 120):
             yield _sse({"delta": part, "session_id": sid})
