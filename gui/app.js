@@ -592,6 +592,11 @@ function updateHeader() {
     const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
     if (chatSubtitle) { chatSubtitle.textContent = (configured ? "Ready · " : "Reachable · ") + parts.slice(0,3).join(" · "); chatSubtitle.dataset.state = subtitleState; }
     if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
+    let discoveryAgeMs = null;
+    if (!getSavedApiBase() && discoveredMeta && discoveredMeta.updatedAt) {
+      const t = Date.parse(discoveredMeta.updatedAt);
+      if (!Number.isNaN(t)) discoveryAgeMs = Math.max(0, Date.now() - t);
+    }
     if (backendMeta) {
       const meta = [];
       if (healthInfo.provider) meta.push("provider: " + healthInfo.provider);
@@ -607,13 +612,10 @@ function updateHeader() {
       if (healthInfo.keys) {
         const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) meta.push("keys/config: " + k.join(", "));
       }
-      let discoveryAgeMs = null;
       if (!getSavedApiBase() && discoveredMeta) {
         const dm = [];
         if (discoveredMeta.updatedAt) {
-          const t = Date.parse(discoveredMeta.updatedAt);
-          if (!Number.isNaN(t)) {
-            discoveryAgeMs = Math.max(0, Date.now() - t);
+          if (discoveryAgeMs != null) {
             const mins = Math.floor(discoveryAgeMs / 60000);
             const ageLabel = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
             dm.push("updated " + ageLabel);
