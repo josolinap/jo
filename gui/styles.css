@@ -421,3 +421,11 @@ ul { list-style: none; }
 .session-actions .session-del { opacity: 0; }
 .session-item:hover .session-actions .session-del, .session-item.active .session-actions .session-del { opacity: 1; }
 @media (hover: none) and (pointer: coarse) { .session-actions .session-del { opacity: 1; } }
+
+.model-select {
+  width: 100%; height: 32px; padding: 0 8px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--foreground);
+  font: 12px/1.4 var(--font-sans);
+}
+.model-select option { background: var(--surface); color: var(--foreground); }
+.sidebar-collapsed .model-select { display: none; }
