@@ -218,9 +218,11 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
 
       - name: Smoke test and summary
+        if: always() && env.TUNNEL_URL != ''
         run: |
           set +e
           SUMMARY="$GITHUB_STEP_SUMMARY"
@@ -305,6 +307,7 @@ jobs:
           echo "Smoke/summary step complete (non-fatal)." >> "$SUMMARY"
 
       - name: Keep backend alive
+        if: always() && env.TUNNEL_URL != ''
         env:
           DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '330' }}
         run: |
