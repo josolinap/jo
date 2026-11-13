@@ -153,46 +153,12 @@ def _omni_auth_header_variants():
 
 
 def _provider_status() -> Dict[str, Any]:
-    env_provider = (_env("LLM_PROVIDER") or "openrouter").lower()
+    env_provider = _env("LLM_PROVIDER") or "openrouter"
+    local_ok = _local_reachable()
     omni_base = _env("OMNIROUTE_BASE_URL")
-    omniroute_only = (env_provider == "omniroute") or bool(omni_base and env_provider in ("", "omniroute", "auto"))
-    local_ok = False if omniroute_only else _local_reachable()
     omni_reachable = False
     if omni_base:
         omni_reachable = _probe_http_ok(_omni_probe_urls(omni_base), _omni_auth_header_variants(), timeout=2)
-
-    if omniroute_only:
-        keys = {
-            "openrouter": False,
-            "nvidia": False,
-            "doubleword": False,
-            "local": False,
-            "omniroute": bool(omni_base) and omni_reachable,
-            "omniroute_configured": bool(omni_base),
-        }
-        provider = "omniroute"
-        model = _env("OMNIROUTE_MODEL") or "auto"
-        configured = bool(omni_base)
-        reasons = []
-        if omni_base and omni_reachable:
-            reasons.append("omniroute_primary_available")
-        elif omni_base:
-            reasons.append("omniroute_configured_but_unreachable")
-        else:
-            reasons.append("no_omniroute_configured")
-        return {
-            "provider": provider,
-            "model": model,
-            "keys": keys,
-            "configured": configured,
-            "local_reachable": False,
-            "omniroute_reachable": omni_reachable,
-            "env_provider": env_provider,
-            "reasons": reasons,
-            "fallback_active": False,
-            "model_source": "omniroute",
-        }
-
     keys = {
         "openrouter": bool(_env("OPENROUTER_API_KEY")),
         "nvidia": bool(_env("NVIDIA_API_KEY")),
@@ -433,13 +399,6 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
         except Exception as e:
             errors.append(f"omniroute: {e}")
 
-    omniroute_only = (_env("LLM_PROVIDER").lower() == "omniroute") or bool(_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
-    if omniroute_only:
-        priority = [e for e in errors if e.startswith("omniroute")]
-        tail = errors[-8:]
-        summary = " | ".join((priority + [x for x in tail if x not in priority])[:12]) if errors else "omniroute unavailable"
-        raise RuntimeError(summary)
-
     # Strategy 2: Local OpenAI-compatible endpoint (Ollama/llama.cpp) — free/self-hosted fallback
     local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
     if local_base:
@@ -468,32 +427,32 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
         except Exception as e:
             errors.append(f"local: {e}")
 
+    strict_omniroute = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
+    # OmniRoute/local are always prioritized above. Direct provider chains run as additional fallbacks
+    # to keep responses working even if OmniRoute is misconfigured/unavailable (priority preserved).
     # Strategy 3: default configured client (with its internal fallback chain)
     try:
         client = LLMClient()
         model = client.default_model()
-        req_model = (requested_model or "").strip()
-        if req_model and req_model.lower() not in ("auto", ""):
-            model = req_model
         msg, _ = client.chat(messages=msgs, model=model, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
         text = _extract_text(msg)
         if text and not _looks_bad_response(text):
-            return text, {"provider": os.environ.get("LLM_PROVIDER", "default"), "model": model}
+            return text, {"provider": "default", "model": model}
         if text:
-            errors.append(f"default: rejected bad response")
+            errors.append("default: rejected bad response")
         else:
             errors.append("default: empty response")
     except Exception as e:
         errors.append(f"default({os.environ.get('LLM_PROVIDER','openrouter')}): {e}")
 
-    # Strategy 4: NVIDIA NIM direct (often available as fallback)
+    # Strategy 4: NVIDIA direct (if key available)
     if _env("NVIDIA_API_KEY"):
         try:
             n = NvidiaLLMClient()
             for m in [n.select_model_for_task("general"), "meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct-v0.3"]:
+                if not m:
+                    continue
                 try:
-                    if not m:
-                        continue
                     msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
@@ -502,17 +461,18 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                         errors.append(f"nvidia({m}): rejected bad response")
                 except Exception as e:
                     errors.append(f"nvidia({m}): {e}")
+                    n.mark_model_failure(m)
         except Exception as e:
             errors.append(f"nvidia: {e}")
 
-    # Strategy 5: Doubleword batch/standard client fallback
+    # Strategy 5: Doubleword direct (if key available)
     if _env("DOUBLEWORD_API_KEY"):
         try:
             d = DoublewordLLMClient()
-            for m in [d.select_model_for_task("general"), "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8", "Qwen/Qwen3-VL-30B-A3B-Instruct-FP8"]:
+            for m in [d.default_model(), "deepseek-ai/DeepSeek-V4-Flash", "openai/gpt-oss-20b", "Qwen/Qwen3.5-35B-A3B-FP8"]:
+                if not m:
+                    continue
                 try:
-                    if not m:
-                        continue
                     msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
@@ -609,11 +569,12 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
     lines.append("")
     strict = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
     if strict:
-        lines.append("This backend is configured to use OmniRoute as the single source for models.")
+        lines.append("This backend is configured to use OmniRoute as the primary (and sole direct) model source.")
         lines.append("To make chat fully functional:")
         lines.append("- Ensure OmniRoute is running and reachable at OMNIROUTE_BASE_URL (e.g. http://127.0.0.1:20128/v1)")
         lines.append("- Configure at least one working upstream provider/model inside OmniRoute (and pass required provider keys/secrets to OmniRoute if needed)")
         lines.append("- Set OMNIROUTE_MODEL=auto (recommended) or a model ID available in OmniRoute")
+        lines.append("- Optional fallback: set LOCAL_BASE_URL to a running local OpenAI-compatible server")
     else:
         lines.append("To make chat fully functional, configure a free provider on the backend and restart:")
         lines.append("- OmniRoute (recommended): set LLM_PROVIDER=omniroute, OMNIROUTE_BASE_URL, OMNIROUTE_MODEL=auto")
@@ -806,36 +767,33 @@ def _list_models() -> Dict[str, Any]:
         except Exception:
             pass
 
-    env_provider = (_env("LLM_PROVIDER") or "").lower()
-    omniroute_only = (env_provider == "omniroute") or bool(_env("OMNIROUTE_BASE_URL") and env_provider in ("", "omniroute", "auto"))
-    if not omniroute_only:
-        # Local models
-        local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
-        if local_base:
-            try:
-                import urllib.request as _ur, json as _json
-                for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
-                    try:
-                        req = _ur.Request(local_base.rstrip("/") + "/models", headers=headers)
-                        with _ur.urlopen(req, timeout=4) as r:
-                            data = _json.loads(r.read().decode("utf-8", "replace"))
-                        mlist = data.get("data") or data.get("models") or []
-                        for item in (mlist or []):
-                            mid = (item or {}).get("id") if isinstance(item, dict) else item
-                            if mid:
-                                add(str(mid), "local")
-                        if mlist:
-                            break
-                    except Exception:
-                        continue
-            except Exception:
-                pass
+    # Local models
+    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
+    if local_base:
+        try:
+            import urllib.request as _ur, json as _json
+            for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
+                try:
+                    req = _ur.Request(local_base.rstrip("/") + "/models", headers=headers)
+                    with _ur.urlopen(req, timeout=4) as r:
+                        data = _json.loads(r.read().decode("utf-8", "replace"))
+                    mlist = data.get("data") or data.get("models") or []
+                    for item in (mlist or []):
+                        mid = (item or {}).get("id") if isinstance(item, dict) else item
+                        if mid:
+                            add(str(mid), "local")
+                    if mlist:
+                        break
+                except Exception:
+                    continue
+        except Exception:
+            pass
 
-        # Common free/direct options (shown as selectable hints; availability depends on config)
-        for mid in ["openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
-            add(mid, "openrouter")
-        for mid in ["meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it"]:
-            add(mid, "nvidia")
+    # Common free/direct options (shown as selectable hints; availability depends on config)
+    for mid in ["openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
+        add(mid, "openrouter")
+    for mid in ["meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it"]:
+        add(mid, "nvidia")
 
     return {"models": models, "default": _env("OMNIROUTE_MODEL") or "auto"}
 
