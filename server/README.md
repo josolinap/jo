@@ -10,14 +10,14 @@ HTTP backend for the GitHub Pages GUI (`gui/`).
 CORS is enabled for the web GUI.
 
 ## Provider priority (web chat)
-`server/app.py` is optimized for GitHub-hosted web chat and prioritizes **OmniRoute** as the main source:
+`server/app.py` is optimized for GitHub-hosted web chat and **prioritizes OmniRoute** as the main source while keeping fallbacks so responses stay reliable:
 
-1. **OmniRoute** (`OMNIROUTE_BASE_URL`) — primary gateway for routed/free/connected models (`OMNIROUTE_MODEL=auto` by default). Health/reachability is probed; if unreachable it is skipped quickly.
+1. **OmniRoute** (`OMNIROUTE_BASE_URL`) — **primary** gateway for routed/free/connected models (`OMNIROUTE_MODEL=auto` by default). Reachability is probed, but the server **still attempts OmniRoute** even if the probe is flaky; available models are auto-discovered from `/v1/models` when possible.
 2. **Local OpenAI-compatible server** (`LOCAL_BASE_URL`, e.g. Ollama/llama.cpp)
-3. **Direct provider fallbacks** via Jo LLM stack/keys (OpenRouter, NVIDIA NIM, Doubleword)
+3. **Direct provider fallbacks** via Jo LLM stack/keys (OpenRouter, NVIDIA NIM, Doubleword) as safety nets if upstream paths fail
 4. **Public free fallback endpoints** (best-effort, no key)
 
-`/health` reports effective `provider`/`model`, `omniroute_reachable`, `local_reachable`, and key/config flags so the GUI can show real status.
+Bad/quota/HTML provider responses are filtered so they are not returned as real replies. `/health` reports effective `provider`/`model`, `omniroute_reachable`, `local_reachable`, and key/config flags so the GUI can show real status.
 
 ## Run locally
 ```bash
