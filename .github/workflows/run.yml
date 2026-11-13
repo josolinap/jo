@@ -50,6 +50,11 @@ jobs:
              [[ "${{ github.event.head_commit.author.email }}" == "jo@jo.ai" ]]; then
             echo "should_run=false" >> $GITHUB_OUTPUT
             echo "⚠️ Skipping: Jo-authored push; existing worker continues"
+          # Skip routine branch-sync merge commits to avoid heavy bot churn on non-bot changes.
+          elif [[ "${{ github.event_name }}" == "push" ]] && \
+               [[ "${{ github.event.head_commit.message }}" == "Merge branch 'main' into dev"* ]]; then
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Skipping: dev sync merge from main (no bot run needed)"
           else
             echo "should_run=true" >> $GITHUB_OUTPUT
             echo "✅ Will run: event=${{ github.event_name }}, actor=${{ github.actor }}"

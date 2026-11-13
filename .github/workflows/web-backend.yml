@@ -78,6 +78,15 @@ jobs:
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
+      - name: Cache local LLM assets (llama.cpp)
+        id: cache-llm
+        uses: actions/cache@v4
+        with:
+          path: /tmp/llm
+          key: web-llm-${{ runner.os }}-v1
+          restore-keys: |
+            web-llm-${{ runner.os }}-
+
       - name: Start local LLM (llama.cpp, free fallback)
         id: localllm
         continue-on-error: true
@@ -85,12 +94,30 @@ jobs:
           set -e
           mkdir -p /tmp/llm
           cd /tmp/llm
-          curl -fsSL https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-b5621-bin-ubuntu-x64.zip -o llama.zip || curl -fsSL https://github.com/ggml-org/llama.cpp/releases/download/b5530/llama-b5530-bin-ubuntu-x64.zip -o llama.zip
-          unzip -o -q llama.zip
-          BIN=$(find . -type f -name 'llama-server' | head -n1)
+
+          # Reuse cached binary/model when available; otherwise download with fallbacks
+          BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
+          if [ -z "$BIN" ]; then
+            echo "Downloading llama.cpp server binary..."
+            ok=0
+            for url in \
+              "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-b5621-bin-ubuntu-x64.zip" \
+              "https://github.com/ggml-org/llama.cpp/releases/download/b5530/llama-b5530-bin-ubuntu-x64.zip"; do
+              if curl -fsSL --retry 3 "$url" -o llama.zip; then ok=1; break; fi
+            done
+            if [ "$ok" -ne 1 ]; then echo "Failed to download llama.cpp binary"; exit 1; fi
+            unzip -o -q llama.zip
+            BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
+          fi
           if [ -z "$BIN" ]; then echo "llama-server not found"; find . -maxdepth 3 -type f | head; exit 1; fi
-          chmod +x "$BIN"
-          curl -fL --retry 3 -o model.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          chmod +x "$BIN" || true
+
+          if [ ! -s model.gguf ]; then
+            echo "Downloading local GGUF model..."
+            curl -fL --retry 3 -o model.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+              || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          fi
+
           "$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 > /tmp/llama.log 2>&1 &
           echo $! > /tmp/llama.pid
           for i in $(seq 1 90); do
