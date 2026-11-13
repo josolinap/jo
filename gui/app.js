@@ -62,6 +62,7 @@ const modelPill = $("model-pill");
 const modelPillLabel = $("model-pill-label");
 const modelPillDot = $("model-pill-dot");
 const modelInfo = $("model-info");
+const settingsRefreshModels = $("settings-refresh-models");
 
 let busy = false;
 let sessionSearchQuery = "";
