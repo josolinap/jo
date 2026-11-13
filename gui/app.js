@@ -43,6 +43,9 @@ const settingsDone = $("settings-done");
 const settingsRefresh = $("settings-refresh");
 const settingsTheme = $("settings-theme");
 const settingsClearBase = $("settings-clear-base");
+const exportAllChatsBtn = $("export-all-chats");
+const importChatsBtn = $("import-chats");
+const importChatsFile = $("import-chats-file");
 
 const shortcutsBackdrop = $("shortcuts-backdrop");
 const shortcutsModal = $("shortcuts-modal");
@@ -906,6 +909,48 @@ function exportCurrentChat() {
   showToast("Chat exported");
 }
 
+function exportAllChats() {
+  if (!sessions || !sessions.length) { showToast("No chats to export"); return; }
+  const payload = {
+    type: "jo.gui.sessions.v1",
+    exportedAt: new Date().toISOString(),
+    sessions: sessions,
+    currentSessionId: currentSessionId || null,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `jo-chats-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Exported ${sessions.length} chat(s)`);
+}
+
+function importChatsFromText(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { showToast("Invalid JSON file"); return; }
+  const incoming = Array.isArray(data) ? data : (Array.isArray(data && data.sessions) ? data.sessions : null);
+  if (!incoming) { showToast("No sessions found in file"); return; }
+  const valid = incoming.filter(s => s && s.id && Array.isArray(s.messages));
+  if (!valid.length) { showToast("No valid chats to import"); return; }
+  const byId = new Map(sessions.map(s => [s.id, s]));
+  let added = 0, merged = 0;
+  for (const s of valid) {
+    if (byId.has(s.id)) {
+      // merge: keep newer updatedAt, union-ish by replacing with imported if newer else keep existing
+      const ex = byId.get(s.id);
+      if ((s.updatedAt || 0) >= (ex.updatedAt || 0)) { byId.set(s.id, s); merged++; } else { merged++; }
+    } else {
+      byId.set(s.id, s); added++;
+    }
+  }
+  sessions = Array.from(byId.values()).sort((a,b) => (b.updatedAt||0)-(a.updatedAt||0)).slice(0, 100);
+  if (data && data.currentSessionId && sessions.some(s => s.id === data.currentSessionId)) currentSessionId = data.currentSessionId;
+  if (!currentSessionId && sessions.length) currentSessionId = sessions[0].id;
+  saveState(); renderSessionList(); renderMessages(); updateHeader();
+  showToast(`Imported ${valid.length} chat(s) (${added} new, ${merged} merged)`);
+}
+
 /* Events */
 function bindEvents() {
   if (chatForm) chatForm.addEventListener("submit", (e) => { e.preventDefault(); sendMessage(); });
@@ -953,6 +998,18 @@ function bindEvents() {
     showToast("Saved API base cleared");
     discoverBackend().finally(() => checkHealth());
   });
+  if (exportAllChatsBtn) exportAllChatsBtn.addEventListener("click", exportAllChats);
+  if (importChatsBtn && importChatsFile) {
+    importChatsBtn.addEventListener("click", () => importChatsFile.click());
+    importChatsFile.addEventListener("change", () => {
+      const f = importChatsFile.files && importChatsFile.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { importChatsFromText(String(reader.result || "")); importChatsFile.value = ""; };
+      reader.onerror = () => { showToast("Failed to read file"); importChatsFile.value = ""; };
+      reader.readAsText(f);
+    });
+  }
 
   document.addEventListener("keydown", (e) => {
     const mod = e.ctrlKey || e.metaKey;
