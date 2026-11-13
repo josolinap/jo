@@ -253,7 +253,30 @@ jobs:
             fi
           fi
 
-          echo "Smoke/summary step complete (non-fatal)."
+          echo "" >> "$SUMMARY"
+          echo "### Chat generation probe (best-effort, non-fatal)" >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+          # Short generation probe to confirm at least one provider path can respond (may be degraded/fallback)
+          CHAT_CODE=$(curl -sS -o /tmp/chat_probe.json -w "%{http_code}" --max-time 45 \
+            -H "Content-Type: application/json" \
+            -d '{"message":"Reply with the single word PONG","history":[],"session_id":"ci_smoke"}' \
+            "http://127.0.0.1:8000/v1/chat" || true)
+          if [ "$CHAT_CODE" = "200" ]; then
+            CPROV=$(jq -r '.provider // "?"' /tmp/chat_probe.json 2>/dev/null || echo "?")
+            CMODEL=$(jq -r '.model // "?"' /tmp/chat_probe.json 2>/dev/null || echo "?")
+            CELAPSED=$(jq -r '.elapsed_ms // "?"' /tmp/chat_probe.json 2>/dev/null || echo "?")
+            CRESP=$(jq -r '.response // ""' /tmp/chat_probe.json 2>/dev/null | tr '\n' ' ' | cut -c1-120)
+            echo "- **POST /v1/chat:** OK (200) — provider: \`$CPROV\`, model: \`$CMODEL\`, elapsed_ms: \`$CELAPSED\`" >> "$SUMMARY"
+            if [ -n "$CRESP" ]; then echo "- **Response preview:** ${CRESP}" >> "$SUMMARY"; fi
+            if [ "$CPROV" = "fallback" ] || [ "$CPROV" = "unavailable" ] || [ "$CMODEL" = "unavailable" ]; then
+              echo "- **Note:** generation degraded (fallback path). Check provider/upstream availability." >> "$SUMMARY"
+            fi
+          else
+            echo "- **POST /v1/chat:** WARN (HTTP ${CHAT_CODE:-n/a}) — generation may be unavailable or slow in this environment." >> "$SUMMARY"
+          fi
+
+          echo ""
+          echo "Smoke/summary step complete (non-fatal)." >> "$SUMMARY"
 
       - name: Keep backend alive
         env:

@@ -694,7 +694,7 @@ async function sendToJo(message, signal, onDelta) {
     });
     if (res.ok && res.body && (res.headers.get("content-type")||"").includes("text/event-stream")) {
       const reader = res.body.getReader(); const decoder = new TextDecoder();
-      let buffer = ""; let full = "";
+      let buffer = ""; let full = ""; let meta = null;
       while (true) {
         const { value, done } = await reader.read(); if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -707,11 +707,14 @@ async function sendToJo(message, signal, onDelta) {
             if (evt.session_id && evt.session_id !== s.id) { const old=s.id; s.id=evt.session_id; if (currentSessionId===old) currentSessionId=s.id; saveState(); }
             if (evt.error) throw new Error(evt.error);
             if (typeof evt.delta === "string") { full += evt.delta; if (onDelta) onDelta(full); }
-            if (evt.done && typeof evt.response === "string") { full = evt.response; if (onDelta) onDelta(full); }
+            if (evt.done) {
+              if (typeof evt.response === "string") { full = evt.response; if (onDelta) onDelta(full); }
+              meta = { provider: evt.provider, model: evt.model, elapsed_ms: evt.elapsed_ms };
+            }
           }
         }
       }
-      return full || "(empty response)";
+      return { text: full || "(empty response)", meta };
     }
   } catch (e) { if (e && e.name === "AbortError") throw e; }
 
@@ -724,14 +727,16 @@ async function sendToJo(message, signal, onDelta) {
   if (!response.ok) throw new Error("HTTP " + response.status);
   const contentType = response.headers.get("content-type") || "";
   let content = await response.text();
+  let meta = null;
   if (contentType.includes("application/json")) {
     try {
       const data = JSON.parse(content);
       if (data.session_id && data.session_id !== s.id) { const old=s.id; s.id=data.session_id; if (currentSessionId===old) currentSessionId=s.id; saveState(); }
       content = data.response || data.message || data.content || data.reply || (typeof data === "string" ? data : JSON.stringify(data));
+      meta = { provider: data.provider, model: data.model, elapsed_ms: data.elapsed_ms };
     } catch {}
   }
-  return content || "(empty response)";
+  return { text: content || "(empty response)", meta };
 }
 
 function setBusyThinking(on) {
