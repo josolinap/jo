@@ -204,8 +204,8 @@ jobs:
           if [ -z "$url" ]; then
             echo "Failed to obtain tunnel URL"; tail -n 200 /tmp/tunnel.log || true; exit 1
           fi
-          echo "TUNNEL_URL=$url" >> $GITHUB_ENV
-          python -c 'import json,os,time; url=os.environ["TUNNEL_URL"]; d={"apiBase":url,"updatedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"commit":os.environ.get("GITHUB_SHA",""),"runId":os.environ.get("GITHUB_RUN_ID",""),"workflow":"web-backend"}; open("gui/backend.json","w",encoding="utf-8").write(json.dumps(d,separators=(",",":"))+"\n"); print(json.dumps(d))'
+          echo "TUNNEL_URL=$url" >> "$GITHUB_ENV"
+          URL="$url" python -c 'import json,os,time; url=os.environ["URL"]; d={"apiBase":url,"updatedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"commit":os.environ.get("GITHUB_SHA",""),"runId":os.environ.get("GITHUB_RUN_ID",""),"workflow":"web-backend"}; open("gui/backend.json","w",encoding="utf-8").write(json.dumps(d,separators=(",",":"))+"\n"); print(json.dumps(d))'
           echo "Tunnel: $url"
 
       - name: Setup Pages
