@@ -27,7 +27,11 @@
 
 5. **Free-model catalog & OmniRoute mechanism knowledge (`arch-neo-config/knowledge/*`)**
    - *Purpose:* reverse-engineered patterns for multi-source free-model aggregation, verification, bench/smart picking, cooldown/rotation, and OmniRoute gateway behavior.
-   - *Wiring:* informs `server/app.py` (model discovery, ranking/preference, probe-tolerant attempts, fallback/degraded metadata, `reasons`/readiness), `gui/` diagnostics/status hints, and `web-backend.yml` smoke/keep-alive/resilience. Adapt concepts (not arch-specific tooling) to Jo’s provider chain and contracts.
+   - *Wiring (implemented):* informs and is partially wired into `server/app.py` (`/v1/status` and `/health` expose `reasons`/`fallback_active`; `/v1/models` includes recommendation metadata), `gui/` diagnostics/status UX (copy-diagnostics, discovered-backend age/staleness hints, readiness/fallback reason surfacing), and `web-backend.yml` smoke/summary (local/OmniRoute reachability, fallback active, readiness reasons) while preserving OmniRoute-first + fallback behavior.
+
+6. **Additional arch-neo commands & guardian/routing knowledge (`arch-neo-config/command/*`, `knowledge/infrastructure/*`, `knowledge/tools/*`)**
+   - *Purpose:* curated references for guardian/verification workflows (Jo/duality concepts), critique loops, multi-model dispatch, confidence-based model cascading, and OmniRoute master-orchestrator/egress lessons.
+   - *Wiring:* provenance-tracked references to guide safe adaptation into Jo’s `.jo_rules`/`.jo_skills`, backend routing/fallback heuristics, and CI/ops practices (without importing arch/system-specific or sensitive tooling). Currently ported: `command/{jo,openmodel,critic-loop,fork-eval}.md`, `knowledge/tools/confidence-model-cascading-p0-4.md`, `knowledge/infrastructure/{omniroute-master-orchestrator,jo-guardian-system}.md`.
 
 ## Recommended next wiring steps (safe, high-value)
 
