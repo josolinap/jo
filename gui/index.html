@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f5f5f5">
   <title>Jo</title>
-  <meta name="description" content="Jo — a self-creating AI agent with a Nod-inspired web GUI, powered by free models and OmniRoute.">
+  <meta name="description" content="Jo — a self-creating AI agent with a polished web chat UI, powered by OmniRoute and free models.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -13,132 +13,215 @@
 <body>
   <div id="root">
     <div class="app-shell" id="app-shell">
-      <aside class="sidebar" id="sidebar">
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar">
         <div class="sidebar-header">
-          <button class="brand" id="brand-home" type="button" aria-label="Jo">
+          <button class="brand" id="brand-home" type="button" aria-label="Jo home">
             <span class="brand-glyph" aria-hidden="true">
-              <svg viewBox="0 0 32 32" width="30" height="30" fill="none">
-                <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="4" />
-                <circle cx="25" cy="6" r="4" fill="var(--brand-pink, #ff91ac)" />
+              <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
+                <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="3.5"/>
+                <circle cx="25" cy="7" r="4" fill="var(--brand-pink, #ff91ac)"/>
               </svg>
             </span>
             <span class="brand-name">Jo</span>
           </button>
-          <div class="sidebar-header-actions">
-            <button class="sidebar-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-            </button>
-            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-            </button>
-          </div>
+          <button class="icon-btn ghost" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+          </button>
         </div>
-        <nav class="main-nav" aria-label="Main">
-          <ul>
-            <li>
-              <button class="nav-link" id="new-chat" type="button">
-                <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
-                <span class="nav-label">New chat</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
+
+        <div class="sidebar-primary">
+          <button class="new-chat-btn" id="new-chat" type="button">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span>New chat</span>
+          </button>
+        </div>
+
         <div class="sidebar-section">
-          <div class="sidebar-section-title">Chats</div>
-          <input class="sidebar-search" id="session-search" type="text" placeholder="Search chats" aria-label="Search chats">
+          <div class="sidebar-section-row">
+            <div class="sidebar-section-title">Chats</div>
+          </div>
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input class="sidebar-search" id="session-search" type="text" placeholder="Search chats" aria-label="Search chats">
+          </div>
           <div class="session-list" id="session-list"></div>
         </div>
+
         <div class="sidebar-bottom">
+          <button class="nav-link" id="open-settings" type="button">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+            <span class="nav-label">Settings</span>
+            <span class="nav-meta" id="sidebar-conn-dot" aria-hidden="true"></span>
+          </button>
+          <button class="nav-link" id="theme-toggle" type="button">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+            <span class="nav-label">Toggle theme</span>
+          </button>
           <a class="nav-link" href="https://github.com/josolinap/jo" target="_blank" rel="noopener">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span>
             <span class="nav-label">GitHub</span>
           </a>
-          <div class="sidebar-settings" id="sidebar-settings">
-            <div class="nav-link settings-label"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="nav-label">Backend</span></div>
-            <label class="api-field">
-              <span class="api-label">API base URL</span>
-              <input id="api-base" type="text" value="" placeholder="auto-discover or https://…" spellcheck="false">
-            </label>
-            <label class="api-field">
-              <span class="api-label">Model</span>
-              <select id="model-select" class="model-select">
-                <option value="auto">Auto (recommended)</option>
-              </select>
-            </label>
-            <div class="backend-status" id="backend-status">Status: unknown</div>
-            <div class="backend-meta" id="backend-meta"></div>
-            <div class="backend-hint" id="backend-hint"></div>
-          </div>
         </div>
       </aside>
+
       <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
       <div class="workspace-frame">
-        <div class="workspace-body">
-          <main class="main-workspace">
-            <div class="chat-page chat-route" id="chat-page">
-              <div class="chat-top-bar">
-                <button class="mobile-menu" id="mobile-menu" type="button" aria-label="Open menu" title="Menu">
+        <main class="main-workspace">
+          <div class="chat-page" id="chat-page">
+            <header class="chat-top-bar">
+              <div class="chat-top-left">
+                <button class="icon-btn ghost mobile-only" id="mobile-menu" type="button" aria-label="Open menu">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
                 </button>
                 <div class="chat-top-info">
                   <div class="chat-top-title" id="chat-title">New chat</div>
                   <div class="chat-top-sub" id="chat-subtitle">Not connected</div>
                 </div>
-                <div class="chat-top-actions">
-                  <span class="model-badge" id="model-badge" title="Model/route">—</span>
-                  <button class="button button-icon tool-button" id="chat-refresh" type="button" aria-label="Refresh connection" title="Refresh connection">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-                  </button>
-                </div>
               </div>
-              <div class="conversation-scroll" id="chat-log" aria-live="polite">
-                <div class="chat-collection conversation-column" id="chat-collection">
-                  <div class="welcome" id="chat-empty">
-                    <span class="brand-mark brand jo-sprite" aria-hidden="true">
-                      <span class="brand-glyph"><svg viewBox="0 0 32 32" width="34" height="34" fill="none"><circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="4"/><circle cx="25" cy="6" r="4" fill="var(--brand-pink, #ff91ac)"/><path d="M10 18c2 2 4 3 6 3s4-1 6-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+              <div class="chat-top-actions">
+                <button class="model-pill" id="model-pill" type="button" title="Change model">
+                  <span class="model-pill-dot" id="model-pill-dot"></span>
+                  <span id="model-pill-label">Auto</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <button class="icon-btn ghost" id="chat-refresh" type="button" aria-label="Refresh connection" title="Refresh connection">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                </button>
+                <button class="icon-btn ghost" id="open-settings-top" type="button" aria-label="Settings" title="Settings">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </header>
+
+            <div class="conversation-scroll" id="chat-log" aria-live="polite">
+              <div class="chat-collection conversation-column" id="chat-collection">
+                <div class="welcome" id="chat-empty">
+                  <div class="welcome-hero">
+                    <span class="hero-avatar" aria-hidden="true">
+                      <svg viewBox="0 0 32 32" width="30" height="30" fill="none"><circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="3.5"/><circle cx="25" cy="7" r="4" fill="var(--brand-pink, #ff91ac)"/><path d="M10.5 18.5c1.8 1.7 3.6 2.5 5.5 2.5s3.7-.8 5.5-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                     </span>
-                    <h2 id="empty-greeting">Good evening</h2>
-                    <p class="welcome-sub">A self-creating AI agent. Ask anything to get started.</p>
-                    <div class="welcome-tips">
-                      <button type="button" class="tip-chip" data-prompt="Who are you and what can you do?">Who are you?</button>
-                      <button type="button" class="tip-chip" data-prompt="Help me plan and build a small web app.">Build something</button>
-                      <button type="button" class="tip-chip" data-prompt="Explain how this GUI connects to the backend and OmniRoute.">How it works</button>
+                    <div>
+                      <h1 id="empty-greeting">Good evening</h1>
+                      <p class="welcome-sub">How can Jo help you today?</p>
                     </div>
+                  </div>
+                  <div class="welcome-grid">
+                    <button type="button" class="suggest-card" data-prompt="Who are you and what can you do?">
+                      <span class="suggest-icon">✨</span>
+                      <span class="suggest-title">Meet Jo</span>
+                      <span class="suggest-desc">Learn what Jo can do and how it thinks</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Help me plan and build a small web app step by step.">
+                      <span class="suggest-icon">🛠️</span>
+                      <span class="suggest-title">Build something</span>
+                      <span class="suggest-desc">Plan, design, and implement an idea</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Explain how this GUI connects to the backend, OmniRoute, and free model fallbacks.">
+                      <span class="suggest-icon">🔌</span>
+                      <span class="suggest-title">How it works</span>
+                      <span class="suggest-desc">Understand backend, routing, and models</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Review my idea and suggest improvements with clear next steps.">
+                      <span class="suggest-icon">💡</span>
+                      <span class="suggest-title">Improve an idea</span>
+                      <span class="suggest-desc">Get feedback and actionable next steps</span>
+                    </button>
                   </div>
                 </div>
-              </div>
-              <button class="scroll-bottom" id="scroll-bottom" type="button" aria-label="Scroll to bottom" title="Scroll to bottom" hidden>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-              </button>
-              <div class="chat-bottom conversation-column">
-                <form id="chat-form" class="composer" autocomplete="off">
-                  <div class="composer-scroll">
-                    <div class="composer-editor">
-                      <textarea id="chat-input" class="composer-input" rows="1" placeholder="Message Jo…" aria-label="Message Jo"></textarea>
-                    </div>
-                    <div class="composer-tools">
-                      <div class="composer-left">
-                        <button class="button button-icon tool-button" id="chat-stop" type="button" aria-label="Stop" title="Stop generating" hidden>
-                          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
-                        </button>
-                      </div>
-                      <div class="composer-actions">
-                        <button class="button button-icon send-button" id="chat-send" type="submit" aria-label="Send" title="Send" disabled>
-                          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </form>
-                <div class="chat-status" id="chat-status" aria-live="polite"></div>
-                  <div class="chat-footnote">Jo can make mistakes. Check important info.</div>
               </div>
             </div>
-          </main>
-        </div>
+
+            <button class="scroll-bottom" id="scroll-bottom" type="button" aria-label="Scroll to bottom" hidden>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+            </button>
+
+            <div class="chat-bottom conversation-column">
+              <form id="chat-form" class="composer" autocomplete="off">
+                <div class="composer-inner">
+                  <textarea id="chat-input" class="composer-input" rows="1" placeholder="Message Jo…" aria-label="Message Jo"></textarea>
+                  <div class="composer-row">
+                    <div class="composer-left">
+                      <span class="composer-hint" id="composer-hint">Enter to send · Shift+Enter for newline</span>
+                    </div>
+                    <div class="composer-actions">
+                      <button class="icon-btn ghost danger-btn" id="chat-stop" type="button" aria-label="Stop generating" title="Stop generating" hidden>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+                      </button>
+                      <button class="send-button" id="chat-send" type="submit" aria-label="Send" title="Send" disabled>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+              <div class="chat-status" id="chat-status" aria-live="polite"></div>
+              <div class="chat-footnote">Jo can make mistakes. Check important info. · <button type="button" class="link-btn" id="open-settings-foot">Settings</button></div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   </div>
+
+  <!-- Settings modal -->
+  <div class="modal-backdrop" id="settings-backdrop" hidden></div>
+  <div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h2 id="settings-title">Settings</h2>
+          <p class="modal-sub">Configure backend, model, and appearance</p>
+        </div>
+        <button class="icon-btn ghost" id="settings-close" type="button" aria-label="Close settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <section class="settings-section">
+          <h3>Connection</h3>
+          <label class="field">
+            <span class="field-label">API base URL</span>
+            <div class="field-row">
+              <input id="api-base" type="text" value="" placeholder="auto-discover or https://…" spellcheck="false">
+              <button type="button" class="btn secondary" id="settings-refresh">Refresh</button>
+            </div>
+            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> when available. Use “Clear saved API base” to re-enable auto-discovery after manual changes.</span>
+          </label>
+          <div class="status-card" id="status-card">
+            <div class="status-row"><span class="status-dot" id="status-dot"></span><span id="backend-status">Status: unknown</span></div>
+            <div class="status-meta" id="backend-meta"></div>
+            <div class="status-meta muted" id="backend-hint"></div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Model</h3>
+          <label class="field">
+            <span class="field-label">Chat model</span>
+            <select id="model-select" class="select-input">
+              <option value="auto">Auto (recommended, OmniRoute-first)</option>
+            </select>
+            <span class="field-help">“Auto” lets the backend choose the best available route (OmniRoute prioritized with fallbacks). Specific models depend on what your backend/OmniRoute/providers expose.</span>
+          </label>
+          <div class="model-info" id="model-info"></div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <div class="field-row wrap">
+            <button type="button" class="btn secondary" id="settings-theme">Toggle light/dark theme</button>
+            <button type="button" class="btn secondary" id="settings-clear-base">Clear saved API base</button>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <span class="modal-footnote">Settings are stored locally in this browser.</span>
+        <button type="button" class="btn primary" id="settings-done">Done</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
   <script src="app.js"></script>
 </body>
