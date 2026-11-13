@@ -250,11 +250,17 @@
         </section>
 
         <section class="settings-section">
-          <h3>Appearance</h3>
+          <h3>Appearance & data</h3>
           <div class="field-row wrap">
             <button type="button" class="btn secondary" id="settings-theme">Toggle light/dark theme</button>
             <button type="button" class="btn secondary" id="settings-clear-base">Clear saved API base</button>
           </div>
+          <div class="field-row wrap" style="margin-top:10px">
+            <button type="button" class="btn secondary" id="export-all-chats">Export all chats (JSON)</button>
+            <button type="button" class="btn secondary" id="import-chats">Import chats (JSON)</button>
+            <input type="file" id="import-chats-file" accept="application/json,.json" hidden>
+          </div>
+          <span class="field-help">Export/import includes local chat history stored in this browser. Import merges by chat id and keeps newer versions.</span>
         </section>
       </div>
       <div class="modal-footer">
