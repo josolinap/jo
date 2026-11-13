@@ -23,9 +23,11 @@ const sessionSearchInput = $("session-search");
 const chatTitle = $("chat-title");
 const chatSubtitle = $("chat-subtitle");
 const chatRefresh = $("chat-refresh");
+const chatExport = $("chat-export");
 const sidebarBackdrop = $("sidebar-backdrop");
 const scrollBottomBtn = $("scroll-bottom");
 const toastHost = $("toast-host");
+const srStatus = $("sr-status");
 
 const openSettingsBtn = $("open-settings");
 const openSettingsTop = $("open-settings-top");
@@ -37,6 +39,10 @@ const settingsDone = $("settings-done");
 const settingsRefresh = $("settings-refresh");
 const settingsTheme = $("settings-theme");
 const settingsClearBase = $("settings-clear-base");
+
+const shortcutsBackdrop = $("shortcuts-backdrop");
+const shortcutsModal = $("shortcuts-modal");
+const shortcutsClose = $("shortcuts-close");
 
 const backendStatusEl = $("backend-status");
 const backendMeta = $("backend-meta");
@@ -79,6 +85,12 @@ function showToast(text) {
     t.style.transition = "opacity 180ms";
     setTimeout(() => t.remove(), 220);
   }, 1700);
+}
+
+function announce(text) {
+  if (!srStatus) return;
+  srStatus.textContent = "";
+  setTimeout(() => { srStatus.textContent = text || ""; }, 30);
 }
 
 function saveState() {
@@ -135,15 +147,15 @@ function syncSidebarForViewport() {
   }
 }
 
-/* Settings modal */
+/* Modals */
 let lastFocus = null;
 function openSettings() {
   if (!settingsModal || !settingsBackdrop) return;
+  closeShortcuts();
   lastFocus = document.activeElement;
   settingsBackdrop.hidden = false;
   settingsModal.hidden = false;
   document.body.style.overflow = "hidden";
-  // refresh status/models when opened
   checkHealth();
   const first = apiBaseInput || modelSelect || settingsClose;
   if (first) setTimeout(() => first.focus(), 0);
@@ -152,12 +164,29 @@ function closeSettings() {
   if (!settingsModal || !settingsBackdrop) return;
   settingsBackdrop.hidden = true;
   settingsModal.hidden = true;
-  document.body.style.overflow = "";
-  if (lastFocus && typeof lastFocus.focus === "function") {
-    try { lastFocus.focus(); } catch {}
-  }
+  if (!isShortcutsOpen()) document.body.style.overflow = "";
+  if (lastFocus && typeof lastFocus.focus === "function") { try { lastFocus.focus(); } catch {} }
 }
 function isSettingsOpen() { return settingsModal && !settingsModal.hidden; }
+
+let shortcutsLastFocus = null;
+function openShortcuts() {
+  if (!shortcutsModal || !shortcutsBackdrop) return;
+  closeSettings();
+  shortcutsLastFocus = document.activeElement;
+  shortcutsBackdrop.hidden = false;
+  shortcutsModal.hidden = false;
+  document.body.style.overflow = "hidden";
+  if (shortcutsClose) setTimeout(() => shortcutsClose.focus(), 0);
+}
+function closeShortcuts() {
+  if (!shortcutsModal || !shortcutsBackdrop) return;
+  shortcutsBackdrop.hidden = true;
+  shortcutsModal.hidden = true;
+  if (!isSettingsOpen()) document.body.style.overflow = "";
+  if (shortcutsLastFocus && typeof shortcutsLastFocus.focus === "function") { try { shortcutsLastFocus.focus(); } catch {} }
+}
+function isShortcutsOpen() { return shortcutsModal && !shortcutsModal.hidden; }
 
 /* Markdown rendering */
 function escapeHtml(s) {
@@ -611,7 +640,8 @@ function setBusyThinking(on) {
   busy = on;
   if (chatSend) chatSend.disabled = on || !chatInput.value.trim();
   if (chatStop) chatStop.hidden = !on;
-  if (chatStatus) chatStatus.textContent = on ? "Thinking…" : "";
+  if (chatStatus) chatStatus.textContent = on ? "Responding…" : "";
+  announce(on ? "Assistant is responding" : "Response complete");
   updateScrollButton();
 }
 
@@ -637,7 +667,7 @@ async function sendMessage() {
   let streamMsg = null; let streamBubble = null;
   try {
     hideEmpty();
-    streamMsg = document.createElement("article"); streamMsg.className = "message message-assistant";
+    streamMsg = document.createElement("article"); streamMsg.className = "message message-assistant"; streamMsg.setAttribute("aria-busy", "true");
     const inner = document.createElement("div"); inner.className = "message-inner"; inner.appendChild(makeAvatar("assistant"));
     const bodyWrap = document.createElement("div"); bodyWrap.className = "message-body";
     const roleEl = document.createElement("div"); roleEl.className = "message-role"; roleEl.textContent = "Jo"; bodyWrap.appendChild(roleEl);
@@ -714,6 +744,25 @@ function loadState() {
   try { const saved = localStorage.getItem(API_KEY); if (saved && /ouroboros-agent\.ai/i.test(saved)) { localStorage.removeItem(API_KEY); if (apiBaseInput) apiBaseInput.value = ""; } } catch {}
 }
 
+function exportCurrentChat() {
+  const s = currentSession();
+  if (!s || !(s.messages || []).length) { showToast("No messages to export"); return; }
+  const title = (s.title || "chat").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "chat";
+  const lines = [`# ${s.title || "Chat"}`, "", `Exported: ${new Date().toISOString()}`, ""];
+  for (const m of (s.messages || [])) {
+    const role = m.role === "user" ? "User" : "Jo";
+    const when = m.ts ? new Date(m.ts).toLocaleString() : "";
+    lines.push(`## ${role}${when ? ` (${when})` : ""}`, "", String(m.content || ""), "");
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `${title}.md`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("Chat exported");
+}
+
 /* Events */
 function bindEvents() {
   if (chatForm) chatForm.addEventListener("submit", (e) => { e.preventDefault(); sendMessage(); });
@@ -725,6 +774,7 @@ function bindEvents() {
   }
   if (chatStop) chatStop.addEventListener("click", () => { if (controller) controller.abort(); });
   if (chatRefresh) chatRefresh.addEventListener("click", () => { showToast("Refreshing connection…"); checkHealth(); });
+  if (chatExport) chatExport.addEventListener("click", exportCurrentChat);
   if (scrollBottomBtn) scrollBottomBtn.addEventListener("click", () => scrollToBottom(true));
   if (chatLog) chatLog.addEventListener("scroll", updateScrollButton, { passive: true });
 
@@ -745,9 +795,10 @@ function bindEvents() {
 
   if (sessionSearchInput) sessionSearchInput.addEventListener("input", () => { sessionSearchQuery = sessionSearchInput.value || ""; renderSessionList(); });
 
-  // Settings modal
+  // Modals
   [openSettingsBtn, openSettingsTop, openSettingsFoot, modelPill].forEach((el) => { if (el) el.addEventListener("click", openSettings); });
   [settingsBackdrop, settingsClose, settingsDone].forEach((el) => { if (el) el.addEventListener("click", closeSettings); });
+  [shortcutsBackdrop, shortcutsClose].forEach((el) => { if (el) el.addEventListener("click", closeShortcuts); });
   if (settingsRefresh) settingsRefresh.addEventListener("click", () => { showToast("Refreshing…"); checkHealth(); });
   if (settingsClearBase) settingsClearBase.addEventListener("click", () => {
     try { localStorage.removeItem(API_KEY); } catch {}
@@ -759,10 +810,21 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    const tag = (e.target && e.target.tagName) || "";
+    const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target && e.target.isContentEditable);
+
     if (e.key === "Escape") {
+      if (isShortcutsOpen()) { e.preventDefault(); closeShortcuts(); return; }
       if (isSettingsOpen()) { e.preventDefault(); closeSettings(); return; }
-      if (isMobileLayout() && appShell && appShell.classList.contains("sidebar-open")) setSidebarOpen(false);
+      if (busy && controller) { e.preventDefault(); controller.abort(); return; }
+      if (isMobileLayout() && appShell && appShell.classList.contains("sidebar-open")) { setSidebarOpen(false); return; }
     }
+    if (mod && e.key === ",") { e.preventDefault(); openSettings(); return; }
+    if (mod && e.shiftKey && (e.key === "O" || e.key === "o")) { e.preventDefault(); createSession(true); if (chatInput) { chatInput.value=""; autoResize(); chatInput.focus(); } return; }
+    if (mod && (e.key === "k" || e.key === "K")) { e.preventDefault(); if (sessionSearchInput) { if (isMobileLayout()) setSidebarOpen(true); sessionSearchInput.focus(); sessionSearchInput.select(); } return; }
+    if (mod && e.key === "/") { e.preventDefault(); if (isShortcutsOpen()) closeShortcuts(); else openShortcuts(); return; }
+    if (!mod && !e.altKey && e.key === "/" && !typing) { e.preventDefault(); if (chatInput) chatInput.focus(); return; }
   });
 
   // API base + model inputs
