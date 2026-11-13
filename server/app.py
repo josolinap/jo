@@ -331,7 +331,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
-                        return text
+                        return text, {"provider": "omniroute", "model": om}
                     if text:
                         errors.append(f"omniroute({om}): rejected bad response")
                     else:
@@ -363,9 +363,9 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
-                        return text
+                        return text, {"provider": "local", "model": lm}
                     if text:
-                        errors.append(f"candidate: rejected bad response")
+                        errors.append(f"local({lm}): rejected bad response")
                 except Exception as le:
                     last_le = le
             errors.append(f"local({local_model}): {last_le if last_le else 'empty response'}")
@@ -401,9 +401,9 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     msg, _ = n.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
-                        return text
+                        return text, {"provider": "nvidia", "model": m}
                     if text:
-                        errors.append(f"candidate: rejected bad response")
+                        errors.append(f"nvidia({m}): rejected bad response")
                 except Exception as e:
                     errors.append(f"nvidia({m}): {e}")
                     n.mark_model_failure(m)
@@ -421,9 +421,9 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     msg, _ = d.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048)
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
-                        return text
+                        return text, {"provider": "doubleword", "model": m}
                     if text:
-                        errors.append(f"candidate: rejected bad response")
+                        errors.append(f"doubleword({m}): rejected bad response")
                 except Exception as e:
                     errors.append(f"doubleword({m}): {e}")
                     d.mark_model_failure(m)
@@ -443,9 +443,9 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                     msg, _ = client.chat(messages=msgs, model=m, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
                     text = _extract_text(msg)
                     if text and not _looks_bad_response(text):
-                        return text
+                        return text, {"provider": "openrouter", "model": m}
                     if text:
-                        errors.append(f"candidate: rejected bad response")
+                        errors.append(f"openrouter({m}): rejected bad response")
                 except Exception as e:
                     errors.append(f"openrouter({m}): {e}")
         except Exception as e:
