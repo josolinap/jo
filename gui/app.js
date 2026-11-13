@@ -599,9 +599,21 @@ function updateHeader() {
       if (healthInfo.keys) {
         const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) meta.push("keys/config: " + k.join(", "));
       }
+      let discoveryAgeMs = null;
       if (!getSavedApiBase() && discoveredMeta) {
         const dm = [];
-        if (discoveredMeta.updatedAt) dm.push("updated " + discoveredMeta.updatedAt);
+        if (discoveredMeta.updatedAt) {
+          const t = Date.parse(discoveredMeta.updatedAt);
+          if (!Number.isNaN(t)) {
+            discoveryAgeMs = Math.max(0, Date.now() - t);
+            const mins = Math.floor(discoveryAgeMs / 60000);
+            const ageLabel = mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+            dm.push("updated " + ageLabel);
+            if (mins >= 30) dm.push("possibly stale (ephemeral backend)");
+          } else {
+            dm.push("updated " + discoveredMeta.updatedAt);
+          }
+        }
         if (discoveredMeta.commit) dm.push("commit " + String(discoveredMeta.commit).slice(0, 7));
         if (discoveredMeta.runId) dm.push("run " + discoveredMeta.runId);
         if (dm.length) meta.push("backend: " + dm.join(", "));
@@ -609,13 +621,20 @@ function updateHeader() {
       backendMeta.textContent = meta.join(" · ");
     }
     if (backendHint) {
-      if (healthInfo.keys && healthInfo.keys.omniroute_configured && !healthInfo.omniroute_reachable && !healthInfo.local_reachable) {
-        backendHint.textContent = "OmniRoute is configured but unreachable; backend will use direct/fallback providers when available (responses may be degraded depending on upstreams).";
-      } else if (!configured) {
-        backendHint.textContent = "Backend is reachable but no model/provider appears configured. Set provider keys or enable OmniRoute/local backend.";
-      } else {
-        backendHint.textContent = "";
+      const hints = [];
+      if (healthInfo.keys && healthInfo.keys.omniroute_configured && !healthInfo.omniroute_reachable) {
+        hints.push("OmniRoute configured but unreachable; using direct/fallback providers when available.");
       }
+      if (healthInfo.keys && !healthInfo.local_reachable) {
+        // local fallback is optional; only note when explicitly relevant context suggests reliance? keep subtle
+      }
+      if (!configured) {
+        hints.push("Backend reachable but no model/provider appears configured. Set provider keys or enable OmniRoute/local backend.");
+      }
+      if (!getSavedApiBase() && discoveredMeta && discoveryAgeMs != null && discoveryAgeMs >= 30 * 60000) {
+        hints.push("Discovered backend.json is old; if chat fails the backend run may have expired. Wait for redeploy or set a fresh API base.");
+      }
+      backendHint.textContent = hints.join(" ");
     }
     setConnState(configured ? "ok" : "warn");
   } else {
