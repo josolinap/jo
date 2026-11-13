@@ -21,6 +21,7 @@ const chatTitle = document.getElementById("chat-title");
 const chatSubtitle = document.getElementById("chat-subtitle");
 const chatRefresh = document.getElementById("chat-refresh");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+const scrollBottomBtn = document.getElementById("scroll-bottom");
 
 let busy = false;
 let workingEl = null;
@@ -52,15 +53,24 @@ function getMessages() {
   return s ? s.messages || [] : [];
 }
 
+function isNearBottom() {
+  if (!chatLog) return true;
+  return chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 140;
+}
+function updateScrollButton() {
+  if (!scrollBottomBtn) return;
+  const show = !isNearBottom() && ((typeof getMessages === "function" && getMessages().length > 0) || !!workingEl);
+  scrollBottomBtn.hidden = !show;
+}
 function scrollToBottom(force) {
   if (!chatLog) return;
   if (force) {
     chatLog.scrollTop = chatLog.scrollHeight;
+    updateScrollButton();
     return;
   }
-  const near =
-    chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 120;
-  if (near) chatLog.scrollTop = chatLog.scrollHeight;
+  if (isNearBottom()) chatLog.scrollTop = chatLog.scrollHeight;
+  updateScrollButton();
 }
 
 function showEmpty() {
@@ -298,9 +308,19 @@ function renderSessionList() {
     item.type = "button";
     item.className =
       "session-item" + (s.id === currentSessionId ? " active" : "");
+    const textWrap = document.createElement("span");
+    textWrap.className = "session-text";
     const title = document.createElement("span");
     title.className = "session-title";
     title.textContent = s.title || "New chat";
+    const meta = document.createElement("span");
+    meta.className = "session-meta";
+    try {
+      const t = s.updatedAt || s.createdAt;
+      if (t) meta.textContent = new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    } catch {}
+    textWrap.appendChild(title);
+    if (meta.textContent) textWrap.appendChild(meta);
     const del = document.createElement("span");
     del.className = "session-del";
     del.title = "Delete chat";
@@ -319,7 +339,7 @@ function renderSessionList() {
       renderSessionList();
       updateHeader();
     });
-    item.appendChild(title);
+    item.appendChild(textWrap);
     item.appendChild(del);
     item.addEventListener("click", () => {
       switchSession(s.id);
@@ -960,6 +980,13 @@ async function discoverBackend() {
       updateHeader();
     }
   } catch {}
+}
+
+if (chatLog) {
+  chatLog.addEventListener("scroll", () => updateScrollButton(), { passive: true });
+}
+if (scrollBottomBtn) {
+  scrollBottomBtn.addEventListener("click", () => scrollToBottom(true));
 }
 
 function init() {
