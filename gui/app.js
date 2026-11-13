@@ -165,9 +165,15 @@ function openSettings() {
   settingsBackdrop.hidden = false;
   settingsModal.hidden = false;
   document.body.style.overflow = "hidden";
-  checkHealth();
+  // populate status and model list immediately so users don't need to type/filter first
+  Promise.resolve()
+    .then(() => discoverBackend(false).catch(() => {}))
+    .finally(() => {
+      checkHealth().catch(() => {});
+      refreshModels().catch(() => {});
+    });
   const first = apiBaseInput || modelSelect || settingsClose;
-  if (first) setTimeout(() => first.focus(), 0);
+  if (first) setTimeout(() => { try { first.focus({ preventScroll: true }); } catch { first.focus(); } }, 0);
 }
 function closeSettings() {
   if (!settingsModal || !settingsBackdrop) return;
@@ -529,9 +535,17 @@ function renderModelOptions() {
   if (!keep.has(target)) target = "auto";
   modelSelect.value = target;
   if (modelInfo) {
-    const count = Math.max(0, keep.size - 1);
-    const suffix = q ? ` (filtered from ${Math.max(0, (allModels||[]).filter(m=>m.id!=="auto").length)})` : "";
-    modelInfo.textContent = count > 0 ? `${count} model option(s) shown${suffix}.` : "No models match the current filter.";
+    const shown = Math.max(0, keep.size - 1);
+    const total = Math.max(0, (allModels||[]).filter(m => String(m.id||"") !== "auto").length);
+    if (!getApiBase() && shown === 0) {
+      modelInfo.textContent = "Auto selected. Connect to a backend to load available models.";
+    } else if (q) {
+      modelInfo.textContent = shown > 0 ? `${shown} model option(s) shown (filtered from ${total}).` : "No models match the current filter.";
+    } else if (shown > 0) {
+      modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.`;
+    } else {
+      modelInfo.textContent = "Auto selected. Click “Refresh models” if the backend is connected but no models appear yet.";
+    }
   }
 }
 
@@ -1078,6 +1092,7 @@ function bindEvents() {
   [settingsBackdrop, settingsClose, settingsDone].forEach((el) => { if (el) el.addEventListener("click", closeSettings); });
   [shortcutsBackdrop, shortcutsClose].forEach((el) => { if (el) el.addEventListener("click", closeShortcuts); });
   if (settingsRefresh) settingsRefresh.addEventListener("click", () => { showToast("Refreshing…"); checkHealth(); });
+  if (settingsRefreshModels) settingsRefreshModels.addEventListener("click", () => { showToast("Refreshing models…"); refreshModels().catch(()=>{}); checkHealth().catch(()=>{}); });
   if (settingsCopyBase) settingsCopyBase.addEventListener("click", async () => {
     const base = getApiBase();
     if (!base) { showToast("No API base to copy"); return; }
@@ -1091,9 +1106,12 @@ function bindEvents() {
     try { localStorage.removeItem(API_KEY); } catch {}
     if (apiBaseInput) apiBaseInput.value = "";
     discoveredBase = "";
+    discoveredMeta = null;
+    allModels = [{ id: "auto", provider: "auto", label: "Auto (recommended, OmniRoute-first)" }];
+    renderModelOptions();
     healthInfo = null;
     showToast("Saved API base cleared");
-    discoverBackend().finally(() => checkHealth());
+    discoverBackend().finally(() => { checkHealth().catch(()=>{}); refreshModels().catch(()=>{}); });
   });
   if (exportAllChatsBtn) exportAllChatsBtn.addEventListener("click", exportAllChats);
   if (copyDiagnosticsBtn) copyDiagnosticsBtn.addEventListener("click", () => { copyDiagnostics(); });
@@ -1134,7 +1152,8 @@ function bindEvents() {
     apiBaseInput.addEventListener("input", () => { clearTimeout(t); t = setTimeout(checkHealth, 600); });
     apiBaseInput.addEventListener("change", () => {
       try { localStorage.setItem(API_KEY, apiBaseInput.value.trim()); } catch {}
-      if (!apiBaseInput.value.trim()) { discoverBackend().finally(()=>checkHealth()); } else { discoveredBase = ""; checkHealth(); }
+      const after = () => { checkHealth().catch(()=>{}); refreshModels().catch(()=>{}); };
+      if (!apiBaseInput.value.trim()) { discoverBackend().finally(after); } else { discoveredBase = ""; after(); }
     });
   }
   if (modelSelect) {
@@ -1154,9 +1173,13 @@ function init() {
   loadState();
   renderSessionList();
   renderMessages();
+  renderModelOptions();
   updateHeader();
   autoResize();
-  discoverBackend().finally(() => checkHealth());
+  discoverBackend().finally(async () => {
+    await checkHealth().catch(() => {});
+    await refreshModels().catch(() => {});
+  });
   startHealthPolling();
 }
 
