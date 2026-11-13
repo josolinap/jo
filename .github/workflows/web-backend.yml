@@ -63,7 +63,7 @@ jobs:
           set +e
           while true; do
             echo "[omniroute-watchdog] starting $(date -u +%FT%TZ)" >> /tmp/omniroute.log
-            npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 >> /tmp/omniroute.log 2>&1
+            npx --yes omniroute@latest serve --headless --port 20128 >> /tmp/omniroute.log 2>&1
             ec=$?
             echo "[omniroute-watchdog] exited code=$ec at $(date -u +%FT%TZ), restarting in 5s" >> /tmp/omniroute.log
             sleep 5

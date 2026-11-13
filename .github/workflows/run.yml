@@ -241,7 +241,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Starting OmniRoute (primary provider)..."
-          npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 > /tmp/omniroute.log 2>&1 &
+          npx --yes omniroute@latest serve --headless --port 20128 > /tmp/omniroute.log 2>&1 &
           echo $! > /tmp/omniroute.pid
           up=0
           for i in $(seq 1 90); do
