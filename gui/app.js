@@ -340,7 +340,9 @@ function addMessageEl(role, content, opts = {}) {
     if (typeof opts.meta.elapsed_ms === "number") info.push((opts.meta.elapsed_ms/1000).toFixed(opts.meta.elapsed_ms < 10000 ? 1 : 0) + "s");
     if (info.length) {
       const chip = document.createElement("span"); chip.className = "msg-chip"; chip.textContent = info.join(" · ");
-      chip.title = `Provider: ${opts.meta.provider || "?"}\nModel: ${opts.meta.model || "?"}${typeof opts.meta.elapsed_ms === "number" ? `\nLatency: ${opts.meta.elapsed_ms} ms` : ""}`;
+      const degraded = ["fallback", "error", "unavailable", "system"].includes(String(opts.meta.provider || "").toLowerCase()) || String(opts.meta.model || "").toLowerCase() === "unavailable";
+      if (degraded) chip.classList.add("msg-chip-warn");
+      chip.title = `Provider: ${opts.meta.provider || "?"}\nModel: ${opts.meta.model || "?"}${typeof opts.meta.elapsed_ms === "number" ? `\nLatency: ${opts.meta.elapsed_ms} ms` : ""}${degraded ? "\nStatus: degraded/fallback response" : ""}`;
       footer.appendChild(chip);
     }
   }
@@ -845,11 +847,17 @@ function exportCurrentChat() {
   const s = currentSession();
   if (!s || !(s.messages || []).length) { showToast("No messages to export"); return; }
   const title = (s.title || "chat").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "chat";
-  const lines = [`# ${s.title || "Chat"}`, "", `Exported: ${new Date().toISOString()}`, ""];
+  const lines = [`# ${s.title || "Chat"}`, "", `Exported: ${new Date().toISOString()}`, `Backend: ${getApiBase() || "(not set)"}`, ""];
   for (const m of (s.messages || [])) {
     const role = m.role === "user" ? "User" : "Jo";
     const when = m.ts ? new Date(m.ts).toLocaleString() : "";
-    lines.push(`## ${role}${when ? ` (${when})` : ""}`, "", String(m.content || ""), "");
+    let metaStr = "";
+    if (m.role !== "user" && m.meta) {
+      const bits = [m.meta.provider, m.meta.model].filter(Boolean);
+      if (typeof m.meta.elapsed_ms === "number") bits.push(`${m.meta.elapsed_ms}ms`);
+      if (bits.length) metaStr = ` [${bits.join(" · ")}]`;
+    }
+    lines.push(`## ${role}${when ? ` (${when})` : ""}${metaStr}`, "", String(m.content || ""), "");
   }
   const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
   const url = URL.createObjectURL(blob);
