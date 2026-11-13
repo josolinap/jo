@@ -226,18 +226,19 @@ a { color: inherit; text-decoration: none; }
 .suggest-desc { font-size: 13px; color: var(--muted); line-height: 1.45; }
 
 /* Messages */
-.message { display: flex; width: 100%; padding: 14px 0; }
-.message-inner { display: flex; gap: 14px; width: 100%; align-items: flex-start; }
+.message { display: flex; width: 100%; padding: 16px 0; }
+.message-inner { display: flex; gap: 12px; width: 100%; align-items: flex-start; min-width: 0; }
+.message-body { min-width: 0; }
+.message-assistant .message-body { flex: 1; max-width: 100%; }
 .avatar {
-  width: 28px; height: 28px; border-radius: 8px; flex: none; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); font-size: 11px; font-weight: 700;
-  box-shadow: var(--shadow-xs);
+  width: 28px; height: 28px; border-radius: 50%; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: linear-gradient(180deg, var(--bg-elev), color-mix(in srgb, var(--bg-subtle) 60%, var(--bg-elev)));
+  color: var(--text); font-size: 11px; font-weight: 700; margin-top: 2px;
 }
 .message-user .message-inner { justify-content: flex-end; }
 .message-user .avatar { display: none; }
-.message-body { flex: 1; min-width: 0; max-width: 100%; }
 .message-user .message-body { flex: 0 1 auto; max-width: min(82%, 580px); display: flex; flex-direction: column; align-items: flex-end; }
-.message-role { font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text); letter-spacing: -0.01em; }
+.message-role { font-size: 12.5px; font-weight: 600; margin-bottom: 3px; color: var(--muted); letter-spacing: -0.01em; }
 .message-user .message-role { display: none; }
 .bubble { font-size: 15.5px; line-height: 1.75; color: var(--text); overflow-wrap: anywhere; }
 .message-user .bubble {
@@ -255,11 +256,11 @@ a { color: inherit; text-decoration: none; }
 .message-content blockquote { margin: .8em 0; padding: .2em 0 .2em 1em; border-left: 3px solid var(--border-strong); color: var(--text-secondary); }
 .message-content hr { border: 0; border-top: 1px solid var(--border); margin: 1.2em 0; }
 .message-content code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: .15em .42em; border-radius: 6px; border: 1px solid var(--border); }
-.message-content pre { margin: .9em 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.message-content pre code { display: block; background: transparent; padding: 13px 15px; overflow-x: auto; font-size: 13px; line-height: 1.65; border: 0; }
-.code-wrap { position: relative; margin: .9em 0; }
-.code-wrap pre { margin: 0; }
-.code-head { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px 7px 13px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg-subtle) 55%, transparent); font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.message-content pre { margin: .9em 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: auto; max-width: 100%; }
+.message-content pre code { display: block; background: transparent; padding: 13px 15px; font-size: 13px; line-height: 1.65; border: 0; }
+.code-wrap { position: relative; margin: .9em 0; max-width: 100%; }
+.code-wrap pre { margin: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+.code-head { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px 7px 13px; border: 1px solid var(--border); border-bottom: 0; border-radius: 12px 12px 0 0; background: color-mix(in srgb, var(--bg-subtle) 55%, transparent); font-size: 11.5px; color: var(--muted); font-weight: 500; }
 .code-copy { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 7px; color: var(--muted); font-weight: 500; transition: background .12s ease, color .12s ease; }
 .code-copy:hover { background: var(--bg-hover); color: var(--text); }
 .streaming-caret::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 5px; background: var(--accent); vertical-align: middle; animation: pulse 1s ease-in-out infinite; }
