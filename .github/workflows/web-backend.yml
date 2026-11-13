@@ -58,7 +58,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "Starting OmniRoute (primary provider for web backend)..."
-          npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 > /tmp/omniroute.log 2>&1 &
+          cat > /tmp/run_omniroute.sh <<'SH'
+          #!/usr/bin/env bash
+          set +e
+          while true; do
+            echo "[omniroute-watchdog] starting $(date -u +%FT%TZ)" >> /tmp/omniroute.log
+            npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 >> /tmp/omniroute.log 2>&1
+            ec=$?
+            echo "[omniroute-watchdog] exited code=$ec at $(date -u +%FT%TZ), restarting in 5s" >> /tmp/omniroute.log
+            sleep 5
+          done
+          SH
+          chmod +x /tmp/run_omniroute.sh
+          nohup /tmp/run_omniroute.sh >/tmp/omniroute.watch.log 2>&1 &
           echo $! > /tmp/omniroute.pid
           up=0
           for i in $(seq 1 90); do
@@ -74,6 +86,7 @@ jobs:
           if [ "$up" -ne 1 ]; then
             echo "OmniRoute not ready; backend will fall back to local/direct providers"
             tail -n 120 /tmp/omniroute.log || true
+            tail -n 60 /tmp/omniroute.watch.log || true
             exit 1
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -118,7 +131,21 @@ jobs:
               || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
           fi
 
-          "$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 > /tmp/llama.log 2>&1 &
+          cat > /tmp/run_llama.sh <<SH
+          #!/usr/bin/env bash
+          set +e
+          BIN="$BIN"
+          cd /tmp/llm
+          while true; do
+            echo "[llama-watchdog] starting \$(date -u +%FT%TZ)" >> /tmp/llama.log
+            "\$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 >> /tmp/llama.log 2>&1
+            ec=\$?
+            echo "[llama-watchdog] exited code=\$ec at \$(date -u +%FT%TZ), restarting in 5s" >> /tmp/llama.log
+            sleep 5
+          done
+          SH
+          chmod +x /tmp/run_llama.sh
+          nohup /tmp/run_llama.sh >/tmp/llama.watch.log 2>&1 &
           echo $! > /tmp/llama.pid
           for i in $(seq 1 90); do
             if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1; then
@@ -126,7 +153,7 @@ jobs:
             fi
             sleep 2
           done
-          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; exit 1
+          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; tail -n 60 /tmp/llama.watch.log || true; exit 1
 
       - name: Start backend server (OmniRoute-prioritized)
         env:
@@ -156,7 +183,38 @@ jobs:
           echo "OMNIROUTE_BASE_URL=$OMNIROUTE_BASE_URL"
           echo "OMNIROUTE_MODEL=$OMNIROUTE_MODEL"
           echo "LOCAL_BASE_URL=$LOCAL_BASE_URL"
-          python -m uvicorn server.app:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          cat > /tmp/run_uvicorn.sh <<'SH'
+          #!/usr/bin/env bash
+          set +e
+          cd "${REPO_DIR:-$GITHUB_WORKSPACE}"
+          while true; do
+            echo "[uvicorn-watchdog] starting $(date -u +%FT%TZ)" >> /tmp/uvicorn.log
+            python -m uvicorn server.app:app --host 127.0.0.1 --port 8000 >> /tmp/uvicorn.log 2>&1
+            ec=$?
+            echo "[uvicorn-watchdog] exited code=$ec at $(date -u +%FT%TZ), restarting in 3s" >> /tmp/uvicorn.log
+            sleep 3
+          done
+          SH
+          chmod +x /tmp/run_uvicorn.sh
+          nohup env \
+            LLM_PROVIDER="$LLM_PROVIDER" \
+            OUROBOROS_MODEL="$OUROBOROS_MODEL" \
+            OUROBOROS_MODEL_CODE="$OUROBOROS_MODEL_CODE" \
+            OUROBOROS_MODEL_LIGHT="$OUROBOROS_MODEL_LIGHT" \
+            OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
+            NVIDIA_API_KEY="$NVIDIA_API_KEY" \
+            DOUBLEWORD_API_KEY="$DOUBLEWORD_API_KEY" \
+            OMNIROUTE_BASE_URL="$OMNIROUTE_BASE_URL" \
+            OMNIROUTE_MODEL="$OMNIROUTE_MODEL" \
+            OMNIROUTE_API_KEY="$OMNIROUTE_API_KEY" \
+            LOCAL_BASE_URL="$LOCAL_BASE_URL" \
+            LOCAL_API_KEY="$LOCAL_API_KEY" \
+            DATA_ROOT="$DATA_ROOT" \
+            REPO_DIR="$REPO_DIR" \
+            OUROBOROS_DETERMINISTIC="$OUROBOROS_DETERMINISTIC" \
+            OUROBOROS_LLM_TEMPERATURE="$OUROBOROS_LLM_TEMPERATURE" \
+            JO_WEB_USE_AGENT="$JO_WEB_USE_AGENT" \
+            /tmp/run_uvicorn.sh >/tmp/uvicorn.watch.log 2>&1 &
           echo $! > /tmp/uvicorn.pid
           for i in $(seq 1 50); do
             if curl -fsS http://127.0.0.1:8000/health >/tmp/health.json; then
@@ -166,7 +224,7 @@ jobs:
             fi
             sleep 2
           done
-          echo "Backend failed to start"; tail -n 200 /tmp/uvicorn.log; exit 1
+          echo "Backend failed to start"; tail -n 200 /tmp/uvicorn.log || true; tail -n 80 /tmp/uvicorn.watch.log || true; exit 1
 
       - name: Start tunnel
         run: |
@@ -321,8 +379,16 @@ jobs:
           echo "Keeping alive for $DURATION_MINUTES minutes (while job runs)"
           end=$((SECONDS + DURATION_MINUTES*60))
           while [ $SECONDS -lt $end ]; do
-            if ! curl -fsS http://127.0.0.1:8000/health >/dev/null; then
-              echo "Local backend unhealthy"; tail -n 80 /tmp/uvicorn.log || true
+            ts=$(date -u +%FT%TZ)
+            if ! curl -fsS --max-time 10 http://127.0.0.1:8000/health >/dev/null 2>&1; then
+              echo "[$ts] Local backend unhealthy; watchdogs will auto-restart services"
+              tail -n 60 /tmp/uvicorn.log 2>/dev/null || true
+            fi
+            if ! curl -fsS --max-time 5 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:20128/health >/dev/null 2>&1; then
+              echo "[$ts] OmniRoute not reachable locally (backend may use fallback; watchdog active)"
+            fi
+            if ! curl -fsS --max-time 5 http://127.0.0.1:11434/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:11434/health >/dev/null 2>&1; then
+              echo "[$ts] Local LLM not reachable locally (optional fallback; watchdog active)"
             fi
             sleep 30
           done
