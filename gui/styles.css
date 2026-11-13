@@ -206,7 +206,7 @@ ul { list-style: none; }
 .chat-top-sub[data-state="err"] { color: #dc2626; }
 .chat-top-sub[data-state="err"]::before { background: #dc2626; }
 @keyframes jo-ping-green { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,0.35); } 70% { box-shadow: 0 0 0 6px rgba(22,163,74,0); } 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); } }
-.chat-top-actions { display: flex; align-items: center; gap: 4px; }
+/* chat-top-actions defined with model-badge styles below */
 .mobile-menu { display: none; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 8px; color: var(--muted-foreground); }
 .mobile-menu:hover { background: var(--nav-hover); color: var(--foreground); }
 .conversation-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
