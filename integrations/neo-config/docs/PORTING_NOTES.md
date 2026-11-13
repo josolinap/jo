@@ -33,6 +33,6 @@
 
 - Add a `.jo_rules/` note aligning guardian/review behavior with the ported Jo persona (evidence, read-only verification, concise verdicts) where it fits Ouroboros workflows.
 - If using opencode locally for this repo, copy/adapt `graphify.js` into `.opencode/plugins/` and generate `graphify-out/` as needed.
-- Apply catalog/mechanism ideas incrementally: enrich `/v1/models` with source/recommendation hints and expose clearer readiness/fallback reasons in `/v1/status` and GUI diagnostics.
+- Continue incremental catalog/mechanism adoption: enrich `/v1/models` with source/verification hints where observable, and further tune GUI/status presentation of readiness/fallback reasons.
 - Keep OmniRoute/fallback observability first-class: maintain smoke probes, status fields, and UI degraded indicators.
 - Periodically re-port only materially improved, non-sensitive upstream assets and update `SOURCES.md`.

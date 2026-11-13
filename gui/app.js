@@ -597,6 +597,10 @@ function updateHeader() {
       if (healthInfo.omniroute_reachable) meta.push("omniroute: reachable");
       else if (healthInfo.keys && healthInfo.keys.omniroute_configured) meta.push("omniroute: unreachable");
       if (healthInfo.local_reachable) meta.push("local: ready");
+      if (healthInfo.fallback_active) meta.push("fallback: active");
+      if (Array.isArray(healthInfo.reasons) && healthInfo.reasons.length) {
+        meta.push("reasons: " + healthInfo.reasons.join(", "));
+      }
       if (healthInfo.keys) {
         const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) meta.push("keys/config: " + k.join(", "));
       }
@@ -627,7 +631,10 @@ function updateHeader() {
         hints.push("OmniRoute configured but unreachable; using direct/fallback providers when available.");
       }
       if (healthInfo.keys && !healthInfo.local_reachable) {
-        // local fallback is optional; only note when explicitly relevant context suggests reliance? keep subtle
+        // local fallback is optional; keep subtle unless it explains fallback
+      }
+      if (Array.isArray(healthInfo.reasons) && healthInfo.reasons.length && healthInfo.fallback_active) {
+        hints.push("Readiness: " + healthInfo.reasons.join(", ") + ".");
       }
       if (!configured) {
         hints.push("Backend reachable but no model/provider appears configured. Set provider keys or enable OmniRoute/local backend.");
