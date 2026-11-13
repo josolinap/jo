@@ -15,6 +15,8 @@ Curated files copied/adapted on 2026-11-13 from public GitHub repos:
 - Ported:
   - `agent/neo.md` → `integrations/neo-config/arch-neo-config/agent/neo.md`
   - `.opencode/plugins/graphify.js` → `integrations/neo-config/arch-neo-config/plugins/graphify.js`
+  - `knowledge/tools/free-model-catalog.md` → `integrations/neo-config/arch-neo-config/knowledge/tools/free-model-catalog.md`
+  - `knowledge/infrastructure/omniroute-free-model-mechanism.md` → `integrations/neo-config/arch-neo-config/knowledge/infrastructure/omniroute-free-model-mechanism.md`
   - `AGENTS.md` (referenced for graphify/command patterns) — see upstream for full context
 
 ## Attribution
