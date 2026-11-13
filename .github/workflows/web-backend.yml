@@ -256,11 +256,17 @@ jobs:
           if [ $S -eq 0 ]; then
             PROVIDER=$(jq -r '.provider // .active_provider // "?"' /tmp/status.json 2>/dev/null || echo "?")
             MODEL=$(jq -r '.model // .active_model // "?"' /tmp/status.json 2>/dev/null || echo "?")
-            OMNI=$(jq -r '.omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI=$(jq -r '.omniroute_reachable // .omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMC=$(jq -r '.omniroute.model_count // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            LOCAL=$(jq -r '.local_reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            FALLBACK=$(jq -r '.fallback_active // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            REASONS=$(jq -r '(.reasons // []) | join(", ")' /tmp/status.json 2>/dev/null || echo "")
             echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\`" >> "$SUMMARY"
             echo "- **OmniRoute reachable:** \`$OMNI\`" >> "$SUMMARY"
             echo "- **OmniRoute model count:** \`$OMC\`" >> "$SUMMARY"
+            echo "- **Local reachable:** \`$LOCAL\`" >> "$SUMMARY"
+            echo "- **Fallback active:** \`$FALLBACK\`" >> "$SUMMARY"
+            if [ -n "$REASONS" ]; then echo "- **Readiness reasons:** $REASONS" >> "$SUMMARY"; fi
           else
             echo "_No /v1/status JSON available._" >> "$SUMMARY"
           fi
