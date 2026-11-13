@@ -596,6 +596,13 @@ function updateHeader() {
       if (healthInfo.keys) {
         const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) meta.push("keys/config: " + k.join(", "));
       }
+      if (!getSavedApiBase() && discoveredMeta) {
+        const dm = [];
+        if (discoveredMeta.updatedAt) dm.push("updated " + discoveredMeta.updatedAt);
+        if (discoveredMeta.commit) dm.push("commit " + String(discoveredMeta.commit).slice(0, 7));
+        if (discoveredMeta.runId) dm.push("run " + discoveredMeta.runId);
+        if (dm.length) meta.push("backend: " + dm.join(", "));
+      }
       backendMeta.textContent = meta.join(" · ");
     }
     if (backendHint) {
@@ -663,13 +670,19 @@ function startHealthPolling() {
 
 async function discoverBackend(force = false) {
   const saved = getSavedApiBase();
-  if (saved && !force) return; // respect manual setting unless forced reconnect
+  if (saved && !force) return false; // respect manual setting unless forced reconnect
   try {
     const res = await fetch("./backend.json", { cache: "no-store" });
     if (!res.ok) return false;
     const data = await res.json();
     const url = ((data && (data.apiBase || data.api_base || data.url)) || "").toString().trim().replace(/\/$/, "");
-    if (url) { discoveredBase = url; return true; }
+    const prev = discoveredBase;
+    if (url) {
+      discoveredBase = url;
+      discoveredMeta = data && typeof data === "object" ? data : null;
+      if (prev && prev !== url) showToast("Backend endpoint updated");
+      return true;
+    }
   } catch {}
   return false;
 }
