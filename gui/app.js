@@ -22,8 +22,12 @@ const chatSubtitle = document.getElementById("chat-subtitle");
 const chatRefresh = document.getElementById("chat-refresh");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 const scrollBottomBtn = document.getElementById("scroll-bottom");
+const modelBadge = document.getElementById("model-badge");
+const sessionSearchInput = document.getElementById("session-search");
+const toastHost = document.getElementById("toast-host");
 
 let busy = false;
+let sessionSearchQuery = "";
 let workingEl = null;
 let controller = null;
 let sessions = [];
@@ -71,6 +75,19 @@ function scrollToBottom(force) {
   }
   if (isNearBottom()) chatLog.scrollTop = chatLog.scrollHeight;
   updateScrollButton();
+}
+
+function showToast(text) {
+  if (!toastHost || !text) return;
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = text;
+  toastHost.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = "0";
+    t.style.transition = "opacity 180ms";
+    setTimeout(() => t.remove(), 200);
+  }, 1600);
 }
 
 function showEmpty() {
@@ -247,11 +264,13 @@ function renderContent(el, text, role, streaming) {
       try {
         await navigator.clipboard.writeText(code);
         btn.textContent = "Copied";
+        showToast("Code copied");
         setTimeout(() => {
           btn.textContent = "Copy";
         }, 1200);
       } catch {
         btn.textContent = "Failed";
+        showToast("Copy failed");
         setTimeout(() => {
           btn.textContent = "Copy";
         }, 1200);
@@ -287,12 +306,21 @@ function updateHeader() {
           : "reachable";
       chatSubtitle.textContent = "Ready · " + label;
       chatSubtitle.dataset.state = healthInfo.configured ? "ok" : "warn";
+      if (modelBadge) {
+        const route = (healthInfo.omniroute_reachable || (healthInfo.keys && healthInfo.keys.omniroute_configured)) ? "OmniRoute" : (healthInfo.provider || "backend");
+        const model = healthInfo.model ? String(healthInfo.model) : "auto";
+        modelBadge.textContent = route + " · " + model;
+        modelBadge.title = "Route: " + route + "\nModel: " + model + (healthInfo.local_reachable ? "\nLocal fallback: ready" : "");
+        modelBadge.dataset.state = healthInfo.configured ? "ok" : "";
+      }
     } else if (!base) {
       chatSubtitle.textContent = "Waiting for backend…";
       chatSubtitle.dataset.state = "idle";
+      if (modelBadge) { modelBadge.textContent = "No backend"; modelBadge.dataset.state = ""; }
     } else {
       chatSubtitle.textContent = "Connecting to backend…";
       chatSubtitle.dataset.state = "err";
+      if (modelBadge) { modelBadge.textContent = "Connecting…"; modelBadge.dataset.state = ""; }
     }
   }
 }
@@ -300,9 +328,13 @@ function updateHeader() {
 function renderSessionList() {
   if (!sessionListEl) return;
   sessionListEl.innerHTML = "";
-  const sorted = [...sessions].sort(
+  const q = (sessionSearchQuery || "").trim().toLowerCase();
+  let sorted = [...sessions].sort(
     (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
   );
+  if (q) {
+    sorted = sorted.filter((s) => ((s.title || "New chat") + " " + (s.messages||[]).map(m=>m.content||"").join(" ")).toLowerCase().includes(q));
+  }
   for (const s of sorted) {
     const item = document.createElement("button");
     item.type = "button";
@@ -321,6 +353,34 @@ function renderSessionList() {
     } catch {}
     textWrap.appendChild(title);
     if (meta.textContent) textWrap.appendChild(meta);
+    const actionsWrap = document.createElement("span");
+    actionsWrap.className = "session-actions";
+    const renameBtn = document.createElement("span");
+    renameBtn.className = "session-del";
+    renameBtn.title = "Rename chat";
+    renameBtn.textContent = "✎";
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const input = document.createElement("input");
+      input.className = "session-rename-input";
+      input.value = s.title || "New chat";
+      textWrap.innerHTML = "";
+      textWrap.appendChild(input);
+      input.focus();
+      input.select();
+      const commit = () => {
+        s.title = (input.value || "").trim() || "New chat";
+        s.updatedAt = now();
+        saveState();
+        renderSessionList();
+        updateHeader();
+      };
+      input.addEventListener("blur", commit, { once: true });
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+        if (ev.key === "Escape") { ev.preventDefault(); renderSessionList(); }
+      });
+    });
     const del = document.createElement("span");
     del.className = "session-del";
     del.title = "Delete chat";
@@ -339,8 +399,10 @@ function renderSessionList() {
       renderSessionList();
       updateHeader();
     });
+    actionsWrap.appendChild(renameBtn);
+    actionsWrap.appendChild(del);
     item.appendChild(textWrap);
-    item.appendChild(del);
+    item.appendChild(actionsWrap);
     item.addEventListener("click", () => {
       switchSession(s.id);
       if (isMobileLayout()) setSidebarOpen(false);
@@ -362,11 +424,15 @@ function renderMessages() {
   const msgs = getMessages();
   if (!msgs.length) {
     showEmpty();
+    updateScrollButton();
     return;
   }
   hideEmpty();
-  for (const m of msgs)
-    addMessageEl(m.role, m.content, { error: !!m.error, skipStore: true });
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    const isLastAssistant = m.role !== "user" && i === msgs.length - 1;
+    addMessageEl(m.role, m.content, { error: !!m.error, skipStore: true, ts: m.ts, index: i, canRegenerate: isLastAssistant });
+  }
   scrollToBottom(true);
 }
 
@@ -391,6 +457,10 @@ function setStatus(state) {
   }
 }
 
+function formatTime(ts) {
+  try { return ts ? new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; } catch { return ""; }
+}
+
 function addMessageEl(role, content, opts) {
   opts = opts || {};
   if (!opts.skipStore) hideEmpty();
@@ -403,6 +473,7 @@ function addMessageEl(role, content, opts) {
     "message " +
     (role === "user" ? "message-user" : "message-assistant") +
     (opts.error ? " message-error" : "");
+  if (typeof opts.index === "number") message.dataset.index = String(opts.index);
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   const body = document.createElement("div");
@@ -411,9 +482,31 @@ function addMessageEl(role, content, opts) {
   renderContent(body, content, role);
   bubble.appendChild(body);
   message.appendChild(bubble);
-  if (role !== "user") {
-    const actions = document.createElement("div");
-    actions.className = "message-actions";
+  const actions = document.createElement("div");
+  actions.className = "message-actions";
+  if (role === "user") {
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "msg-action";
+    editBtn.textContent = "Edit";
+    editBtn.addEventListener("click", () => {
+      if (busy) return;
+      chatInput.value = content;
+      chatInput.dispatchEvent(new Event("input"));
+      chatInput.focus();
+      showToast("Edit the message, then send to resend");
+    });
+    const resendBtn = document.createElement("button");
+    resendBtn.type = "button";
+    resendBtn.className = "msg-action msg-action-primary";
+    resendBtn.textContent = "Resend";
+    resendBtn.addEventListener("click", () => {
+      if (busy) return;
+      resendFromIndex(typeof opts.index === "number" ? opts.index : -1, content);
+    });
+    actions.appendChild(editBtn);
+    actions.appendChild(resendBtn);
+  } else {
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "msg-action";
@@ -422,18 +515,31 @@ function addMessageEl(role, content, opts) {
       try {
         await navigator.clipboard.writeText(content);
         copy.textContent = "Copied";
-        setTimeout(() => {
-          copy.textContent = "Copy";
-        }, 1200);
+        showToast("Copied");
+        setTimeout(() => { copy.textContent = "Copy"; }, 1200);
       } catch {
         copy.textContent = "Copy failed";
-        setTimeout(() => {
-          copy.textContent = "Copy";
-        }, 1200);
+        showToast("Copy failed");
+        setTimeout(() => { copy.textContent = "Copy"; }, 1200);
       }
     });
     actions.appendChild(copy);
-    message.appendChild(actions);
+    if (opts.canRegenerate) {
+      const regen = document.createElement("button");
+      regen.type = "button";
+      regen.className = "msg-action msg-action-primary";
+      regen.textContent = "Regenerate";
+      regen.addEventListener("click", () => { if (!busy) regenerateLast(); });
+      actions.appendChild(regen);
+    }
+  }
+  message.appendChild(actions);
+  const tstr = formatTime(opts.ts);
+  if (tstr) {
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+    meta.textContent = tstr;
+    message.appendChild(meta);
   }
   chatCollection.appendChild(message);
   if (!opts.skipStore) scrollToBottom(false);
@@ -563,6 +669,49 @@ async function sendToJo(message, signal, onDelta) {
   return content || "(empty response)";
 }
 
+
+function resendFromIndex(index, content) {
+  const s = ensureSession();
+  if (!s) return;
+  let idx = index;
+  if (idx < 0 || idx >= (s.messages || []).length) {
+    idx = -1;
+    for (let i = (s.messages || []).length - 1; i >= 0; i--) {
+      if (s.messages[i].role === "user" && s.messages[i].content === content) { idx = i; break; }
+    }
+  }
+  if (idx < 0) return;
+  s.messages = s.messages.slice(0, idx);
+  s.updatedAt = now();
+  saveState();
+  renderMessages();
+  renderSessionList();
+  updateHeader();
+  chatInput.value = content;
+  chatInput.dispatchEvent(new Event("input"));
+  sendMessage();
+}
+
+function regenerateLast() {
+  const s = ensureSession();
+  if (!s || !Array.isArray(s.messages) || busy) return;
+  let lastUserIdx = -1;
+  for (let i = s.messages.length - 1; i >= 0; i--) {
+    if (s.messages[i].role === "user") { lastUserIdx = i; break; }
+  }
+  if (lastUserIdx < 0) return;
+  const content = s.messages[lastUserIdx].content || "";
+  s.messages = s.messages.slice(0, lastUserIdx);
+  s.updatedAt = now();
+  saveState();
+  renderMessages();
+  renderSessionList();
+  updateHeader();
+  chatInput.value = content;
+  chatInput.dispatchEvent(new Event("input"));
+  sendMessage();
+}
+
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text || busy) return;
@@ -616,30 +765,10 @@ async function sendMessage() {
     });
     finalText = content || finalText || "(empty response)";
     renderContent(body, finalText, "assistant", false);
-    const actions = document.createElement("div");
-    actions.className = "message-actions";
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "msg-action";
-    copy.textContent = "Copy";
-    copy.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(finalText);
-        copy.textContent = "Copied";
-        setTimeout(() => {
-          copy.textContent = "Copy";
-        }, 1200);
-      } catch {
-        copy.textContent = "Copy failed";
-        setTimeout(() => {
-          copy.textContent = "Copy";
-        }, 1200);
-      }
-    });
-    actions.appendChild(copy);
-    msgEl.appendChild(actions);
-    pushMessage("assistant", finalText, false);
+    if (msgEl && msgEl.parentNode) msgEl.remove();
     msgEl = null;
+    pushMessage("assistant", finalText, false);
+    renderMessages();
   } catch (error) {
     if (body) body.classList.remove("streaming-caret");
     if (msgEl && msgEl.parentNode) msgEl.remove();
@@ -992,6 +1121,12 @@ if (scrollBottomBtn) {
 function init() {
   syncSidebarForViewport();
   if (emptyGreeting) emptyGreeting.textContent = getGreeting(new Date());
+  if (sessionSearchInput) {
+    sessionSearchInput.addEventListener("input", () => {
+      sessionSearchQuery = sessionSearchInput.value || "";
+      renderSessionList();
+    });
+  }
   if (apiBaseInput) {
     try {
       const saved = localStorage.getItem(API_KEY);
