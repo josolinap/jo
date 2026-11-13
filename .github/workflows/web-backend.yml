@@ -91,85 +91,16 @@ jobs:
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - name: Cache local LLM assets (llama.cpp)
-        id: cache-llm
-        uses: actions/cache@v4
-        with:
-          path: /tmp/llm
-          key: web-llm-${{ runner.os }}-v1
-          restore-keys: |
-            web-llm-${{ runner.os }}-
-
-      - name: Start local LLM (llama.cpp, free fallback)
-        id: localllm
-        continue-on-error: true
-        run: |
-          set -e
-          mkdir -p /tmp/llm
-          cd /tmp/llm
-
-          # Reuse cached binary/model when available; otherwise download with fallbacks
-          BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
-          if [ -z "$BIN" ]; then
-            echo "Downloading llama.cpp server binary..."
-            ok=0
-            for url in \
-              "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-b5621-bin-ubuntu-x64.zip" \
-              "https://github.com/ggml-org/llama.cpp/releases/download/b5530/llama-b5530-bin-ubuntu-x64.zip"; do
-              if curl -fsSL --retry 3 "$url" -o llama.zip; then ok=1; break; fi
-            done
-            if [ "$ok" -ne 1 ]; then echo "Failed to download llama.cpp binary"; exit 1; fi
-            unzip -o -q llama.zip
-            BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
-          fi
-          if [ -z "$BIN" ]; then echo "llama-server not found"; find . -maxdepth 3 -type f | head; exit 1; fi
-          chmod +x "$BIN" || true
-
-          if [ ! -s model.gguf ]; then
-            echo "Downloading local GGUF model..."
-            curl -fL --retry 3 -o model.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf \
-              || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
-          fi
-
-          cat > /tmp/run_llama.sh <<SH
-          #!/usr/bin/env bash
-          set +e
-          BIN="$BIN"
-          cd /tmp/llm
-          while true; do
-            echo "[llama-watchdog] starting \$(date -u +%FT%TZ)" >> /tmp/llama.log
-            "\$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 >> /tmp/llama.log 2>&1
-            ec=\$?
-            echo "[llama-watchdog] exited code=\$ec at \$(date -u +%FT%TZ), restarting in 5s" >> /tmp/llama.log
-            sleep 5
-          done
-          SH
-          chmod +x /tmp/run_llama.sh
-          nohup /tmp/run_llama.sh >/tmp/llama.watch.log 2>&1 &
-          echo $! > /tmp/llama.pid
-          for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1; then
-              echo "Local LLM up"; cat /tmp/llama-models.json 2>/dev/null || true; exit 0
-            fi
-            sleep 2
-          done
-          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; tail -n 60 /tmp/llama.watch.log || true; exit 1
-
-      - name: Start backend server (OmniRoute-prioritized)
+      - name: Start backend server (OmniRoute-only)
         env:
-          # OmniRoute is the primary source for web chat; direct providers remain as fallbacks.
+          # OmniRoute is the single source for models in serve-and-deploy.
           LLM_PROVIDER: omniroute
           OUROBOROS_MODEL: auto
           OUROBOROS_MODEL_CODE: ${{ vars.OUROBOROS_MODEL_CODE || '' }}
           OUROBOROS_MODEL_LIGHT: ${{ vars.OUROBOROS_MODEL_LIGHT || '' }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
           OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
           OMNIROUTE_MODEL: auto
           OMNIROUTE_API_KEY: omniroute-local
-          LOCAL_BASE_URL: http://127.0.0.1:11434/v1
-          LOCAL_API_KEY: sk-local
           DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}
           OUROBOROS_DETERMINISTIC: "1"
@@ -177,12 +108,11 @@ jobs:
           JO_WEB_USE_AGENT: "0"
         run: |
           mkdir -p /home/runner/.jo_data
-          echo "=== Effective web-backend provider config ==="
+          echo "=== Effective web-backend provider config (OmniRoute-only) ==="
           echo "LLM_PROVIDER=$LLM_PROVIDER"
           echo "OUROBOROS_MODEL=$OUROBOROS_MODEL"
           echo "OMNIROUTE_BASE_URL=$OMNIROUTE_BASE_URL"
           echo "OMNIROUTE_MODEL=$OMNIROUTE_MODEL"
-          echo "LOCAL_BASE_URL=$LOCAL_BASE_URL"
           cat > /tmp/run_uvicorn.sh <<'SH'
           #!/usr/bin/env bash
           set +e
@@ -201,14 +131,9 @@ jobs:
             OUROBOROS_MODEL="$OUROBOROS_MODEL" \
             OUROBOROS_MODEL_CODE="$OUROBOROS_MODEL_CODE" \
             OUROBOROS_MODEL_LIGHT="$OUROBOROS_MODEL_LIGHT" \
-            OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-            NVIDIA_API_KEY="$NVIDIA_API_KEY" \
-            DOUBLEWORD_API_KEY="$DOUBLEWORD_API_KEY" \
             OMNIROUTE_BASE_URL="$OMNIROUTE_BASE_URL" \
             OMNIROUTE_MODEL="$OMNIROUTE_MODEL" \
             OMNIROUTE_API_KEY="$OMNIROUTE_API_KEY" \
-            LOCAL_BASE_URL="$LOCAL_BASE_URL" \
-            LOCAL_API_KEY="$LOCAL_API_KEY" \
             DATA_ROOT="$DATA_ROOT" \
             REPO_DIR="$REPO_DIR" \
             OUROBOROS_DETERMINISTIC="$OUROBOROS_DETERMINISTIC" \
@@ -291,7 +216,7 @@ jobs:
             echo "- **Published apiBase:** ${TUNNEL_URL:-"(missing)"}"
             echo "- **Pages URL:** ${{ steps.deployment.outputs.page_url }}"
             echo "- **OmniRoute step:** ${{ steps.omniroute.outcome }}"
-            echo "- **Local LLM step:** ${{ steps.localllm.outcome }}"
+            echo "- **Model source:** OmniRoute (single source)"
             echo ""
           } >> "$SUMMARY"
 
@@ -316,13 +241,13 @@ jobs:
             MODEL=$(jq -r '.model // .active_model // "?"' /tmp/status.json 2>/dev/null || echo "?")
             OMNI=$(jq -r '.omniroute_reachable // .omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMC=$(jq -r '.omniroute.model_count // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
-            LOCAL=$(jq -r '.local_reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+
             FALLBACK=$(jq -r '.fallback_active // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             REASONS=$(jq -r '(.reasons // []) | join(", ")' /tmp/status.json 2>/dev/null || echo "")
             echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\`" >> "$SUMMARY"
             echo "- **OmniRoute reachable:** \`$OMNI\`" >> "$SUMMARY"
             echo "- **OmniRoute model count:** \`$OMC\`" >> "$SUMMARY"
-            echo "- **Local reachable:** \`$LOCAL\`" >> "$SUMMARY"
+
             echo "- **Fallback active:** \`$FALLBACK\`" >> "$SUMMARY"
             if [ -n "$REASONS" ]; then echo "- **Readiness reasons:** $REASONS" >> "$SUMMARY"; fi
           else
@@ -387,9 +312,7 @@ jobs:
             if ! curl -fsS --max-time 5 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:20128/health >/dev/null 2>&1; then
               echo "[$ts] OmniRoute not reachable locally (backend may use fallback; watchdog active)"
             fi
-            if ! curl -fsS --max-time 5 http://127.0.0.1:11434/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:11434/health >/dev/null 2>&1; then
-              echo "[$ts] Local LLM not reachable locally (optional fallback; watchdog active)"
-            fi
+
             sleep 30
           done
           echo "Duration reached, stopping"
