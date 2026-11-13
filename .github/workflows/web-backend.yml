@@ -1,4 +1,4 @@
-﻿name: Web Backend (Pages API)
+name: Web Backend (Pages API)
 
 on:
   workflow_dispatch:
@@ -6,9 +6,9 @@ on:
       duration_minutes:
         description: "How long to keep backend/tunnel running"
         required: false
-        default: "330"
+        default: "350"
   schedule:
-    - cron: "30 */6 * * *"
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
@@ -315,7 +315,7 @@ jobs:
       - name: Keep backend alive
         if: always() && env.TUNNEL_URL != ''
         env:
-          DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '330' }}
+          DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '350' }}
         run: |
           echo "Backend URL: $TUNNEL_URL"
           echo "Keeping alive for $DURATION_MINUTES minutes (while job runs)"
