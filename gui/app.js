@@ -45,6 +45,7 @@ const settingsTheme = $("settings-theme");
 const settingsClearBase = $("settings-clear-base");
 const exportAllChatsBtn = $("export-all-chats");
 const importChatsBtn = $("import-chats");
+const copyDiagnosticsBtn = $("copy-diagnostics");
 const importChatsFile = $("import-chats-file");
 
 const shortcutsBackdrop = $("shortcuts-backdrop");
@@ -945,6 +946,62 @@ function exportAllChats() {
   showToast(`Exported ${sessions.length} chat(s)`);
 }
 
+function buildDiagnostics() {
+  const saved = getSavedApiBase();
+  const effective = getApiBase();
+  let discoveryAgeMs = null;
+  if (discoveredMeta && discoveredMeta.updatedAt) {
+    const t = Date.parse(discoveredMeta.updatedAt);
+    if (!Number.isNaN(t)) discoveryAgeMs = Math.max(0, Date.now() - t);
+  }
+  return {
+    type: "jo.gui.diagnostics.v1",
+    at: new Date().toISOString(),
+    gui: {
+      url: location.href,
+      origin: location.origin,
+      userAgent: navigator.userAgent,
+      theme: getTheme(),
+      busy: !!busy,
+    },
+    backend: {
+      savedApiBase: saved || null,
+      discoveredApiBase: discoveredBase || null,
+      effectiveApiBase: effective || null,
+      discoveredMeta: discoveredMeta || null,
+      discoveryAgeMs,
+      discoveryPossiblyStale: discoveryAgeMs != null ? discoveryAgeMs >= 30 * 60000 : null,
+      health: healthInfo || null,
+    },
+    model: {
+      selected: getSelectedModel(),
+      availableCount: Array.isArray(allModels) ? allModels.length : 0,
+      availableSample: (Array.isArray(allModels) ? allModels.slice(0, 20).map(m => m && (m.id || m.name || m)) : []),
+    },
+    sessions: {
+      count: Array.isArray(sessions) ? sessions.length : 0,
+      currentSessionId: currentSessionId || null,
+    },
+  };
+}
+
+async function copyDiagnostics() {
+  try {
+    const text = JSON.stringify(buildDiagnostics(), null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    showToast("Diagnostics copied");
+  } catch {
+    showToast("Failed to copy diagnostics");
+  }
+}
+
 function importChatsFromText(text) {
   let data;
   try { data = JSON.parse(text); } catch { showToast("Invalid JSON file"); return; }
@@ -1018,6 +1075,7 @@ function bindEvents() {
     discoverBackend().finally(() => checkHealth());
   });
   if (exportAllChatsBtn) exportAllChatsBtn.addEventListener("click", exportAllChats);
+  if (copyDiagnosticsBtn) copyDiagnosticsBtn.addEventListener("click", () => { copyDiagnostics(); });
   if (importChatsBtn && importChatsFile) {
     importChatsBtn.addEventListener("click", () => importChatsFile.click());
     importChatsFile.addEventListener("change", () => {
