@@ -389,3 +389,35 @@ ul { list-style: none; }
   .message-actions { opacity: 1; }
   .code-copy { opacity: 1; }
 }
+
+
+.chat-top-actions { display: flex; align-items: center; gap: 6px; }
+.model-badge {
+  max-width: 220px; padding: 3px 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-subtle);
+  color: var(--text-secondary); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.model-badge[data-state="ok"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+.sidebar-search {
+  width: 100%; height: 32px; margin: 0 4px 6px; padding: 0 10px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--foreground); font-size: 13px;
+}
+.sidebar-search::placeholder { color: var(--placeholder); }
+.sidebar-collapsed .sidebar-search { display: none; }
+.toast-host { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { pointer-events: auto; padding: 8px 12px; border-radius: 999px; background: var(--gray-90); color: #fff; font-size: 13px; box-shadow: var(--shadow-md); opacity: 0.96; }
+:root[data-theme='dark'] .toast { background: #111; border: 1px solid var(--line); }
+.message-meta { margin-top: 4px; font-size: 11px; color: var(--muted-foreground); opacity: 0.9; }
+.message-user .message-meta { text-align: right; }
+.msg-action-primary { color: var(--text-secondary); }
+.session-rename-input { width: 100%; height: 28px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--ring); background: var(--surface); color: var(--foreground); font-size: 13px; }
+@media (max-width: 768px) {
+  .model-badge { max-width: 34vw; }
+  .sidebar-search { margin: 0 0 6px; }
+}
+
+.session-actions { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.session-actions .session-del { opacity: 0; }
+.session-item:hover .session-actions .session-del, .session-item.active .session-actions .session-del { opacity: 1; }
+@media (hover: none) and (pointer: coarse) { .session-actions .session-del { opacity: 1; } }
