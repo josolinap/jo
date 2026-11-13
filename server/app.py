@@ -44,6 +44,7 @@ class ChatRequest(BaseModel):
     history: Optional[list[ChatMessage]] = None
     session_id: Optional[str] = None
     stream: Optional[bool] = None
+    model: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -243,7 +244,7 @@ def _looks_bad_response(text: str) -> bool:
     return False
 
 
-def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -> str:
+def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, requested_model: Optional[str] = None) -> str:
     from ouroboros.llm import LLMClient, NvidiaLLMClient, DoublewordLLMClient
 
     msgs = _build_messages(message, history)
@@ -279,8 +280,12 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             )
             last_oe = None
             preferred = []
+            req_model = (requested_model or "").strip()
             env_model = (_env("OMNIROUTE_MODEL") or "").strip()
-            if env_model:
+            # If user explicitly selected a model, try it first via OmniRoute (priority path)
+            if req_model and req_model.lower() != "auto":
+                preferred.append(req_model)
+            if env_model and env_model not in preferred:
                 preferred.append(env_model)
             for m in ("auto", "openrouter/free"):
                 if m not in preferred:
@@ -346,7 +351,12 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None) -
             local_model = _detect_local_model(local_base)
             lcli = OpenAI(base_url=local_base, api_key=_env("LOCAL_API_KEY") or "sk-local", timeout=180.0, max_retries=0)
             last_le = None
-            for lm in [local_model, "local-model", "gpt-3.5-turbo", "model"]:
+            local_candidates = [local_model, "local-model", "gpt-3.5-turbo", "model"]
+            req_model = (requested_model or "").strip()
+            if req_model and req_model.lower() not in ("auto", "") and req_model not in local_candidates:
+                # allow explicit local/model override attempt
+                local_candidates.insert(0, req_model)
+            for lm in local_candidates:
                 try:
                     resp = lcli.chat.completions.create(model=lm, messages=msgs, temperature=0, max_tokens=256)
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
@@ -525,7 +535,7 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def generate_response(message: str, history: Optional[list[Dict[str, str]]] = None, session_id: Optional[str] = None) -> tuple[str, str]:
+def generate_response(message: str, history: Optional[list[Dict[str, str]]] = None, session_id: Optional[str] = None, requested_model: Optional[str] = None) -> tuple[str, str]:
     message = (message or "").strip()
     sid, sess = _get_session(session_id)
     merged_history = list(sess)
@@ -538,7 +548,7 @@ def generate_response(message: str, history: Optional[list[Dict[str, str]]] = No
     errors = []
     # Prefer lightweight direct LLM path (robust in minimal environments)
     try:
-        text = _run_via_llm(message, merged_history)
+        text = _run_via_llm(message, merged_history, requested_model=requested_model)
         if text:
             sess.append({"role": "user", "content": message})
             sess.append({"role": "assistant", "content": text})
@@ -599,11 +609,11 @@ async def chat(req: ChatRequest) -> ChatResponse:
     st = _provider_status()
     history = [h.model_dump() for h in (req.history or [])]
     try:
-        response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id)
+        response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
     except Exception as e:
         sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
         response = _fallback_response(req.message, str(e))
-    return ChatResponse(response=response or "", session_id=sid, provider=st.get("provider"), model=st.get("model"))
+    return ChatResponse(response=response or "", session_id=sid, provider=st.get("provider"), model=(req.model or st.get("model")))
 
 
 @app.post("/v1/chat/stream")
@@ -614,7 +624,7 @@ async def chat_stream(req: ChatRequest):
     async def gen():
         sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
         try:
-            response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id)
+            response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
         except Exception as e:
             yield _sse({"error": str(e), "session_id": sid})
             response = _fallback_response(req.message, str(e))
@@ -622,7 +632,7 @@ async def chat_stream(req: ChatRequest):
         for part in _chunk_text(response, 120):
             yield _sse({"delta": part, "session_id": sid})
             await asyncio.sleep(0)
-        yield _sse({"done": True, "response": response, "session_id": sid, "provider": st.get("provider"), "model": st.get("model")})
+        yield _sse({"done": True, "response": response, "session_id": sid, "provider": st.get("provider"), "model": (req.model or st.get("model"))})
 
     headers = {
         "Cache-Control": "no-cache",
@@ -646,4 +656,71 @@ async def status() -> Dict[str, Any]:
     st = _provider_status()
     st["status"] = "ok"
     return st
+
+
+def _list_models() -> Dict[str, Any]:
+    models: list[Dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(mid: str, provider: str, label: Optional[str] = None):
+        mid = (mid or "").strip()
+        if not mid or mid in seen:
+            return
+        seen.add(mid)
+        models.append({"id": mid, "provider": provider, "label": label or mid})
+
+    add("auto", "auto", "Auto (recommended, OmniRoute-first)")
+
+    # OmniRoute discovered models
+    omni_base = _env("OMNIROUTE_BASE_URL")
+    if omni_base:
+        try:
+            import urllib.request as _ur, json as _json
+            mreq = _ur.Request(
+                omni_base.rstrip("/") + "/models",
+                headers={"Authorization": "Bearer " + (_env("OMNIROUTE_API_KEY") or _env("OPENAI_API_KEY") or "omniroute")},
+            )
+            with _ur.urlopen(mreq, timeout=5) as mr:
+                md = _json.loads(mr.read().decode("utf-8", "replace"))
+            for item in (md.get("data") or []):
+                mid = (item or {}).get("id") if isinstance(item, dict) else item
+                if mid:
+                    add(str(mid), "omniroute")
+        except Exception:
+            pass
+
+    # Local models
+    local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
+    if local_base:
+        try:
+            import urllib.request as _ur, json as _json
+            for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
+                try:
+                    req = _ur.Request(local_base.rstrip("/") + "/models", headers=headers)
+                    with _ur.urlopen(req, timeout=4) as r:
+                        data = _json.loads(r.read().decode("utf-8", "replace"))
+                    mlist = data.get("data") or data.get("models") or []
+                    for item in (mlist or []):
+                        mid = (item or {}).get("id") if isinstance(item, dict) else item
+                        if mid:
+                            add(str(mid), "local")
+                    if mlist:
+                        break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    # Common free/direct options (shown as selectable hints; availability depends on config)
+    for mid in ["openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
+        add(mid, "openrouter")
+    for mid in ["meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it"]:
+        add(mid, "nvidia")
+
+    return {"models": models, "default": _env("OMNIROUTE_MODEL") or "auto"}
+
+
+@app.get("/v1/models")
+async def list_models() -> Dict[str, Any]:
+    return await asyncio.to_thread(_list_models)
 

@@ -25,6 +25,7 @@ const scrollBottomBtn = document.getElementById("scroll-bottom");
 const modelBadge = document.getElementById("model-badge");
 const sessionSearchInput = document.getElementById("session-search");
 const toastHost = document.getElementById("toast-host");
+const modelSelect = document.getElementById("model-select");
 
 let busy = false;
 let sessionSearchQuery = "";
@@ -37,6 +38,7 @@ let healthInfo = null;
 const SESSIONS_KEY = "jo.sessions.v1";
 const CURRENT_KEY = "jo.currentSession.v1";
 const API_KEY = "jo.apiBase";
+const MODEL_KEY = "jo.model";
 
 function uid() {
   return (
@@ -308,9 +310,11 @@ function updateHeader() {
       chatSubtitle.dataset.state = healthInfo.configured ? "ok" : "warn";
       if (modelBadge) {
         const route = (healthInfo.omniroute_reachable || (healthInfo.keys && healthInfo.keys.omniroute_configured)) ? "OmniRoute" : (healthInfo.provider || "backend");
-        const model = healthInfo.model ? String(healthInfo.model) : "auto";
-        modelBadge.textContent = route + " · " + model;
-        modelBadge.title = "Route: " + route + "\nModel: " + model + (healthInfo.local_reachable ? "\nLocal fallback: ready" : "");
+        const effective = healthInfo.model ? String(healthInfo.model) : "auto";
+        const selected = getSelectedModel();
+        const showModel = (selected && selected !== "auto") ? selected : effective;
+        modelBadge.textContent = route + " · " + showModel;
+        modelBadge.title = "Route: " + route + "\nEffective: " + effective + "\nSelected: " + (selected || "auto") + (healthInfo.local_reachable ? "\nLocal fallback: ready" : "");
         modelBadge.dataset.state = healthInfo.configured ? "ok" : "";
       }
     } else if (!base) {
@@ -572,6 +576,49 @@ function getApiBase() {
   return v;
 }
 
+function getSelectedModel() {
+  try {
+    const v = (modelSelect && modelSelect.value ? modelSelect.value : "").trim();
+    if (v) return v;
+  } catch {}
+  try { return (localStorage.getItem(MODEL_KEY) || "auto").trim() || "auto"; } catch { return "auto"; }
+}
+
+async function refreshModels() {
+  if (!modelSelect) return;
+  const base = getApiBase();
+  if (!base) return;
+  try {
+    const res = await fetch(base + "/v1/models", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const models = Array.isArray(data.models) ? data.models : [];
+    const current = getSelectedModel();
+    const keep = new Set();
+    modelSelect.innerHTML = "";
+    const addOpt = (id, label) => {
+      if (!id || keep.has(id)) return;
+      keep.add(id);
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = label || id;
+      modelSelect.appendChild(opt);
+    };
+    addOpt("auto", "Auto (recommended)");
+    for (const m of models) {
+      const id = (m && (m.id || m.name)) ? String(m.id || m.name) : "";
+      if (!id || id === "auto") continue;
+      const provider = m && m.provider ? String(m.provider) : "";
+      const label = (m && m.label ? String(m.label) : id) + (provider && provider !== "auto" ? " · " + provider : "");
+      addOpt(id, label);
+    }
+    // restore selection if possible
+    let target = current || "auto";
+    if (!keep.has(target)) target = "auto";
+    modelSelect.value = target;
+  } catch {}
+}
+
 async function sendToJo(message, signal, onDelta) {
   const base = getApiBase();
   const s = ensureSession();
@@ -579,6 +626,7 @@ async function sendToJo(message, signal, onDelta) {
     .slice(-20)
     .map((m) => ({ role: m.role, content: m.content }));
   // Try streaming first
+  const selectedModel = getSelectedModel();
   try {
     const res = await fetch(base + "/v1/chat/stream", {
       method: "POST",
@@ -586,7 +634,7 @@ async function sendToJo(message, signal, onDelta) {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       },
-      body: JSON.stringify({ message, history, session_id: s.id }),
+      body: JSON.stringify({ message, history, session_id: s.id, model: selectedModel }),
       signal,
     });
     if (
@@ -643,7 +691,7 @@ async function sendToJo(message, signal, onDelta) {
   const response = await fetch(base + "/v1/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history, session_id: s.id }),
+    body: JSON.stringify({ message, history, session_id: s.id, model: selectedModel }),
     signal,
   });
   if (!response.ok) throw new Error("HTTP " + response.status);
@@ -815,6 +863,8 @@ async function sendMessage() {
   } finally {
     controller = null;
     setStatus("idle");
+    // refresh model list/status occasionally (non-blocking)
+    refreshModels().catch(() => {});
   }
 }
 
@@ -1033,6 +1083,7 @@ async function checkHealth() {
         if (healthInfo.local_reachable) parts.push("local: ready");
         backendMeta.textContent = parts.join(" · ");
       }
+      refreshModels().catch(() => {});
     } else {
       healthInfo = null;
       backendStatus.textContent = "Status: HTTP " + res.status;
@@ -1125,6 +1176,17 @@ function init() {
     sessionSearchInput.addEventListener("input", () => {
       sessionSearchQuery = sessionSearchInput.value || "";
       renderSessionList();
+    });
+  }
+  if (modelSelect) {
+    try {
+      const savedModel = localStorage.getItem(MODEL_KEY);
+      if (savedModel) modelSelect.value = savedModel;
+    } catch {}
+    modelSelect.addEventListener("change", () => {
+      try { localStorage.setItem(MODEL_KEY, modelSelect.value || "auto"); } catch {}
+      updateHeader();
+      showToast(modelSelect.value && modelSelect.value !== "auto" ? "Model selected" : "Auto model selection enabled");
     });
   }
   if (apiBaseInput) {
