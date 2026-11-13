@@ -1,4 +1,4 @@
-name: Web Backend (Pages API)
+﻿name: Web Backend (Pages API)
 
 on:
   workflow_dispatch:
@@ -194,6 +194,67 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      - name: Smoke test and summary
+        run: |
+          set +e
+          SUMMARY="$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Web Backend Deploy"
+            echo ""
+            echo "- **Commit:** `${{ github.sha }}`"
+            echo "- **Published apiBase:** ${TUNNEL_URL:-"(missing)"}"
+            echo "- **Pages URL:** ${{ steps.deployment.outputs.page_url }}"
+            echo "- **OmniRoute step:** ${{ steps.omniroute.outcome }}"
+            echo "- **Local LLM step:** ${{ steps.localllm.outcome }}"
+            echo ""
+          } >> "$SUMMARY"
+
+          curl -fsS --max-time 20 "http://127.0.0.1:8000/health" > /tmp/health.json 2>/tmp/health.err; H=$?
+          curl -fsS --max-time 20 "http://127.0.0.1:8000/v1/status" > /tmp/status.json 2>/tmp/status.err; S=$?
+          curl -fsS --max-time 20 "http://127.0.0.1:8000/v1/models" > /tmp/models.json 2>/tmp/models.err; M=$?
+
+          echo "### Endpoint checks (local backend)" >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+          echo "| Check | Result |" >> "$SUMMARY"
+          echo "|---|---|" >> "$SUMMARY"
+          if [ $H -eq 0 ]; then echo "| GET /health | OK |" >> "$SUMMARY"; else echo "| GET /health | WARN |" >> "$SUMMARY"; fi
+          if [ $S -eq 0 ]; then echo "| GET /v1/status | OK |" >> "$SUMMARY"; else echo "| GET /v1/status | WARN |" >> "$SUMMARY"; fi
+          if [ $M -eq 0 ]; then echo "| GET /v1/models | OK |" >> "$SUMMARY"; else echo "| GET /v1/models | WARN |" >> "$SUMMARY"; fi
+          if [ -f gui/backend.json ]; then echo "| gui/backend.json | OK \`$(cat gui/backend.json)\` |" >> "$SUMMARY"; else echo "| gui/backend.json | WARN missing |" >> "$SUMMARY"; fi
+          echo "" >> "$SUMMARY"
+
+          echo "### Backend status" >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+          if [ $S -eq 0 ]; then
+            PROVIDER=$(jq -r '.provider // .active_provider // "?"' /tmp/status.json 2>/dev/null || echo "?")
+            MODEL=$(jq -r '.model // .active_model // "?"' /tmp/status.json 2>/dev/null || echo "?")
+            OMNI=$(jq -r '.omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMC=$(jq -r '.omniroute.model_count // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\`" >> "$SUMMARY"
+            echo "- **OmniRoute reachable:** \`$OMNI\`" >> "$SUMMARY"
+            echo "- **OmniRoute model count:** \`$OMC\`" >> "$SUMMARY"
+          else
+            echo "_No /v1/status JSON available._" >> "$SUMMARY"
+          fi
+          if [ $M -eq 0 ]; then
+            MCOUNT=$(jq -r '(.models // []) | length' /tmp/models.json 2>/dev/null || echo "0")
+            MSAMPLE=$(jq -r '(.models // [])[:8] | map(if type=="object" then (.id // .name // "?") else tostring end) | join(", ")' /tmp/models.json 2>/dev/null || echo "")
+            echo "- **Discovered /v1/models:** \`$MCOUNT\`" >> "$SUMMARY"
+            if [ -n "$MSAMPLE" ]; then echo "- **Sample models:** $MSAMPLE" >> "$SUMMARY"; fi
+          fi
+          echo "" >> "$SUMMARY"
+
+          if [ -n "$TUNNEL_URL" ]; then
+            TCODE=$(curl -sS -o /tmp/tunnel_health.json -w "%{http_code}" --max-time 20 "$TUNNEL_URL/health" || true)
+            if [ "$TCODE" = "200" ]; then
+              echo "- **Tunnel /health:** OK (200)" >> "$SUMMARY"
+            else
+              echo "- **Tunnel /health:** WARN (HTTP ${TCODE:-n/a}, may warm up; local backend authoritative)" >> "$SUMMARY"
+            fi
+          fi
+
+          echo "Smoke/summary step complete (non-fatal)."
+
       - name: Keep backend alive
         env:
           DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '330' }}
@@ -208,3 +269,4 @@ jobs:
             sleep 30
           done
           echo "Duration reached, stopping"
+
