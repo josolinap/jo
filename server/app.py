@@ -144,6 +144,20 @@ def _provider_status() -> Dict[str, Any]:
         model = _env("OMNIROUTE_MODEL") or "auto"
 
     configured = omni_reachable or local_ok or any(bool(_env(k)) for k in ("OPENROUTER_API_KEY", "NVIDIA_API_KEY", "DOUBLEWORD_API_KEY")) or env_provider in ("local", "omniroute")
+    reasons = []
+    if omni_base and not omni_reachable:
+        reasons.append("omniroute_configured_but_unreachable")
+    if (bool(_env("LOCAL_BASE_URL") or _env("LOCAL_API_KEY") or _env("OLLAMA_HOST")) or local_ok) and not local_ok:
+        reasons.append("local_configured_but_unreachable")
+    if omni_reachable:
+        reasons.append("omniroute_primary_available")
+    elif local_ok:
+        reasons.append("local_fallback_available")
+    if not omni_reachable and not local_ok and any(bool(_env(k)) for k in ("OPENROUTER_API_KEY", "NVIDIA_API_KEY", "DOUBLEWORD_API_KEY")):
+        reasons.append("direct_provider_fallback_available")
+    if not configured:
+        reasons.append("no_provider_configured")
+    fallback_active = (not omni_reachable) and (local_ok or any(bool(_env(k)) for k in ("OPENROUTER_API_KEY", "NVIDIA_API_KEY", "DOUBLEWORD_API_KEY")))
     return {
         "provider": provider,
         "model": model,
@@ -152,6 +166,8 @@ def _provider_status() -> Dict[str, Any]:
         "local_reachable": local_ok,
         "omniroute_reachable": omni_reachable,
         "env_provider": env_provider,
+        "reasons": reasons,
+        "fallback_active": fallback_active,
     }
 
 
@@ -669,14 +685,17 @@ def _list_models() -> Dict[str, Any]:
     models: list[Dict[str, Any]] = []
     seen: set[str] = set()
 
-    def add(mid: str, provider: str, label: Optional[str] = None):
+    def add(mid: str, provider: str, label: Optional[str] = None, **extra):
         mid = (mid or "").strip()
         if not mid or mid in seen:
             return
         seen.add(mid)
-        models.append({"id": mid, "provider": provider, "label": label or mid})
+        item = {"id": mid, "provider": provider, "label": label or mid}
+        if extra:
+            item.update(extra)
+        models.append(item)
 
-    add("auto", "auto", "Auto (recommended, OmniRoute-first)")
+    add("auto", "auto", "Auto (recommended, OmniRoute-first)", recommended=True)
 
     # OmniRoute discovered models
     omni_base = _env("OMNIROUTE_BASE_URL")
