@@ -28,6 +28,10 @@ const sidebarBackdrop = $("sidebar-backdrop");
 const scrollBottomBtn = $("scroll-bottom");
 const toastHost = $("toast-host");
 const srStatus = $("sr-status");
+const modelSearchInput = $("model-search");
+const reconnectBanner = $("reconnect-banner");
+const reconnectText = $("reconnect-text");
+const reconnectBtn = $("reconnect-btn");
 
 const openSettingsBtn = $("open-settings");
 const openSettingsTop = $("open-settings-top");
@@ -329,6 +333,17 @@ function addMessageEl(role, content, opts = {}) {
   const footer = document.createElement("div"); footer.className = "message-footer";
   const t = formatTime(opts.ts);
   if (t) { const meta = document.createElement("span"); meta.className = "message-meta"; meta.textContent = t; footer.appendChild(meta); }
+  if (role === "assistant" && opts.meta) {
+    const info = [];
+    if (opts.meta.provider) info.push(String(opts.meta.provider));
+    if (opts.meta.model) info.push(String(opts.meta.model));
+    if (typeof opts.meta.elapsed_ms === "number") info.push((opts.meta.elapsed_ms/1000).toFixed(opts.meta.elapsed_ms < 10000 ? 1 : 0) + "s");
+    if (info.length) {
+      const chip = document.createElement("span"); chip.className = "msg-chip"; chip.textContent = info.join(" · ");
+      chip.title = `Provider: ${opts.meta.provider || "?"}\nModel: ${opts.meta.model || "?"}${typeof opts.meta.elapsed_ms === "number" ? `\nLatency: ${opts.meta.elapsed_ms} ms` : ""}`;
+      footer.appendChild(chip);
+    }
+  }
   const actions = document.createElement("div"); actions.className = "message-actions";
   if (role === "user") {
     actions.appendChild(actionBtn("Edit", () => { if (busy) return; chatInput.value = content; autoResize(); chatInput.focus(); showToast("Edit, then send to resend"); }));
@@ -361,7 +376,7 @@ function renderMessages() {
   hideEmpty();
   msgs.forEach((m, i) => {
     const isLastAssistant = m.role !== "user" && i === msgs.length - 1;
-    addMessageEl(m.role, m.content, { error: !!m.error, skipStore: true, ts: m.ts, index: i, canRegenerate: isLastAssistant });
+    addMessageEl(m.role, m.content, { error: !!m.error, skipStore: true, ts: m.ts, index: i, canRegenerate: isLastAssistant, meta: m.meta || null });
   });
   scrollToBottom(true);
 }
@@ -371,10 +386,12 @@ function ensureSession() {
   if (!s) s = createSession(false);
   return s;
 }
-function pushMessage(role, content, error) {
+function pushMessage(role, content, error, meta) {
   const s = ensureSession();
   s.messages = s.messages || [];
-  s.messages.push({ role, content, error: !!error, ts: now() });
+  const m = { role, content, error: !!error, ts: now() };
+  if (meta && typeof meta === "object") m.meta = meta;
+  s.messages.push(m);
   if (role === "user" && (!s.title || s.title === "New chat")) s.title = content.trim().slice(0, 42) || "New chat";
   s.updatedAt = now();
   saveState(); renderSessionList(); updateHeader();
@@ -453,6 +470,64 @@ function regenerateLast() {
 }
 
 /* Model + health */
+function renderModelOptions() {
+  if (!modelSelect) return;
+  const current = getSelectedModel();
+  const q = (modelSearchQuery || "").trim().toLowerCase();
+  let list = Array.isArray(allModels) ? [...allModels] : [];
+  // ensure auto first
+  const auto = { id: "auto", label: "Auto (recommended, OmniRoute-first)", provider: "auto" };
+  const filtered = list.filter(m => {
+    const id = String(m.id || ""); if (id === "auto") return false;
+    if (!q) return true;
+    const hay = (id + " " + (m.label||"") + " " + (m.provider||"")).toLowerCase();
+    return hay.includes(q);
+  });
+  // group by provider
+  const groups = new Map();
+  for (const m of filtered) {
+    const p = (m.provider || "other").toLowerCase();
+    if (!groups.has(p)) groups.set(p, []);
+    groups.get(p).push(m);
+  }
+  const order = ["omniroute", "local", "openrouter", "nvidia", "doubleword", "pollinations", "auto", "other"];
+  const keep = new Set();
+  modelSelect.innerHTML = "";
+  const addOpt = (parent, id, label) => {
+    if (!id || keep.has(id)) return;
+    keep.add(id);
+    const opt = document.createElement("option");
+    opt.value = id; opt.textContent = label || id;
+    parent.appendChild(opt);
+  };
+  addOpt(modelSelect, auto.id, auto.label);
+  for (const key of order) {
+    if (!groups.has(key)) continue;
+    const items = groups.get(key);
+    if (!items.length) continue;
+    const og = document.createElement("optgroup");
+    og.label = key.charAt(0).toUpperCase() + key.slice(1);
+    for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+    if (og.children.length) modelSelect.appendChild(og);
+  }
+  // any remaining groups
+  for (const [key, items] of groups.entries()) {
+    if (order.includes(key)) continue;
+    const og = document.createElement("optgroup");
+    og.label = key.charAt(0).toUpperCase() + key.slice(1);
+    for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+    if (og.children.length) modelSelect.appendChild(og);
+  }
+  let target = current || "auto";
+  if (!keep.has(target)) target = "auto";
+  modelSelect.value = target;
+  if (modelInfo) {
+    const count = Math.max(0, keep.size - 1);
+    const suffix = q ? ` (filtered from ${Math.max(0, (allModels||[]).filter(m=>m.id!=="auto").length)})` : "";
+    modelInfo.textContent = count > 0 ? `${count} model option(s) shown${suffix}.` : "No models match the current filter.";
+  }
+}
+
 async function refreshModels() {
   if (!modelSelect) return;
   const base = getApiBase(); if (!base) return;
@@ -461,26 +536,18 @@ async function refreshModels() {
     if (!res.ok) return;
     const data = await res.json();
     const models = Array.isArray(data.models) ? data.models : [];
-    const current = getSelectedModel();
-    const keep = new Set();
-    modelSelect.innerHTML = "";
-    const addOpt = (id, label) => {
-      if (!id || keep.has(id)) return; keep.add(id);
-      const opt = document.createElement("option"); opt.value = id; opt.textContent = label || id; modelSelect.appendChild(opt);
-    };
-    addOpt("auto", "Auto (recommended, OmniRoute-first)");
+    // normalize and dedupe
+    const seen = new Set();
+    const norm = [];
     for (const m of models) {
-      const id = (m && (m.id || m.name)) ? String(m.id || m.name) : "";
-      if (!id || id === "auto") continue;
-      const provider = m && m.provider ? String(m.provider) : "";
-      const label = (m && m.label ? String(m.label) : id) + (provider && provider !== "auto" ? " · " + provider : "");
-      addOpt(id, label);
+      const id = m && (m.id || m.name) ? String(m.id || m.name) : "";
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      norm.push({ id, provider: m.provider || "other", label: m.label || id });
     }
-    let target = current || "auto"; if (!keep.has(target)) target = "auto"; modelSelect.value = target;
-    if (modelInfo) {
-      const count = Math.max(0, keep.size - 1);
-      modelInfo.textContent = count > 0 ? `${count} model option(s) available from backend/discovery.` : "Using default options. Connect to a backend to discover more models.";
-    }
+    if (!seen.has("auto")) norm.unshift({ id: "auto", provider: "auto", label: "Auto (recommended, OmniRoute-first)" });
+    allModels = norm;
+    renderModelOptions();
   } catch {}
 }
 
@@ -564,20 +631,49 @@ async function checkHealth() {
     else if (/^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(base) && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") msg = "Status: unreachable (local URL from hosted GUI)";
     if (backendStatusEl) backendStatusEl.textContent = msg;
     if (backendHint) backendHint.textContent = "If using hosted GUI, set a public HTTPS API base (or wait for auto-discovery from backend.json).";
+    // auto-recovery attempt for rotated/unreachable backend (non-invasive)
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => { attemptReconnect(true).catch(()=>{}); }, 2500);
   }
+  if (healthInfo && healthInfo.status === "ok") hideReconnectBanner();
   updateHeader();
 }
 
-async function discoverBackend() {
+async function discoverBackend(force = false) {
   const saved = getSavedApiBase();
-  if (saved) return; // respect manual setting; user can clear to re-enable
+  if (saved && !force) return; // respect manual setting unless forced reconnect
   try {
     const res = await fetch("./backend.json", { cache: "no-store" });
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const data = await res.json();
     const url = ((data && (data.apiBase || data.api_base || data.url)) || "").toString().trim().replace(/\/$/, "");
-    if (url) discoveredBase = url;
+    if (url) { discoveredBase = url; return true; }
   } catch {}
+  return false;
+}
+
+function showReconnectBanner(msg) {
+  if (!reconnectBanner) return;
+  if (reconnectText) reconnectText.textContent = msg || "Backend unreachable or rotated. Trying to reconnect…";
+  reconnectBanner.hidden = false;
+}
+function hideReconnectBanner() { if (reconnectBanner) reconnectBanner.hidden = true; }
+async function attemptReconnect(auto = false) {
+  const base = getApiBase();
+  // try to rediscover only when using discovered backend or no manual base
+  const manual = getSavedApiBase();
+  if (!manual) {
+    const found = await discoverBackend(true);
+    if (found) showReconnectBanner(auto ? "Found updated backend URL. Reconnecting…" : "Found backend URL. Reconnecting…");
+  } else if (auto) {
+    showReconnectBanner("Backend unreachable. Check your saved API base or clear it to re-enable auto-discovery.");
+    return;
+  }
+  await checkHealth();
+  if (healthInfo && healthInfo.status === "ok") {
+    hideReconnectBanner();
+    if (!auto) showToast("Reconnected");
+  }
 }
 
 /* Chat transport */
@@ -675,13 +771,14 @@ async function sendMessage() {
     bodyWrap.appendChild(streamBubble); inner.appendChild(bodyWrap); streamMsg.appendChild(inner);
     chatCollection.appendChild(streamMsg); scrollToBottom(true);
 
-    let finalText = "";
-    const content = await sendToJo(text, controller.signal, (partial) => {
+    let finalText = ""; let finalMeta = null;
+    const result = await sendToJo(text, controller.signal, (partial) => {
       finalText = partial; renderContent(streamBubble, partial, "assistant", true); scrollToBottom(false);
     });
-    finalText = content || finalText || "(empty response)";
+    finalText = (result && result.text) || finalText || "(empty response)";
+    finalMeta = result && result.meta ? result.meta : null;
     if (streamMsg && streamMsg.parentNode) streamMsg.remove(); streamMsg = null;
-    pushMessage("assistant", finalText, false);
+    pushMessage("assistant", finalText, false, finalMeta);
     renderMessages();
   } catch (error) {
     if (streamMsg && streamMsg.parentNode) streamMsg.remove();
@@ -777,6 +874,8 @@ function bindEvents() {
   if (chatExport) chatExport.addEventListener("click", exportCurrentChat);
   if (scrollBottomBtn) scrollBottomBtn.addEventListener("click", () => scrollToBottom(true));
   if (chatLog) chatLog.addEventListener("scroll", updateScrollButton, { passive: true });
+  if (reconnectBtn) reconnectBtn.addEventListener("click", () => { showToast("Reconnecting…"); attemptReconnect(false).catch(()=>{}); });
+  if (modelSearchInput) modelSearchInput.addEventListener("input", () => { modelSearchQuery = modelSearchInput.value || ""; renderModelOptions(); });
 
   document.querySelectorAll(".suggest-card[data-prompt], .tip-chip[data-prompt]").forEach((btn) => {
     btn.addEventListener("click", () => { const p = btn.getAttribute("data-prompt") || ""; if (!p) return; chatInput.value = p; autoResize(); chatInput.focus(); });

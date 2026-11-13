@@ -52,6 +52,7 @@ class ChatResponse(BaseModel):
     session_id: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    elapsed_ms: Optional[int] = None
 
 
 def _env(name: str) -> str:
@@ -244,7 +245,7 @@ def _looks_bad_response(text: str) -> bool:
     return False
 
 
-def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, requested_model: Optional[str] = None) -> str:
+def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, requested_model: Optional[str] = None) -> tuple[str, Dict[str, Any]]:
     from ouroboros.llm import LLMClient, NvidiaLLMClient, DoublewordLLMClient
 
     msgs = _build_messages(message, history)
@@ -381,7 +382,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
         msg, _ = client.chat(messages=msgs, model=model, tools=None, reasoning_effort="medium", max_tokens=2048, _skip_trivial=False)
         text = _extract_text(msg)
         if text and not _looks_bad_response(text):
-            return text
+            return text, {"provider": "default", "model": model}
         if text:
             errors.append("default: rejected bad response")
         else:
@@ -469,7 +470,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                 if not text and isinstance(data.get("choices"), list) and data["choices"]:
                     text = str((data["choices"][0] or {}).get("text") or "").strip()
                 if text and not _looks_bad_response(text):
-                    return text
+                    return text, {"provider": "pollinations", "model": model}
                 if text:
                     errors.append(f"pollinations({model}): rejected bad response")
             except Exception as pe:
@@ -482,7 +483,7 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
                 with _ur.urlopen(req, timeout=45) as r:
                     text = r.read().decode("utf-8", "replace").strip()
                 if text and not _looks_bad_response(text) and len(text) < 20000:
-                    return text
+                    return text, {"provider": "pollinations", "model": model}
                 if text:
                     errors.append(f"pollinations-get({model}): rejected bad response")
             except Exception as pe:
@@ -535,7 +536,7 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
     return "\n".join(lines)
 
 
-def generate_response(message: str, history: Optional[list[Dict[str, str]]] = None, session_id: Optional[str] = None, requested_model: Optional[str] = None) -> tuple[str, str]:
+def generate_response(message: str, history: Optional[list[Dict[str, str]]] = None, session_id: Optional[str] = None, requested_model: Optional[str] = None) -> tuple[str, str, Dict[str, Any]]:
     message = (message or "").strip()
     sid, sess = _get_session(session_id)
     merged_history = list(sess)
@@ -543,19 +544,19 @@ def generate_response(message: str, history: Optional[list[Dict[str, str]]] = No
         # if client provides history, prefer it (but keep reasonable)
         merged_history = [h for h in history if isinstance(h, dict)]
     if not message:
-        return "Send a message to start chatting with Jo.", sid
+        return "Send a message to start chatting with Jo.", sid, {"provider": "system", "model": "none"}
 
     errors = []
     # Prefer lightweight direct LLM path (robust in minimal environments)
     try:
-        text = _run_via_llm(message, merged_history, requested_model=requested_model)
+        text, meta = _run_via_llm(message, merged_history, requested_model=requested_model)
         if text:
             sess.append({"role": "user", "content": message})
             sess.append({"role": "assistant", "content": text})
             if len(sess) > _SESSION_MAX:
                 del sess[:-_SESSION_MAX]
             _SESSIONS[sid] = sess
-            return text, sid
+            return text, sid, (meta or {})
         errors.append("llm returned empty content")
     except Exception as e:
         errors.append(f"llm: {e}")
@@ -570,7 +571,7 @@ def generate_response(message: str, history: Optional[list[Dict[str, str]]] = No
                 if len(sess) > _SESSION_MAX:
                     del sess[:-_SESSION_MAX]
                 _SESSIONS[sid] = sess
-                return text, sid
+                return text, sid, {"provider": "agent", "model": "agent"}
             errors.append("agent returned no message")
         except Exception as e:
             errors.append(f"agent: {e}")
@@ -583,7 +584,7 @@ def generate_response(message: str, history: Optional[list[Dict[str, str]]] = No
     if len(sess) > _SESSION_MAX:
         del sess[:-_SESSION_MAX]
     _SESSIONS[sid] = sess
-    return resp, sid
+    return resp, sid, {"provider": "fallback", "model": "unavailable"}
 
 
 def _chunk_text(text: str, size: int = 80) -> Iterator[str]:
@@ -606,33 +607,39 @@ def _sse(data: Dict[str, Any]) -> str:
 
 @app.post("/v1/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
-    st = _provider_status()
     history = [h.model_dump() for h in (req.history or [])]
+    t0 = asyncio.get_running_loop().time()
+    meta: Dict[str, Any] = {}
     try:
-        response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
+        response, sid, meta = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
     except Exception as e:
         sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
         response = _fallback_response(req.message, str(e))
-    return ChatResponse(response=response or "", session_id=sid, provider=st.get("provider"), model=(req.model or st.get("model")))
+        meta = {"provider": "fallback", "model": "error"}
+    elapsed_ms = int((asyncio.get_running_loop().time() - t0) * 1000)
+    return ChatResponse(response=response or "", session_id=sid, provider=(meta or {}).get("provider"), model=(meta or {}).get("model") or req.model, elapsed_ms=elapsed_ms)
 
 
 @app.post("/v1/chat/stream")
 async def chat_stream(req: ChatRequest):
-    st = _provider_status()
     history = [h.model_dump() for h in (req.history or [])]
 
     async def gen():
         sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
+        t0 = asyncio.get_running_loop().time()
+        meta: Dict[str, Any] = {}
         try:
-            response, sid = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
+            response, sid, meta = await asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model)
         except Exception as e:
             yield _sse({"error": str(e), "session_id": sid})
             response = _fallback_response(req.message, str(e))
+            meta = {"provider": "fallback", "model": "error"}
         response = response or ""
         for part in _chunk_text(response, 120):
             yield _sse({"delta": part, "session_id": sid})
             await asyncio.sleep(0)
-        yield _sse({"done": True, "response": response, "session_id": sid, "provider": st.get("provider"), "model": (req.model or st.get("model"))})
+        elapsed_ms = int((asyncio.get_running_loop().time() - t0) * 1000)
+        yield _sse({"done": True, "response": response, "session_id": sid, "provider": (meta or {}).get("provider"), "model": (meta or {}).get("model") or req.model, "elapsed_ms": elapsed_ms})
 
     headers = {
         "Cache-Control": "no-cache",

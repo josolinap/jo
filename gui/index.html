@@ -100,6 +100,10 @@
             </header>
 
             <div class="conversation-scroll" id="chat-log">
+              <div class="reconnect-banner" id="reconnect-banner" hidden>
+                <span id="reconnect-text">Backend unreachable or rotated. Trying to reconnect…</span>
+                <button type="button" class="btn secondary btn-sm" id="reconnect-btn">Reconnect</button>
+              </div>
               <div class="chat-collection conversation-column" id="chat-collection" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation">
                 <div class="welcome" id="chat-empty">
                   <div class="welcome-hero">
@@ -232,11 +236,15 @@
         <section class="settings-section">
           <h3>Model</h3>
           <label class="field">
+            <span class="field-label">Search & select model</span>
+            <input id="model-search" type="text" class="select-input" placeholder="Filter models (e.g. free, llama, gemma, auto)…" autocomplete="off">
+          </label>
+          <label class="field">
             <span class="field-label">Chat model</span>
-            <select id="model-select" class="select-input">
+            <select id="model-select" class="select-input" size="6">
               <option value="auto">Auto (recommended, OmniRoute-first)</option>
             </select>
-            <span class="field-help">“Auto” lets the backend choose the best available route (OmniRoute prioritized with fallbacks). Specific models depend on what your backend/OmniRoute/providers expose.</span>
+            <span class="field-help">“Auto” lets the backend choose the best available route (OmniRoute prioritized with fallbacks). Select a specific model to prefer it. Options depend on connected providers/backends.</span>
           </label>
           <div class="model-info" id="model-info"></div>
         </section>
