@@ -457,7 +457,10 @@ async function refreshModels() {
 
 function setConnState(state) {
   // state: ok | warn | err | idle
-  if (sidebarConnDot) sidebarConnDot.className = "nav-meta" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
+  if (sidebarConnDot) {
+    sidebarConnDot.className = "quick-dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
+    sidebarConnDot.title = state === "ok" ? "Connected" : state === "err" ? "Connection issue" : "Checking connection";
+  }
   if (statusDot) statusDot.className = "status-dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
   if (modelPillDot) modelPillDot.className = "model-pill-dot" + (state === "ok" ? " ok" : "");
 }
