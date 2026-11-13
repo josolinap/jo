@@ -14,6 +14,8 @@ The goal is to **wire useful patterns into Jo** (this repo: Ouroboros agent + Gi
 | `neo-config/agent/neo.md` | neo-config | Execution-first Neo agent reference; informs autonomous task execution patterns and constitution-aligned behavior. |
 | `arch-neo-config/agent/neo.md` | arch-neo-config | Complementary Neo agent definition (graphify/dual-graph awareness, tool-first habits) for cross-environment consistency. |
 | `arch-neo-config/plugins/graphify.js` | arch-neo-config | OpenCode plugin pattern that nudges graph-aware queries before shell exploration; reusable/reference for opencode-based workflows. |
+| `arch-neo-config/knowledge/tools/free-model-catalog.md` | arch-neo-config | Reverse-engineered reference for aggregating/verifying/prioritizing free-model sources (OmniRoute + mirrors/benches) — informs Jo backend model discovery, ranking, fallback, and diagnostics. |
+| `arch-neo-config/knowledge/infrastructure/omniroute-free-model-mechanism.md` | arch-neo-config | Operational reference on OmniRoute free-model mechanisms, validation behavior, and gateway resilience — informs `server/app.py` routing/status and `web-backend.yml` ops. |
 | `docs/PORTING_NOTES.md` | this integration | How these assets map to Jo’s architecture (GUI, `server/app.py`, workflows, `.jo_rules`, `.jo_skills`) and what to adopt next. |
 
 ## What is intentionally **not** ported

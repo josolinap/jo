@@ -25,9 +25,14 @@
    - *Purpose:* stability on ephemeral infra.
    - *Wiring:* `backend.json` discovery+metadata, polling/reconnect, workflow smoke summaries, and (future) persistent backend/self-hosted runner with Actions+tunnel fallback.
 
+5. **Free-model catalog & OmniRoute mechanism knowledge (`arch-neo-config/knowledge/*`)**
+   - *Purpose:* reverse-engineered patterns for multi-source free-model aggregation, verification, bench/smart picking, cooldown/rotation, and OmniRoute gateway behavior.
+   - *Wiring:* informs `server/app.py` (model discovery, ranking/preference, probe-tolerant attempts, fallback/degraded metadata, `reasons`/readiness), `gui/` diagnostics/status hints, and `web-backend.yml` smoke/keep-alive/resilience. Adapt concepts (not arch-specific tooling) to Jo’s provider chain and contracts.
+
 ## Recommended next wiring steps (safe, high-value)
 
 - Add a `.jo_rules/` note aligning guardian/review behavior with the ported Jo persona (evidence, read-only verification, concise verdicts) where it fits Ouroboros workflows.
 - If using opencode locally for this repo, copy/adapt `graphify.js` into `.opencode/plugins/` and generate `graphify-out/` as needed.
+- Apply catalog/mechanism ideas incrementally: enrich `/v1/models` with source/recommendation hints and expose clearer readiness/fallback reasons in `/v1/status` and GUI diagnostics.
 - Keep OmniRoute/fallback observability first-class: maintain smoke probes, status fields, and UI degraded indicators.
 - Periodically re-port only materially improved, non-sensitive upstream assets and update `SOURCES.md`.
