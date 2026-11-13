@@ -73,6 +73,10 @@ Git + Filesystem (state persistence)
 
 ---
 
+## Integrations
+
+- **Neo config references (curated):** [`integrations/neo-config/`](integrations/neo-config/README.md) — ported, purpose-wired references from [`josolinap/neo-config`](https://github.com/josolinap/neo-config) and [`josolinap/arch-neo-config`](https://github.com/josolinap/arch-neo-config) (agent personas, OpenCode graphify plugin reference, porting/wiring notes) aligned with Jo’s OmniRoute-first backend, GUI/backend contract, and workflow/ops patterns. See [`SOURCES.md`](integrations/neo-config/SOURCES.md) and [`docs/PORTING_NOTES.md`](integrations/neo-config/docs/PORTING_NOTES.md).
+
 ## Model-Independent Design
 
 Jo is designed to be **good regardless of which model** it uses.
