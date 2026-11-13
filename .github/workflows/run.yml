@@ -544,10 +544,9 @@ jobs:
 
           # Notify owner that self-restart failed
           if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" ]; then
-            curl -s "https://api.github.com/repos/$REPO/actions/workflows/run.yml/dispatches" \
+            curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
               -d chat_id="${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-              -d parse_mode="Markdown" \
-              -d text="⚠️ *Jo Self-Restart Failed*\n\nWorkflow may not auto-restart. Cron will kick in within 2 hours." \
+              --data-urlencode "text=Jo self-restart failed. Workflow may not auto-restart; cron will kick in within ~2 hours." \
               || true
           fi
 
