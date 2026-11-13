@@ -20,6 +20,7 @@ const sessionListEl = document.getElementById("session-list");
 const chatTitle = document.getElementById("chat-title");
 const chatSubtitle = document.getElementById("chat-subtitle");
 const chatRefresh = document.getElementById("chat-refresh");
+const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
 let busy = false;
 let workingEl = null;
@@ -322,12 +323,7 @@ function renderSessionList() {
     item.appendChild(del);
     item.addEventListener("click", () => {
       switchSession(s.id);
-      if (
-        window.matchMedia &&
-        window.matchMedia("(max-width: 768px)").matches &&
-        appShell
-      )
-        appShell.classList.add("sidebar-collapsed");
+      if (isMobileLayout()) setSidebarOpen(false);
     });
     sessionListEl.appendChild(item);
   }
@@ -747,17 +743,68 @@ function clearOrNewChat() {
   setStatus("idle");
 }
 
-if (newChatBtn) newChatBtn.addEventListener("click", clearOrNewChat);
+if (newChatBtn) newChatBtn.addEventListener("click", () => { clearOrNewChat(); if (isMobileLayout()) setSidebarOpen(false); });
 if (brandHome)
   brandHome.addEventListener("click", () => {
     if (chatInput) chatInput.focus();
   });
 
-function toggleSidebar() {
-  appShell.classList.toggle("sidebar-collapsed");
+function isMobileLayout() {
+  return window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
 }
+
+function setSidebarOpen(open) {
+  if (!appShell) return;
+  if (isMobileLayout()) {
+    appShell.classList.toggle("sidebar-open", !!open);
+    appShell.classList.toggle("sidebar-collapsed", !open);
+  } else {
+    appShell.classList.remove("sidebar-open");
+    appShell.classList.toggle("sidebar-collapsed", !open);
+  }
+}
+
+function toggleSidebar() {
+  if (!appShell) return;
+  if (isMobileLayout()) {
+    setSidebarOpen(!appShell.classList.contains("sidebar-open"));
+  } else {
+    appShell.classList.toggle("sidebar-collapsed");
+  }
+}
+
+function syncSidebarForViewport() {
+  if (!appShell) return;
+  if (isMobileLayout()) {
+    // default to closed drawer on mobile
+    if (!appShell.dataset.mobileInit) {
+      appShell.dataset.mobileInit = "1";
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(appShell.classList.contains("sidebar-open"));
+    }
+  } else {
+    appShell.classList.remove("sidebar-open");
+    if (!appShell.dataset.desktopInit) {
+      appShell.dataset.desktopInit = "1";
+      appShell.classList.remove("sidebar-collapsed");
+    }
+  }
+}
+
 if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebar);
 if (mobileMenu) mobileMenu.addEventListener("click", toggleSidebar);
+if (sidebarBackdrop) sidebarBackdrop.addEventListener("click", () => setSidebarOpen(false));
+window.addEventListener("resize", () => {
+  // debounce-ish simple sync
+  window.clearTimeout(window.__joResizeT);
+  window.__joResizeT = window.setTimeout(syncSidebarForViewport, 80);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && isMobileLayout() && appShell && appShell.classList.contains("sidebar-open")) {
+    setSidebarOpen(false);
+  }
+});
 
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -916,6 +963,7 @@ async function discoverBackend() {
 }
 
 function init() {
+  syncSidebarForViewport();
   if (emptyGreeting) emptyGreeting.textContent = getGreeting(new Date());
   if (apiBaseInput) {
     try {
