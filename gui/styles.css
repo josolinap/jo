@@ -374,6 +374,12 @@ a { color: inherit; text-decoration: none; }
 .model-info { margin-top: 8px; font-size: 12px; color: var(--muted); }
 .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 16px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--bg-subtle) 35%, var(--bg-elev)); }
 .modal-footnote { font-size: 12px; color: var(--muted); }
+#model-select { height: auto; min-height: 160px; padding: 6px; }
+#model-select option { padding: 6px 8px; border-radius: 6px; }
+.reconnect-banner { position: sticky; top: 0; z-index: 4; margin: 8px auto 0; width: min(calc(100% - 32px), var(--content-max)); padding: 8px 10px 8px 12px; border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--border)); background: color-mix(in srgb, var(--warning) 12%, var(--bg-elev)); color: var(--text-secondary); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; box-shadow: var(--shadow-xs); }
+.reconnect-banner[hidden] { display: none; }
+.btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+.msg-chip { display: inline-flex; align-items: center; padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; color: var(--muted); background: var(--bg-elev); }
 
 /* Toast */
 .toast-host { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
