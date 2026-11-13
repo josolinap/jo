@@ -126,10 +126,10 @@
                       <span class="suggest-title">Build something</span>
                       <span class="suggest-desc">Plan, design, and implement an idea</span>
                     </button>
-                    <button type="button" class="suggest-card" data-prompt="Explain how this GUI connects to the backend, OmniRoute, and free model fallbacks.">
+                    <button type="button" class="suggest-card" data-prompt="Check backend status, readiness, and available models right now.">
                       <span class="suggest-icon">🔌</span>
-                      <span class="suggest-title">How it works</span>
-                      <span class="suggest-desc">Understand backend, routing, and models</span>
+                      <span class="suggest-title">Check status</span>
+                      <span class="suggest-desc">See backend health, readiness, and available models</span>
                     </button>
                     <button type="button" class="suggest-card" data-prompt="Review my idea and suggest improvements with clear next steps.">
                       <span class="suggest-icon">💡</span>
@@ -223,6 +223,7 @@
             <div class="field-row">
               <input id="api-base" type="text" value="" placeholder="auto-discover or https://…" spellcheck="false">
               <button type="button" class="btn secondary" id="settings-refresh">Refresh</button>
+              <button type="button" class="btn secondary" id="settings-copy-base">Copy base</button>
             </div>
             <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> when available. Use “Clear saved API base” to re-enable auto-discovery after manual changes.</span>
           </label>

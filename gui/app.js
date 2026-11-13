@@ -41,6 +41,7 @@ const settingsModal = $("settings-modal");
 const settingsClose = $("settings-close");
 const settingsDone = $("settings-done");
 const settingsRefresh = $("settings-refresh");
+const settingsCopyBase = $("settings-copy-base");
 const settingsTheme = $("settings-theme");
 const settingsClearBase = $("settings-clear-base");
 const exportAllChatsBtn = $("export-all-chats");
@@ -560,11 +561,11 @@ async function refreshModels() {
 function setConnState(state) {
   // state: ok | warn | err | idle
   if (sidebarConnDot) {
-    sidebarConnDot.className = "quick-dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
-    sidebarConnDot.title = state === "ok" ? "Connected" : state === "err" ? "Connection issue" : "Checking connection";
+    sidebarConnDot.className = "quick-dot" + (state === "ok" ? " ok" : state === "err" ? " err" : state === "warn" ? " warn" : "");
+    sidebarConnDot.title = state === "ok" ? "Connected" : state === "err" ? "Connection issue" : state === "warn" ? "Connected (degraded/fallback)" : "Checking connection";
   }
   if (statusDot) statusDot.className = "status-dot" + (state === "ok" ? " ok" : state === "err" ? " err" : "");
-  if (modelPillDot) modelPillDot.className = "model-pill-dot" + (state === "ok" ? " ok" : "");
+  if (modelPillDot) modelPillDot.className = "model-pill-dot" + (state === "ok" ? " ok" : state === "warn" ? " warn" : "");
 }
 
 function updateHeader() {
@@ -586,9 +587,11 @@ function updateHeader() {
     const effective = healthInfo.model ? String(healthInfo.model) : "auto";
     const parts = [provider];
     if (effective && effective !== "auto") parts.push(effective);
-    if (healthInfo.local_reachable) parts.push("local fallback ready");
-    if (chatSubtitle) { chatSubtitle.textContent = (configured ? "Ready · " : "Reachable · ") + parts.slice(0,3).join(" · "); chatSubtitle.dataset.state = configured ? "ok" : "warn"; }
-    if (backendStatusEl) backendStatusEl.textContent = configured ? "Status: online" : "Status: reachable (no model configured)";
+    if (healthInfo.fallback_active) parts.push("fallback active");
+    else if (healthInfo.local_reachable) parts.push("local fallback ready");
+    const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
+    if (chatSubtitle) { chatSubtitle.textContent = (configured ? "Ready · " : "Reachable · ") + parts.slice(0,3).join(" · "); chatSubtitle.dataset.state = subtitleState; }
+    if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
     if (backendMeta) {
       const meta = [];
       if (healthInfo.provider) meta.push("provider: " + healthInfo.provider);
@@ -644,7 +647,7 @@ function updateHeader() {
       }
       backendHint.textContent = hints.join(" ");
     }
-    setConnState(configured ? "ok" : "warn");
+    setConnState(!configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok"));
   } else {
     if (chatSubtitle) { chatSubtitle.textContent = "Connecting to backend…"; chatSubtitle.dataset.state = "err"; }
     if (backendStatusEl) backendStatusEl.textContent = "Status: checking/unreachable";
@@ -1073,6 +1076,15 @@ function bindEvents() {
   [settingsBackdrop, settingsClose, settingsDone].forEach((el) => { if (el) el.addEventListener("click", closeSettings); });
   [shortcutsBackdrop, shortcutsClose].forEach((el) => { if (el) el.addEventListener("click", closeShortcuts); });
   if (settingsRefresh) settingsRefresh.addEventListener("click", () => { showToast("Refreshing…"); checkHealth(); });
+  if (settingsCopyBase) settingsCopyBase.addEventListener("click", async () => {
+    const base = getApiBase();
+    if (!base) { showToast("No API base to copy"); return; }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(base);
+      else { const ta = document.createElement("textarea"); ta.value = base; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+      showToast("API base copied");
+    } catch { showToast("Failed to copy API base"); }
+  });
   if (settingsClearBase) settingsClearBase.addEventListener("click", () => {
     try { localStorage.removeItem(API_KEY); } catch {}
     if (apiBaseInput) apiBaseInput.value = "";
