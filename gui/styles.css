@@ -110,6 +110,7 @@ a { color: inherit; text-decoration: none; }
 .quick-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 999px; background: var(--muted-2); box-shadow: 0 0 0 2px var(--sidebar-bg); }
 .quick-dot.ok { background: var(--success); }
 .quick-dot.err { background: var(--danger); }
+.quick-dot.warn { background: var(--warning); }
 .brand { display: inline-flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; font-weight: 650; letter-spacing: -0.01em; }
 .sidebar-header .brand-name { display: none; }
 .brand:hover { background: var(--bg-hover); }
@@ -202,6 +203,7 @@ a { color: inherit; text-decoration: none; }
 .model-pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .model-pill-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--muted-2); flex: none; }
 .model-pill-dot.ok { background: var(--success); }
+.model-pill-dot.warn { background: var(--warning); }
 
 .icon-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: var(--muted); transition: background .12s ease, color .12s ease; }
 .icon-btn:hover { background: var(--bg-hover); color: var(--text); }
