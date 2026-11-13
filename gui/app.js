@@ -591,11 +591,21 @@ function updateHeader() {
       if (healthInfo.model) meta.push("effective model: " + healthInfo.model);
       meta.push("selected: " + (selected || "auto"));
       if (healthInfo.omniroute_reachable) meta.push("omniroute: reachable");
+      else if (healthInfo.keys && healthInfo.keys.omniroute_configured) meta.push("omniroute: unreachable");
       if (healthInfo.local_reachable) meta.push("local: ready");
       if (healthInfo.keys) {
         const k = Object.keys(healthInfo.keys).filter(x => healthInfo.keys[x]); if (k.length) meta.push("keys/config: " + k.join(", "));
       }
       backendMeta.textContent = meta.join(" · ");
+    }
+    if (backendHint) {
+      if (healthInfo.keys && healthInfo.keys.omniroute_configured && !healthInfo.omniroute_reachable && !healthInfo.local_reachable) {
+        backendHint.textContent = "OmniRoute is configured but unreachable; backend will use direct/fallback providers when available (responses may be degraded depending on upstreams).";
+      } else if (!configured) {
+        backendHint.textContent = "Backend is reachable but no model/provider appears configured. Set provider keys or enable OmniRoute/local backend.";
+      } else {
+        backendHint.textContent = "";
+      }
     }
     setConnState(configured ? "ok" : "warn");
   } else {
@@ -639,6 +649,16 @@ async function checkHealth() {
   }
   if (healthInfo && healthInfo.status === "ok") hideReconnectBanner();
   updateHeader();
+}
+
+let healthPollTimer = null;
+function startHealthPolling() {
+  if (healthPollTimer) clearInterval(healthPollTimer);
+  healthPollTimer = setInterval(() => {
+    if (busy) return;
+    if (!getApiBase()) return;
+    checkHealth().catch(() => {});
+  }, 30000);
 }
 
 async function discoverBackend(force = false) {
@@ -969,6 +989,7 @@ function init() {
   updateHeader();
   autoResize();
   discoverBackend().finally(() => checkHealth());
+  startHealthPolling();
 }
 
 init();
