@@ -78,7 +78,7 @@ let allModels = [
   {
     id: "auto",
     provider: "auto",
-    label: "Auto (recommended, OmniRoute-first)",
+    label: "Auto (recommended, OmniRoute)",
   },
 ];
 
@@ -540,7 +540,7 @@ function addMessageEl(role, content, opts = {}) {
           String(opts.meta.provider || "").toLowerCase(),
         ) || String(opts.meta.model || "").toLowerCase() === "unavailable";
       if (degraded) chip.classList.add("msg-chip-warn");
-      chip.title = `Provider: ${opts.meta.provider || "?"}\nModel: ${opts.meta.model || "?"}${typeof opts.meta.elapsed_ms === "number" ? `\nLatency: ${opts.meta.elapsed_ms} ms` : ""}${degraded ? "\nStatus: degraded/fallback response" : ""}`;
+      chip.title = `Provider: ${opts.meta.provider || "?"}\nModel: ${opts.meta.model || "?"}${typeof opts.meta.elapsed_ms === "number" ? `\nLatency: ${opts.meta.elapsed_ms} ms` : ""}${degraded ? "\nStatus: degraded/unavailable response" : ""}`;
       footer.appendChild(chip);
     }
   }
@@ -837,7 +837,7 @@ function renderModelOptions() {
   // ensure auto first
   const auto = {
     id: "auto",
-    label: "Auto (recommended, OmniRoute-first)",
+    label: "Auto (recommended, OmniRoute)",
     provider: "auto",
   };
   const filtered = list.filter((m) => {
@@ -919,7 +919,7 @@ function renderModelOptions() {
       modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.`;
     } else {
       modelInfo.textContent =
-        "Auto selected. Click “Refresh models” if the backend is connected but no models appear yet.";
+        "Auto selected. Click “Refresh models” if OmniRoute is connected but no models appear yet.";
     }
   }
 }
@@ -946,7 +946,7 @@ async function refreshModels() {
       norm.unshift({
         id: "auto",
         provider: "auto",
-        label: "Auto (recommended, OmniRoute-first)",
+        label: "Auto (recommended, OmniRoute)",
       });
     allModels = norm;
     renderModelOptions();
@@ -971,7 +971,7 @@ function setConnState(state) {
         : state === "err"
           ? "Connection issue"
           : state === "warn"
-            ? "Connected (degraded/fallback)"
+            ? "Connected (degraded)"
             : "Checking connection";
   }
   if (statusDot)
@@ -1011,11 +1011,9 @@ function updateHeader() {
     const effective = healthInfo.model ? String(healthInfo.model) : "auto";
     const parts = [provider];
     if (effective && effective !== "auto") parts.push(effective);
-    if (healthInfo.fallback_active) parts.push("fallback active");
-    else if (healthInfo.local_reachable) parts.push("local fallback ready");
     const subtitleState = !configured
       ? "warn"
-      : healthInfo.fallback_active
+      : false
         ? "warn"
         : "ok";
     if (chatSubtitle) {
@@ -1026,9 +1024,7 @@ function updateHeader() {
     }
     if (backendStatusEl)
       backendStatusEl.textContent = configured
-        ? healthInfo.fallback_active
-          ? "Status: online (fallback)"
-          : "Status: online"
+        ? "Status: online"
         : "Status: reachable (no model configured)";
     let discoveryAgeMs = null;
     if (!getSavedApiBase() && discoveredMeta && discoveredMeta.updatedAt) {
@@ -1043,8 +1039,6 @@ function updateHeader() {
       if (healthInfo.omniroute_reachable) meta.push("omniroute: reachable");
       else if (healthInfo.keys && healthInfo.keys.omniroute_configured)
         meta.push("omniroute: unreachable");
-      if (healthInfo.local_reachable) meta.push("local: ready");
-      if (healthInfo.fallback_active) meta.push("fallback: active");
       if (Array.isArray(healthInfo.reasons) && healthInfo.reasons.length) {
         meta.push("reasons: " + healthInfo.reasons.join(", "));
       }
@@ -1086,16 +1080,13 @@ function updateHeader() {
         !healthInfo.omniroute_reachable
       ) {
         hints.push(
-          "OmniRoute configured but unreachable; using direct/fallback providers when available.",
+          "OmniRoute configured but unreachable. Check OMNIROUTE_BASE_URL and upstream provider configuration.",
         );
-      }
-      if (healthInfo.keys && !healthInfo.local_reachable) {
-        // local fallback is optional; keep subtle unless it explains fallback
       }
       if (
         Array.isArray(healthInfo.reasons) &&
         healthInfo.reasons.length &&
-        healthInfo.fallback_active
+        !configured
       ) {
         hints.push("Readiness: " + healthInfo.reasons.join(", ") + ".");
       }
@@ -1117,7 +1108,7 @@ function updateHeader() {
       backendHint.textContent = hints.join(" ");
     }
     setConnState(
-      !configured ? "warn" : healthInfo.fallback_active ? "warn" : "ok",
+      !configured ? "warn" : "ok",
     );
   } else {
     if (chatSubtitle) {
@@ -1917,7 +1908,7 @@ function bindEvents() {
         {
           id: "auto",
           provider: "auto",
-          label: "Auto (recommended, OmniRoute-first)",
+          label: "Auto (recommended, OmniRoute)",
         },
       ];
       renderModelOptions();

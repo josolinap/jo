@@ -62,7 +62,7 @@
         </div>
 
         <div class="sidebar-bottom">
-          <div class="sidebar-footnote">OmniRoute-first · auto fallback</div>
+          <div class="sidebar-footnote">OmniRoute-only</div>
         </div>
       </aside>
 
@@ -217,14 +217,14 @@
           <label class="field">
             <span class="field-label">Chat model</span>
             <select id="model-select" class="select-input" size="7">
-              <option value="auto">Auto (recommended, OmniRoute-first)</option>
+              <option value="auto">Auto (recommended, OmniRoute)</option>
             </select>
             <span class="field-help">Models load automatically from the backend. Pick “Auto” for best available routing, or choose a specific free/model option.</span>
           </label>
           <label class="field">
             <span class="field-label">Filter models (optional)</span>
             <div class="field-row">
-              <input id="model-search" type="text" class="select-input" placeholder="Type to filter (e.g. free, llama, gemma)…" autocomplete="off">
+              <input id="model-search" type="text" class="select-input" placeholder="Type to filter models…" autocomplete="off">
               <button type="button" class="btn secondary" id="settings-refresh-models">Refresh models</button>
             </div>
           </label>

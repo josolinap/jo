@@ -255,7 +255,7 @@ jobs:
             sleep 2
           done
           if [ "$up" -ne 1 ]; then
-            echo "OmniRoute not ready; bot will fall back to configured providers"
+            echo "OmniRoute not ready; bot may be unable to generate responses until OmniRoute is reachable"
             tail -n 80 /tmp/omniroute.log || true
             exit 1
           fi
@@ -355,25 +355,15 @@ jobs:
           JO_GITHUB_ALLOWED_USERS: ${{ github.repository_owner }}
           JO_GITHUB_INBOX_POLL_SEC: "30"
 
-          # --- Doubleword.ai (efficient model pool fallback) ---
-          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
-
-          # --- NVIDIA NIM (free 40 req/min fallback) ---
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-
-          # --- Primary provider: OmniRoute (gateway over free/connected providers) ---
-          # Route all bot LLM calls through local OmniRoute first; fall back to direct providers only if needed.
+          # --- Provider: OmniRoute only ---
           LLM_PROVIDER: omniroute
           OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
           OMNIROUTE_MODEL: auto
           OMNIROUTE_API_KEY: omniroute-local
-
-          # --- Optional model overrides (hints/fallback context) ---
-          # Free-only runtime defaults. Do not inherit stale/paid model IDs from old secrets.
-          OUROBOROS_MODEL: "openrouter/free"
-          OUROBOROS_MODEL_CODE: "poolside/laguna-s-2.1:free"
-          OUROBOROS_MODEL_LIGHT: "inclusionai/ling-3.0-flash:free"
-          OUROBOROS_MODEL_FALLBACK_LIST: "openrouter/free,poolside/laguna-s-2.1:free,inclusionai/ling-3.0-flash:free,nvidia/nemotron-3-ultra-550b-a55b:free"
+          OUROBOROS_MODEL: "auto"
+          OUROBOROS_MODEL_CODE: ""
+          OUROBOROS_MODEL_LIGHT: ""
+          OUROBOROS_MODEL_FALLBACK_LIST: ""
 
           # --- Behavior flags ---
           # Skip git-sync: the runner already has the code checked out
@@ -410,7 +400,7 @@ jobs:
           # Enable health auto-fix (version sync, stale identity, uncommitted)
           AUTO_FIX_ENABLED: "0"
 
-          # Deterministic mode: disables spice, temporal learning, model fallback,
+          # Deterministic mode: disables spice, temporal learning,
           # self-reflection, memory extraction, and forces temperature=0.
           # Pin models above (OUROBOROS_MODEL/*_CODE/*_LIGHT) to specific free models.
           OUROBOROS_DETERMINISTIC: "1"

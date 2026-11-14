@@ -33,7 +33,7 @@ The goal is to **wire useful patterns into Jo** (this repo: Ouroboros agent + Gi
 
 ## How this is wired into Jo
 
-- **Web/backend (OmniRoute-first):** Jo’s `server/app.py` and `.github/workflows/web-backend.yml` already implement OmniRoute-prioritized routing with fallbacks and discoverable `gui/backend.json`; upstream Neo configs reinforce the same “OmniRoute primary, resilient fallbacks” strategy.
+- **Web/backend (OmniRoute-only):** Jo’s `server/app.py` and `.github/workflows/web-backend.yml` are configured to use OmniRoute as the sole model source/gateway with discoverable `gui/backend.json`; upstream Neo configs informed resilient OmniRoute operation and observability patterns.
 - **GUI:** `gui/` consumes `/health`, `/v1/status`, `/v1/models`, `/v1/chat`, `/v1/chat/stream`, auto-discovers `backend.json`, and surfaces provider/model/latency + degraded states.
 - **Agent guidance:** see `docs/PORTING_NOTES.md` for recommended adoption into `.jo_rules/`, `.jo_skills/`, and operator runbooks.
 - **Provenance:** see `SOURCES.md`.
