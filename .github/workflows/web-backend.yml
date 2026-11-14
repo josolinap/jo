@@ -273,6 +273,56 @@ jobs:
         continue-on-error: true
         uses: actions/deploy-pages@v4
 
+      - name: Verify published backend discovery
+        if: always() && env.TUNNEL_URL != ''
+        continue-on-error: true
+        run: |
+          set +e
+          SUMMARY="$GITHUB_STEP_SUMMARY"
+          WANT_RUN="${GITHUB_RUN_ID}"
+          WANT_COMMIT="${GITHUB_SHA}"
+          WANT_API="${TUNNEL_URL}"
+          echo "" >> "$SUMMARY"
+          echo "### Published backend.json verification" >> "$SUMMARY"
+          ok=0
+          for url in "https://josolinap.dedyn.io/jo/backend.json" "https://josolinap.github.io/jo/backend.json"; do
+            echo "Checking $url"
+            got_run=""
+            got_commit=""
+            got_api=""
+            for i in $(seq 1 30); do
+              body=$(curl -fsSL --max-time 15 "${url}?cb=$(date +%s)-$i" 2>/tmp/pages_backend.err || true)
+              if [ -n "$body" ]; then
+                got_run=$(printf '%s' "$body" | jq -r '.runId // empty' 2>/dev/null || true)
+                got_commit=$(printf '%s' "$body" | jq -r '.commit // empty' 2>/dev/null || true)
+                got_api=$(printf '%s' "$body" | jq -r '.apiBase // empty' 2>/dev/null || true)
+                echo "[$i] runId=$got_run commit=$got_commit apiBase=$got_api"
+                if [ "$got_run" = "$WANT_RUN" ] && [ -n "$got_api" ]; then
+                  ok=1
+                  break
+                fi
+              fi
+              sleep 10
+            done
+            if [ $ok -eq 1 ]; then
+              echo "- **Published backend.json:** OK ($url)" >> "$SUMMARY"
+              echo "  - runId: \`$got_run\`" >> "$SUMMARY"
+              echo "  - commit: \`$got_commit\`" >> "$SUMMARY"
+              echo "  - apiBase: \`$got_api\`" >> "$SUMMARY"
+              break
+            else
+              echo "- **Publish check ($url):** WARN (latest seen runId=\`${got_run:-n/a}\`, apiBase=\`${got_api:-n/a}\`)" >> "$SUMMARY"
+              if [ -s /tmp/pages_backend.err ]; then echo "  - fetch error: \`$(head -c 120 /tmp/pages_backend.err)\`" >> "$SUMMARY"; fi
+            fi
+          done
+          if [ $ok -ne 1 ]; then
+            echo "- **Action:** Pages backend.json may still be stale/cached; redeploy if GUI shows unreachable." >> "$SUMMARY"
+          else
+            # also verify tunnel reachable through published apiBase
+            tcode=$(curl -sS -o /tmp/published_health.json -w "%{http_code}" --max-time 20 "$got_api/health" || true)
+            echo "- **Published apiBase /health:** HTTP ${tcode:-n/a}" >> "$SUMMARY"
+          fi
+
       - name: Smoke test and summary
         if: always() && env.TUNNEL_URL != ''
         run: |
