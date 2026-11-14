@@ -60,22 +60,22 @@ def _env(name: str) -> str:
 
 
 def _local_reachable() -> bool:
-    base = _env("LOCAL_BASE_URL")
+    base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
     if not base:
         return False
     try:
         import urllib.request
 
-        candidates = [
-            base.rstrip("/") + "/models",
-            base.rstrip("/").rsplit("/v1", 1)[0] + "/health",
-            base.rstrip("/") + "/health",
-        ]
+        b = base.rstrip("/")
+        root = b.rsplit("/v1", 1)[0] if b.endswith("/v1") else b
+        candidates = [b + "/models", b + "/health", root + "/health", root + "/v1/models"]
+        seen = set()
+        candidates = [u for u in candidates if not (u in seen or seen.add(u))]
         for url in candidates:
             for headers in ({}, {"Authorization": "Bearer " + (_env("LOCAL_API_KEY") or "sk-local")}):
                 try:
                     req = urllib.request.Request(url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=2) as r:
+                    with urllib.request.urlopen(req, timeout=3) as r:
                         if 200 <= getattr(r, "status", 200) < 500:
                             return True
                 except Exception:
@@ -139,6 +139,73 @@ def _omni_probe_urls(base: str):
             seen.add(u)
             out.append(u)
     return out
+
+
+_omni_models_cache: Dict[str, Any] = {"ts": 0.0, "base": "", "models": [], "ok_url": "", "error": ""}
+
+
+def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True) -> tuple[list[str], Dict[str, Any]]:
+    import time as _time
+    b = (base or "").rstrip("/")
+    if not b:
+        return [], {"reachable": False, "model_count": 0, "base": b, "ok_url": "", "error": "no_base"}
+    now = _time.time()
+    if use_cache and _omni_models_cache.get("base") == b and (now - float(_omni_models_cache.get("ts") or 0)) < 20:
+        cached = list(_omni_models_cache.get("models") or [])
+        return cached, {
+            "reachable": bool(_omni_models_cache.get("ok_url")) or bool(cached),
+            "model_count": len(cached),
+            "base": b,
+            "ok_url": _omni_models_cache.get("ok_url") or "",
+            "error": _omni_models_cache.get("error") or "",
+            "cached": True,
+        }
+    try:
+        import urllib.request as _ur, json as _json
+    except Exception as e:
+        return [], {"reachable": False, "model_count": 0, "base": b, "ok_url": "", "error": f"import:{e}"}
+    _murls = [b + "/models", (b.rsplit("/v1", 1)[0] + "/v1/models")]
+    _seen_murls = set(); _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
+    md = None
+    ok_url = ""
+    last_err = ""
+    for _mu in _murls:
+        for _mh in _omni_auth_header_variants():
+            try:
+                mreq = _ur.Request(_mu, headers=_mh or {})
+                with _ur.urlopen(mreq, timeout=timeout) as mr:
+                    status = getattr(mr, "status", 200)
+                    if 200 <= status < 500:
+                        md = _json.loads(mr.read().decode("utf-8", "replace"))
+                        ok_url = _mu
+                        break
+            except Exception as e:
+                last_err = f"{type(e).__name__}: {e}"
+                md = None
+                continue
+        if md is not None:
+            break
+    models: list[str] = []
+    if isinstance(md, dict):
+        for item in (md.get("data") or md.get("models") or []):
+            mid = (item or {}).get("id") if isinstance(item, dict) else item
+            if not mid and isinstance(item, dict):
+                mid = item.get("name") or item.get("model")
+            if not mid:
+                continue
+            mid = str(mid).strip()
+            if mid and mid not in models:
+                models.append(mid)
+    info = {
+        "reachable": bool(ok_url) or md is not None or bool(models),
+        "model_count": len(models),
+        "base": b,
+        "ok_url": ok_url,
+        "error": "" if (ok_url or md is not None or models) else (last_err or "unreachable"),
+        "cached": False,
+    }
+    _omni_models_cache.update({"ts": now, "base": b, "models": models, "ok_url": ok_url, "error": info["error"]})
+    return models, info
 
 
 def _omni_auth_header_variants():
