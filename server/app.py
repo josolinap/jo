@@ -153,12 +153,54 @@ def _omni_auth_header_variants():
 
 
 def _provider_status() -> Dict[str, Any]:
-    env_provider = _env("LLM_PROVIDER") or "openrouter"
-    local_ok = _local_reachable()
+    env_provider = (_env("LLM_PROVIDER") or "openrouter").lower()
     omni_base = _env("OMNIROUTE_BASE_URL")
+    # For web backend: only OmniRoute + local fallback when configured for omniroute/auto with OmniRoute base
+    omni_local_only = (env_provider == "omniroute") or bool(omni_base and env_provider in ("", "omniroute", "auto"))
+    local_ok = _local_reachable()
     omni_reachable = False
     if omni_base:
         omni_reachable = _probe_http_ok(_omni_probe_urls(omni_base), _omni_auth_header_variants(), timeout=2)
+
+    if omni_local_only:
+        keys = {
+            "openrouter": False,
+            "nvidia": False,
+            "doubleword": False,
+            "local": bool(_env("LOCAL_BASE_URL") or _env("LOCAL_API_KEY") or _env("OLLAMA_HOST")) or local_ok,
+            "omniroute": bool(omni_base) and omni_reachable,
+            "omniroute_configured": bool(omni_base),
+        }
+        provider = "omniroute"
+        model = _env("OMNIROUTE_MODEL") or "auto"
+        if not omni_reachable and local_ok:
+            provider = "local"
+            model = _detect_local_model(_env("LOCAL_BASE_URL") or (_env("OLLAMA_HOST").rstrip("/") + "/v1" if _env("OLLAMA_HOST") else ""))
+        configured = bool(omni_base) or local_ok
+        reasons = []
+        if omni_base and omni_reachable:
+            reasons.append("omniroute_primary_available")
+        elif omni_base:
+            reasons.append("omniroute_configured_but_unreachable")
+        if local_ok:
+            reasons.append("local_fallback_available" if (omni_base and not omni_reachable) else "local_available")
+        elif bool(_env("LOCAL_BASE_URL") or _env("LOCAL_API_KEY") or _env("OLLAMA_HOST")):
+            reasons.append("local_configured_but_unreachable")
+        if not configured:
+            reasons.append("no_provider_configured")
+        return {
+            "provider": provider,
+            "model": model,
+            "keys": keys,
+            "configured": configured,
+            "local_reachable": local_ok,
+            "omniroute_reachable": omni_reachable,
+            "env_provider": env_provider,
+            "reasons": reasons,
+            "fallback_active": bool(local_ok and not omni_reachable),
+            "model_source": "omniroute+local",
+        }
+
     keys = {
         "openrouter": bool(_env("OPENROUTER_API_KEY")),
         "nvidia": bool(_env("NVIDIA_API_KEY")),
@@ -432,8 +474,12 @@ def _run_via_llm(message: str, history: Optional[list[Dict[str, str]]] = None, r
             errors.append(f"local: {e}")
 
     strict_omniroute = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
-    # OmniRoute/local are always prioritized above. Direct provider chains run as additional fallbacks
-    # to keep responses working even if OmniRoute is misconfigured/unavailable (priority preserved).
+    # OmniRoute/local are always prioritized above. In web-backend omniroute mode, only local fallback is allowed (no direct/public providers).
+    if strict_omniroute:
+        priority = [e for e in errors if e.startswith(("omniroute", "local"))]
+        tail = errors[-8:]
+        summary = " | ".join((priority + [x for x in tail if x not in priority])[:12]) if errors else "no omniroute/local provider response"
+        raise RuntimeError(summary)
     # Strategy 3: default configured client (with its internal fallback chain)
     try:
         client = LLMClient()
@@ -573,12 +619,12 @@ def _fallback_response(message: str, err: Optional[str] = None) -> str:
     lines.append("")
     strict = (_env("LLM_PROVIDER").lower() == "omniroute") or (_env("OMNIROUTE_BASE_URL") and _env("LLM_PROVIDER").lower() in ("", "omniroute", "auto"))
     if strict:
-        lines.append("This backend is configured to use OmniRoute as the primary (and sole direct) model source.")
+        lines.append("This backend is configured to use OmniRoute as the primary model source, with local LLM as the only fallback.")
         lines.append("To make chat fully functional:")
         lines.append("- Ensure OmniRoute is running and reachable at OMNIROUTE_BASE_URL (e.g. http://127.0.0.1:20128/v1)")
         lines.append("- Configure at least one working upstream provider/model inside OmniRoute (and pass required provider keys/secrets to OmniRoute if needed)")
         lines.append("- Set OMNIROUTE_MODEL=auto (recommended) or a model ID available in OmniRoute")
-        lines.append("- Optional fallback: set LOCAL_BASE_URL to a running local OpenAI-compatible server")
+        lines.append("- Local fallback: ensure LOCAL_BASE_URL points to a running local OpenAI-compatible server (e.g. llama.cpp/Ollama)")
     else:
         lines.append("To make chat fully functional, configure a free provider on the backend and restart:")
         lines.append("- OmniRoute (recommended): set LLM_PROVIDER=omniroute, OMNIROUTE_BASE_URL, OMNIROUTE_MODEL=auto")
@@ -777,7 +823,10 @@ def _list_models() -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Local models
+    env_provider = (_env("LLM_PROVIDER") or "").lower()
+    omni_local_only = (env_provider == "omniroute") or bool(_env("OMNIROUTE_BASE_URL") and env_provider in ("", "omniroute", "auto"))
+
+    # Local models (fallback)
     local_base = _env("LOCAL_BASE_URL") or ("" if not _env("OLLAMA_HOST") else (_env("OLLAMA_HOST").rstrip("/") + "/v1"))
     if local_base:
         try:
@@ -799,11 +848,12 @@ def _list_models() -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Common free/direct options (shown as selectable hints; availability depends on config)
-    for mid in ["openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
-        add(mid, "openrouter")
-    for mid in ["meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it"]:
-        add(mid, "nvidia")
+    if not omni_local_only:
+        # Common free/direct options (shown as selectable hints; availability depends on config)
+        for mid in ["openrouter/free", "meta-llama/llama-3.2-3b-instruct:free", "google/gemma-3-4b-it:free", "qwen/qwen-2.5-7b-instruct:free", "mistralai/mistral-7b-instruct:free"]:
+            add(mid, "openrouter")
+        for mid in ["meta/llama-3.1-8b-instruct", "google/gemma-2-9b-it"]:
+            add(mid, "nvidia")
 
     return {"models": models, "default": _env("OMNIROUTE_MODEL") or "auto"}
 

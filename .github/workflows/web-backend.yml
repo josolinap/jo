@@ -84,7 +84,7 @@ jobs:
             sleep 2
           done
           if [ "$up" -ne 1 ]; then
-            echo "OmniRoute not ready; backend will fall back to local/direct providers"
+            echo "OmniRoute not ready; backend will use local fallback only"
             tail -n 120 /tmp/omniroute.log || true
             tail -n 60 /tmp/omniroute.watch.log || true
             exit 1
@@ -155,16 +155,13 @@ jobs:
           done
           echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; tail -n 60 /tmp/llama.watch.log || true; exit 1
 
-      - name: Start backend server (OmniRoute-prioritized)
+      - name: Start backend server (OmniRoute + local fallback)
         env:
-          # OmniRoute is the primary source for web chat; direct providers remain as fallbacks.
+          # OmniRoute is primary; local llama.cpp is the only fallback.
           LLM_PROVIDER: omniroute
           OUROBOROS_MODEL: auto
           OUROBOROS_MODEL_CODE: ${{ vars.OUROBOROS_MODEL_CODE || '' }}
           OUROBOROS_MODEL_LIGHT: ${{ vars.OUROBOROS_MODEL_LIGHT || '' }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
           OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
           OMNIROUTE_MODEL: auto
           OMNIROUTE_API_KEY: omniroute-local
@@ -177,7 +174,7 @@ jobs:
           JO_WEB_USE_AGENT: "0"
         run: |
           mkdir -p /home/runner/.jo_data
-          echo "=== Effective web-backend provider config ==="
+          echo "=== Effective web-backend provider config (OmniRoute + local fallback) ==="
           echo "LLM_PROVIDER=$LLM_PROVIDER"
           echo "OUROBOROS_MODEL=$OUROBOROS_MODEL"
           echo "OMNIROUTE_BASE_URL=$OMNIROUTE_BASE_URL"
@@ -201,9 +198,6 @@ jobs:
             OUROBOROS_MODEL="$OUROBOROS_MODEL" \
             OUROBOROS_MODEL_CODE="$OUROBOROS_MODEL_CODE" \
             OUROBOROS_MODEL_LIGHT="$OUROBOROS_MODEL_LIGHT" \
-            OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-            NVIDIA_API_KEY="$NVIDIA_API_KEY" \
-            DOUBLEWORD_API_KEY="$DOUBLEWORD_API_KEY" \
             OMNIROUTE_BASE_URL="$OMNIROUTE_BASE_URL" \
             OMNIROUTE_MODEL="$OMNIROUTE_MODEL" \
             OMNIROUTE_API_KEY="$OMNIROUTE_API_KEY" \
