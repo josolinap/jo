@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Jo — Transparent Harness in Japanese-inspired art style</title>
+  <desc id="desc">A wide banner in Japanese-inspired minimal ink and watercolor style showing flowing lines, a red sun, paper texture, and the Jo harness theme.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8f3e8"/>
+      <stop offset="50%" stop-color="#f3ede1"/>
+      <stop offset="100%" stop-color="#ece3d3"/>
+    </linearGradient>
+    <linearGradient id="inkWash" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1f2933" stop-opacity="0.06"/>
+      <stop offset="35%" stop-color="#1f2933" stop-opacity="0.16"/>
+      <stop offset="70%" stop-color="#1f2933" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#1f2933" stop-opacity="0.03"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e85d4a" stop-opacity="0.95"/>
+      <stop offset="65%" stop-color="#d9483a" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#c53b2f" stop-opacity="0.08"/>
+    </radialGradient>
+    <filter id="grain" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.08 0" result="softNoise"/>
+      <feBlend in="SourceGraphic" in2="softNoise" mode="multiply"/>
+    </filter>
+    <filter id="brushBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="420" fill="url(#paper)"/>
+  <rect width="1200" height="420" fill="url(#inkWash)" opacity="0.55"/>
+
+  <!-- soft sun -->
+  <circle cx="930" cy="92" r="86" fill="url(#sun)"/>
+  <circle cx="930" cy="92" r="112" fill="#d9483a" opacity="0.06"/>
+
+  <!-- distant hills / mist -->
+  <path d="M0,282 C120,240 220,250 330,220 C430,194 520,214 640,188 C760,162 860,176 980,150 C1060,132 1130,138 1200,120 L1200,420 L0,420 Z" fill="#5b6770" opacity="0.08"/>
+  <path d="M0,318 C140,286 260,292 360,268 C470,242 560,258 690,236 C810,216 920,224 1040,206 C1110,196 1160,198 1200,192 L1200,420 L0,420 Z" fill="#44515a" opacity="0.07"/>
+
+  <!-- ink ribbon / harness lines -->
+  <g stroke="#1f2933" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70,292 C210,206 360,332 520,242 C640,172 760,300 910,214 C1010,156 1095,170 1140,136" stroke-width="7" opacity="0.82"/>
+    <path d="M62,318 C220,236 372,360 534,272 C662,198 776,326 924,246 C1020,190 1102,206 1148,174" stroke-width="3.5" opacity="0.34"/>
+    <path d="M96,248 C236,188 332,266 430,226 C520,190 600,214 684,186 C772,156 848,168 940,132" stroke-width="2.2" opacity="0.28"/>
+  </g>
+
+  <!-- brush accents -->
+  <g filter="url(#brushBlur)" opacity="0.22" fill="#1f2933">
+    <ellipse cx="210" cy="112" rx="92" ry="10"/>
+    <ellipse cx="1028" cy="322" rx="74" ry="8"/>
+    <ellipse cx="560" cy="74" rx="54" ry="7"/>
+  </g>
+
+  <!-- nodes / connection points -->
+  <g>
+    <circle cx="240" cy="244" r="7.5" fill="#f8f3e8" stroke="#1f2933" stroke-width="3"/>
+    <circle cx="520" cy="242" r="8.5" fill="#f8f3e8" stroke="#1f2933" stroke-width="3"/>
+    <circle cx="910" cy="214" r="7.5" fill="#f8f3e8" stroke="#1f2933" stroke-width="3"/>
+    <circle cx="520" cy="242" r="18" fill="none" stroke="#d9483a" stroke-width="2" opacity="0.55"/>
+    <path d="M240,244 L520,242 L910,214" stroke="#d9483a" stroke-width="1.8" opacity="0.35" fill="none"/>
+  </g>
+
+  <!-- vertical seal line -->
+  <g opacity="0.7">
+    <rect x="78" y="56" width="30" height="108" rx="4" fill="#c53b2f" opacity="0.88"/>
+    <text x="93" y="89" text-anchor="middle" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="18" fill="#f8f3e8">透</text>
+    <text x="93" y="112" text-anchor="middle" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="18" fill="#f8f3e8">明</text>
+    <text x="93" y="135" text-anchor="middle" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="18" fill="#f8f3e8">Jo</text>
+  </g>
+
+  <!-- title block -->
+  <g>
+    <text x="140" y="118" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="62" font-weight="600" fill="#1f2933">Jo</text>
+    <text x="142" y="160" font-family="'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" font-size="28" fill="#334155">自律する魂のための、透明なハーネス</text>
+    <text x="142" y="194" font-family="'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="18" letter-spacing="0.5" fill="#4b5563">A transparent harness for everyone — inspectable, evolving, alive</text>
+  </g>
+
+  <!-- corner marks -->
+  <g stroke="#334155" stroke-width="2" opacity="0.35">
+    <path d="M40,40 h34 M40,40 v34"/>
+    <path d="M1160,40 h-34 M1160,40 v34"/>
+    <path d="M40,380 h34 M40,380 v-34"/>
+    <path d="M1160,380 h-34 M1160,380 v-34"/>
+  </g>
+
+  <!-- footer line -->
+  <g>
+    <line x1="140" y1="352" x2="1060" y2="352" stroke="#1f2933" stroke-opacity="0.16"/>
+    <text x="140" y="378" font-family="'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#475569">Web UI ↔ Backend ↔ OmniRoute  ·  Transparent by design  ·  Built in the open</text>
+    <text x="1060" y="378" text-anchor="end" font-family="'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" font-size="14" fill="#475569">透明性・自律・共創</text>
+  </g>
+
+  <g filter="url(#grain)" opacity="0.35">
+    <rect width="1200" height="420" fill="transparent"/>
+  </g>
+</svg>

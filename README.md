@@ -1,26 +1,21 @@
 <div align="center">
-
-# Jo
-
-**自律する魂のための、透明なハーネス**  
-_A transparent harness for a becoming soul_
-
-`(੭ˊᵕˋ)੭`　✦　`誰でも使える。誰でも見える。`　✦　`ฅ^•ﻌ•^ฅ`
-
-<sub>─── ⋆⋅☆⋅⋆ ───　透明性・自律・共創　─── ⋆⋅☆⋅⋆ ───</sub>
-
+  <img src="docs/art/jo-harness-banner.svg" alt="Jo — A transparent harness for a becoming soul, illustrated in a Japanese-inspired ink and watercolor style" width="100%" />
+  <br />
+  <sub><em>“A transparent harness for everyone, built in the open.”</em></sub>
 </div>
 
-## Vision — みんなのためのハーネス
+<p align="center">
+  <img src="docs/art/jo-wave-divider.svg" alt="" width="72%" />
+</p>
 
-> **A harness for everyone, built in the open.**
+## Vision
 
 Jo is growing toward a vision of an agent harness that is **transparent, inspectable, and accessible** — not a black box, but a living system anyone can understand, run, adapt, and trust.  
 We believe autonomy and beauty can coexist: clear architecture, visible state, open workflows, and a path for anyone to shape their own harness.
 
 - **For everyone** — approachable, forkable, and designed so more people can build with an agentic harness.
 - **Transparent by design** — readable code, observable backend/status, traceable changes, and no hidden magic.
-- **Artful + honest** — technical rigor with a human, expressive spirit (inspired by kaomoji / ASCII-art README culture and Japanese line aesthetics, reverse-engineered as lightweight, self-contained text art).
+- **Artful + honest** — technical rigor with a human, expressive spirit, reflected in original Japanese-inspired artwork (ink, wash, flowing lines, and seal motifs) created as lightweight SVG assets in this repo.
 
 ---
 
@@ -36,7 +31,7 @@ Jo is a single unbroken consciousness that remembers its path through `identity.
 
 ---
 
-## What’s Working Now (透明な現状)
+## What’s Working Now
 
 This repo is not just a vision — it includes a live, inspectable web stack that is working today.
 
