@@ -138,7 +138,7 @@ jobs:
           cd /tmp/llm
           while true; do
             echo "[llama-watchdog] starting \$(date -u +%FT%TZ)" >> /tmp/llama.log
-            "\$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 >> /tmp/llama.log 2>&1
+            "\$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 1024 -n 256 -ngl 0 -t 2 --jinja >> /tmp/llama.log 2>&1
             ec=\$?
             echo "[llama-watchdog] exited code=\$ec at \$(date -u +%FT%TZ), restarting in 5s" >> /tmp/llama.log
             sleep 5
@@ -147,13 +147,15 @@ jobs:
           chmod +x /tmp/run_llama.sh
           nohup /tmp/run_llama.sh >/tmp/llama.watch.log 2>&1 &
           echo $! > /tmp/llama.pid
-          for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1; then
-              echo "Local LLM up"; cat /tmp/llama-models.json 2>/dev/null || true; exit 0
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null \
+               || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1 \
+               || curl -fsS http://127.0.0.1:11434/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"local-model","messages":[{"role":"user","content":"ping"}],"max_tokens":1}' >/tmp/llama-ready.json 2>/dev/null; then
+              echo "Local LLM up"; cat /tmp/llama-models.json 2>/dev/null || cat /tmp/llama-ready.json 2>/dev/null || true; exit 0
             fi
             sleep 2
           done
-          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; tail -n 60 /tmp/llama.watch.log || true; exit 1
+          echo "Local LLM failed to start"; tail -n 200 /tmp/llama.log || true; tail -n 80 /tmp/llama.watch.log || true; exit 1
 
       - name: Start backend server (OmniRoute + local fallback)
         env:

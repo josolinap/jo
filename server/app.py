@@ -146,6 +146,7 @@ _omni_models_cache: Dict[str, Any] = {"ts": 0.0, "base": "", "models": [], "ok_u
 
 def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True) -> tuple[list[str], Dict[str, Any]]:
     import time as _time
+
     b = (base or "").rstrip("/")
     if not b:
         return [], {"reachable": False, "model_count": 0, "base": b, "ok_url": "", "error": "no_base"}
@@ -165,7 +166,8 @@ def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True)
     except Exception as e:
         return [], {"reachable": False, "model_count": 0, "base": b, "ok_url": "", "error": f"import:{e}"}
     _murls = [b + "/models", (b.rsplit("/v1", 1)[0] + "/v1/models")]
-    _seen_murls = set(); _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
+    _seen_murls = set()
+    _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
     md = None
     ok_url = ""
     last_err = ""
@@ -187,7 +189,7 @@ def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True)
             break
     models: list[str] = []
     if isinstance(md, dict):
-        for item in (md.get("data") or md.get("models") or []):
+        for item in md.get("data") or md.get("models") or []:
             mid = (item or {}).get("id") if isinstance(item, dict) else item
             if not mid and isinstance(item, dict):
                 mid = item.get("name") or item.get("model")
@@ -616,11 +618,23 @@ def _run_via_llm(
             # prioritize explicit/free/concrete discovered models over many auto aliases, cap attempts
             def _omni_rank(mid: str) -> tuple:
                 ml = mid.lower()
+                # Avoid routes/providers known to require browser/playwright runtimes in headless CI OmniRoute
+                broken_env = ml.startswith("cfp/") or "cloudflare playground" in ml or "playwright" in ml
                 is_free = ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml
                 is_auto_alias = ml.startswith("auto")
                 is_concrete = ("/" in ml) and not is_auto_alias
                 return (
-                    0 if is_free else 1 if (ml == "auto") else 2 if is_concrete else 3 if is_auto_alias else 4,
+                    9
+                    if broken_env
+                    else 0
+                    if is_free
+                    else 1
+                    if (ml == "auto")
+                    else 2
+                    if is_concrete
+                    else 3
+                    if is_auto_alias
+                    else 4,
                     0 if "llama" in ml or "qwen" in ml or "gemma" in ml or "mistral" in ml or "gpt" in ml else 1,
                 )
 
@@ -631,8 +645,16 @@ def _run_via_llm(
                     candidates.append(m)
             if not candidates:
                 candidates = ["auto"]
-            for om in candidates[:6]:
+            tried = 0
+            for om in candidates:
+                if tried >= 10:
+                    break
+                oml = om.lower()
+                # Skip known-broken browser-runtime providers in this environment unless explicitly requested
+                if oml.startswith("cfp/") and req_model.lower() != oml:
+                    continue
                 try:
+                    tried += 1
                     resp = ocli.chat.completions.create(model=om, messages=msgs, temperature=0, max_tokens=512)
                     msg = (resp.model_dump().get("choices") or [{}])[0].get("message") or {}
                     text = _extract_text(msg)
@@ -644,7 +666,15 @@ def _run_via_llm(
                         errors.append(f"omniroute({om}): empty response")
                 except Exception as oe:
                     last_oe = oe
+                    emsg = str(oe)
                     errors.append(f"omniroute({om}): {oe}")
+                    # If OmniRoute auto-routed to a browser-dependent provider, keep trying other candidates
+                    if (
+                        "playwright" in emsg.lower()
+                        or "chromium browser" in emsg.lower()
+                        or "cloudflare playground" in emsg.lower()
+                    ):
+                        continue
             if last_oe and not any(e.startswith("omniroute:") for e in errors):
                 errors.append(f"omniroute: {last_oe}")
         except Exception as e:
