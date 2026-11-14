@@ -860,16 +860,7 @@ function renderModelOptions() {
     if (!groups.has(p)) groups.set(p, []);
     groups.get(p).push(m);
   }
-  const order = [
-    "omniroute",
-    "local",
-    "openrouter",
-    "nvidia",
-    "doubleword",
-    "pollinations",
-    "auto",
-    "other",
-  ];
+  const order = ["auto", "omniroute", "other"];
   const keep = new Set();
   modelSelect.innerHTML = "";
   const addOpt = (parent, id, label) => {
@@ -1011,11 +1002,7 @@ function updateHeader() {
     const effective = healthInfo.model ? String(healthInfo.model) : "auto";
     const parts = [provider];
     if (effective && effective !== "auto") parts.push(effective);
-    const subtitleState = !configured
-      ? "warn"
-      : false
-        ? "warn"
-        : "ok";
+    const subtitleState = !configured ? "warn" : "ok";
     if (chatSubtitle) {
       chatSubtitle.textContent =
         (configured ? "Ready · " : "Reachable · ") +
@@ -1033,20 +1020,20 @@ function updateHeader() {
     }
     if (backendMeta) {
       const meta = [];
-      if (healthInfo.provider) meta.push("provider: " + healthInfo.provider);
+      meta.push("provider: " + (healthInfo.provider || "omniroute"));
       if (healthInfo.model) meta.push("effective model: " + healthInfo.model);
       meta.push("selected: " + (selected || "auto"));
+      if (
+        healthInfo.omniroute &&
+        typeof healthInfo.omniroute.model_count === "number"
+      ) {
+        meta.push("models available: " + healthInfo.omniroute.model_count);
+      }
       if (healthInfo.omniroute_reachable) meta.push("omniroute: reachable");
       else if (healthInfo.keys && healthInfo.keys.omniroute_configured)
         meta.push("omniroute: unreachable");
       if (Array.isArray(healthInfo.reasons) && healthInfo.reasons.length) {
-        meta.push("reasons: " + healthInfo.reasons.join(", "));
-      }
-      if (healthInfo.keys) {
-        const k = Object.keys(healthInfo.keys).filter(
-          (x) => healthInfo.keys[x],
-        );
-        if (k.length) meta.push("keys/config: " + k.join(", "));
+        meta.push("status: " + healthInfo.reasons.join(", "));
       }
       if (!getSavedApiBase() && discoveredMeta) {
         const dm = [];
@@ -1060,7 +1047,7 @@ function updateHeader() {
                   ? `${mins}m ago`
                   : `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
             dm.push("updated " + ageLabel);
-            if (mins >= 30) dm.push("possibly stale (ephemeral backend)");
+            if (mins >= 30) dm.push("possibly stale");
           } else {
             dm.push("updated " + discoveredMeta.updatedAt);
           }
@@ -1068,7 +1055,9 @@ function updateHeader() {
         if (discoveredMeta.commit)
           dm.push("commit " + String(discoveredMeta.commit).slice(0, 7));
         if (discoveredMeta.runId) dm.push("run " + discoveredMeta.runId);
-        if (dm.length) meta.push("backend: " + dm.join(", "));
+        if (dm.length) meta.push("deployment: " + dm.join(", "));
+      } else if (getSavedApiBase()) {
+        meta.push("source: saved API base");
       }
       backendMeta.textContent = meta.join(" · ");
     }
@@ -1080,20 +1069,19 @@ function updateHeader() {
         !healthInfo.omniroute_reachable
       ) {
         hints.push(
-          "OmniRoute configured but unreachable. Check OMNIROUTE_BASE_URL and upstream provider configuration.",
+          "OmniRoute is configured but unreachable. Check the OmniRoute service, OMNIROUTE_BASE_URL, and upstream provider/model configuration.",
+        );
+      } else if (!configured) {
+        hints.push(
+          "Backend is reachable, but OmniRoute is not configured. Set OMNIROUTE_BASE_URL and restart the backend.",
         );
       }
       if (
         Array.isArray(healthInfo.reasons) &&
         healthInfo.reasons.length &&
-        !configured
+        (!configured || !healthInfo.omniroute_reachable)
       ) {
         hints.push("Readiness: " + healthInfo.reasons.join(", ") + ".");
-      }
-      if (!configured) {
-        hints.push(
-          "Backend reachable but no model/provider appears configured. Set provider keys or enable OmniRoute/local backend.",
-        );
       }
       if (
         !getSavedApiBase() &&
@@ -1102,14 +1090,12 @@ function updateHeader() {
         discoveryAgeMs >= 30 * 60000
       ) {
         hints.push(
-          "Discovered backend.json is old; if chat fails the backend run may have expired. Wait for redeploy or set a fresh API base.",
+          "Discovered backend info is old; if chat fails, the backend run may have expired. Wait for redeploy or set a fresh API base.",
         );
       }
       backendHint.textContent = hints.join(" ");
     }
-    setConnState(
-      !configured ? "warn" : "ok",
-    );
+    setConnState(!configured ? "warn" : "ok");
   } else {
     if (chatSubtitle) {
       chatSubtitle.textContent = "Connecting to backend…";

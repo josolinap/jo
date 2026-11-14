@@ -187,7 +187,7 @@
       <div class="modal-header">
         <div>
           <h2 id="settings-title">Settings</h2>
-          <p class="modal-sub">Configure backend, model, and appearance</p>
+          <p class="modal-sub">Configure backend connection, model selection, and appearance</p>
         </div>
         <button class="icon-btn ghost" id="settings-close" type="button" aria-label="Close settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -203,7 +203,7 @@
               <button type="button" class="btn secondary" id="settings-refresh">Refresh</button>
               <button type="button" class="btn secondary" id="settings-copy-base">Copy base</button>
             </div>
-            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> when available. Use “Clear saved API base” to re-enable auto-discovery after manual changes.</span>
+            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> (recommended for GitHub Pages deploys). Save a custom URL only for testing or a different backend, and use “Clear saved API base” to return to auto-discovery.</span>
           </label>
           <div class="status-card" id="status-card">
             <div class="status-row"><span class="status-dot" id="status-dot"></span><span id="backend-status">Status: unknown</span></div>
@@ -219,7 +219,7 @@
             <select id="model-select" class="select-input" size="7">
               <option value="auto">Auto (recommended, OmniRoute)</option>
             </select>
-            <span class="field-help">Models load automatically from the backend. Pick “Auto” for best available routing, or choose a specific free/model option.</span>
+            <span class="field-help">Models are discovered from OmniRoute. Keep <strong>Auto</strong> for best available routing, or choose a specific model.</span>
           </label>
           <label class="field">
             <span class="field-label">Filter models (optional)</span>
