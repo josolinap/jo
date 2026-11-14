@@ -308,25 +308,36 @@ jobs:
           if [ $S -eq 0 ]; then
             PROVIDER=$(jq -r '.provider // .active_provider // "?"' /tmp/status.json 2>/dev/null || echo "?")
             MODEL=$(jq -r '.model // .active_model // "?"' /tmp/status.json 2>/dev/null || echo "?")
+            MSRC=$(jq -r '.model_source // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMNI=$(jq -r '.omniroute_reachable // .omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMC=$(jq -r '.omniroute.model_count // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
-            LOCAL=$(jq -r '.local_reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_BASE=$(jq -r '.omniroute.base_url // .omniroute_base_url // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_OK=$(jq -r '.omniroute.ok_url // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_ERR=$(jq -r '.omniroute.error // ""' /tmp/status.json 2>/dev/null || echo "")
+            LOCAL=$(jq -r '.local_reachable // .local.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             FALLBACK=$(jq -r '.fallback_active // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             REASONS=$(jq -r '(.reasons // []) | join(", ")' /tmp/status.json 2>/dev/null || echo "")
-            echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\`" >> "$SUMMARY"
-            echo "- **OmniRoute reachable:** \`$OMNI\`" >> "$SUMMARY"
-            echo "- **OmniRoute model count:** \`$OMC\`" >> "$SUMMARY"
+            echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\` (source: \`$MSRC\`)" >> "$SUMMARY"
+            echo "- **OmniRoute reachable:** \`$OMNI\` (models: \`$OMC\`)" >> "$SUMMARY"
+            echo "- **OmniRoute base:** \`$OMNI_BASE\`" >> "$SUMMARY"
+            if [ -n "$OMNI_OK" ] && [ "$OMNI_OK" != "n/a" ] && [ "$OMNI_OK" != "null" ]; then echo "- **OmniRoute models endpoint:** \`$OMNI_OK\`" >> "$SUMMARY"; fi
+            if [ -n "$OMNI_ERR" ] && [ "$OMNI_ERR" != "null" ]; then echo "- **OmniRoute probe note:** ${OMNI_ERR}" >> "$SUMMARY"; fi
             echo "- **Local reachable:** \`$LOCAL\`" >> "$SUMMARY"
             echo "- **Fallback active:** \`$FALLBACK\`" >> "$SUMMARY"
             if [ -n "$REASONS" ]; then echo "- **Readiness reasons:** $REASONS" >> "$SUMMARY"; fi
           else
             echo "_No /v1/status JSON available._" >> "$SUMMARY"
+            if [ -s /tmp/status.err ]; then echo "- status fetch error: \`$(head -c 180 /tmp/status.err)\`" >> "$SUMMARY"; fi
           fi
           if [ $M -eq 0 ]; then
             MCOUNT=$(jq -r '(.models // []) | length' /tmp/models.json 2>/dev/null || echo "0")
-            MSAMPLE=$(jq -r '(.models // [])[:8] | map(if type=="object" then (.id // .name // "?") else tostring end) | join(", ")' /tmp/models.json 2>/dev/null || echo "")
-            echo "- **Discovered /v1/models:** \`$MCOUNT\`" >> "$SUMMARY"
+            OMNI_DISC=$(jq -r '.counts.omniroute // "n/a"' /tmp/models.json 2>/dev/null || echo "n/a")
+            LOCAL_DISC=$(jq -r '.counts.local // "n/a"' /tmp/models.json 2>/dev/null || echo "n/a")
+            MSAMPLE=$(jq -r '(.models // [])[:10] | map(if type=="object" then (.id // .name // "?") else tostring end) | join(", ")' /tmp/models.json 2>/dev/null || echo "")
+            echo "- **Discovered /v1/models:** \`$MCOUNT\` (omniroute: \`$OMNI_DISC\`, local: \`$LOCAL_DISC\`)" >> "$SUMMARY"
             if [ -n "$MSAMPLE" ]; then echo "- **Sample models:** $MSAMPLE" >> "$SUMMARY"; fi
+          else
+            if [ -s /tmp/models.err ]; then echo "- models fetch error: \`$(head -c 180 /tmp/models.err)\`" >> "$SUMMARY"; fi
           fi
           echo "" >> "$SUMMARY"
 
@@ -387,4 +398,3 @@ jobs:
             sleep 30
           done
           echo "Duration reached, stopping"
-
