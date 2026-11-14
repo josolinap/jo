@@ -616,19 +616,48 @@ def _run_via_llm(
                 pass
 
             # prioritize explicit/free/concrete discovered models over many auto aliases, cap attempts
-            def _is_browser_broken(ml: str) -> bool:
-                return ml.startswith("cfp/") or "cloudflare playground" in ml or "playwright" in ml
+            def _skip_in_ci(ml: str, explicit: bool = False) -> bool:
+                if explicit:
+                    return False
+                # Known unusable in headless CI OmniRoute: browser runtime deps or unconfigured bridges
+                return (
+                    ml.startswith("cfp/")
+                    or ml.startswith("dva/")
+                    or "cloudflare playground" in ml
+                    or "playwright" in ml
+                    or "devin agentic bridge" in ml
+                )
 
             def _omni_rank(mid: str) -> tuple:
                 ml = mid.lower()
-                broken_env = _is_browser_broken(ml)
+                broken_env = _skip_in_ci(ml)
                 is_free = ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml
                 is_auto_alias = ml.startswith("auto")
                 is_concrete = ("/" in ml) and not is_auto_alias
-                preferred_family = 0 if any(k in ml for k in ("llama", "qwen", "gemma", "mistral", "gpt-oss", "deepseek", "glm", "kimi", "minimax")) else 1
+                preferred_family = (
+                    0
+                    if any(
+                        k in ml
+                        for k in (
+                            "llama",
+                            "qwen",
+                            "gemma",
+                            "mistral",
+                            "gpt-oss",
+                            "deepseek",
+                            "glm",
+                            "kimi",
+                            "minimax",
+                            "phi",
+                            "smol",
+                        )
+                    )
+                    else 1
+                )
                 return (
-                    9 if broken_env else 0 if is_free else 1 if is_concrete else 3 if is_auto_alias else 4,
+                    9 if broken_env else 0 if is_free else 1 if is_concrete else 4 if is_auto_alias else 3,
                     preferred_family,
+                    0 if is_free else 1,
                 )
 
             discovered = sorted(discovered, key=_omni_rank)
@@ -641,43 +670,43 @@ def _run_via_llm(
                 ml = mid.lower()
                 if mid in candidates:
                     return
-                # In this headless CI env, cfp/* providers need Playwright/Chromium; skip unless explicitly requested
-                if ml.startswith("cfp/") and (requested_model or "").strip().lower() != ml:
+                if _skip_in_ci(ml, explicit=((requested_model or "").strip().lower() == ml)):
                     return
                 candidates.append(mid)
 
             # 1) explicit request (if any)
             if req_model and req_model.lower() != "auto":
                 _add_candidate(req_model)
-            # 2) concrete discovered models (non-auto, non-cfp)
+            # 2) concrete discovered models (non-auto, preferred families first by sort)
             for m in discovered:
                 ml = m.lower()
-                if not ml.startswith("auto") and not ml.startswith("cfp/"):
+                if not ml.startswith("auto"):
                     _add_candidate(m)
             # 3) configured env model if concrete
             if env_model and env_model.lower() != "auto":
                 _add_candidate(env_model)
-            # 4) safe aliases only as last resort (auto can route to browser-dependent providers in this env)
-            if req_is_explicit:
-                for m in ("openrouter/free", "auto"):
-                    _add_candidate(m)
-            elif not candidates:
-                # no concrete models discovered; try limited aliases as fallback
-                for m in ("openrouter/free", "auto"):
-                    _add_candidate(m)
+            # 4) safe/common fallbacks
+            for m in ("openrouter/free",):
+                _add_candidate(m)
+            # 5) aliases only if explicitly requested or nothing else
+            if req_is_explicit or not any(not c.lower().startswith("auto") for c in candidates):
+                for m in discovered:
+                    if m.lower().startswith("auto"):
+                        _add_candidate(m)
+                _add_candidate("auto")
             if not candidates:
                 candidates = ["openrouter/free", "auto"]
 
             tried = 0
-            saw_browser_error = False
+            saw_env_error = False
+            max_tries = 20 if not req_is_explicit else 12
             for om in candidates:
-                if tried >= 12:
+                if tried >= max_tries:
                     break
                 oml = om.lower()
-                if oml.startswith("cfp/") and (requested_model or "").strip().lower() != oml:
+                if _skip_in_ci(oml, explicit=((requested_model or "").strip().lower() == oml)):
                     continue
-                # After browser-runtime failures, avoid auto aliases (they may route back to cfp/playwright providers)
-                if saw_browser_error and oml.startswith("auto") and not req_is_explicit and env_model.lower() != oml:
+                if saw_env_error and oml.startswith("auto") and not req_is_explicit and env_model.lower() != oml:
                     continue
                 try:
                     tried += 1
@@ -694,13 +723,17 @@ def _run_via_llm(
                     last_oe = oe
                     emsg = str(oe)
                     errors.append(f"omniroute({om}): {oe}")
-                    # If routed to a browser-dependent provider, keep trying concrete alternatives
+                    low_emsg = emsg.lower()
+                    # If provider is unavailable due to CI env/runtime config, keep trying others
                     if (
-                        "playwright" in emsg.lower()
-                        or "chromium browser" in emsg.lower()
-                        or "cloudflare playground" in emsg.lower()
+                        "playwright" in low_emsg
+                        or "chromium browser" in low_emsg
+                        or "cloudflare playground" in low_emsg
+                        or "devin agentic bridge" in low_emsg
+                        or "not configured" in low_emsg
+                        and ("503" in low_emsg or "502" in low_emsg)
                     ):
-                        saw_browser_error = True
+                        saw_env_error = True
                         continue
             if last_oe and not any(e.startswith("omniroute:") for e in errors):
                 errors.append(f"omniroute: {last_oe}")
