@@ -62,7 +62,7 @@
         </div>
 
         <div class="sidebar-bottom">
-          <div class="sidebar-footnote">OmniRoute-first · auto fallback</div>
+          <div class="sidebar-footnote">OmniRoute-only</div>
         </div>
       </aside>
 
@@ -114,28 +114,6 @@
                       <h1 id="empty-greeting">Good evening</h1>
                       <p class="welcome-sub">How can Jo help you today?</p>
                     </div>
-                  </div>
-                  <div class="welcome-grid">
-                    <button type="button" class="suggest-card" data-prompt="Who are you and what can you do?">
-                      <span class="suggest-icon">✨</span>
-                      <span class="suggest-title">Meet Jo</span>
-                      <span class="suggest-desc">Learn what Jo can do and how it thinks</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Help me plan and build a small web app step by step.">
-                      <span class="suggest-icon">🛠️</span>
-                      <span class="suggest-title">Build something</span>
-                      <span class="suggest-desc">Plan, design, and implement an idea</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Check backend status, readiness, and available models right now.">
-                      <span class="suggest-icon">🔌</span>
-                      <span class="suggest-title">Check status</span>
-                      <span class="suggest-desc">See backend health, readiness, and available models</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Review my idea and suggest improvements with clear next steps.">
-                      <span class="suggest-icon">💡</span>
-                      <span class="suggest-title">Improve an idea</span>
-                      <span class="suggest-desc">Get feedback and actionable next steps</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -209,7 +187,7 @@
       <div class="modal-header">
         <div>
           <h2 id="settings-title">Settings</h2>
-          <p class="modal-sub">Configure backend, model, and appearance</p>
+          <p class="modal-sub">Configure backend connection, model selection, and appearance</p>
         </div>
         <button class="icon-btn ghost" id="settings-close" type="button" aria-label="Close settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -225,7 +203,7 @@
               <button type="button" class="btn secondary" id="settings-refresh">Refresh</button>
               <button type="button" class="btn secondary" id="settings-copy-base">Copy base</button>
             </div>
-            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> when available. Use “Clear saved API base” to re-enable auto-discovery after manual changes.</span>
+            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> (recommended for GitHub Pages deploys). Save a custom URL only for testing or a different backend, and use “Clear saved API base” to return to auto-discovery.</span>
           </label>
           <div class="status-card" id="status-card">
             <div class="status-row"><span class="status-dot" id="status-dot"></span><span id="backend-status">Status: unknown</span></div>
@@ -237,17 +215,20 @@
         <section class="settings-section">
           <h3>Model</h3>
           <label class="field">
-            <span class="field-label">Search & select model</span>
-            <input id="model-search" type="text" class="select-input" placeholder="Filter models (e.g. free, llama, gemma, auto)…" autocomplete="off">
+            <span class="field-label">Chat model</span>
+            <select id="model-select" class="select-input" size="7">
+              <option value="auto">Auto (recommended, OmniRoute)</option>
+            </select>
+            <span class="field-help">Models are discovered from OmniRoute. Keep <strong>Auto</strong> for best available routing, or choose a specific model.</span>
           </label>
           <label class="field">
-            <span class="field-label">Chat model</span>
-            <select id="model-select" class="select-input" size="6">
-              <option value="auto">Auto (recommended, OmniRoute-first)</option>
-            </select>
-            <span class="field-help">“Auto” lets the backend choose the best available route (OmniRoute prioritized with fallbacks). Select a specific model to prefer it. Options depend on connected providers/backends.</span>
+            <span class="field-label">Filter models (optional)</span>
+            <div class="field-row">
+              <input id="model-search" type="text" class="select-input" placeholder="Type to filter models…" autocomplete="off">
+              <button type="button" class="btn secondary" id="settings-refresh-models">Refresh models</button>
+            </div>
           </label>
-          <div class="model-info" id="model-info"></div>
+          <div class="model-info" id="model-info">Loading available models…</div>
         </section>
 
         <section class="settings-section">

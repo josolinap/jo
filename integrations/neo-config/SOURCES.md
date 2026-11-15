@@ -8,7 +8,7 @@ Curated files copied/adapted on 2026-11-13 from public GitHub repos:
   - `agent/jo.md` → `integrations/neo-config/neo-config/agent/jo.md`
   - `agent/neo.md` → `integrations/neo-config/neo-config/agent/neo.md`
   - `AGENTS.md` (excerpt/reference captured in notes) — upstream file used for alignment; see repo for full text
-- Notes: `OmniRoute` appears as a submodule in upstream; integration here focuses on Jo’s existing OmniRoute-first backend/workflow implementation.
+- Notes: `OmniRoute` appears as a submodule in upstream; integration here focuses on Jo’s OmniRoute-only web backend/workflow implementation.
 
 ## josolinap/arch-neo-config
 - Repo: https://github.com/josolinap/arch-neo-config (default: `dev`)

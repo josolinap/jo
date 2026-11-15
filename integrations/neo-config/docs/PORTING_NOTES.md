@@ -4,7 +4,7 @@
 
 - **GUI (static, GitHub Pages):** `gui/` — chat UI with settings, searchable/grouped model picker, streaming, local sessions, export/import, reconnect/auto-discovery via `./backend.json`, health/status/model diagnostics.
 - **Backend (ephemeral, Actions-hosted):** `server/app.py` (FastAPI) — `/health`, `/v1/status`, `/v1/models`, `/v1/chat`, `/v1/chat/stream`; OmniRoute-prioritized strategy with discovery/ranking, explicit model preference, multi-layer fallbacks, bad-response filtering, provider/model/latency metadata.
-- **Live deploy owner:** `.github/workflows/web-backend.yml` — starts OmniRoute + local llama.cpp fallback + uvicorn + tunnel, writes `gui/backend.json` (with metadata), deploys `gui/` to Pages, runs smoke/summary (incl. chat probe), keeps alive. `pages.yml` validates GUI only.
+- **Live deploy owner:** `.github/workflows/web-backend.yml` — starts OmniRoute + uvicorn + tunnel (OmniRoute-only backend), writes `gui/backend.json` (with metadata), deploys `gui/` to Pages, runs smoke/summary (incl. chat probe), keeps alive. `pages.yml` validates GUI only.
 - **Agent/bot:** `.github/workflows/run.yml` and Ouroboros/supervisor runtime (separate concern from web GUI/backend).
 
 ## How upstream assets map to purpose
@@ -13,7 +13,7 @@
    - *Purpose:* consistent guardian/executor roles (evidence-first verification, execution discipline).
    - *Wiring:* keep as curated references in `integrations/neo-config/**/agent/`; selectively reflect compatible guidance in `.jo_rules/`, `.jo_skills/`, or operator prompts without overriding Jo/Ouroboros-specific safety and repo rules.
 
-2. **OmniRoute-first operations**
+2. **OmniRoute-only operations**
    - *Purpose:* reliable, free-first routing with fallbacks.
    - *Wiring:* already implemented in `server/app.py` and `web-backend.yml`. Upstream configs reinforce: keep OmniRoute primary, surface reachability/model availability in `/v1/status` & UI, preserve fallback transparency and smoke checks.
 

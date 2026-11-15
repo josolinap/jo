@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 90" role="img" aria-labelledby="title desc" preserveAspectRatio="none">
+  <title id="title">Japanese-inspired ink wave divider</title>
+  <desc id="desc">A minimal decorative divider with flowing ink-like waves and a small red accent.</desc>
+  <rect width="1200" height="90" fill="none"/>
+  <path d="M0,54 C120,20 240,82 360,48 C480,14 600,76 720,46 C840,16 960,72 1080,42 C1120,32 1160,34 1200,40" fill="none" stroke="#334155" stroke-width="4.5" stroke-linecap="round" opacity="0.72"/>
+  <path d="M0,62 C130,34 250,88 370,58 C490,28 610,84 730,56 C850,28 970,80 1090,52 C1130,44 1165,46 1200,50" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
+  <circle cx="600" cy="45" r="5" fill="#c53b2f" opacity="0.82"/>
+  <circle cx="600" cy="45" r="11" fill="none" stroke="#c53b2f" stroke-width="1.5" opacity="0.35"/>
+</svg>

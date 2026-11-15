@@ -63,7 +63,7 @@ jobs:
           set +e
           while true; do
             echo "[omniroute-watchdog] starting $(date -u +%FT%TZ)" >> /tmp/omniroute.log
-            npx --yes omniroute@latest serve --headless --host 127.0.0.1 --port 20128 >> /tmp/omniroute.log 2>&1
+            npx --yes omniroute@latest serve --headless --port 20128 >> /tmp/omniroute.log 2>&1
             ec=$?
             echo "[omniroute-watchdog] exited code=$ec at $(date -u +%FT%TZ), restarting in 5s" >> /tmp/omniroute.log
             sleep 5
@@ -84,92 +84,24 @@ jobs:
             sleep 2
           done
           if [ "$up" -ne 1 ]; then
-            echo "OmniRoute not ready; backend will fall back to local/direct providers"
+            echo "OmniRoute not ready; backend will be unable to generate responses until OmniRoute is reachable"
             tail -n 120 /tmp/omniroute.log || true
             tail -n 60 /tmp/omniroute.watch.log || true
             exit 1
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - name: Cache local LLM assets (llama.cpp)
-        id: cache-llm
-        uses: actions/cache@v4
-        with:
-          path: /tmp/llm
-          key: web-llm-${{ runner.os }}-v1
-          restore-keys: |
-            web-llm-${{ runner.os }}-
 
-      - name: Start local LLM (llama.cpp, free fallback)
-        id: localllm
-        continue-on-error: true
-        run: |
-          set -e
-          mkdir -p /tmp/llm
-          cd /tmp/llm
-
-          # Reuse cached binary/model when available; otherwise download with fallbacks
-          BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
-          if [ -z "$BIN" ]; then
-            echo "Downloading llama.cpp server binary..."
-            ok=0
-            for url in \
-              "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-b5621-bin-ubuntu-x64.zip" \
-              "https://github.com/ggml-org/llama.cpp/releases/download/b5530/llama-b5530-bin-ubuntu-x64.zip"; do
-              if curl -fsSL --retry 3 "$url" -o llama.zip; then ok=1; break; fi
-            done
-            if [ "$ok" -ne 1 ]; then echo "Failed to download llama.cpp binary"; exit 1; fi
-            unzip -o -q llama.zip
-            BIN=$(find . -type f -name 'llama-server' | head -n1 || true)
-          fi
-          if [ -z "$BIN" ]; then echo "llama-server not found"; find . -maxdepth 3 -type f | head; exit 1; fi
-          chmod +x "$BIN" || true
-
-          if [ ! -s model.gguf ]; then
-            echo "Downloading local GGUF model..."
-            curl -fL --retry 3 -o model.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf \
-              || curl -fL --retry 3 -o model.gguf https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf
-          fi
-
-          cat > /tmp/run_llama.sh <<SH
-          #!/usr/bin/env bash
-          set +e
-          BIN="$BIN"
-          cd /tmp/llm
-          while true; do
-            echo "[llama-watchdog] starting \$(date -u +%FT%TZ)" >> /tmp/llama.log
-            "\$BIN" -m model.gguf --host 127.0.0.1 --port 11434 -c 2048 -ngl 0 -t 2 >> /tmp/llama.log 2>&1
-            ec=\$?
-            echo "[llama-watchdog] exited code=\$ec at \$(date -u +%FT%TZ), restarting in 5s" >> /tmp/llama.log
-            sleep 5
-          done
-          SH
-          chmod +x /tmp/run_llama.sh
-          nohup /tmp/run_llama.sh >/tmp/llama.watch.log 2>&1 &
-          echo $! > /tmp/llama.pid
-          for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:11434/v1/models >/tmp/llama-models.json 2>/dev/null || curl -fsS http://127.0.0.1:11434/health >/dev/null 2>&1; then
-              echo "Local LLM up"; cat /tmp/llama-models.json 2>/dev/null || true; exit 0
-            fi
-            sleep 2
-          done
-          echo "Local LLM failed to start"; tail -n 150 /tmp/llama.log || true; tail -n 60 /tmp/llama.watch.log || true; exit 1
-
-      - name: Start backend server (OmniRoute-prioritized)
+      - name: Start backend server (OmniRoute only)
         env:
-          # OmniRoute is the primary source for web chat; direct providers remain as fallbacks.
+          # OmniRoute-only backend.
           LLM_PROVIDER: omniroute
           OUROBOROS_MODEL: auto
           OUROBOROS_MODEL_CODE: ${{ vars.OUROBOROS_MODEL_CODE || '' }}
           OUROBOROS_MODEL_LIGHT: ${{ vars.OUROBOROS_MODEL_LIGHT || '' }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
           OMNIROUTE_BASE_URL: http://127.0.0.1:20128/v1
           OMNIROUTE_MODEL: auto
           OMNIROUTE_API_KEY: omniroute-local
-          LOCAL_BASE_URL: http://127.0.0.1:11434/v1
-          LOCAL_API_KEY: sk-local
           DATA_ROOT: /home/runner/.jo_data
           REPO_DIR: ${{ github.workspace }}
           OUROBOROS_DETERMINISTIC: "1"
@@ -177,12 +109,11 @@ jobs:
           JO_WEB_USE_AGENT: "0"
         run: |
           mkdir -p /home/runner/.jo_data
-          echo "=== Effective web-backend provider config ==="
+          echo "=== Effective web-backend provider config (OmniRoute only) ==="
           echo "LLM_PROVIDER=$LLM_PROVIDER"
           echo "OUROBOROS_MODEL=$OUROBOROS_MODEL"
           echo "OMNIROUTE_BASE_URL=$OMNIROUTE_BASE_URL"
           echo "OMNIROUTE_MODEL=$OMNIROUTE_MODEL"
-          echo "LOCAL_BASE_URL=$LOCAL_BASE_URL"
           cat > /tmp/run_uvicorn.sh <<'SH'
           #!/usr/bin/env bash
           set +e
@@ -201,14 +132,9 @@ jobs:
             OUROBOROS_MODEL="$OUROBOROS_MODEL" \
             OUROBOROS_MODEL_CODE="$OUROBOROS_MODEL_CODE" \
             OUROBOROS_MODEL_LIGHT="$OUROBOROS_MODEL_LIGHT" \
-            OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
-            NVIDIA_API_KEY="$NVIDIA_API_KEY" \
-            DOUBLEWORD_API_KEY="$DOUBLEWORD_API_KEY" \
             OMNIROUTE_BASE_URL="$OMNIROUTE_BASE_URL" \
             OMNIROUTE_MODEL="$OMNIROUTE_MODEL" \
             OMNIROUTE_API_KEY="$OMNIROUTE_API_KEY" \
-            LOCAL_BASE_URL="$LOCAL_BASE_URL" \
-            LOCAL_API_KEY="$LOCAL_API_KEY" \
             DATA_ROOT="$DATA_ROOT" \
             REPO_DIR="$REPO_DIR" \
             OUROBOROS_DETERMINISTIC="$OUROBOROS_DETERMINISTIC" \
@@ -279,6 +205,56 @@ jobs:
         continue-on-error: true
         uses: actions/deploy-pages@v4
 
+      - name: Verify published backend discovery
+        if: always() && env.TUNNEL_URL != ''
+        continue-on-error: true
+        run: |
+          set +e
+          SUMMARY="$GITHUB_STEP_SUMMARY"
+          WANT_RUN="${GITHUB_RUN_ID}"
+          WANT_COMMIT="${GITHUB_SHA}"
+          WANT_API="${TUNNEL_URL}"
+          echo "" >> "$SUMMARY"
+          echo "### Published backend.json verification" >> "$SUMMARY"
+          ok=0
+          for url in "https://josolinap.dedyn.io/jo/backend.json" "https://josolinap.github.io/jo/backend.json"; do
+            echo "Checking $url"
+            got_run=""
+            got_commit=""
+            got_api=""
+            for i in $(seq 1 30); do
+              body=$(curl -fsSL --max-time 15 "${url}?cb=$(date +%s)-$i" 2>/tmp/pages_backend.err || true)
+              if [ -n "$body" ]; then
+                got_run=$(printf '%s' "$body" | jq -r '.runId // empty' 2>/dev/null || true)
+                got_commit=$(printf '%s' "$body" | jq -r '.commit // empty' 2>/dev/null || true)
+                got_api=$(printf '%s' "$body" | jq -r '.apiBase // empty' 2>/dev/null || true)
+                echo "[$i] runId=$got_run commit=$got_commit apiBase=$got_api"
+                if [ "$got_run" = "$WANT_RUN" ] && [ -n "$got_api" ]; then
+                  ok=1
+                  break
+                fi
+              fi
+              sleep 10
+            done
+            if [ $ok -eq 1 ]; then
+              echo "- **Published backend.json:** OK ($url)" >> "$SUMMARY"
+              echo "  - runId: \`$got_run\`" >> "$SUMMARY"
+              echo "  - commit: \`$got_commit\`" >> "$SUMMARY"
+              echo "  - apiBase: \`$got_api\`" >> "$SUMMARY"
+              break
+            else
+              echo "- **Publish check ($url):** WARN (latest seen runId=\`${got_run:-n/a}\`, apiBase=\`${got_api:-n/a}\`)" >> "$SUMMARY"
+              if [ -s /tmp/pages_backend.err ]; then echo "  - fetch error: \`$(head -c 120 /tmp/pages_backend.err)\`" >> "$SUMMARY"; fi
+            fi
+          done
+          if [ $ok -ne 1 ]; then
+            echo "- **Action:** Pages backend.json may still be stale/cached; redeploy if GUI shows unreachable." >> "$SUMMARY"
+          else
+            # also verify tunnel reachable through published apiBase
+            tcode=$(curl -sS -o /tmp/published_health.json -w "%{http_code}" --max-time 20 "$got_api/health" || true)
+            echo "- **Published apiBase /health:** HTTP ${tcode:-n/a}" >> "$SUMMARY"
+          fi
+
       - name: Smoke test and summary
         if: always() && env.TUNNEL_URL != ''
         run: |
@@ -314,25 +290,30 @@ jobs:
           if [ $S -eq 0 ]; then
             PROVIDER=$(jq -r '.provider // .active_provider // "?"' /tmp/status.json 2>/dev/null || echo "?")
             MODEL=$(jq -r '.model // .active_model // "?"' /tmp/status.json 2>/dev/null || echo "?")
+            MSRC=$(jq -r '.model_source // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMNI=$(jq -r '.omniroute_reachable // .omniroute.reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMC=$(jq -r '.omniroute.model_count // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
-            LOCAL=$(jq -r '.local_reachable // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
-            FALLBACK=$(jq -r '.fallback_active // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_BASE=$(jq -r '.omniroute.base_url // .omniroute_base_url // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_OK=$(jq -r '.omniroute.ok_url // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            OMNI_ERR=$(jq -r '.omniroute.error // ""' /tmp/status.json 2>/dev/null || echo "")
             REASONS=$(jq -r '(.reasons // []) | join(", ")' /tmp/status.json 2>/dev/null || echo "")
-            echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\`" >> "$SUMMARY"
-            echo "- **OmniRoute reachable:** \`$OMNI\`" >> "$SUMMARY"
-            echo "- **OmniRoute model count:** \`$OMC\`" >> "$SUMMARY"
-            echo "- **Local reachable:** \`$LOCAL\`" >> "$SUMMARY"
-            echo "- **Fallback active:** \`$FALLBACK\`" >> "$SUMMARY"
+            echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\` (source: \`$MSRC\`)" >> "$SUMMARY"
+            echo "- **OmniRoute reachable:** \`$OMNI\` (models: \`$OMC\`)" >> "$SUMMARY"
+            echo "- **OmniRoute base:** \`$OMNI_BASE\`" >> "$SUMMARY"
+            if [ -n "$OMNI_OK" ] && [ "$OMNI_OK" != "n/a" ] && [ "$OMNI_OK" != "null" ]; then echo "- **OmniRoute models endpoint:** \`$OMNI_OK\`" >> "$SUMMARY"; fi
+            if [ -n "$OMNI_ERR" ] && [ "$OMNI_ERR" != "null" ]; then echo "- **OmniRoute probe note:** ${OMNI_ERR}" >> "$SUMMARY"; fi
             if [ -n "$REASONS" ]; then echo "- **Readiness reasons:** $REASONS" >> "$SUMMARY"; fi
           else
             echo "_No /v1/status JSON available._" >> "$SUMMARY"
+            if [ -s /tmp/status.err ]; then echo "- status fetch error: \`$(head -c 180 /tmp/status.err)\`" >> "$SUMMARY"; fi
           fi
           if [ $M -eq 0 ]; then
             MCOUNT=$(jq -r '(.models // []) | length' /tmp/models.json 2>/dev/null || echo "0")
-            MSAMPLE=$(jq -r '(.models // [])[:8] | map(if type=="object" then (.id // .name // "?") else tostring end) | join(", ")' /tmp/models.json 2>/dev/null || echo "")
+            MSAMPLE=$(jq -r '(.models // [])[:10] | map(if type=="object" then (.id // .name // "?") else tostring end) | join(", ")' /tmp/models.json 2>/dev/null || echo "")
             echo "- **Discovered /v1/models:** \`$MCOUNT\`" >> "$SUMMARY"
             if [ -n "$MSAMPLE" ]; then echo "- **Sample models:** $MSAMPLE" >> "$SUMMARY"; fi
+          else
+            if [ -s /tmp/models.err ]; then echo "- models fetch error: \`$(head -c 180 /tmp/models.err)\`" >> "$SUMMARY"; fi
           fi
           echo "" >> "$SUMMARY"
 
@@ -348,7 +329,7 @@ jobs:
           echo "" >> "$SUMMARY"
           echo "### Chat generation probe (best-effort, non-fatal)" >> "$SUMMARY"
           echo "" >> "$SUMMARY"
-          # Short generation probe to confirm at least one provider path can respond (may be degraded/fallback)
+          # Short generation probe to confirm OmniRoute can respond (non-fatal)
           CHAT_CODE=$(curl -sS -o /tmp/chat_probe.json -w "%{http_code}" --max-time 45 \
             -H "Content-Type: application/json" \
             -d '{"message":"Reply with the single word PONG","history":[],"session_id":"ci_smoke"}' \
@@ -361,7 +342,7 @@ jobs:
             echo "- **POST /v1/chat:** OK (200) — provider: \`$CPROV\`, model: \`$CMODEL\`, elapsed_ms: \`$CELAPSED\`" >> "$SUMMARY"
             if [ -n "$CRESP" ]; then echo "- **Response preview:** ${CRESP}" >> "$SUMMARY"; fi
             if [ "$CPROV" = "fallback" ] || [ "$CPROV" = "unavailable" ] || [ "$CMODEL" = "unavailable" ]; then
-              echo "- **Note:** generation degraded (fallback path). Check provider/upstream availability." >> "$SUMMARY"
+              echo "- **Note:** generation degraded/unavailable via OmniRoute. Check OmniRoute upstream provider/model availability." >> "$SUMMARY"
             fi
           else
             echo "- **POST /v1/chat:** WARN (HTTP ${CHAT_CODE:-n/a}) — generation may be unavailable or slow in this environment." >> "$SUMMARY"
@@ -385,11 +366,9 @@ jobs:
               tail -n 60 /tmp/uvicorn.log 2>/dev/null || true
             fi
             if ! curl -fsS --max-time 5 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:20128/health >/dev/null 2>&1; then
-              echo "[$ts] OmniRoute not reachable locally (backend may use fallback; watchdog active)"
+              echo "[$ts] OmniRoute not reachable locally (watchdog active)"
             fi
-            if ! curl -fsS --max-time 5 http://127.0.0.1:11434/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:11434/health >/dev/null 2>&1; then
-              echo "[$ts] Local LLM not reachable locally (optional fallback; watchdog active)"
-            fi
+
             sleep 30
           done
           echo "Duration reached, stopping"
