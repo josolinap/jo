@@ -372,3 +372,48 @@ jobs:
             sleep 30
           done
           echo "Duration reached, stopping"
+
+      # Trigger a fresh run so Pages API backend can continue beyond this job's lifetime.
+      # Requires PAT_TOKEN secret with 'actions:write'/'workflow' scope for workflow dispatch.
+      # Note: concurrency.cancel-in-progress=true means the new run may preempt this one once queued.
+      - name: Self-restart — trigger next workflow run
+        if: always() && env.TUNNEL_URL != ''
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref_name || github.event.repository.default_branch || 'main' }}
+          DURATION_MINUTES: ${{ github.event.inputs.duration_minutes || '350' }}
+        run: |
+          TOKEN="${PAT_TOKEN:-$GH_TOKEN}"
+          if [ -z "$TOKEN" ]; then
+            echo "⚠️ No PAT_TOKEN/GITHUB_TOKEN available — cannot self-restart; schedule/cron will recover later."
+            exit 0
+          fi
+
+          echo "🔄 Triggering next web-backend workflow run (ref=$REF, duration_minutes=$DURATION_MINUTES)..."
+          for ATTEMPT in 1 2 3; do
+            HTTP_STATUS=$(curl -s -o /tmp/web_backend_dispatch.txt -w "%{http_code}" \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$REPO/actions/workflows/web-backend.yml/dispatches" \
+              -d "{\"ref\":\"$REF\",\"inputs\":{\"duration_minutes\":\"$DURATION_MINUTES\"}}")
+
+            if [ "$HTTP_STATUS" -eq 204 ]; then
+              echo "✅ Next web-backend run triggered successfully (attempt $ATTEMPT)."
+              exit 0
+            fi
+
+            echo "⚠️ Attempt $ATTEMPT failed: HTTP $HTTP_STATUS"
+            if [ "$ATTEMPT" -lt 3 ]; then
+              echo "Retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+
+          echo "❌ All self-restart attempts failed. Last response:"
+          cat /tmp/web_backend_dispatch.txt || true
+          echo "Schedule (*/6h) remains as fallback if dispatch is unavailable."
+          exit 0
