@@ -186,7 +186,7 @@ def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True)
     if isinstance(md, dict):
         for item in md.get("data") or md.get("models") or []:
             if isinstance(item, dict):
-                mid = (item.get("id") or item.get("name") or item.get("model") or "")
+                mid = item.get("id") or item.get("name") or item.get("model") or ""
                 mid = str(mid).strip()
                 if not mid or mid in seen_ids:
                     continue
@@ -227,7 +227,9 @@ def _omni_auth_header_variants():
     return uniq
 
 
-def _probe_omniroute_model(base: str, model_id: str, timeout: int = _OMNI_MODEL_PROBE_TIMEOUT, use_cache: bool = True) -> Dict[str, Any]:
+def _probe_omniroute_model(
+    base: str, model_id: str, timeout: int = _OMNI_MODEL_PROBE_TIMEOUT, use_cache: bool = True
+) -> Dict[str, Any]:
     """Lightweight chat-completion probe to determine if a model is actually usable."""
     import time as _time
     import json as _json
@@ -247,21 +249,29 @@ def _probe_omniroute_model(base: str, model_id: str, timeout: int = _OMNI_MODEL_
 
     if not b:
         result = {
-            "ok": False, "model": mid, "latency_ms": None, "error": "omniroute_base_not_configured",
-            "checked_at": int(now), "checked_at_ts": now, "cached": False,
+            "ok": False,
+            "model": mid,
+            "latency_ms": None,
+            "error": "omniroute_base_not_configured",
+            "checked_at": int(now),
+            "checked_at_ts": now,
+            "cached": False,
         }
         _omni_model_probe_cache[cache_key] = dict(result)
         return result
 
-    payload = _json.dumps({
-        "model": mid,
-        "messages": [{"role": "user", "content": "Reply with OK"}],
-        "max_tokens": 4,
-        "temperature": 0,
-        "stream": False,
-    }).encode("utf-8")
+    payload = _json.dumps(
+        {
+            "model": mid,
+            "messages": [{"role": "user", "content": "Reply with OK"}],
+            "max_tokens": 4,
+            "temperature": 0,
+            "stream": False,
+        }
+    ).encode("utf-8")
     urls = [b + "/chat/completions", b.rstrip("/") + "/v1/chat/completions"]
-    seen_u = set(); urls = [u for u in urls if not (u in seen_u or seen_u.add(u))]
+    seen_u = set()
+    urls = [u for u in urls if not (u in seen_u or seen_u.add(u))]
     last_err = "no_response"
     ok = False
     latency_ms = None
@@ -356,7 +366,7 @@ def _provider_status() -> Dict[str, Any]:
         try:
             _omni_models_raw, omni_info = _fetch_omniroute_models(omni_base, timeout=4, use_cache=True)
             omni_models = []
-            for _m in (_omni_models_raw or []):
+            for _m in _omni_models_raw or []:
                 if isinstance(_m, dict):
                     _mid = str(_m.get("id") or _m.get("name") or _m.get("model") or "").strip()
                 else:
@@ -389,13 +399,25 @@ def _provider_status() -> Dict[str, Any]:
     if _env("JO_WEB_ENABLE_MODEL_PROBE") != "0" and omni_base and omni_reachable:
         try:
             probe_model = _get_default_probe_model(omni_base, _env("OMNIROUTE_MODEL") or "auto")
-            model_probe = _probe_omniroute_model(omni_base, probe_model, timeout=_OMNI_MODEL_PROBE_TIMEOUT, use_cache=True)
+            model_probe = _probe_omniroute_model(
+                omni_base, probe_model, timeout=_OMNI_MODEL_PROBE_TIMEOUT, use_cache=True
+            )
         except Exception as e:
-            model_probe = {"ok": False, "model": _env("OMNIROUTE_MODEL") or "auto", "error": f"probe_exception: {e}", "cached": False}
+            model_probe = {
+                "ok": False,
+                "model": _env("OMNIROUTE_MODEL") or "auto",
+                "error": f"probe_exception: {e}",
+                "cached": False,
+            }
     elif _env("JO_WEB_ENABLE_MODEL_PROBE") == "0":
         model_probe = {"ok": None, "skipped": True, "reason": "disabled_by_env"}
     elif omni_base and not omni_reachable:
-        model_probe = {"ok": False, "model": _env("OMNIROUTE_MODEL") or "auto", "error": omni_info.get("error") or "omniroute_unreachable", "cached": False}
+        model_probe = {
+            "ok": False,
+            "model": _env("OMNIROUTE_MODEL") or "auto",
+            "error": omni_info.get("error") or "omniroute_unreachable",
+            "cached": False,
+        }
 
     if model_probe is not None:
         if model_probe.get("ok") is True:
@@ -703,7 +725,12 @@ def _run_via_llm(
                         errors.append(f"omniroute({om}): model unavailable in this environment")
                         break
                     continue
-                if saw_env_error and oml.startswith("auto") and not req_is_explicit and (env_model or "").lower() != oml:
+                if (
+                    saw_env_error
+                    and oml.startswith("auto")
+                    and not req_is_explicit
+                    and (env_model or "").lower() != oml
+                ):
                     continue
                 try:
                     tried += 1
@@ -942,6 +969,7 @@ async def status() -> Dict[str, Any]:
 def _list_models() -> Dict[str, Any]:
     models: list[Dict[str, Any]] = []
     seen: set[str] = set()
+    omni_base = _env("OMNIROUTE_BASE_URL")
 
     def add(mid: str, provider: str, label: Optional[str] = None, **extra):
         mid = (mid or "").strip()
@@ -959,14 +987,17 @@ def _list_models() -> Dict[str, Any]:
             probe_model = _get_default_probe_model(omni_base, _env("OMNIROUTE_MODEL") or "auto")
             cached = _omni_model_probe_cache.get(f"{omni_base.rstrip('/')}::{probe_model}")
             if cached:
-                auto_probe = {k: cached.get(k) for k in ("ok", "model", "latency_ms", "error", "checked_at", "cached") if k in cached}
+                auto_probe = {
+                    k: cached.get(k)
+                    for k in ("ok", "model", "latency_ms", "error", "checked_at", "cached")
+                    if k in cached
+                }
         except Exception:
             auto_probe = None
     add("auto", "omniroute", "Auto (recommended)", recommended=True, probe=auto_probe)
 
     # Dynamically discover and expose all available free models from OmniRoute.
     # "Free" is detected from model IDs and metadata (pricing/tags/flags) when present.
-    omni_base = _env("OMNIROUTE_BASE_URL")
     if omni_base:
         try:
             discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
@@ -1003,7 +1034,11 @@ def _list_models() -> Dict[str, Any]:
                 try:
                     cached_probe = _omni_model_probe_cache.get(f"{omni_base.rstrip('/')}::{smid}")
                     if cached_probe:
-                        extra["probe"] = {k: cached_probe.get(k) for k in ("ok", "latency_ms", "error", "checked_at", "cached") if k in cached_probe}
+                        extra["probe"] = {
+                            k: cached_probe.get(k)
+                            for k in ("ok", "latency_ms", "error", "checked_at", "cached")
+                            if k in cached_probe
+                        }
                 except Exception:
                     pass
                 add(smid, "omniroute", label=smid, **extra)
