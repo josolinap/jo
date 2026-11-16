@@ -167,15 +167,16 @@ a { color: inherit; text-decoration: none; }
 .nav-meta.err { background: var(--danger); }
 
 /* Collapsed sidebar (desktop) */
-.sidebar-collapsed .sidebar { width: 72px; min-width: 72px; padding: 12px 8px; }
+.sidebar-collapsed .sidebar { width: 72px; min-width: 72px; padding: 12px 8px; align-items: center; }
+.sidebar-collapsed .sidebar-header { width: 100%; justify-content: center; flex-direction: column; gap: 8px; padding: 2px 0 4px; }
+.sidebar-collapsed .sidebar-top-left { width: 100%; justify-content: center; }
+.sidebar-collapsed .sidebar-quick-actions { margin-left: 0; justify-content: center; }
+.sidebar-collapsed .sidebar-primary { width: 100%; padding: 0; }
+.sidebar-collapsed .new-chat-btn { justify-content: center; padding: 10px; }
 .sidebar-collapsed .new-chat-btn span,
-.sidebar-collapsed .sidebar-section,
-.sidebar-collapsed .sidebar-bottom-actions { flex-direction: column; }
-.sidebar-collapsed .brand, .sidebar-collapsed .new-chat-btn { justify-content: center; }
-.sidebar-collapsed .sidebar-header { justify-content: center; flex-direction: column; gap: 6px; }
-.sidebar-collapsed .sidebar-top-left { flex-direction: column; gap: 4px; }
-.sidebar-collapsed .sidebar-quick-actions { flex-direction: column; margin-left: 0; gap: 2px; }
-.sidebar-collapsed .new-chat-btn { padding: 10px; }
+.sidebar-collapsed .sidebar-section { display: none; }
+.sidebar-collapsed .sidebar-bottom { width: 100%; align-items: center; }
+.sidebar-collapsed .sidebar-bottom-actions { flex-direction: column; align-items: center; gap: 6px; }
 
 /* Workspace */
 .workspace-frame { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
@@ -430,8 +431,8 @@ a { color: inherit; text-decoration: none; }
   }
   .app-shell.sidebar-open .sidebar { transform: translateX(0); }
   .app-shell.sidebar-collapsed .sidebar { transform: translateX(-100%); width: min(320px, 88vw); }
-  .sidebar-collapsed .new-chat-btn span,
-  .sidebar-collapsed .sidebar-section,
+  .sidebar-collapsed .new-chat-btn span { display: inline; }
+  .sidebar-collapsed .sidebar-section { display: flex; }
   .sidebar-collapsed .sidebar-bottom-actions { flex-direction: row; }
   .sidebar-collapsed .brand, .sidebar-collapsed .new-chat-btn { justify-content: flex-start; }
   .sidebar-collapsed .sidebar-header { justify-content: space-between; flex-direction: row; }
