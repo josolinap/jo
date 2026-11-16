@@ -908,19 +908,22 @@ function renderModelOptions() {
         if (!items.length) continue;
         const og = document.createElement("optgroup");
         og.label = key.charAt(0).toUpperCase() + key.slice(1);
-        for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+        for (const m of items)
+          addOpt(og, String(m.id), m.label || String(m.id));
         if (og.children.length) sel.appendChild(og);
       }
       for (const [key, items] of groups.entries()) {
         if (order.includes(key)) continue;
         const og = document.createElement("optgroup");
         og.label = key.charAt(0).toUpperCase() + key.slice(1);
-        for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+        for (const m of items)
+          addOpt(og, String(m.id), m.label || String(m.id));
         if (og.children.length) sel.appendChild(og);
       }
     } else {
       // flat list for compact header dropdown
-      for (const m of filtered) addOpt(sel, String(m.id), m.label || String(m.id));
+      for (const m of filtered)
+        addOpt(sel, String(m.id), m.label || String(m.id));
     }
     // record ids from the first (settings) population
     if (sel === modelSelect) {
@@ -976,21 +979,24 @@ function renderModelOptions() {
       if (!items.length) continue;
       const og = document.createElement("optgroup");
       og.label = key.charAt(0).toUpperCase() + key.slice(1);
-      for (const m of items) addH(og, String(m.id), m.label || String(m.id), true);
+      for (const m of items)
+        addH(og, String(m.id), m.label || String(m.id), true);
       if (og.children.length) modelPillSelect.appendChild(og);
     }
     for (const [key, items] of fullGroups.entries()) {
       if (order.includes(key)) continue;
       const og = document.createElement("optgroup");
       og.label = key.charAt(0).toUpperCase() + key.slice(1);
-      for (const m of items) addH(og, String(m.id), m.label || String(m.id), true);
+      for (const m of items)
+        addH(og, String(m.id), m.label || String(m.id), true);
       if (og.children.length) modelPillSelect.appendChild(og);
     }
     if (!seenH.has(target)) {
       // keep current selection visible even if not in discovered list
       const opt = document.createElement("option");
       opt.value = target;
-      opt.textContent = target === "auto" ? "Auto" : compactModelLabel(target, target);
+      opt.textContent =
+        target === "auto" ? "Auto" : compactModelLabel(target, target);
       if (target !== "auto" && opt.textContent !== target) opt.title = target;
       modelPillSelect.appendChild(opt);
     }
@@ -1005,7 +1011,8 @@ function renderModelOptions() {
       (allModels || []).filter((m) => String(m.id || "") !== "auto").length,
     );
     let probeText = "";
-    const probe = healthInfo && healthInfo.model_probe ? healthInfo.model_probe : null;
+    const probe =
+      healthInfo && healthInfo.model_probe ? healthInfo.model_probe : null;
     if (probe && typeof probe === "object") {
       if (probe.ok === true) {
         probeText = ` Default probe OK (${probe.model || "auto"}${probe.latency_ms != null ? `, ${probe.latency_ms}ms` : ""}${probe.cached ? ", cached" : ""}).`;
@@ -1016,19 +1023,30 @@ function renderModelOptions() {
         probeText = " Default probe skipped.";
       }
     }
+    const note =
+      " Some auto/* routes may resolve to browser/bridge-required providers in this hosted environment; backend may fall back. Explicit concrete picks fail explicitly if unusable.";
     if (!getApiBase() && shown === 0) {
       modelInfo.textContent =
-        "Auto selected. Connect to a backend to load available models." + probeText;
+        "Auto selected. Connect to a backend to load available models." +
+        probeText +
+        note;
     } else if (q) {
       modelInfo.textContent =
         (shown > 0
           ? `${shown} model option(s) shown (filtered from ${total}).`
-          : "No models match the current filter.") + probeText;
+          : "No models match the current filter.") +
+        probeText +
+        note;
     } else if (shown > 0) {
-      modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.` + probeText;
+      modelInfo.textContent =
+        `${shown} model option(s) available. Select one or keep Auto.` +
+        probeText +
+        note;
     } else {
       modelInfo.textContent =
-        "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet." + probeText;
+        "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet." +
+        probeText +
+        note;
     }
   }
 }
@@ -1049,8 +1067,24 @@ async function refreshModels() {
       const id = m && (m.id || m.name) ? String(m.id || m.name) : "";
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      const item = { id, provider: m.provider || "other", label: m.label || id };
-      for (const k of ["probe", "recommended", "dynamic", "free", "kind", "label_hint", "pricing", "tags", "owned_by", "description", "context_length"]) {
+      const item = {
+        id,
+        provider: m.provider || "other",
+        label: m.label || id,
+      };
+      for (const k of [
+        "probe",
+        "recommended",
+        "dynamic",
+        "free",
+        "kind",
+        "label_hint",
+        "pricing",
+        "tags",
+        "owned_by",
+        "description",
+        "context_length",
+      ]) {
         if (m && m[k] != null) item[k] = m[k];
       }
       norm.push(item);
@@ -1108,8 +1142,10 @@ function updateHeader() {
         modelPillSelect.innerHTML = "";
         const opt = document.createElement("option");
         opt.value = selected || "auto";
-        opt.textContent = selected === "auto" ? "Auto" : compactModelLabel(selected, selected);
-        if (selected !== "auto" && opt.textContent !== selected) opt.title = selected;
+        opt.textContent =
+          selected === "auto" ? "Auto" : compactModelLabel(selected, selected);
+        if (selected !== "auto" && opt.textContent !== selected)
+          opt.title = selected;
         modelPillSelect.appendChild(opt);
       }
       if (modelPillSelect.value !== selected) modelPillSelect.value = selected;
@@ -1942,7 +1978,6 @@ function bindEvents() {
       if (isMobileLayout()) setSidebarOpen(false);
     });
 
-
   if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebar);
   if (mobileMenu) mobileMenu.addEventListener("click", toggleSidebar);
   if (sidebarBackdrop)
@@ -1975,7 +2010,8 @@ function bindEvents() {
     const willOpen = topSettingsMenu.hidden;
     if (willOpen) {
       topSettingsMenu.hidden = false;
-      if (openSettingsTop) openSettingsTop.setAttribute("aria-expanded", "true");
+      if (openSettingsTop)
+        openSettingsTop.setAttribute("aria-expanded", "true");
     } else {
       closeTopSettingsMenu();
     }
@@ -1988,7 +2024,8 @@ function bindEvents() {
     });
   }
   document.addEventListener("click", (e) => {
-    if (!topSettingsMenuWrap || !topSettingsMenu || topSettingsMenu.hidden) return;
+    if (!topSettingsMenuWrap || !topSettingsMenu || topSettingsMenu.hidden)
+      return;
     if (!topSettingsMenuWrap.contains(e.target)) closeTopSettingsMenu();
   });
   if (modelPillSelect) {
