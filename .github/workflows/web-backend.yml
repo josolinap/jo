@@ -427,7 +427,11 @@ jobs:
             m_code=$(curl -sS -o /tmp/om_keep_models.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/v1/models 2>/tmp/om_keep_models.err || true)
             h_code=$(curl -sS -o /tmp/om_keep_health.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/health 2>/tmp/om_keep_health.err || true)
             r_code=$(curl -sS -o /tmp/om_keep_root.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/ 2>/tmp/om_keep_root.err || true)
-            if [ "$m_code" = "200" ] || [ "$h_code" = "200" ] || [ "$r_code" = "200" ]; then om_ok=1; fi
+            # Treat any HTTP response (1xx-4xx, incl. 401/403/404/307) as "process reachable".
+            # Connection failures/timeouts usually yield 000/empty.
+            for code in "$m_code" "$h_code" "$r_code"; do
+              if [[ "$code" =~ ^[0-9]{3}$ ]] && [ "$code" -ge 100 ] && [ "$code" -lt 500 ]; then om_ok=1; fi
+            done
             if [ "$om_ok" -ne 1 ]; then
               echo "[$ts] OmniRoute not reachable locally (watchdog active)"
               echo "  probe: /v1/models -> HTTP ${m_code:-n/a}, /health -> HTTP ${h_code:-n/a}, / -> HTTP ${r_code:-n/a}"
@@ -439,7 +443,7 @@ jobs:
             else
               # periodic snapshot to understand available/working models while healthy
               if [ $((SECONDS % 300)) -lt 35 ]; then
-                echo "[$ts] OmniRoute reachable (periodic snapshot)"
+                echo "[$ts] OmniRoute reachable (periodic snapshot; probe codes: /v1/models=${m_code:-n/a} /health=${h_code:-n/a} /=${r_code:-n/a})"
                 curl -fsS --max-time 10 http://127.0.0.1:8000/v1/status >/tmp/status.keep.json 2>/dev/null || true
                 if [ -s /tmp/status.keep.json ]; then
                   jq -r '"  - omniroute_reachable=" + ((.omniroute_reachable // .omniroute.reachable // "n/a")|tostring) + ", model_count=" + ((.omniroute.model_count // "n/a")|tostring) + ", error=" + ((.omniroute.error // "")|tostring)' /tmp/status.keep.json 2>/dev/null || true
