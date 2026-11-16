@@ -33,9 +33,11 @@ const reconnectBanner = $("reconnect-banner");
 const reconnectText = $("reconnect-text");
 const reconnectBtn = $("reconnect-btn");
 
-const openSettingsBtn = $("open-settings");
 const openSettingsTop = $("open-settings-top");
-const openSettingsFoot = $("open-settings-foot");
+const topSettingsMenuWrap = $("top-settings-menu-wrap");
+const topSettingsMenu = $("top-settings-menu");
+const menuClearApiBase = $("menu-clear-api-base");
+const menuCopyDiagnostics = $("menu-copy-diagnostics");
 const settingsBackdrop = $("settings-backdrop");
 const settingsModal = $("settings-modal");
 const settingsClose = $("settings-close");
@@ -58,8 +60,7 @@ const backendMeta = $("backend-meta");
 const backendHint = $("backend-hint");
 const statusDot = $("status-dot");
 const sidebarConnDot = $("sidebar-conn-dot");
-const modelPill = $("model-pill");
-const modelPillLabel = $("model-pill-label");
+const modelPillSelect = $("model-pill-select");
 const modelPillDot = $("model-pill-dot");
 const modelInfo = $("model-info");
 const settingsRefreshModels = $("settings-refresh-models");
@@ -149,14 +150,26 @@ function getApiBase() {
 }
 function getSelectedModel() {
   try {
+    return (localStorage.getItem(MODEL_KEY) || "auto").trim() || "auto";
+  } catch {}
+  try {
     const v =
       modelSelect && modelSelect.value ? String(modelSelect.value).trim() : "";
     if (v) return v;
   } catch {}
+  return "auto";
+}
+
+function setSelectedModel(value, { notify = false } = {}) {
+  const v = (value && String(value).trim()) || "auto";
   try {
-    return (localStorage.getItem(MODEL_KEY) || "auto").trim() || "auto";
-  } catch {
-    return "auto";
+    localStorage.setItem(MODEL_KEY, v);
+  } catch {}
+  if (modelSelect && modelSelect.value !== v) modelSelect.value = v;
+  if (modelPillSelect && modelPillSelect.value !== v) modelPillSelect.value = v;
+  updateHeader();
+  if (notify) {
+    showToast(v !== "auto" ? "Model selected" : "Auto model selection enabled");
   }
 }
 
@@ -829,8 +842,21 @@ function regenerateLast() {
 }
 
 /* Model + health */
+function compactModelLabel(id, label) {
+  const raw = String(label || id || "").trim();
+  if (!raw || raw === "auto") return raw || "auto";
+  // Prefer explicit label shortening; fall back to id-like forms (provider/model or provider:model)
+  let text = raw;
+  if (text.includes("/")) text = text.split("/").pop() || text;
+  if (text.includes(":") && text.length > 28) {
+    const parts = text.split(":");
+    text = parts.slice(-2).join(":");
+  }
+  if (text.length > 34) text = text.slice(0, 31) + "…";
+  return text || raw;
+}
+
 function renderModelOptions() {
-  if (!modelSelect) return;
   const current = getSelectedModel();
   const q = (modelSearchQuery || "").trim().toLowerCase();
   let list = Array.isArray(allModels) ? [...allModels] : [];
@@ -862,36 +888,117 @@ function renderModelOptions() {
   }
   const order = ["auto", "omniroute", "other"];
   const keep = new Set();
-  modelSelect.innerHTML = "";
-  const addOpt = (parent, id, label) => {
-    if (!id || keep.has(id)) return;
-    keep.add(id);
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = label || id;
-    parent.appendChild(opt);
-  };
-  addOpt(modelSelect, auto.id, auto.label);
-  for (const key of order) {
-    if (!groups.has(key)) continue;
-    const items = groups.get(key);
-    if (!items.length) continue;
-    const og = document.createElement("optgroup");
-    og.label = key.charAt(0).toUpperCase() + key.slice(1);
-    for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
-    if (og.children.length) modelSelect.appendChild(og);
+
+  function populateSelect(sel, includeGroups = true) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    const seenLocal = new Set();
+    const addOpt = (parent, id, label) => {
+      if (!id || seenLocal.has(id)) return;
+      seenLocal.add(id);
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = label || id;
+      parent.appendChild(opt);
+    };
+    addOpt(sel, auto.id, auto.label);
+    if (includeGroups) {
+      for (const key of order) {
+        if (!groups.has(key)) continue;
+        const items = groups.get(key);
+        if (!items.length) continue;
+        const og = document.createElement("optgroup");
+        og.label = key.charAt(0).toUpperCase() + key.slice(1);
+        for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+        if (og.children.length) sel.appendChild(og);
+      }
+      for (const [key, items] of groups.entries()) {
+        if (order.includes(key)) continue;
+        const og = document.createElement("optgroup");
+        og.label = key.charAt(0).toUpperCase() + key.slice(1);
+        for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
+        if (og.children.length) sel.appendChild(og);
+      }
+    } else {
+      // flat list for compact header dropdown
+      for (const m of filtered) addOpt(sel, String(m.id), m.label || String(m.id));
+    }
+    // record ids from the first (settings) population
+    if (sel === modelSelect) {
+      for (const id of seenLocal) keep.add(id);
+    }
   }
-  // any remaining groups
-  for (const [key, items] of groups.entries()) {
-    if (order.includes(key)) continue;
-    const og = document.createElement("optgroup");
-    og.label = key.charAt(0).toUpperCase() + key.slice(1);
-    for (const m of items) addOpt(og, String(m.id), m.label || String(m.id));
-    if (og.children.length) modelSelect.appendChild(og);
+
+  // populate settings select (grouped, filterable)
+  if (modelSelect) populateSelect(modelSelect, true);
+  // if modelSelect not present, compute keep from filtered+auto
+  if (!modelSelect) {
+    keep.add(auto.id);
+    for (const m of filtered) keep.add(String(m.id));
   }
+
   let target = current || "auto";
   if (!keep.has(target)) target = "auto";
-  modelSelect.value = target;
+
+  if (modelSelect) modelSelect.value = target;
+  // header dropdown: show all available models (not filtered by settings search) for quick access
+  if (modelPillSelect) {
+    const prevQ = modelSearchQuery;
+    modelSearchQuery = ""; // header shows full list
+    // temporarily compute unfiltered groups for header
+    const fullList = Array.isArray(allModels) ? [...allModels] : [];
+    const fullFiltered = fullList.filter((m) => String(m.id || "") !== "auto");
+    const fullGroups = new Map();
+    for (const m of fullFiltered) {
+      const p = (m.provider || "other").toLowerCase();
+      if (!fullGroups.has(p)) fullGroups.set(p, []);
+      fullGroups.get(p).push(m);
+    }
+    const _groups = groups;
+    const _filtered = filtered;
+    // swap in full
+    // easier: inline populate for header
+    modelPillSelect.innerHTML = "";
+    const seenH = new Set();
+    const addH = (parent, id, label, compact = false) => {
+      if (!id || seenH.has(id)) return;
+      seenH.add(id);
+      const opt = document.createElement("option");
+      opt.value = id;
+      const full = label || id;
+      opt.textContent = compact ? compactModelLabel(id, full) : full;
+      if (compact && opt.textContent !== full) opt.title = full;
+      parent.appendChild(opt);
+    };
+    addH(modelPillSelect, auto.id, "Auto", false);
+    for (const key of order) {
+      if (!fullGroups.has(key)) continue;
+      const items = fullGroups.get(key);
+      if (!items.length) continue;
+      const og = document.createElement("optgroup");
+      og.label = key.charAt(0).toUpperCase() + key.slice(1);
+      for (const m of items) addH(og, String(m.id), m.label || String(m.id), true);
+      if (og.children.length) modelPillSelect.appendChild(og);
+    }
+    for (const [key, items] of fullGroups.entries()) {
+      if (order.includes(key)) continue;
+      const og = document.createElement("optgroup");
+      og.label = key.charAt(0).toUpperCase() + key.slice(1);
+      for (const m of items) addH(og, String(m.id), m.label || String(m.id), true);
+      if (og.children.length) modelPillSelect.appendChild(og);
+    }
+    if (!seenH.has(target)) {
+      // keep current selection visible even if not in discovered list
+      const opt = document.createElement("option");
+      opt.value = target;
+      opt.textContent = target === "auto" ? "Auto" : compactModelLabel(target, target);
+      if (target !== "auto" && opt.textContent !== target) opt.title = target;
+      modelPillSelect.appendChild(opt);
+    }
+    modelPillSelect.value = target;
+    modelSearchQuery = prevQ;
+  }
+
   if (modelInfo) {
     const shown = Math.max(0, keep.size - 1);
     const total = Math.max(
@@ -910,13 +1017,13 @@ function renderModelOptions() {
       modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.`;
     } else {
       modelInfo.textContent =
-        "Auto selected. Click “Refresh models” if OmniRoute is connected but no models appear yet.";
+        "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet.";
     }
   }
 }
 
 async function refreshModels() {
-  if (!modelSelect) return;
+  if (!modelSelect && !modelPillSelect) return;
   const base = getApiBase();
   if (!base) return;
   try {
@@ -979,8 +1086,20 @@ function updateHeader() {
   if (chatTitle) chatTitle.textContent = s ? s.title || "Chat" : "New chat";
   const base = getApiBase();
   const selected = getSelectedModel();
-  if (modelPillLabel)
-    modelPillLabel.textContent = selected === "auto" ? "Auto" : selected;
+  if (modelPillSelect) {
+    try {
+      if (!modelPillSelect.options || modelPillSelect.options.length === 0) {
+        // ensure at least current/auto option exists before models load
+        modelPillSelect.innerHTML = "";
+        const opt = document.createElement("option");
+        opt.value = selected || "auto";
+        opt.textContent = selected === "auto" ? "Auto" : compactModelLabel(selected, selected);
+        if (selected !== "auto" && opt.textContent !== selected) opt.title = selected;
+        modelPillSelect.appendChild(opt);
+      }
+      if (modelPillSelect.value !== selected) modelPillSelect.value = selected;
+    } catch {}
+  }
   if (!base) {
     if (chatSubtitle) {
       chatSubtitle.textContent = "Waiting for backend…";
@@ -1834,12 +1953,37 @@ function bindEvents() {
       renderSessionList();
     });
 
-  // Modals
-  [openSettingsBtn, openSettingsTop, openSettingsFoot, modelPill].forEach(
-    (el) => {
-      if (el) el.addEventListener("click", openSettings);
-    },
-  );
+  // Header actions menu (Clear saved API base, Copy diagnostics)
+  function closeTopSettingsMenu() {
+    if (topSettingsMenu) topSettingsMenu.hidden = true;
+    if (openSettingsTop) openSettingsTop.setAttribute("aria-expanded", "false");
+  }
+  function toggleTopSettingsMenu() {
+    if (!topSettingsMenu) return;
+    const willOpen = topSettingsMenu.hidden;
+    if (willOpen) {
+      topSettingsMenu.hidden = false;
+      if (openSettingsTop) openSettingsTop.setAttribute("aria-expanded", "true");
+    } else {
+      closeTopSettingsMenu();
+    }
+  }
+  if (openSettingsTop) {
+    openSettingsTop.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleTopSettingsMenu();
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!topSettingsMenuWrap || !topSettingsMenu || topSettingsMenu.hidden) return;
+    if (!topSettingsMenuWrap.contains(e.target)) closeTopSettingsMenu();
+  });
+  if (modelPillSelect) {
+    modelPillSelect.addEventListener("change", () => {
+      setSelectedModel(modelPillSelect.value || "auto", { notify: true });
+    });
+  }
   [settingsBackdrop, settingsClose, settingsDone].forEach((el) => {
     if (el) el.addEventListener("click", closeSettings);
   });
@@ -1882,33 +2026,47 @@ function bindEvents() {
         showToast("Failed to copy API base");
       }
     });
+  function clearSavedApiBase() {
+    try {
+      localStorage.removeItem(API_KEY);
+    } catch {}
+    if (apiBaseInput) apiBaseInput.value = "";
+    discoveredBase = "";
+    discoveredMeta = null;
+    healthInfo = null;
+    allModels = [
+      {
+        id: "auto",
+        provider: "auto",
+        label: "Auto (recommended, OmniRoute)",
+      },
+    ];
+    renderModelOptions();
+    updateHeader();
+    showToast("Saved API base cleared");
+    discoverBackend().finally(async () => {
+      await checkHealth().catch(() => {});
+      await refreshModels().catch(() => {});
+    });
+  }
   if (settingsClearBase)
     settingsClearBase.addEventListener("click", () => {
-      try {
-        localStorage.removeItem(API_KEY);
-      } catch {}
-      if (apiBaseInput) apiBaseInput.value = "";
-      discoveredBase = "";
-      discoveredMeta = null;
-      allModels = [
-        {
-          id: "auto",
-          provider: "auto",
-          label: "Auto (recommended, OmniRoute)",
-        },
-      ];
-      renderModelOptions();
-      healthInfo = null;
-      showToast("Saved API base cleared");
-      discoverBackend().finally(() => {
-        checkHealth().catch(() => {});
-        refreshModels().catch(() => {});
-      });
+      clearSavedApiBase();
+    });
+  if (menuClearApiBase)
+    menuClearApiBase.addEventListener("click", () => {
+      closeTopSettingsMenu();
+      clearSavedApiBase();
     });
   if (exportAllChatsBtn)
     exportAllChatsBtn.addEventListener("click", exportAllChats);
   if (copyDiagnosticsBtn)
     copyDiagnosticsBtn.addEventListener("click", () => {
+      copyDiagnostics();
+    });
+  if (menuCopyDiagnostics)
+    menuCopyDiagnostics.addEventListener("click", () => {
+      closeTopSettingsMenu();
       copyDiagnostics();
     });
   if (importChatsBtn && importChatsFile) {
@@ -1939,6 +2097,11 @@ function bindEvents() {
       (e.target && e.target.isContentEditable);
 
     if (e.key === "Escape") {
+      if (topSettingsMenu && !topSettingsMenu.hidden) {
+        e.preventDefault();
+        closeTopSettingsMenu();
+        return;
+      }
       if (isShortcutsOpen()) {
         e.preventDefault();
         closeShortcuts();
@@ -2033,15 +2196,7 @@ function bindEvents() {
       if (savedModel) modelSelect.value = savedModel;
     } catch {}
     modelSelect.addEventListener("change", () => {
-      try {
-        localStorage.setItem(MODEL_KEY, modelSelect.value || "auto");
-      } catch {}
-      updateHeader();
-      showToast(
-        modelSelect.value && modelSelect.value !== "auto"
-          ? "Model selected"
-          : "Auto model selection enabled",
-      );
+      setSelectedModel(modelSelect.value || "auto", { notify: true });
     });
   }
 }
