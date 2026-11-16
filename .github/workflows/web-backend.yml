@@ -52,9 +52,6 @@ jobs:
           HOST: "127.0.0.1"
           OMNIROUTE_HEADLESS: "1"
           OMNIROUTE_API_KEY: omniroute-local
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-          DOUBLEWORD_API_KEY: ${{ secrets.DOUBLEWORD_API_KEY }}
         run: |
           set -euo pipefail
           echo "Starting OmniRoute (primary provider for web backend)..."
@@ -74,9 +71,9 @@ jobs:
           echo $! > /tmp/omniroute.pid
           up=0
           for i in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:20128/v1/models >/tmp/omniroute-models.json 2>/dev/null \
-               || curl -fsS http://127.0.0.1:20128/health >/dev/null 2>&1 \
-               || curl -fsS http://127.0.0.1:20128/ >/dev/null 2>&1; then
+            if curl -fsS --max-time 10 http://127.0.0.1:20128/v1/models >/tmp/omniroute-models.json 2>/dev/null \
+               || curl -fsS --max-time 10 http://127.0.0.1:20128/health >/dev/null 2>&1 \
+               || curl -fsS --max-time 10 http://127.0.0.1:20128/ >/dev/null 2>&1; then
               echo "OmniRoute up (primary)"
               up=1
               break
@@ -90,6 +87,9 @@ jobs:
             exit 1
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "--- OmniRoute models snapshot ---"
+          (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "count=unavailable")
+          (jq -r '(.data // .models // [])[:20] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
           echo "--- OmniRoute models snapshot (top-level count/preview) ---"
           (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "models snapshot unavailable")
           (jq -r '(.data // .models // [])[:15] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
@@ -366,10 +366,23 @@ jobs:
             ts=$(date -u +%FT%TZ)
             if ! curl -fsS --max-time 10 http://127.0.0.1:8000/health >/dev/null 2>&1; then
               echo "[$ts] Local backend unhealthy; watchdogs will auto-restart services"
-              tail -n 60 /tmp/uvicorn.log 2>/dev/null || true
+              echo "--- uvicorn.log (tail) ---"; tail -n 40 /tmp/uvicorn.log 2>/dev/null || true
+              echo "--- uvicorn.watch.log (tail) ---"; tail -n 20 /tmp/uvicorn.watch.log 2>/dev/null || true
             fi
-            if ! curl -fsS --max-time 5 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 && ! curl -fsS --max-time 5 http://127.0.0.1:20128/health >/dev/null 2>&1; then
+            if ! curl -fsS --max-time 10 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 \
+               && ! curl -fsS --max-time 10 http://127.0.0.1:20128/health >/dev/null 2>&1; then
               echo "[$ts] OmniRoute not reachable locally (watchdog active)"
+              echo "--- omniroute.log (tail) ---"; tail -n 80 /tmp/omniroute.log 2>/dev/null || true
+              echo "--- omniroute.watch.log (tail) ---"; tail -n 30 /tmp/omniroute.watch.log 2>/dev/null || true
+            else
+              # periodic snapshot to understand available/working models while healthy
+              if [ $((SECONDS % 300)) -lt 35 ]; then
+                echo "[$ts] OmniRoute reachable (periodic snapshot)"
+                curl -fsS --max-time 10 http://127.0.0.1:8000/v1/status >/tmp/status.keep.json 2>/dev/null || true
+                if [ -s /tmp/status.keep.json ]; then
+                  jq -r '"  - omniroute_reachable=" + ((.omniroute_reachable // .omniroute.reachable // "n/a")|tostring) + ", model_count=" + ((.omniroute.model_count // "n/a")|tostring) + ", error=" + ((.omniroute.error // "")|tostring)' /tmp/status.keep.json 2>/dev/null || true
+                fi
+              fi
             fi
 
             sleep 30
