@@ -16,7 +16,6 @@ const modelSelect = $("model-select");
 const newChatBtn = $("new-chat");
 const sidebarToggle = $("sidebar-toggle");
 const themeToggle = $("theme-toggle");
-const brandHome = $("brand-home");
 const mobileMenu = $("mobile-menu");
 const sessionListEl = $("session-list");
 const sessionSearchInput = $("session-search");
@@ -79,7 +78,7 @@ let allModels = [
   {
     id: "auto",
     provider: "auto",
-    label: "Auto (recommended, OmniRoute)",
+    label: "Auto (recommended)",
   },
 ];
 
@@ -863,7 +862,7 @@ function renderModelOptions() {
   // ensure auto first
   const auto = {
     id: "auto",
-    label: "Auto (recommended, OmniRoute)",
+    label: "Auto (recommended)",
     provider: "auto",
   };
   const filtered = list.filter((m) => {
@@ -1044,7 +1043,7 @@ async function refreshModels() {
       norm.unshift({
         id: "auto",
         provider: "auto",
-        label: "Auto (recommended, OmniRoute)",
+        label: "Auto (recommended)",
       });
     allModels = norm;
     renderModelOptions();
@@ -1926,10 +1925,7 @@ function bindEvents() {
       }
       if (isMobileLayout()) setSidebarOpen(false);
     });
-  if (brandHome)
-    brandHome.addEventListener("click", () => {
-      if (chatInput) chatInput.focus();
-    });
+
 
   if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebar);
   if (mobileMenu) mobileMenu.addEventListener("click", toggleSidebar);
@@ -2038,7 +2034,7 @@ function bindEvents() {
       {
         id: "auto",
         provider: "auto",
-        label: "Auto (recommended, OmniRoute)",
+        label: "Auto (recommended)",
       },
     ];
     renderModelOptions();

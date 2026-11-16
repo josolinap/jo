@@ -168,7 +168,7 @@ a { color: inherit; text-decoration: none; }
 .sidebar-collapsed .sidebar { width: 72px; min-width: 72px; padding: 12px 8px; }
 .sidebar-collapsed .new-chat-btn span,
 .sidebar-collapsed .sidebar-section,
-.sidebar-collapsed .sidebar-footnote { display: none; }
+.sidebar-collapsed .sidebar-bottom-actions { flex-direction: column; }
 .sidebar-collapsed .brand, .sidebar-collapsed .new-chat-btn { justify-content: center; }
 .sidebar-collapsed .sidebar-header { justify-content: center; flex-direction: column; gap: 6px; }
 .sidebar-collapsed .sidebar-top-left { flex-direction: column; gap: 4px; }
@@ -430,7 +430,7 @@ a { color: inherit; text-decoration: none; }
   .app-shell.sidebar-collapsed .sidebar { transform: translateX(-100%); width: min(320px, 88vw); }
   .sidebar-collapsed .new-chat-btn span,
   .sidebar-collapsed .sidebar-section,
-  .sidebar-collapsed .sidebar-footnote { display: initial; }
+  .sidebar-collapsed .sidebar-bottom-actions { flex-direction: row; }
   .sidebar-collapsed .brand, .sidebar-collapsed .new-chat-btn { justify-content: flex-start; }
   .sidebar-collapsed .sidebar-header { justify-content: space-between; flex-direction: row; }
   .sidebar-collapsed .sidebar-top-left { flex-direction: row; gap: 2px; }
