@@ -759,15 +759,24 @@ def _list_models() -> Dict[str, Any]:
 
     add("auto", "omniroute", "Auto (recommended, OmniRoute)", recommended=True)
 
-    # OmniRoute discovered models only (show free models + auto)
+    # OmniRoute discovered models only (show free, concrete models + Auto)
     omni_base = _env("OMNIROUTE_BASE_URL")
     if omni_base:
         try:
             discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
             for mid in discovered:
-                smid = str(mid)
+                smid = str(mid).strip()
                 ml = smid.lower()
-                if ":free" in ml or ml.endswith("/free") or ml == "openrouter/free":
+                if not smid or ml == "auto":
+                    continue
+                # Exclude auto-combo aliases and known unusable CI/browser-bridge models
+                if ml.startswith("auto/") or ml.startswith("cfp/") or ml.startswith("dva/"):
+                    continue
+                if "cloudflare playground" in ml or "playwright" in ml or "devin agentic bridge" in ml:
+                    continue
+                is_free = ":free" in ml or ml.endswith("/free") or ml == "openrouter/free" or "/free" in ml
+                is_concrete = ("/" in ml) and not ml.startswith("auto")
+                if is_free and is_concrete:
                     add(smid, "omniroute")
         except Exception:
             pass
