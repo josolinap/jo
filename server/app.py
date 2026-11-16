@@ -233,7 +233,15 @@ def _provider_status() -> Dict[str, Any]:
     if omni_base:
         omni_reachable = _probe_http_ok(_omni_probe_urls(omni_base), _omni_auth_header_variants(), timeout=2)
         try:
-            omni_models, omni_info = _fetch_omniroute_models(omni_base, timeout=4, use_cache=True)
+            _omni_models_raw, omni_info = _fetch_omniroute_models(omni_base, timeout=4, use_cache=True)
+            omni_models = []
+            for _m in (_omni_models_raw or []):
+                if isinstance(_m, dict):
+                    _mid = str(_m.get("id") or _m.get("name") or _m.get("model") or "").strip()
+                else:
+                    _mid = str(_m or "").strip()
+                if _mid:
+                    omni_models.append(_mid)
             if omni_models or omni_info.get("reachable"):
                 omni_reachable = True
         except Exception as e:
@@ -244,6 +252,7 @@ def _provider_status() -> Dict[str, Any]:
                 "ok_url": "",
                 "error": f"{type(e).__name__}: {e}",
             }
+            omni_models = []
         omni_info["reachable"] = bool(omni_reachable)
 
     configured = bool(omni_base)
