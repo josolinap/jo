@@ -6,6 +6,8 @@ concurrency:
   group: jo-bot
   cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 
+# (kept as-is for bot behavior; web-backend workflow handles GUI/backend seamless reruns + housekeeping)
+
 # Opt into Node.js 24 (Node.js 20 deprecated)
 env:
   HOME: /home/runner
