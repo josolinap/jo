@@ -89,12 +89,12 @@ jobs:
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
           echo "--- OmniRoute models snapshot ---"
-          (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "count=unavailable")
-          (jq -r '(.data // .models // [])[:20] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
-          echo "--- OmniRoute models snapshot (top-level count/preview) ---"
-          (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "models snapshot unavailable")
-          (jq -r '(.data // .models // [])[:15] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
-
+          if [ -s /tmp/omniroute-models.json ]; then
+            (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "count=unavailable")
+            (jq -r '(.data // .models // [])[:20] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
+          else
+            echo "count=unavailable (models endpoint not captured during startup probe; backend status is authoritative)"
+          fi
 
       - name: Start backend server (OmniRoute only)
         env:
@@ -254,9 +254,14 @@ jobs:
           if [ $ok -ne 1 ]; then
             echo "- **Action:** Pages backend.json may still be stale/cached; redeploy if GUI shows unreachable." >> "$SUMMARY"
           else
-            # also verify tunnel reachable through published apiBase
-            tcode=$(curl -sS -o /tmp/published_health.json -w "%{http_code}" --max-time 20 "$got_api/health" || true)
-            echo "- **Published apiBase /health:** HTTP ${tcode:-n/a}" >> "$SUMMARY"
+            # also verify tunnel reachable through published apiBase (best-effort; DNS/tunnel warmup can be transient on runner)
+            tcode=$(curl -sS -o /tmp/published_health.json -w "%{http_code}" --max-time 20 "$got_api/health" 2>/tmp/published_health.err || true)
+            if [ "$tcode" = "200" ]; then
+              echo "- **Published apiBase /health:** OK (200)" >> "$SUMMARY"
+            else
+              echo "- **Published apiBase /health:** WARN (HTTP ${tcode:-n/a}; may be transient DNS/tunnel warmup). Local/published backend status checks above are authoritative." >> "$SUMMARY"
+              if [ -s /tmp/published_health.err ]; then echo "  - fetch error: \`$(head -c 120 /tmp/published_health.err)\`" >> "$SUMMARY"; fi
+            fi
           fi
 
       - name: Smoke test and summary
@@ -267,11 +272,10 @@ jobs:
           {
             echo "## Web Backend Deploy"
             echo ""
-            echo "- **Commit:** `${{ github.sha }}`"
+            echo "- **Commit:** \`${{ github.sha }}\`"
             echo "- **Published apiBase:** ${TUNNEL_URL:-"(missing)"}"
             echo "- **Pages URL:** ${{ steps.deployment.outputs.page_url }}"
             echo "- **OmniRoute step:** ${{ steps.omniroute.outcome }}"
-            echo "- **Local LLM step:** ${{ steps.localllm.outcome }}"
             echo ""
           } >> "$SUMMARY"
 
@@ -333,11 +337,11 @@ jobs:
           echo "" >> "$SUMMARY"
 
           if [ -n "$TUNNEL_URL" ]; then
-            TCODE=$(curl -sS -o /tmp/tunnel_health.json -w "%{http_code}" --max-time 20 "$TUNNEL_URL/health" || true)
+            TCODE=$(curl -sS -o /tmp/tunnel_health.json -w "%{http_code}" --max-time 20 "$TUNNEL_URL/health" 2>/tmp/tunnel_health.err || true)
             if [ "$TCODE" = "200" ]; then
               echo "- **Tunnel /health:** OK (200)" >> "$SUMMARY"
             else
-              echo "- **Tunnel /health:** WARN (HTTP ${TCODE:-n/a}, may warm up; local backend authoritative)" >> "$SUMMARY"
+              echo "- **Tunnel /health:** WARN (HTTP ${TCODE:-n/a}, may warm up/DNS may not be ready yet; local backend authoritative)" >> "$SUMMARY"
             fi
           fi
 
