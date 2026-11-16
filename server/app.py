@@ -469,7 +469,7 @@ def _run_via_llm(
                 candidates.append(mid)
 
             # 1) explicit request (if any)
-            if req_model and req_model.lower() != "auto":
+            if req_is_explicit:
                 _add_candidate(req_model)
             # 2) concrete discovered models (non-auto, preferred families first by sort)
             for m in discovered:
@@ -483,7 +483,7 @@ def _run_via_llm(
             for m in ("openrouter/free",):
                 _add_candidate(m)
             # 5) aliases only if explicitly requested or nothing else
-            if req_is_explicit or not any(not c.lower().startswith("auto") for c in candidates):
+            if (not req_is_explicit) or not any(not c.lower().startswith("auto") for c in candidates):
                 for m in discovered:
                     if m.lower().startswith("auto"):
                         _add_candidate(m)
@@ -491,16 +491,23 @@ def _run_via_llm(
             if not candidates:
                 candidates = ["openrouter/free", "auto"]
 
+            # If user explicitly selected a specific model, do not silently fall back to other models.
+            if req_is_explicit:
+                candidates = [req_model] if req_model else candidates[:1]
+
             tried = 0
             saw_env_error = False
-            max_tries = 20 if not req_is_explicit else 12
+            max_tries = 20 if not req_is_explicit else 1
             for om in candidates:
                 if tried >= max_tries:
                     break
                 oml = om.lower()
                 if _skip_in_ci(oml, explicit=((requested_model or "").strip().lower() == oml)):
+                    if req_is_explicit:
+                        errors.append(f"omniroute({om}): model unavailable in this environment")
+                        break
                     continue
-                if saw_env_error and oml.startswith("auto") and not req_is_explicit and env_model.lower() != oml:
+                if saw_env_error and oml.startswith("auto") and not req_is_explicit and (env_model or "").lower() != oml:
                     continue
                 try:
                     tried += 1
@@ -513,10 +520,14 @@ def _run_via_llm(
                         errors.append(f"omniroute({om}): rejected bad response")
                     else:
                         errors.append(f"omniroute({om}): empty response")
+                    if req_is_explicit:
+                        break
                 except Exception as oe:
                     last_oe = oe
                     emsg = str(oe)
                     errors.append(f"omniroute({om}): {oe}")
+                    if req_is_explicit:
+                        break
                     low_emsg = emsg.lower()
                     # If provider is unavailable due to CI env/runtime config, keep trying others
                     if (
@@ -524,8 +535,7 @@ def _run_via_llm(
                         or "chromium browser" in low_emsg
                         or "cloudflare playground" in low_emsg
                         or "devin agentic bridge" in low_emsg
-                        or "not configured" in low_emsg
-                        and ("503" in low_emsg or "502" in low_emsg)
+                        or ("not configured" in low_emsg and ("503" in low_emsg or "502" in low_emsg))
                     ):
                         saw_env_error = True
                         continue
@@ -535,6 +545,10 @@ def _run_via_llm(
             errors.append(f"omniroute: {e}")
 
     # OmniRoute-only backend: no local/direct/public provider fallbacks.
+    if req_model and req_model.lower() != "auto":
+        # Preserve explicit selection semantics: do not hide which model failed.
+        detail = " | ".join(errors[-6:]) if errors else "no response"
+        raise RuntimeError(f"Selected model '{req_model}' failed: {detail}")
     priority = [e for e in errors if e.startswith("omniroute")]
     tail = errors[-8:]
     summary = (
@@ -745,13 +759,16 @@ def _list_models() -> Dict[str, Any]:
 
     add("auto", "omniroute", "Auto (recommended, OmniRoute)", recommended=True)
 
-    # OmniRoute discovered models only
+    # OmniRoute discovered models only (show free models + auto)
     omni_base = _env("OMNIROUTE_BASE_URL")
     if omni_base:
         try:
             discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
             for mid in discovered:
-                add(str(mid), "omniroute")
+                smid = str(mid)
+                ml = smid.lower()
+                if ":free" in ml or ml.endswith("/free") or ml == "openrouter/free":
+                    add(smid, "omniroute")
         except Exception:
             pass
 
