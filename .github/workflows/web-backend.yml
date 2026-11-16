@@ -90,6 +90,9 @@ jobs:
             exit 1
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "--- OmniRoute models snapshot (top-level count/preview) ---"
+          (jq -r '"count=" + ((.data // .models // [])|length|tostring)' /tmp/omniroute-models.json 2>/dev/null || echo "models snapshot unavailable")
+          (jq -r '(.data // .models // [])[:15] | map(if type=="object" then (.id // .name // "?") else tostring end) | "sample=" + join(", ")' /tmp/omniroute-models.json 2>/dev/null || true)
 
 
       - name: Start backend server (OmniRoute only)
