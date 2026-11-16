@@ -675,6 +675,13 @@ def _run_via_llm(
             discovered = sorted(discovered, key=_omni_rank)
             candidates: list[str] = []
             req_is_explicit = bool(req_model and req_model.lower() != "auto")
+            req_ml = (req_model or "").lower()
+            # Auto-route/alias selections (e.g. auto/coding:free, auto/best-*) are not concrete models;
+            # allow resilient fallback to working concrete OmniRoute models if the route is unusable in this env.
+            req_is_auto_route = req_is_explicit and (
+                req_ml.startswith("auto/") or req_ml.startswith("auto-") or req_ml == "auto"
+            )
+            strict_explicit = req_is_explicit and not req_is_auto_route
 
             def _add_candidate(mid: str):
                 if not mid:
@@ -682,11 +689,14 @@ def _run_via_llm(
                 ml = mid.lower()
                 if mid in candidates:
                     return
-                if _skip_in_ci(ml, explicit=((requested_model or "").strip().lower() == ml)):
-                    return
+                explicit_same = (requested_model or "").strip().lower() == ml
+                if _skip_in_ci(ml, explicit=explicit_same):
+                    # don't hard-block explicit auto-routes here; let runtime try once then fallback
+                    if not (req_is_auto_route and explicit_same):
+                        return
                 candidates.append(mid)
 
-            # 1) explicit request (if any)
+            # 1) explicit request (if any) — try selected model/route first
             if req_is_explicit:
                 _add_candidate(req_model)
             # 2) concrete discovered models (non-auto, preferred families first by sort)
@@ -700,8 +710,12 @@ def _run_via_llm(
             # 4) safe/common fallbacks
             for m in ("openrouter/free",):
                 _add_candidate(m)
-            # 5) aliases only if explicitly requested or nothing else
-            if (not req_is_explicit) or not any(not c.lower().startswith("auto") for c in candidates):
+            # 5) aliases only if useful (or nothing else)
+            if (
+                (not req_is_explicit)
+                or req_is_auto_route
+                or not any(not c.lower().startswith("auto") for c in candidates)
+            ):
                 for m in discovered:
                     if m.lower().startswith("auto"):
                         _add_candidate(m)
@@ -709,26 +723,29 @@ def _run_via_llm(
             if not candidates:
                 candidates = ["openrouter/free", "auto"]
 
-            # If user explicitly selected a specific model, do not silently fall back to other models.
-            if req_is_explicit:
+            # Strict explicit concrete model: preserve selection semantics (no silent fallback).
+            # Explicit auto-routes keep fallbacks because the route itself may resolve to unusable upstreams.
+            if strict_explicit:
                 candidates = [req_model] if req_model else candidates[:1]
 
             tried = 0
             saw_env_error = False
-            max_tries = 20 if not req_is_explicit else 1
+            max_tries = 1 if strict_explicit else 20
             for om in candidates:
                 if tried >= max_tries:
                     break
                 oml = om.lower()
-                if _skip_in_ci(oml, explicit=((requested_model or "").strip().lower() == oml)):
-                    if req_is_explicit:
+                explicit_same = (requested_model or "").strip().lower() == oml
+                if _skip_in_ci(oml, explicit=explicit_same) and not (req_is_auto_route and explicit_same):
+                    if strict_explicit:
                         errors.append(f"omniroute({om}): model unavailable in this environment")
                         break
                     continue
                 if (
                     saw_env_error
                     and oml.startswith("auto")
-                    and not req_is_explicit
+                    and not strict_explicit
+                    and not req_is_auto_route
                     and (env_model or "").lower() != oml
                 ):
                     continue
@@ -743,16 +760,16 @@ def _run_via_llm(
                         errors.append(f"omniroute({om}): rejected bad response")
                     else:
                         errors.append(f"omniroute({om}): empty response")
-                    if req_is_explicit:
+                    if strict_explicit:
                         break
                 except Exception as oe:
                     last_oe = oe
                     emsg = str(oe)
                     errors.append(f"omniroute({om}): {oe}")
-                    if req_is_explicit:
+                    if strict_explicit:
                         break
                     low_emsg = emsg.lower()
-                    # If provider is unavailable due to CI env/runtime config, keep trying others
+                    # If provider/route is unavailable due to CI env/runtime config, keep trying others
                     if (
                         "playwright" in low_emsg
                         or "chromium browser" in low_emsg
@@ -768,8 +785,12 @@ def _run_via_llm(
             errors.append(f"omniroute: {e}")
 
     # OmniRoute-only backend: no local/direct/public provider fallbacks.
-    if req_model and req_model.lower() != "auto":
-        # Preserve explicit selection semantics: do not hide which model failed.
+    req_ml = (req_model or "").lower()
+    strict_explicit = bool(req_model and req_model.lower() != "auto") and not (
+        req_ml.startswith("auto/") or req_ml.startswith("auto-") or req_ml == "auto"
+    )
+    if strict_explicit:
+        # Preserve explicit concrete model selection semantics: do not hide which model failed.
         detail = " | ".join(errors[-6:]) if errors else "no response"
         raise RuntimeError(f"Selected model '{req_model}' failed: {detail}")
     priority = [e for e in errors if e.startswith("omniroute")]
