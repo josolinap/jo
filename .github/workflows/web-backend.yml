@@ -369,11 +369,19 @@ jobs:
               echo "--- uvicorn.log (tail) ---"; tail -n 40 /tmp/uvicorn.log 2>/dev/null || true
               echo "--- uvicorn.watch.log (tail) ---"; tail -n 20 /tmp/uvicorn.watch.log 2>/dev/null || true
             fi
-            if ! curl -fsS --max-time 10 http://127.0.0.1:20128/v1/models >/dev/null 2>&1 \
-               && ! curl -fsS --max-time 10 http://127.0.0.1:20128/health >/dev/null 2>&1; then
+            om_ok=0
+            m_code=$(curl -sS -o /tmp/om_keep_models.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/v1/models 2>/tmp/om_keep_models.err || true)
+            h_code=$(curl -sS -o /tmp/om_keep_health.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/health 2>/tmp/om_keep_health.err || true)
+            r_code=$(curl -sS -o /tmp/om_keep_root.out -w "%{http_code}" --max-time 10 http://127.0.0.1:20128/ 2>/tmp/om_keep_root.err || true)
+            if [ "$m_code" = "200" ] || [ "$h_code" = "200" ] || [ "$r_code" = "200" ]; then om_ok=1; fi
+            if [ "$om_ok" -ne 1 ]; then
               echo "[$ts] OmniRoute not reachable locally (watchdog active)"
-              echo "--- omniroute.log (tail) ---"; tail -n 80 /tmp/omniroute.log 2>/dev/null || true
+              echo "  probe: /v1/models -> HTTP ${m_code:-n/a}, /health -> HTTP ${h_code:-n/a}, / -> HTTP ${r_code:-n/a}"
+              echo "  /v1/models err: $(head -c 120 /tmp/om_keep_models.err 2>/dev/null || true)"
+              echo "  /health err: $(head -c 120 /tmp/om_keep_health.err 2>/dev/null || true)"
+              echo "--- omniroute.log (tail) ---"; tail -n 100 /tmp/omniroute.log 2>/dev/null || true
               echo "--- omniroute.watch.log (tail) ---"; tail -n 30 /tmp/omniroute.watch.log 2>/dev/null || true
+              echo "--- omniroute listeners/process ---"; (ss -ltnp 2>/dev/null | grep 20128 || netstat -ltnp 2>/dev/null | grep 20128 || true); (ps -ef | grep -E 'omniroute|run_omniroute' | grep -v grep || true)
             else
               # periodic snapshot to understand available/working models while healthy
               if [ $((SECONDS % 300)) -lt 35 ]; then
