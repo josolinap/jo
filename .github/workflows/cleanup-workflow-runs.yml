@@ -1,4 +1,4 @@
-name: Cleanup Completed Workflow Runs
+name: Cleanup Completed Workflow Runs & Deployments
 
 on:
   schedule:
@@ -7,11 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       keep_minimum_runs:
-        description: "Number of most recent completed runs to keep (repo-wide)"
+        description: "Number of most recent completed workflow runs to keep (repo-wide)"
         required: false
         default: "8"
+      keep_minimum_deployments:
+        description: "Number of most recent finished deployments to keep (github-pages/environment deployments)"
+        required: false
+        default: "5"
       dry_run:
-        description: "If true, list runs that would be deleted without deleting them"
+        description: "If true, list workflow runs/deployments that would be deleted without deleting them"
         required: false
         default: "false"
         type: choice
@@ -22,6 +26,7 @@ on:
 permissions:
   actions: write
   contents: read
+  deployments: write
 
 concurrency:
   group: cleanup-workflow-runs
@@ -29,7 +34,7 @@ concurrency:
 
 jobs:
   cleanup:
-    name: Delete completed workflow runs
+    name: Delete completed workflow runs and finished deployments
     runs-on: ubuntu-latest
     steps:
       - name: Cleanup completed workflow runs
@@ -66,8 +71,13 @@ jobs:
               "User-Agent": "cleanup-workflow-runs",
           }
 
-          def api_request(url, method="GET"):
-              req = urllib.request.Request(url, headers=headers, method=method)
+          def api_request(url, method="GET", payload=None):
+              data = None
+              req_headers = dict(headers)
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  req_headers["Content-Type"] = "application/json"
+              req = urllib.request.Request(url, headers=req_headers, data=data, method=method)
               with urllib.request.urlopen(req, timeout=30) as resp:
                   body = resp.read()
                   if not body:
@@ -103,29 +113,144 @@ jobs:
 
           if dry_run:
               for r in to_delete[:50]:
-                  print(f"DRY_RUN delete id={r.get('id')} name={r.get('name')!r} created_at={r.get('created_at')} conclusion={r.get('conclusion')}")
+                  print(f"DRY_RUN delete run id={r.get('id')} name={r.get('name')!r} created_at={r.get('created_at')} conclusion={r.get('conclusion')}")
               if len(to_delete) > 50:
-                  print(f"DRY_RUN ... and {len(to_delete) - 50} more")
+                  print(f"DRY_RUN ... and {len(to_delete) - 50} more runs")
+          else:
+              deleted = 0
+              failed = 0
+              for r in to_delete:
+                  rid = r.get("id")
+                  if not rid:
+                      continue
+                  url = f"https://api.github.com/repos/{repo}/actions/runs/{rid}"
+                  try:
+                      api_request(url, method="DELETE")
+                      deleted += 1
+                  except urllib.error.HTTPError as e:
+                      failed += 1
+                      print(f"Failed to delete run {rid}: HTTP {e.code}")
+                  except Exception as e:
+                      failed += 1
+                      print(f"Failed to delete run {rid}: {e}")
+                  if (deleted + failed) % 50 == 0:
+                      print(f"progress runs deleted={deleted} failed={failed}")
+              print(f"cleanup_runs_done deleted={deleted} failed={failed} kept={min(keep, len(completed))}")
+          PY
+
+      - name: Cleanup finished deployments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP_DEPLOYMENTS: ${{ github.event.inputs.keep_minimum_deployments || '5' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          set +e
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+
+          repo = os.environ["REPO"]
+          token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+          keep = int(os.environ.get("KEEP_DEPLOYMENTS", "5") or "5")
+          dry_run = str(os.environ.get("DRY_RUN", "false")).lower() == "true"
+
+          if keep < 0:
+              print("keep_minimum_deployments must be >= 0")
+              sys.exit(1)
+          if not token:
+              print("No token available; skipping deployment cleanup.")
+              sys.exit(0)
+
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "cleanup-workflow-runs",
+          }
+
+          def api_request(url, method="GET", payload=None):
+              data = None
+              req_headers = dict(headers)
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+                  req_headers["Content-Type"] = "application/json"
+              req = urllib.request.Request(url, headers=req_headers, data=data, method=method)
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  body = resp.read()
+                  if not body:
+                      return None
+                  return json.loads(body.decode("utf-8"))
+
+          deployments = []
+          page = 1
+          while True:
+              url = f"https://api.github.com/repos/{repo}/deployments?per_page=100&page={page}"
+              try:
+                  batch = api_request(url) or []
+              except Exception as e:
+                  print(f"Failed to list deployments (page {page}): {e}")
+                  break
+              if not batch:
+                  break
+              deployments.extend(batch)
+              if len(batch) < 100:
+                  break
+              page += 1
+
+          active_states = {"in_progress", "queued", "pending", "waiting"}
+          finished = []
+          for d in deployments:
+              did = d.get("id")
+              if not did:
+                  continue
+              try:
+                  statuses = api_request(f"https://api.github.com/repos/{repo}/deployments/{did}/statuses?per_page=1") or []
+              except Exception:
+                  statuses = []
+              state = (statuses[0].get("state") if statuses else "none") or "none"
+              if state in active_states:
+                  continue
+              finished.append((d, state))
+
+          # deployments API returns newest first by default; keep newest N finished
+          to_keep = finished[:keep]
+          to_delete = finished[keep:]
+          print(f"total_deployments_seen={len(deployments)} finished={len(finished)} keep={len(to_keep)} to_delete={len(to_delete)} dry_run={dry_run}")
+
+          if dry_run:
+              for d, state in to_delete[:50]:
+                  print(f"DRY_RUN delete deployment id={d.get('id')} env={d.get('environment')!r} created_at={d.get('created_at')} state={state}")
+              if len(to_delete) > 50:
+                  print(f"DRY_RUN ... and {len(to_delete) - 50} more deployments")
               sys.exit(0)
 
           deleted = 0
           failed = 0
-          for r in to_delete:
-              rid = r.get("id")
-              if not rid:
+          for d, state in to_delete:
+              did = d.get("id")
+              if not did:
                   continue
-              url = f"https://api.github.com/repos/{repo}/actions/runs/{rid}"
               try:
-                  api_request(url, method="DELETE")
+                  # Mark inactive before delete for compatibility
+                  api_request(f"https://api.github.com/repos/{repo}/deployments/{did}/statuses", method="POST", payload={"state": "inactive"})
+              except Exception:
+                  pass
+              try:
+                  api_request(f"https://api.github.com/repos/{repo}/deployments/{did}", method="DELETE")
                   deleted += 1
               except urllib.error.HTTPError as e:
                   failed += 1
-                  print(f"Failed to delete run {rid}: HTTP {e.code}")
+                  print(f"Failed to delete deployment {did} (state={state}): HTTP {e.code}")
               except Exception as e:
                   failed += 1
-                  print(f"Failed to delete run {rid}: {e}")
+                  print(f"Failed to delete deployment {did} (state={state}): {e}")
               if (deleted + failed) % 50 == 0:
-                  print(f"progress deleted={deleted} failed={failed}")
+                  print(f"progress deployments deleted={deleted} failed={failed}")
 
-          print(f"cleanup_done deleted={deleted} failed={failed} kept={min(keep, len(completed))}")
+          print(f"cleanup_deployments_done deleted={deleted} failed={failed} kept={len(to_keep)}")
           PY
+
