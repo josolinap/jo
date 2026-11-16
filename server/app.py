@@ -94,7 +94,48 @@ def _omni_probe_urls(base: str):
 _omni_models_cache: Dict[str, Any] = {"ts": 0.0, "base": "", "models": [], "ok_url": "", "error": ""}
 
 
-def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True) -> tuple[list[str], Dict[str, Any]]:
+def _is_free_model_entry(model: Any) -> bool:
+    """Heuristic: detect free/zero-cost models dynamically from OmniRoute model IDs/metadata."""
+    if isinstance(model, dict):
+        mid = str(model.get("id") or model.get("name") or model.get("model") or "").strip()
+        obj = model
+    else:
+        mid = str(model or "").strip()
+        obj = {}
+    ml = mid.lower()
+    if not mid:
+        return False
+    # explicit id hints
+    if ":free" in ml or ml.endswith("/free") or "/free" in ml or ml.endswith("-free"):
+        return True
+    # metadata hints (best-effort, schema varies by gateway/provider)
+    for k in ("free", "is_free", "isFree"):
+        v = obj.get(k)
+        if v is True:
+            return True
+        if isinstance(v, str) and v.lower() in ("true", "1", "yes", "free"):
+            return True
+    pricing = obj.get("pricing") or obj.get("cost") or obj.get("price")
+    if isinstance(pricing, dict):
+        vals = []
+        for pk, pv in pricing.items():
+            if isinstance(pv, (int, float)):
+                vals.append(float(pv))
+            elif isinstance(pv, str):
+                try:
+                    vals.append(float(pv))
+                except Exception:
+                    pass
+        if vals and all(v == 0 for v in vals):
+            return True
+    # some providers tag tiers
+    tags = obj.get("tags") or obj.get("capabilities") or []
+    if isinstance(tags, list) and any(str(t).lower() in ("free", "tier:free") for t in tags):
+        return True
+    return False
+
+
+def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True) -> tuple[list[Any], Dict[str, Any]]:
     import time as _time
 
     b = (base or "").rstrip("/")
@@ -137,16 +178,22 @@ def _fetch_omniroute_models(base: str, timeout: int = 5, use_cache: bool = True)
                 continue
         if md is not None:
             break
-    models: list[str] = []
+    models: list[Any] = []
+    seen_ids: set[str] = set()
     if isinstance(md, dict):
         for item in md.get("data") or md.get("models") or []:
-            mid = (item or {}).get("id") if isinstance(item, dict) else item
-            if not mid and isinstance(item, dict):
-                mid = item.get("name") or item.get("model")
-            if not mid:
-                continue
-            mid = str(mid).strip()
-            if mid and mid not in models:
+            if isinstance(item, dict):
+                mid = (item.get("id") or item.get("name") or item.get("model") or "")
+                mid = str(mid).strip()
+                if not mid or mid in seen_ids:
+                    continue
+                seen_ids.add(mid)
+                models.append(item)
+            else:
+                mid = str(item or "").strip()
+                if not mid or mid in seen_ids:
+                    continue
+                seen_ids.add(mid)
                 models.append(mid)
     info = {
         "reachable": bool(ok_url) or md is not None or bool(models),
@@ -759,25 +806,42 @@ def _list_models() -> Dict[str, Any]:
 
     add("auto", "omniroute", "Auto (recommended, OmniRoute)", recommended=True)
 
-    # OmniRoute discovered models only (show free, concrete models + Auto)
+    # Dynamically discover and expose all available free models from OmniRoute.
+    # "Free" is detected from model IDs and metadata (pricing/tags/flags) when present.
     omni_base = _env("OMNIROUTE_BASE_URL")
     if omni_base:
         try:
             discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
-            for mid in discovered:
-                smid = str(mid).strip()
+            for entry in discovered:
+                if isinstance(entry, dict):
+                    smid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
+                    meta = entry
+                else:
+                    smid = str(entry or "").strip()
+                    meta = {}
                 ml = smid.lower()
                 if not smid or ml == "auto":
                     continue
-                # Exclude auto-combo aliases and known unusable CI/browser-bridge models
-                if ml.startswith("auto/") or ml.startswith("cfp/") or ml.startswith("dva/"):
+                # Exclude routes known to require browser/runtime bridges in headless CI.
+                if ml.startswith("cfp/") or ml.startswith("dva/"):
                     continue
                 if "cloudflare playground" in ml or "playwright" in ml or "devin agentic bridge" in ml:
                     continue
-                is_free = ":free" in ml or ml.endswith("/free") or ml == "openrouter/free" or "/free" in ml
-                is_concrete = ("/" in ml) and not ml.startswith("auto")
-                if is_free and is_concrete:
-                    add(smid, "omniroute")
+
+                is_free = _is_free_model_entry(meta if meta else smid)
+                if not is_free:
+                    continue
+
+                extra: Dict[str, Any] = {"dynamic": True, "free": True}
+                # Preserve useful metadata if OmniRoute provides it (helps UI/debugging)
+                for k in ("owned_by", "provider", "description", "context_length", "pricing", "tags"):
+                    if k in meta and meta.get(k) is not None:
+                        extra[k] = meta.get(k)
+                # Classify auto-combo routes (e.g. auto/coding:free) vs concrete model IDs
+                if ml.startswith("auto/") or ml.startswith("auto-"):
+                    extra["kind"] = "auto_route"
+                    extra["label_hint"] = "auto-route"
+                add(smid, "omniroute", label=smid, **extra)
         except Exception:
             pass
 
