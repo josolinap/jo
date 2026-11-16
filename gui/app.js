@@ -575,7 +575,7 @@ function updateHeader() {
   const selected = getSelectedModel();
   if (modelPillLabel) modelPillLabel.textContent = selected === "auto" ? "Auto" : selected;
   if (!base) {
-    if (chatSubtitle) { chatSubtitle.textContent = "Waiting for backend…"; chatSubtitle.dataset.state = "idle"; }
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "idle"; }
     if (backendStatusEl) backendStatusEl.textContent = "Status: set API base URL or wait for auto-discovery";
     if (backendMeta) backendMeta.textContent = "";
     setConnState("idle");
@@ -590,7 +590,7 @@ function updateHeader() {
     if (healthInfo.fallback_active) parts.push("fallback active");
     else if (healthInfo.local_reachable) parts.push("local fallback ready");
     const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
-    if (chatSubtitle) { chatSubtitle.textContent = (configured ? "Ready · " : "Reachable · ") + parts.slice(0,3).join(" · "); chatSubtitle.dataset.state = subtitleState; }
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = subtitleState; }
     if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
     if (backendMeta) {
       const meta = [];
@@ -649,7 +649,7 @@ function updateHeader() {
     }
     setConnState(!configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok"));
   } else {
-    if (chatSubtitle) { chatSubtitle.textContent = "Connecting to backend…"; chatSubtitle.dataset.state = "err"; }
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "err"; }
     if (backendStatusEl) backendStatusEl.textContent = "Status: checking/unreachable";
     setConnState("err");
   }
