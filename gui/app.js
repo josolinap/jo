@@ -1004,19 +1004,31 @@ function renderModelOptions() {
       0,
       (allModels || []).filter((m) => String(m.id || "") !== "auto").length,
     );
+    let probeText = "";
+    const probe = healthInfo && healthInfo.model_probe ? healthInfo.model_probe : null;
+    if (probe && typeof probe === "object") {
+      if (probe.ok === true) {
+        probeText = ` Default probe OK (${probe.model || "auto"}${probe.latency_ms != null ? `, ${probe.latency_ms}ms` : ""}${probe.cached ? ", cached" : ""}).`;
+      } else if (probe.ok === false) {
+        const err = String(probe.error || "failed").slice(0, 90);
+        probeText = ` Default probe failed (${probe.model || "auto"}${err ? `: ${err}` : ""}).`;
+      } else if (probe.skipped) {
+        probeText = " Default probe skipped.";
+      }
+    }
     if (!getApiBase() && shown === 0) {
       modelInfo.textContent =
-        "Auto selected. Connect to a backend to load available models.";
+        "Auto selected. Connect to a backend to load available models." + probeText;
     } else if (q) {
       modelInfo.textContent =
-        shown > 0
+        (shown > 0
           ? `${shown} model option(s) shown (filtered from ${total}).`
-          : "No models match the current filter.";
+          : "No models match the current filter.") + probeText;
     } else if (shown > 0) {
-      modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.`;
+      modelInfo.textContent = `${shown} model option(s) available. Select one or keep Auto.` + probeText;
     } else {
       modelInfo.textContent =
-        "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet.";
+        "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet." + probeText;
     }
   }
 }
@@ -1030,14 +1042,18 @@ async function refreshModels() {
     if (!res.ok) return;
     const data = await res.json();
     const models = Array.isArray(data.models) ? data.models : [];
-    // normalize and dedupe
+    // normalize and dedupe (preserve useful metadata like probe/free/kind)
     const seen = new Set();
     const norm = [];
     for (const m of models) {
       const id = m && (m.id || m.name) ? String(m.id || m.name) : "";
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      norm.push({ id, provider: m.provider || "other", label: m.label || id });
+      const item = { id, provider: m.provider || "other", label: m.label || id };
+      for (const k of ["probe", "recommended", "dynamic", "free", "kind", "label_hint", "pricing", "tags", "owned_by", "description", "context_length"]) {
+        if (m && m[k] != null) item[k] = m[k];
+      }
+      norm.push(item);
     }
     if (!seen.has("auto"))
       norm.unshift({

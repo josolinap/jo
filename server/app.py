@@ -92,6 +92,9 @@ def _omni_probe_urls(base: str):
 
 
 _omni_models_cache: Dict[str, Any] = {"ts": 0.0, "base": "", "models": [], "ok_url": "", "error": ""}
+_omni_model_probe_cache: Dict[str, Dict[str, Any]] = {}
+_OMNI_MODEL_PROBE_TTL = 300.0
+_OMNI_MODEL_PROBE_TIMEOUT = 8  # seconds (kept short for stability)
 
 
 def _is_free_model_entry(model: Any) -> bool:
@@ -224,6 +227,124 @@ def _omni_auth_header_variants():
     return uniq
 
 
+def _probe_omniroute_model(base: str, model_id: str, timeout: int = _OMNI_MODEL_PROBE_TIMEOUT, use_cache: bool = True) -> Dict[str, Any]:
+    """Lightweight chat-completion probe to determine if a model is actually usable."""
+    import time as _time
+    import json as _json
+    import urllib.request as _ur
+    import urllib.error as _ue
+
+    b = (base or "").rstrip("/")
+    mid = str(model_id or "").strip() or "auto"
+    cache_key = f"{b}::{mid}"
+    now = _time.time()
+    if use_cache:
+        cached = _omni_model_probe_cache.get(cache_key)
+        if cached and (now - float(cached.get("checked_at_ts") or 0)) < _OMNI_MODEL_PROBE_TTL:
+            out = dict(cached)
+            out["cached"] = True
+            return out
+
+    if not b:
+        result = {
+            "ok": False, "model": mid, "latency_ms": None, "error": "omniroute_base_not_configured",
+            "checked_at": int(now), "checked_at_ts": now, "cached": False,
+        }
+        _omni_model_probe_cache[cache_key] = dict(result)
+        return result
+
+    payload = _json.dumps({
+        "model": mid,
+        "messages": [{"role": "user", "content": "Reply with OK"}],
+        "max_tokens": 4,
+        "temperature": 0,
+        "stream": False,
+    }).encode("utf-8")
+    urls = [b + "/chat/completions", b.rstrip("/") + "/v1/chat/completions"]
+    seen_u = set(); urls = [u for u in urls if not (u in seen_u or seen_u.add(u))]
+    last_err = "no_response"
+    ok = False
+    latency_ms = None
+    used_url = ""
+    for url in urls:
+        for hdrs in _omni_auth_header_variants():
+            headers = {"Content-Type": "application/json"}
+            headers.update(hdrs or {})
+            start = _time.time()
+            try:
+                req = _ur.Request(url, data=payload, headers=headers, method="POST")
+                with _ur.urlopen(req, timeout=timeout) as resp:
+                    latency_ms = int((_time.time() - start) * 1000)
+                    raw = resp.read().decode("utf-8", "replace")
+                    try:
+                        data = _json.loads(raw) if raw else {}
+                    except Exception:
+                        data = {}
+                    if isinstance(data, dict) and data.get("error"):
+                        err_obj = data.get("error")
+                        if isinstance(err_obj, dict):
+                            last_err = str(err_obj.get("code") or err_obj.get("message") or err_obj)[:160]
+                        else:
+                            last_err = str(err_obj)[:160]
+                        continue
+                    choices = (data or {}).get("choices") if isinstance(data, dict) else None
+                    msg = ((choices or [{}])[0] or {}).get("message") if isinstance(choices, list) and choices else {}
+                    text = _extract_text(msg) if isinstance(msg, dict) else ""
+                    if text and not _looks_bad_response(text):
+                        ok = True
+                        used_url = url
+                        last_err = ""
+                        break
+                    last_err = "empty_or_bad_response"
+            except _ue.HTTPError as e:
+                latency_ms = int((_time.time() - start) * 1000)
+                try:
+                    body = e.read().decode("utf-8", "replace")[:180]
+                except Exception:
+                    body = ""
+                last_err = f"HTTP_{e.code}" + (f": {body}" if body else "")
+            except Exception as e:
+                latency_ms = int((_time.time() - start) * 1000)
+                last_err = f"{type(e).__name__}: {e}"[:160]
+        if ok:
+            break
+    result = {
+        "ok": ok,
+        "model": mid,
+        "latency_ms": latency_ms,
+        "error": "" if ok else last_err,
+        "url": used_url,
+        "checked_at": int(now),
+        "checked_at_ts": now,
+        "cached": False,
+    }
+    _omni_model_probe_cache[cache_key] = dict(result)
+    return result
+
+
+def _get_default_probe_model(base: str, preferred: Optional[str] = None) -> str:
+    cand = (preferred or _env("OMNIROUTE_MODEL") or "auto").strip() or "auto"
+    if cand.lower() != "auto":
+        return cand
+    try:
+        discovered, _ = _fetch_omniroute_models(base, timeout=4, use_cache=True)
+        for entry in discovered:
+            if isinstance(entry, dict):
+                mid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
+            else:
+                mid = str(entry or "").strip()
+            ml = mid.lower()
+            if not mid or ml == "auto" or ml.startswith("auto/") or ml.startswith("auto-"):
+                continue
+            if ml.startswith("cfp/") or ml.startswith("dva/") or "playwright" in ml or "cloudflare playground" in ml:
+                continue
+            if _is_free_model_entry(entry if isinstance(entry, dict) else mid):
+                return mid
+    except Exception:
+        pass
+    return "openrouter/free"
+
+
 def _provider_status() -> Dict[str, Any]:
     omni_base = _env("OMNIROUTE_BASE_URL")
     omni_reachable = False
@@ -264,6 +385,24 @@ def _provider_status() -> Dict[str, Any]:
     else:
         reasons.append("omniroute_not_configured")
 
+    model_probe = None
+    if _env("JO_WEB_ENABLE_MODEL_PROBE") != "0" and omni_base and omni_reachable:
+        try:
+            probe_model = _get_default_probe_model(omni_base, _env("OMNIROUTE_MODEL") or "auto")
+            model_probe = _probe_omniroute_model(omni_base, probe_model, timeout=_OMNI_MODEL_PROBE_TIMEOUT, use_cache=True)
+        except Exception as e:
+            model_probe = {"ok": False, "model": _env("OMNIROUTE_MODEL") or "auto", "error": f"probe_exception: {e}", "cached": False}
+    elif _env("JO_WEB_ENABLE_MODEL_PROBE") == "0":
+        model_probe = {"ok": None, "skipped": True, "reason": "disabled_by_env"}
+    elif omni_base and not omni_reachable:
+        model_probe = {"ok": False, "model": _env("OMNIROUTE_MODEL") or "auto", "error": omni_info.get("error") or "omniroute_unreachable", "cached": False}
+
+    if model_probe is not None:
+        if model_probe.get("ok") is True:
+            reasons.append("default_model_probe_ok")
+        elif model_probe.get("ok") is False:
+            reasons.append("default_model_probe_failed")
+
     return {
         "provider": "omniroute",
         "model": _env("OMNIROUTE_MODEL") or "auto",
@@ -282,6 +421,7 @@ def _provider_status() -> Dict[str, Any]:
         "reasons": reasons,
         "fallback_active": False,
         "model_source": "omniroute",
+        "model_probe": model_probe,
         "omniroute": {
             "configured": bool(omni_base),
             "reachable": bool(omni_reachable),
@@ -813,7 +953,16 @@ def _list_models() -> Dict[str, Any]:
             item.update(extra)
         models.append(item)
 
-    add("auto", "omniroute", "Auto (recommended, OmniRoute)", recommended=True)
+    auto_probe = None
+    if omni_base and _env("JO_WEB_ENABLE_MODEL_PROBE") != "0":
+        try:
+            probe_model = _get_default_probe_model(omni_base, _env("OMNIROUTE_MODEL") or "auto")
+            cached = _omni_model_probe_cache.get(f"{omni_base.rstrip('/')}::{probe_model}")
+            if cached:
+                auto_probe = {k: cached.get(k) for k in ("ok", "model", "latency_ms", "error", "checked_at", "cached") if k in cached}
+        except Exception:
+            auto_probe = None
+    add("auto", "omniroute", "Auto (recommended)", recommended=True, probe=auto_probe)
 
     # Dynamically discover and expose all available free models from OmniRoute.
     # "Free" is detected from model IDs and metadata (pricing/tags/flags) when present.
@@ -850,6 +999,13 @@ def _list_models() -> Dict[str, Any]:
                 if ml.startswith("auto/") or ml.startswith("auto-"):
                     extra["kind"] = "auto_route"
                     extra["label_hint"] = "auto-route"
+                # Attach cached probe info if available (no extra probing here for stability)
+                try:
+                    cached_probe = _omni_model_probe_cache.get(f"{omni_base.rstrip('/')}::{smid}")
+                    if cached_probe:
+                        extra["probe"] = {k: cached_probe.get(k) for k in ("ok", "latency_ms", "error", "checked_at", "cached") if k in cached_probe}
+                except Exception:
+                    pass
                 add(smid, "omniroute", label=smid, **extra)
         except Exception:
             pass

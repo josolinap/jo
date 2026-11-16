@@ -301,11 +301,22 @@ jobs:
             OMNI_OK=$(jq -r '.omniroute.ok_url // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             OMNI_ERR=$(jq -r '.omniroute.error // ""' /tmp/status.json 2>/dev/null || echo "")
             REASONS=$(jq -r '(.reasons // []) | join(", ")' /tmp/status.json 2>/dev/null || echo "")
+            PROBE_OK=$(jq -r '.model_probe.ok // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            PROBE_MODEL=$(jq -r '.model_probe.model // ""' /tmp/status.json 2>/dev/null || echo "")
+            PROBE_LAT=$(jq -r '.model_probe.latency_ms // ""' /tmp/status.json 2>/dev/null || echo "")
+            PROBE_ERR=$(jq -r '.model_probe.error // ""' /tmp/status.json 2>/dev/null || echo "")
             echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\` (source: \`$MSRC\`)" >> "$SUMMARY"
             echo "- **OmniRoute reachable:** \`$OMNI\` (models: \`$OMC\`)" >> "$SUMMARY"
             echo "- **OmniRoute base:** \`$OMNI_BASE\`" >> "$SUMMARY"
             if [ -n "$OMNI_OK" ] && [ "$OMNI_OK" != "n/a" ] && [ "$OMNI_OK" != "null" ]; then echo "- **OmniRoute models endpoint:** \`$OMNI_OK\`" >> "$SUMMARY"; fi
             if [ -n "$OMNI_ERR" ] && [ "$OMNI_ERR" != "null" ]; then echo "- **OmniRoute probe note:** ${OMNI_ERR}" >> "$SUMMARY"; fi
+            if [ "$PROBE_OK" != "n/a" ] && [ "$PROBE_OK" != "null" ] && [ -n "$PROBE_OK" ]; then
+              if [ "$PROBE_OK" = "true" ]; then
+                echo "- **Default model usability probe:** OK (\`$PROBE_MODEL\`${PROBE_LAT:+, ${PROBE_LAT}ms})" >> "$SUMMARY"
+              else
+                echo "- **Default model usability probe:** FAILED (\`$PROBE_MODEL\`${PROBE_LAT:+, ${PROBE_LAT}ms}) ${PROBE_ERR:+- }${PROBE_ERR}" >> "$SUMMARY"
+              fi
+            fi
             if [ -n "$REASONS" ]; then echo "- **Readiness reasons:** $REASONS" >> "$SUMMARY"; fi
           else
             echo "_No /v1/status JSON available._" >> "$SUMMARY"
@@ -346,7 +357,7 @@ jobs:
             echo "- **POST /v1/chat:** OK (200) — provider: \`$CPROV\`, model: \`$CMODEL\`, elapsed_ms: \`$CELAPSED\`" >> "$SUMMARY"
             if [ -n "$CRESP" ]; then echo "- **Response preview:** ${CRESP}" >> "$SUMMARY"; fi
             if [ "$CPROV" = "fallback" ] || [ "$CPROV" = "unavailable" ] || [ "$CMODEL" = "unavailable" ]; then
-              echo "- **Note:** generation degraded/unavailable via OmniRoute. Check OmniRoute upstream provider/model availability." >> "$SUMMARY"
+              echo "- **Note:** generation degraded/unavailable via OmniRoute. Check OmniRoute upstream provider/model availability and model usability probe results above." >> "$SUMMARY"
             fi
           else
             echo "- **POST /v1/chat:** WARN (HTTP ${CHAT_CODE:-n/a}) — generation may be unavailable or slow in this environment." >> "$SUMMARY"
