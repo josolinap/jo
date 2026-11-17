@@ -1331,7 +1331,7 @@ async function checkHealth() {
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
       attemptReconnect(true).catch(() => {});
-    }, 2500);
+    }, 1200);
   }
   if (healthInfo && healthInfo.status === "ok") hideReconnectBanner();
   updateHeader();
@@ -2280,7 +2280,7 @@ function bindEvents() {
   }
 }
 
-function init() {
+async function init() {
   syncSidebarForViewport();
   if (emptyGreeting) emptyGreeting.textContent = getGreeting(new Date());
   bindEvents();
@@ -2290,11 +2290,28 @@ function init() {
   renderModelOptions();
   updateHeader();
   autoResize();
-  discoverBackend().finally(async () => {
-    await checkHealth().catch(() => {});
-    await refreshModels().catch(() => {});
-  });
+  const savedBase = getSavedApiBase();
+  if (savedBase) {
+    let ok = false;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 3500);
+      const res = await fetch(savedBase + "/health", { signal: ctrl.signal, cache: "no-store" });
+      clearTimeout(t);
+      ok = !!res && res.ok;
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      try { localStorage.removeItem(API_KEY); } catch {}
+      if (apiBaseInput) apiBaseInput.value = "";
+      try { showToast("Saved backend unreachable; switching to auto-discovery"); } catch {}
+    }
+  }
+  await discoverBackend().catch(() => false);
+  await checkHealth().catch(() => {});
+  await refreshModels().catch(() => {});
   startHealthPolling();
 }
 
-init();
+init().catch((e) => { try { console.error("init failed", e); } catch {} });
