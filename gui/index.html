@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f5f5f5">
   <title>Jo</title>
-  <meta name="description" content="Jo — a self-creating AI agent with a polished web chat UI, powered by OmniRoute and free models.">
+  <meta name="description" content="Jo web chat UI.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -16,26 +16,10 @@
       <aside class="sidebar" id="sidebar" aria-label="Sidebar">
         <div class="sidebar-header">
           <div class="sidebar-top-left">
-            <button class="brand" id="brand-home" type="button" aria-label="Jo home" title="Jo">
-              <span class="brand-glyph" aria-hidden="true">
-                <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
-                  <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="3.5"/>
-                  <circle cx="25" cy="7" r="4" fill="var(--brand-pink, #ff91ac)"/>
-                </svg>
-              </span>
-              <span class="brand-name">Jo</span>
-            </button>
-            <div class="sidebar-quick-actions" aria-label="Quick actions">
-              <button class="icon-btn ghost" id="open-settings" type="button" aria-label="Settings" title="Settings">
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            <div class="sidebar-quick-actions" aria-label="Status">
+              <span class="sidebar-conn-indicator" title="Connection status">
                 <span class="quick-dot" id="sidebar-conn-dot" aria-hidden="true"></span>
-              </button>
-              <button class="icon-btn ghost" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-              </button>
-              <a class="icon-btn ghost" href="https://github.com/josolinap/jo" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-              </a>
+              </span>
             </div>
           </div>
           <button class="icon-btn ghost" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -62,7 +46,14 @@
         </div>
 
         <div class="sidebar-bottom">
-          <div class="sidebar-footnote">OmniRoute-first · auto fallback</div>
+          <div class="sidebar-bottom-actions">
+            <button class="icon-btn ghost" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+            <a class="icon-btn ghost" href="https://github.com/josolinap/jo" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            </a>
+          </div>
         </div>
       </aside>
 
@@ -82,20 +73,25 @@
                 </div>
               </div>
               <div class="chat-top-actions">
-                <button class="model-pill" id="model-pill" type="button" title="Change model (Ctrl+, opens Settings)">
-                  <span class="model-pill-dot" id="model-pill-dot"></span>
-                  <span id="model-pill-label">Auto</span>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
+                <div class="model-pill-dropdown" id="model-pill-wrap" title="Select model">
+                  <span class="model-pill-dot" id="model-pill-dot" aria-hidden="true"></span>
+                  <select id="model-pill-select" class="model-pill-select" aria-label="Select model"></select>
+                </div>
                 <button class="icon-btn ghost" id="chat-export" type="button" aria-label="Export chat" title="Export chat">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
                 </button>
                 <button class="icon-btn ghost" id="chat-refresh" type="button" aria-label="Refresh connection" title="Refresh connection">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                 </button>
-                <button class="icon-btn ghost" id="open-settings-top" type="button" aria-label="Settings" title="Settings (Ctrl+,)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
+                <div class="header-menu-wrap" id="top-settings-menu-wrap">
+                  <button class="icon-btn ghost" id="open-settings-top" type="button" aria-label="Actions menu" title="Actions" aria-haspopup="menu" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <div class="header-menu" id="top-settings-menu" role="menu" hidden>
+                    <button type="button" class="header-menu-item" id="menu-clear-api-base" role="menuitem">Clear saved API base</button>
+                    <button type="button" class="header-menu-item" id="menu-copy-diagnostics" role="menuitem">Copy diagnostics</button>
+                  </div>
+                </div>
               </div>
             </header>
 
@@ -108,28 +104,6 @@
                 <div class="welcome" id="chat-empty">
                   <div class="welcome-hero">
                     <h1 id="empty-greeting">Good evening</h1>
-                  </div>
-                  <div class="welcome-grid">
-                    <button type="button" class="suggest-card" data-prompt="Who are you and what can you do?">
-                      <span class="suggest-icon">✨</span>
-                      <span class="suggest-title">Meet Jo</span>
-                      <span class="suggest-desc">Learn what Jo can do and how it thinks</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Help me plan and build a small web app step by step.">
-                      <span class="suggest-icon">🛠️</span>
-                      <span class="suggest-title">Build something</span>
-                      <span class="suggest-desc">Plan, design, and implement an idea</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Check backend status, readiness, and available models right now.">
-                      <span class="suggest-icon">🔌</span>
-                      <span class="suggest-title">Check status</span>
-                      <span class="suggest-desc">See backend health, readiness, and available models</span>
-                    </button>
-                    <button type="button" class="suggest-card" data-prompt="Review my idea and suggest improvements with clear next steps.">
-                      <span class="suggest-icon">💡</span>
-                      <span class="suggest-title">Improve an idea</span>
-                      <span class="suggest-desc">Get feedback and actionable next steps</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -160,7 +134,7 @@
               </form>
               <div class="chat-status" id="chat-status" aria-live="polite"></div>
               <div class="sr-status" id="sr-status" role="status" aria-live="polite" aria-atomic="true"></div>
-              <div class="chat-footnote">Jo can make mistakes. Check important info. · <button type="button" class="link-btn" id="open-settings-foot">Settings</button> · <span class="kbd-hint">Ctrl+/ shortcuts</span></div>
+              <div class="chat-footnote">Jo can make mistakes. Check important info. · <span class="kbd-hint">Ctrl+/ shortcuts</span></div>
             </div>
           </div>
         </main>
@@ -203,7 +177,7 @@
       <div class="modal-header">
         <div>
           <h2 id="settings-title">Settings</h2>
-          <p class="modal-sub">Configure backend, model, and appearance</p>
+          <p class="modal-sub">Configure backend connection, model selection, and appearance</p>
         </div>
         <button class="icon-btn ghost" id="settings-close" type="button" aria-label="Close settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -219,7 +193,7 @@
               <button type="button" class="btn secondary" id="settings-refresh">Refresh</button>
               <button type="button" class="btn secondary" id="settings-copy-base">Copy base</button>
             </div>
-            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> when available. Use “Clear saved API base” to re-enable auto-discovery after manual changes.</span>
+            <span class="field-help">Leave empty to auto-discover from <code>./backend.json</code> (recommended for GitHub Pages deploys). Save a custom URL only for testing or a different backend, and use “Clear saved API base” to return to auto-discovery.</span>
           </label>
           <div class="status-card" id="status-card">
             <div class="status-row"><span class="status-dot" id="status-dot"></span><span id="backend-status">Status: unknown</span></div>
@@ -231,17 +205,20 @@
         <section class="settings-section">
           <h3>Model</h3>
           <label class="field">
-            <span class="field-label">Search & select model</span>
-            <input id="model-search" type="text" class="select-input" placeholder="Filter models (e.g. free, llama, gemma, auto)…" autocomplete="off">
+            <span class="field-label">Chat model</span>
+            <select id="model-select" class="select-input" size="7">
+              <option value="auto">Auto (recommended)</option>
+            </select>
+            <span class="field-help">Models are discovered from OmniRoute (web UI shows <strong>Auto</strong> plus free/usable-discovered models). Keep <strong>Auto</strong> for best routing, or choose a specific model. Some <code>auto/*</code> route aliases can resolve to browser/bridge-required providers in hosted environments and may fall back automatically; explicit concrete model selections fail explicitly if unusable.</span>
           </label>
           <label class="field">
-            <span class="field-label">Chat model</span>
-            <select id="model-select" class="select-input" size="6">
-              <option value="auto">Auto (recommended, OmniRoute-first)</option>
-            </select>
-            <span class="field-help">“Auto” lets the backend choose the best available route (OmniRoute prioritized with fallbacks). Select a specific model to prefer it. Options depend on connected providers/backends.</span>
+            <span class="field-label">Filter models (optional)</span>
+            <div class="field-row">
+              <input id="model-search" type="text" class="select-input" placeholder="Type to filter models…" autocomplete="off">
+              <button type="button" class="btn secondary" id="settings-refresh-models">Refresh models</button>
+            </div>
           </label>
-          <div class="model-info" id="model-info"></div>
+          <div class="model-info" id="model-info">Loading available models…</div>
         </section>
 
         <section class="settings-section">

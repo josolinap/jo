@@ -22,8 +22,8 @@ Jo reads these automatically at startup — no code changes needed.
 | `OPENROUTER_API_KEY` | Required for OpenRouter (cloud) models |
 | `DOUBLEWORD_API_KEY` | Doubleword.ai key for efficient model pool fallback |
 | `NVIDIA_API_KEY` | NVIDIA NIM key for free-tier fallback |
-| `LOCAL_BASE_URL` | Local Ollama endpoint (default: `http://localhost:11434/v1`) |
-| `LOCAL_API_KEY` | Local API key (default: `EMPTY`) |
+| `LOCAL_BASE_URL` | Local OpenAI-compatible endpoint (not used by the OmniRoute-only web backend) |
+| `LOCAL_API_KEY` | Local API key (not used by the OmniRoute-only web backend) |
 
 ## 🧠 Provider Selection
 

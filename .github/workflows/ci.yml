@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, stable]
+  pull_request:
+    branches: [main, dev, stable]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke checks (GUI + backend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate GUI static files and wiring
+        run: |
+          set -euo pipefail
+          node --check gui/app.js
+          node --check gui/theme-init.js
+          test -f gui/index.html
+          test -f gui/styles.css
+          grep -q 'backend.json' gui/app.js
+          grep -q '/v1/chat' gui/app.js
+          grep -q 'id="sidebar-toggle"' gui/index.html
+          grep -q 'id="new-chat"' gui/index.html
+
+      - name: Compile backend Python
+        run: |
+          set -euo pipefail
+          python -m py_compile server/app.py
+
+      - name: Install test dependencies (best effort)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt || echo "requirements install failed; continuing with smoke checks"
+          fi
+          python -m pip install pytest || echo "pytest install failed; smoke tests may be skipped"
+
+      - name: Run smoke tests (if available)
+        run: |
+          set -euo pipefail
+          if python -c "import pytest" >/dev/null 2>&1 && [ -f tests/test_smoke.py ]; then
+            python -m pytest tests/test_smoke.py -q
+          else
+            echo "Skipping smoke tests (pytest or tests/test_smoke.py unavailable)"
+          fi
