@@ -1179,17 +1179,6 @@ function updateHeader() {
     const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
     if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = subtitleState; }
     if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
-    const subtitleState = !configured ? "warn" : "ok";
-    if (chatSubtitle) {
-      chatSubtitle.textContent =
-        (configured ? "Ready · " : "Reachable · ") +
-        parts.slice(0, 3).join(" · ");
-      chatSubtitle.dataset.state = subtitleState;
-    }
-    if (backendStatusEl)
-      backendStatusEl.textContent = configured
-        ? "Status: online"
-        : "Status: reachable (no model configured)";
     let discoveryAgeMs = null;
     if (!getSavedApiBase() && discoveredMeta && discoveredMeta.updatedAt) {
       const t = Date.parse(discoveredMeta.updatedAt);
@@ -1391,8 +1380,7 @@ function hideReconnectBanner() {
   if (reconnectBanner) reconnectBanner.hidden = true;
 }
 async function attemptReconnect(auto = false) {
-  const base = getApiBase();
-  // try to rediscover only when using discovered backend or no manual base
+  // try to rediscover when using discovered backend or when saved base is failing
   const manual = getSavedApiBase();
   if (!manual) {
     const found = await discoverBackend(true);
@@ -1403,10 +1391,43 @@ async function attemptReconnect(auto = false) {
           : "Found backend URL. Reconnecting…",
       );
   } else if (auto) {
-    showReconnectBanner(
-      "Backend unreachable. Check your saved API base or clear it to re-enable auto-discovery.",
-    );
-    return;
+    // Saved manual base may be stale/rotated. Try auto-discovered backend as recovery.
+    const prevDiscovered = discoveredBase;
+    const found = await discoverBackend(true);
+    const candidate = (discoveredBase || "").trim().replace(/\/$/, "");
+    if (found && candidate) {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 7000);
+        const res = await fetch(candidate + "/health", { signal: ctrl.signal, cache: "no-store" });
+        clearTimeout(t);
+        if (res.ok) {
+          try { localStorage.removeItem(API_KEY); } catch {}
+          if (apiBaseInput) apiBaseInput.value = "";
+          showReconnectBanner("Saved API base unreachable. Switched to auto-discovered backend…");
+        } else {
+          discoveredBase = prevDiscovered;
+          showReconnectBanner(
+            "Backend unreachable. Check your saved API base or clear it to re-enable auto-discovery.",
+          );
+          return;
+        }
+      } catch {
+        discoveredBase = prevDiscovered;
+        showReconnectBanner(
+          "Backend unreachable. Check your saved API base or clear it to re-enable auto-discovery.",
+        );
+        return;
+      }
+    } else {
+      showReconnectBanner(
+        "Backend unreachable. Check your saved API base or clear it to re-enable auto-discovery.",
+      );
+      return;
+    }
+  } else {
+    // manual reconnect: honor saved base, but refresh discovery metadata for diagnostics
+    await discoverBackend(true).catch(() => {});
   }
   await checkHealth();
   if (healthInfo && healthInfo.status === "ok") {
