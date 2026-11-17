@@ -1152,6 +1152,8 @@ function updateHeader() {
     } catch {}
   }
   if (!base) {
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "idle"; }
+    if (backendStatusEl) backendStatusEl.textContent = "Status: set API base URL or wait for auto-discovery";
     if (chatSubtitle) {
       chatSubtitle.textContent = "Waiting for backend…";
       chatSubtitle.dataset.state = "idle";
@@ -1172,6 +1174,11 @@ function updateHeader() {
     const effective = healthInfo.model ? String(healthInfo.model) : "auto";
     const parts = [provider];
     if (effective && effective !== "auto") parts.push(effective);
+    if (healthInfo.fallback_active) parts.push("fallback active");
+    else if (healthInfo.local_reachable) parts.push("local fallback ready");
+    const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = subtitleState; }
+    if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
     const subtitleState = !configured ? "warn" : "ok";
     if (chatSubtitle) {
       chatSubtitle.textContent =
@@ -1267,6 +1274,8 @@ function updateHeader() {
     }
     setConnState(!configured ? "warn" : "ok");
   } else {
+    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "err"; }
+    if (backendStatusEl) backendStatusEl.textContent = "Status: checking/unreachable";
     if (chatSubtitle) {
       chatSubtitle.textContent = "Connecting to backend…";
       chatSubtitle.dataset.state = "err";
