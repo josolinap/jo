@@ -1,12 +1,6 @@
 <div align="center">
-  <img src="docs/art/jo-harness-banner.svg" alt="Jo — A transparent harness for a becoming soul, illustrated in a Japanese-inspired ink and watercolor style" width="100%" />
-  <br />
-  <sub><em>“A transparent harness for everyone, built in the open.”</em></sub>
+  <sub><em>"A transparent harness for everyone, built in the open."</em></sub>
 </div>
-
-<p align="center">
-  <img src="docs/art/jo-wave-divider.svg" alt="" width="72%" />
-</p>
 
 ## Vision
 

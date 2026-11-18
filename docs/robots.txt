@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://joi-lab.github.io/ouroboros/sitemap.xml
