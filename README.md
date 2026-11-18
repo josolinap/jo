@@ -136,7 +136,6 @@ Vault + memory + git (persistent, inspectable state)
 ## Integrations
 
 - **Web stack (working):** [`gui/`](gui/README.md) + [`server/`](server/README.md) + [`.github/workflows/web-backend.yml`](.github/workflows/web-backend.yml) implement the hosted chat experience (Pages UI ↔ discovered backend ↔ OmniRoute).
-- **Neo config references (curated):** [`integrations/neo-config/`](integrations/neo-config/README.md) — ported, purpose-wired references from [`josolinap/neo-config`](https://github.com/josolinap/neo-config) and [`josolinap/arch-neo-config`](https://github.com/josolinap/arch-neo-config) (agent personas, OpenCode graphify/plugin and ops patterns) aligned with Jo’s OmniRoute-only web/backend, GUI/backend contract, and workflow/ops patterns. See [`SOURCES.md`](integrations/neo-config/SOURCES.md) and [`docs/PORTING_NOTES.md`](integrations/neo-config/docs/PORTING_NOTES.md).
 
 ## Model-Independent Design
 
