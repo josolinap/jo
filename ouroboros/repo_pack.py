@@ -280,7 +280,7 @@ def discover_files(
         except (OSError, PermissionError):
             continue
 
-        files.append(rel)
+        files.append(pathlib.PurePosixPath(rel.as_posix()))
 
     return sorted(files)
 
@@ -752,11 +752,14 @@ def pack_repository(
     if include_vault:
         vault_dir = root / "vault"
         if vault_dir.exists():
+            existing = {p.as_posix() for p in files}
             for f in vault_dir.rglob("*.md"):
                 if ".vault" not in f.parts:
                     rel = f.relative_to(root)
-                    if rel not in files:
-                        files.append(rel)
+                    rel_posix = pathlib.PurePosixPath(rel.as_posix())
+                    if rel_posix.as_posix() not in existing:
+                        files.append(rel_posix)
+                        existing.add(rel_posix.as_posix())
             files = sorted(files)
 
     # Limit file count
@@ -778,7 +781,7 @@ def pack_repository(
         # Check if file is binary before reading
         if not _is_text_file(full_path):
             packed_files.append(PackedFile(
-                path=str(rel_path),
+                path=rel_path.as_posix(),
                 content="",
                 size=full_path.stat().st_size if full_path.exists() else 0,
                 lines=0,
@@ -792,7 +795,7 @@ def pack_repository(
         except (OSError, PermissionError):
             # Unreadable
             packed_files.append(PackedFile(
-                path=str(rel_path),
+                path=rel_path.as_posix(),
                 content="",
                 size=0,
                 lines=0,
@@ -822,7 +825,7 @@ def pack_repository(
         total_tokens += tokens
 
         packed_files.append(PackedFile(
-            path=str(rel_path),
+            path=rel_path.as_posix(),
             content=content,
             size=len(content),
             lines=lines_count,

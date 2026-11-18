@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ouroboros.tools.registry import ToolEntry, ToolContext
 

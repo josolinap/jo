@@ -238,7 +238,10 @@ def test_plugin_install_rejects_unsafe_names_and_symlinks(tmp_path):
     source = tmp_path / 'source'
     source.mkdir()
     (source / 'safe.py').write_text('VALUE = 1\n', encoding='utf-8')
-    (source / 'link.py').symlink_to(source / 'safe.py')
+    try:
+        (source / 'link.py').symlink_to(source / 'safe.py')
+    except OSError as e:
+        pytest.skip(f"symlink creation not supported in this environment: {e}")
     assert 'unsupported symlink' in manager.install('safe-plugin', source)
 
 def test_enabled_plugin_tools_restore_into_registry(tmp_path):

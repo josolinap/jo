@@ -25,7 +25,10 @@ import queue
 import threading
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from ouroboros.tools.registry import ToolRegistry
 
 from ouroboros.utils import (
     utc_now_iso,

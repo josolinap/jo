@@ -141,9 +141,7 @@ def safe_pull(branch: str = "dev", repo_dir: Optional[pathlib.Path] = None) -> b
             timeout=120,
         )
         if result.returncode == 0:
-            # Atomic replace via sys_ops
-            safe_replace(tmp_path, target_path)
-            log.info("Recovery complete: repo state was invalid, restored from head (was on main/detached)")
+            log.info("safe_pull: successfully updated branch '%s'", branch)
             return True
 
         # Rebase failed — abort and fall through to hard reset

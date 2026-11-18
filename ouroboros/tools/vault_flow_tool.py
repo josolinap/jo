@@ -13,6 +13,8 @@ import os
 import pathlib
 from typing import Any, Dict, List, Optional
 
+from ouroboros.tools.registry import ToolContext
+
 log = logging.getLogger(__name__)
 
 # Optional CocoIndex import

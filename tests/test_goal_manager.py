@@ -240,6 +240,6 @@ class TestTaskFileFormat:
             subtasks=["task 1", "task 2"],
         )
         goal_complete_subtask("task 1")
-        content = gm.TASK_FILE.read_text()
+        content = gm.TASK_FILE.read_text(encoding="utf-8")
         assert "✓ task 1" in content
         assert "○ task 2" in content

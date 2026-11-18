@@ -9,6 +9,7 @@ Different providers have different failure modes, so correlated hallucinations a
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import pathlib
 from dataclasses import dataclass, field
