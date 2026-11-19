@@ -614,7 +614,44 @@ def _fetch_with_retry(url: str, max_retries: int = 3, timeout: int = 30) -> Opti
 
 
 def _extract_clean_text(html_content: str) -> str:
-    """Extract clean text from HTML content."""
+    """Extract the main readable content from HTML (defuddle-style).
+
+    Strips boilerplate (nav, header, footer, ads, scripts) and keeps the
+    primary article/main content, dramatically reducing token noise.
+    """
+    # Fast path: prefer BeautifulSoup when available.
+    try:
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Remove non-content elements.
+        for tag in soup(["script", "style", "noscript", "iframe", "svg", "canvas"]):
+            tag.decompose()
+        for tag in soup.find_all(["nav", "header", "footer", "aside", "form", "button"]):
+            tag.decompose()
+
+        # Prefer semantic main containers.
+        main = (
+            soup.find("article")
+            or soup.find("main")
+            or soup.find(attrs={"role": "main"})
+            or soup.find("div", class_=lambda c: c and "content" in str(c).lower())
+        )
+
+        target = main if main is not None else (soup.body or soup)
+
+        # If we picked a container, also drop nested nav/footer inside it.
+        for tag in target.find_all(["nav", "footer", "aside"]):
+            tag.decompose()
+
+        text = target.get_text(separator=" ", strip=True)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
+    except Exception:
+        pass
+
+    # Fallback: regex-based stripping (original behavior).
     text = re.sub(r"<script[^>]*>.*?</script>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<noscript[^>]*>.*?</noscript>", "", text, flags=re.DOTALL | re.IGNORECASE)
@@ -637,13 +674,8 @@ def _web_fetch_handler(ctx: ToolContext, url: str, extract_type: str = "text") -
         result = run_cmd(["curl", "-s", "-L", "--max-time", "30", url], cwd=ctx.repo_dir, timeout=35)
 
         if extract_type == "text":
-            # Extract visible text (basic)
-            # Remove scripts and styles
-            text = re.sub(r"<script[^>]*>.*?</script>", "", result, flags=re.DOTALL | re.IGNORECASE)
-            text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-            text = re.sub(r"<[^>]+>", " ", text)
-            text = re.sub(r"\s+", " ", text)
-            text = text.strip()
+            # Extract main readable content (defuddle-style, low token noise)
+            text = _extract_clean_text(result)
 
             # Limit length
             if len(text) > 5000:
