@@ -580,7 +580,32 @@ def _get_source_reliability(url: str) -> float:
     return 0.7
 
 
-def _fetch_with_retry(url: str, max_retries: int = 3, timeout: int = 30) -> Optional[str]:
+def _fetch_with_lightpanda(url: str) -> Optional[str]:
+    """Fetch a JS-rendered page using lightpanda (if available).
+
+    Stealable from lightpanda-io/browser: a tiny headless browser that uses
+    a fraction of the RAM of Chromium, ideal for GitHub Actions runners.
+    Enabled when the LIGHTPANDA_BIN env var points at the binary.
+    """
+    import os as _os
+    import subprocess as _sp
+
+    bin_path = _os.environ.get("LIGHTPANDA_BIN", "").strip()
+    if not bin_path:
+        return None
+    try:
+        proc = _sp.run(
+            [bin_path, "fetch", "--dump", url],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if proc.returncode == 0 and proc.stdout:
+            return proc.stdout
+        log.warning("lightpanda fetch failed: %s", proc.stderr[:200])
+    except Exception as e:
+        log.warning("lightpanda unavailable: %s", e)
+    return None
     """Fetch URL with exponential backoff retry."""
     for attempt in range(max_retries):
         try:
@@ -670,8 +695,12 @@ def _web_fetch_handler(ctx: ToolContext, url: str, extract_type: str = "text") -
     log.info(f"Web fetch: {url}")
 
     try:
-        # Use curl to fetch the page
-        result = run_cmd(["curl", "-s", "-L", "--max-time", "30", url], cwd=ctx.repo_dir, timeout=35)
+        # Prefer lightpanda (tiny headless browser) when configured, for
+        # JS-rendered pages on constrained GitHub Actions runners.
+        result = _fetch_with_lightpanda(url)
+        if result is None:
+            # Use curl to fetch the page
+            result = run_cmd(["curl", "-s", "-L", "--max-time", "30", url], cwd=ctx.repo_dir, timeout=35)
 
         if extract_type == "text":
             # Extract main readable content (defuddle-style, low token noise)
