@@ -1025,28 +1025,38 @@ function renderModelOptions() {
     }
     const note =
       " Some auto/* routes may resolve to browser/bridge-required providers in this hosted environment; backend may fall back. Explicit concrete picks fail explicitly if unusable.";
+    let toolModeNote = "";
+    if (healthInfo && healthInfo.tools_exposed_to_model === false) {
+      toolModeNote = " Web chat is text-only (no Jo tool access) unless backend agent mode is enabled.";
+    } else if (healthInfo && healthInfo.tools_exposed_to_model === true) {
+      toolModeNote = " Backend agent mode is enabled (tool workflow may be available).";
+    }
     if (!getApiBase() && shown === 0) {
       modelInfo.textContent =
         "Auto selected. Connect to a backend to load available models." +
         probeText +
-        note;
+        note +
+        toolModeNote;
     } else if (q) {
       modelInfo.textContent =
         (shown > 0
           ? `${shown} model option(s) shown (filtered from ${total}).`
           : "No models match the current filter.") +
         probeText +
-        note;
+        note +
+        toolModeNote;
     } else if (shown > 0) {
       modelInfo.textContent =
         `${shown} model option(s) available. Select one or keep Auto.` +
         probeText +
-        note;
+        note +
+        toolModeNote;
     } else {
       modelInfo.textContent =
         "Auto selected. Click \u201cRefresh models\u201d if OmniRoute is connected but no models appear yet." +
         probeText +
-        note;
+        note +
+        toolModeNote;
     }
   }
 }
@@ -1152,16 +1162,15 @@ function updateHeader() {
     } catch {}
   }
   if (!base) {
-    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "idle"; }
-    if (backendStatusEl) backendStatusEl.textContent = "Status: set API base URL or wait for auto-discovery";
     if (chatSubtitle) {
       chatSubtitle.textContent = "Waiting for backend…";
       chatSubtitle.dataset.state = "idle";
     }
     if (backendStatusEl)
       backendStatusEl.textContent =
-        "Status: set API base URL or wait for auto-discovery";
+        "Status: set an API base URL in Settings or wait for auto-discovery";
     if (backendMeta) backendMeta.textContent = "";
+    if (backendHint) backendHint.textContent = "";
     setConnState("idle");
     return;
   }
@@ -1200,6 +1209,11 @@ function updateHeader() {
         meta.push("omniroute: unreachable");
       if (Array.isArray(healthInfo.reasons) && healthInfo.reasons.length) {
         meta.push("status: " + healthInfo.reasons.join(", "));
+      }
+      if (typeof healthInfo.web_agent_mode === "boolean" || healthInfo.web_chat_path) {
+        const path = healthInfo.web_chat_path || (healthInfo.web_agent_mode ? "agent" : "llm");
+        const tools = healthInfo.tools_exposed_to_model ? "exposed" : "not exposed";
+        meta.push("chat mode: " + path + " (tools " + tools + ")");
       }
       if (!getSavedApiBase() && discoveredMeta) {
         const dm = [];
@@ -1259,19 +1273,43 @@ function updateHeader() {
           "Discovered backend info is old; if chat fails, the backend run may have expired. Wait for redeploy or set a fresh API base.",
         );
       }
+      if (healthInfo.tools_exposed_to_model === false && configured) {
+        hints.push(
+          "Web chat is in lightweight LLM mode: selected models can respond but do not have direct access to Jo tools (set JO_WEB_USE_AGENT=1 on the backend for agent/tool workflow).",
+        );
+      } else if (healthInfo.tools_note && healthInfo.tools_exposed_to_model === true) {
+        hints.push(String(healthInfo.tools_note));
+      }
       backendHint.textContent = hints.join(" ");
     }
     setConnState(!configured ? "warn" : "ok");
   } else {
-    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = "err"; }
-    if (backendStatusEl) backendStatusEl.textContent = "Status: checking/unreachable";
+    const statusText =
+      backendStatusEl && backendStatusEl.textContent
+        ? String(backendStatusEl.textContent)
+        : "";
+    const hasSpecificStatus =
+      /HTTP\s+\d+|blocked \(mixed content\)|local URL from hosted GUI|not OK/i.test(
+        statusText,
+      );
     if (chatSubtitle) {
-      chatSubtitle.textContent = "Connecting to backend…";
-      chatSubtitle.dataset.state = "err";
+      if (statusText === "Status: checking…") {
+        chatSubtitle.textContent = "Checking connection…";
+        chatSubtitle.dataset.state = "idle";
+      } else {
+        chatSubtitle.textContent = hasSpecificStatus
+          ? "Backend connection issue"
+          : "Backend not connected";
+        chatSubtitle.dataset.state = "err";
+      }
     }
-    if (backendStatusEl)
-      backendStatusEl.textContent = "Status: checking/unreachable";
-    setConnState("err");
+    if (backendStatusEl && !hasSpecificStatus) {
+      backendStatusEl.textContent =
+        statusText === "Status: checking…"
+          ? "Status: checking…"
+          : "Status: unreachable";
+    }
+    setConnState(statusText === "Status: checking…" ? "idle" : "err");
   }
 }
 
@@ -1508,6 +1546,10 @@ async function sendToJo(message, signal, onDelta) {
                 model: evt.model,
                 elapsed_ms: evt.elapsed_ms,
               };
+              if (typeof evt.web_agent_mode === "boolean")
+                meta.web_agent_mode = evt.web_agent_mode;
+              if (typeof evt.tools_exposed_to_model === "boolean")
+                meta.tools_exposed_to_model = evt.tools_exposed_to_model;
             }
           }
         }
@@ -1553,6 +1595,10 @@ async function sendToJo(message, signal, onDelta) {
         model: data.model,
         elapsed_ms: data.elapsed_ms,
       };
+      if (typeof data.web_agent_mode === "boolean")
+        meta.web_agent_mode = data.web_agent_mode;
+      if (typeof data.tools_exposed_to_model === "boolean")
+        meta.tools_exposed_to_model = data.tools_exposed_to_model;
     } catch {}
   }
   return { text: content || "(empty response)", meta };
