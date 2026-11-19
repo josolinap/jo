@@ -1,12 +1,6 @@
 <div align="center">
-  <img src="docs/art/jo-harness-banner.svg" alt="Jo — A transparent harness for a becoming soul, illustrated in a Japanese-inspired ink and watercolor style" width="100%" />
-  <br />
-  <sub><em>“A transparent harness for everyone, built in the open.”</em></sub>
+  <sub><em>"A transparent harness for everyone, built in the open."</em></sub>
 </div>
-
-<p align="center">
-  <img src="docs/art/jo-wave-divider.svg" alt="" width="72%" />
-</p>
 
 ## Vision
 
@@ -136,7 +130,6 @@ Vault + memory + git (persistent, inspectable state)
 ## Integrations
 
 - **Web stack (working):** [`gui/`](gui/README.md) + [`server/`](server/README.md) + [`.github/workflows/web-backend.yml`](.github/workflows/web-backend.yml) implement the hosted chat experience (Pages UI ↔ discovered backend ↔ OmniRoute).
-- **Neo config references (curated):** [`integrations/neo-config/`](integrations/neo-config/README.md) — ported, purpose-wired references from [`josolinap/neo-config`](https://github.com/josolinap/neo-config) and [`josolinap/arch-neo-config`](https://github.com/josolinap/arch-neo-config) (agent personas, OpenCode graphify/plugin and ops patterns) aligned with Jo’s OmniRoute-only web/backend, GUI/backend contract, and workflow/ops patterns. See [`SOURCES.md`](integrations/neo-config/SOURCES.md) and [`docs/PORTING_NOTES.md`](integrations/neo-config/docs/PORTING_NOTES.md).
 
 ## Model-Independent Design
 

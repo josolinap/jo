@@ -47,6 +47,7 @@ memory/awareness.jsonl
 # Temporary analysis files
 temp_*.md
 test_*.md
+tests/concurrent_test_worker*.txt
 
 # Accidental files
 =1.*
