@@ -27,19 +27,53 @@ class ContextEnricher:
     def is_enabled(self) -> bool:
         return self._enabled
 
-    def enrich_for_task(self, task: str, task_type: str = "general") -> Dict[str, Any]:
+    # Templates (stolen from repocontext's context generation)
+    CONTEXT_TEMPLATES = {
+        "comprehensive": {
+            "sections": ["relevant_files", "recent_changes", "related_context", "code_patterns", "file_contents", "vault_context"],
+            "max_files": 10,
+            "max_chars_per_file": 8000,
+        },
+        "minimal": {
+            "sections": ["relevant_files", "file_contents"],
+            "max_files": 3,
+            "max_chars_per_file": 2000,
+        },
+        "technical": {
+            "sections": ["relevant_files", "code_patterns", "file_contents"],
+            "max_files": 8,
+            "max_chars_per_file": 6000,
+        },
+        "overview": {
+            "sections": ["relevant_files", "recent_changes", "related_context"],
+            "max_files": 5,
+            "max_chars_per_file": 1000,
+        },
+    }
+
+    def enrich_for_task(self, task: str, task_type: str = "general", template: str = "comprehensive") -> Dict[str, Any]:
         """Build enriched context for a task."""
         if not self._enabled:
             return {"enabled": False}
 
-        cache_key = f"{task_type}:{hash(task)}"
+        tmpl = self.CONTEXT_TEMPLATES.get(template, self.CONTEXT_TEMPLATES["comprehensive"])
+        # Apply template limits for this call
+        prev_max_files = self._max_files
+        prev_max_chars = self._max_chars_per_file
+        self._max_files = tmpl["max_files"]
+        self._max_chars_per_file = tmpl["max_chars_per_file"]
+
+        cache_key = f"{task_type}:{template}:{hash(task)}"
         if cache_key in self._cache:
+            self._max_files = prev_max_files
+            self._max_chars_per_file = prev_max_chars
             return self._cache[cache_key]
 
         enriched = {
             "enabled": True,
             "task": task,
             "task_type": task_type,
+            "template": template,
             "relevant_files": self._find_relevant_files(task),
             "recent_changes": self._get_recent_changes(),
             "related_context": self._get_related_context(task),
@@ -47,15 +81,31 @@ class ContextEnricher:
             "file_contents": {},
         }
 
-        if self._use_vault:
+        # Apply template section filtering
+        sections = set(tmpl["sections"])
+        if "recent_changes" not in sections:
+            enriched["recent_changes"] = []
+        if "related_context" not in sections:
+            enriched["related_context"] = ""
+        if "code_patterns" not in sections:
+            enriched["code_patterns"] = []
+        if "file_contents" not in sections:
+            enriched["file_contents"] = {}
+            enriched["relevant_files"] = []
+
+        if self._use_vault and "vault_context" in sections:
             vault_context = self._get_vault_context(task)
             if vault_context:
                 enriched["vault_context"] = vault_context
 
-        if enriched["relevant_files"]:
+        if sections and "file_contents" in sections and enriched["relevant_files"]:
             enriched["file_contents"] = self._prefetch_file_contents(enriched["relevant_files"])
 
         self._cache[cache_key] = enriched
+
+        # Restore original limits
+        self._max_files = prev_max_files
+        self._max_chars_per_file = prev_max_chars
         return enriched
 
     def build_enrichment_text(self, enriched: Dict[str, Any]) -> str:
