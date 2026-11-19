@@ -103,75 +103,98 @@ class VaultSemanticSearch:
         if not self._engine._graph:
             self._engine.build_graph()
 
-        results = []
-        query_lower = query.lower()
-        query_words = set(query_lower.split())
+        # --- BM25 ranking (stolen from xerj-style agent memory search) ---
+        # Build a small in-memory corpus over vault notes so retrieval is
+        # ranked by term frequency / inverse document frequency instead of
+        # the previous ad-hoc keyword overlap heuristics.
+        import math
+        import re as _re
 
+        def _tokenize(text: str) -> List[str]:
+            return _re.findall(r"[a-z0-9]+", (text or "").lower())
+
+        # Pre-tokenize corpus once.
+        corpus_tokens: Dict[str, List[str]] = {}
         for path, note in self._engine._graph.notes.items():
-            relevance = 0.0
-            matched_content = ""
-            match_type = ""
+            title_tokens = _tokenize(note.title) * 2  # title boost
+            content_tokens = _tokenize(note.content)
+            tag_tokens = []
+            for tag in (note.tags or []):
+                tag_tokens.extend(_tokenize(tag))
+            corpus_tokens[path] = title_tokens + content_tokens + tag_tokens
 
-            # Title match (highest weight)
-            title_lower = note.title.lower()
-            if query_lower in title_lower:
-                relevance += 0.5
-                matched_content = note.title
-                match_type = "title"
-            elif any(word in title_lower for word in query_words):
-                relevance += 0.3
-                matched_content = note.title
-                match_type = "title"
+        N = len(corpus_tokens)
+        if N == 0:
+            return []
 
-            # Content keyword match
+        avgdl = sum(len(toks) for toks in corpus_tokens.values()) / N
+        k1 = 1.5
+        b = 0.75
+
+        query_tokens = _tokenize(query)
+        if not query_tokens:
+            return []
+
+        # Document frequency for each query term.
+        df: Dict[str, int] = {}
+        for term in set(query_tokens):
+            df[term] = sum(1 for toks in corpus_tokens.values() if term in toks)
+
+        results = []
+        raw_scores: Dict[str, float] = {}
+        for path, note in self._engine._graph.notes.items():
+            toks = corpus_tokens[path]
+            dl = len(toks)
+            tf_counter = Counter(toks)
+            score = 0.0
+            for term in query_tokens:
+                tf = tf_counter.get(term, 0)
+                if tf == 0:
+                    continue
+                idf = math.log(1.0 + (N - df.get(term, 0) + 0.5) / (df.get(term, 0) + 0.5))
+                denom = tf + k1 * (1 - b + b * (dl / (avgdl or 1.0)))
+                score += idf * (tf * (k1 + 1)) / (denom or 1.0)
+
+            if score <= 0:
+                continue
+            raw_scores[path] = score
+
+            # Build a snippet around the first matching query term.
             content_lower = note.content.lower()
-            if query_lower in content_lower:
-                relevance += 0.3
-                # Find snippet around match
-                idx = content_lower.find(query_lower)
-                start = max(0, idx - 50)
-                end = min(len(content_lower), idx + len(query_lower) + 50)
-                matched_content = note.content[start:end].replace("\n", " ")
-                match_type = "content"
-            elif query_words:
-                # Word overlap
-                note_words = set(content_lower.split())
-                overlap = len(query_words & note_words)
-                relevance += (overlap / len(query_words)) * 0.2
-                if overlap > 0 and not matched_content:
-                    matched_content = note.content[:100].replace("\n", " ")
-                    match_type = "content"
+            matched_content = ""
+            for term in query_tokens:
+                idx = content_lower.find(term)
+                if idx >= 0:
+                    start = max(0, idx - 50)
+                    end = min(len(note.content), idx + len(term) + 50)
+                    matched_content = note.content[start:end].replace("\\n", " ")
+                    break
+            if not matched_content:
+                matched_content = (note.title or "")[:100]
 
-            # Tag match
-            if note.tags:
-                for tag in note.tags:
-                    if query_lower in tag.lower():
-                        relevance += 0.1
-                        if not matched_content:
-                            matched_content = f"Tag: {tag}"
-                            match_type = "tag"
+            match_type = "content"
+            if any(term in note.title.lower() for term in query_tokens):
+                match_type = "title"
+            elif note.tags and any(
+                any(term in str(tag).lower() for term in query_tokens) for tag in note.tags
+            ):
+                match_type = "tag"
 
-            # Frontmatter match
-            if note.frontmatter:
-                for key, value in note.frontmatter.items():
-                    value_str = str(value).lower()
-                    if query_lower in value_str:
-                        relevance += 0.1
-                        if not matched_content:
-                            matched_content = f"{key}: {value}"
-                            match_type = "frontmatter"
-
-            # Add result if relevant
-            if relevance > 0:
-                results.append(
-                    SearchResult(
-                        note_path=path,
-                        title=note.title,
-                        relevance=min(1.0, relevance),
-                        matched_content=matched_content,
-                        match_type=match_type,
-                    )
+            results.append(
+                SearchResult(
+                    note_path=path,
+                    title=note.title,
+                    relevance=score,  # normalized below
+                    matched_content=matched_content,
+                    match_type=match_type,
                 )
+            )
+
+        # Normalize raw BM25 scores into 0..1.
+        if raw_scores:
+            max_score = max(raw_scores.values()) or 1.0
+            for r in results:
+                r.relevance = min(1.0, raw_scores.get(r.note_path, 0.0) / max_score)
 
         # Sort by relevance
         results.sort(key=lambda r: r.relevance, reverse=True)
