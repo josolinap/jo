@@ -20,27 +20,43 @@ class MemoryConsolidator:
         self.scratchpad_path = drive_root / "memory" / "scratchpad.md"
 
     def distill_events(self, limit: int = 100) -> str:
-        """Read the last N events and produce a concise narrative summary."""
+        """Read the last N events and produce a concise, adaptive narrative summary.
+
+        Adaptive scoring (ruvnet/ruflo-style): newer and successful events are
+        weighted higher so consolidation focuses on what just worked or failed,
+        rather than dumping a flat chronological list.
+        """
         if not self.events_path.exists():
             return "No recent events found."
 
         important_events = []
         try:
             with open(self.events_path, "r", encoding="utf-8") as f:
-                # Read lines from end (naive but works for small/mid logs)
                 lines = f.readlines()
-                for line in reversed(lines[-limit:]):
+                # Score events by recency (position) and outcome.
+                total = len(lines)
+                for idx, line in enumerate(lines[-limit:]):
                     try:
                         ev = json.loads(line)
                         etype = ev.get("type")
-                        if etype in (
+                        if etype not in (
                             "task_done",
                             "task_error",
                             "worker_boot",
                             "startup_verification",
                             "restart_verify",
                         ):
-                            important_events.append(ev)
+                            continue
+                        # Recency weight: later lines score higher.
+                        recency = (idx + 1) / max(1, len(lines[-limit:]))
+                        # Outcome weight: successes and failures matter most.
+                        outcome = 1.0
+                        if etype == "task_done":
+                            outcome = 1.2
+                        elif etype == "task_error":
+                            outcome = 1.3
+                        ev["_score"] = recency * outcome
+                        important_events.append(ev)
                     except (json.JSONDecodeError, KeyError, TypeError):
                         continue
         except Exception as e:
@@ -50,14 +66,29 @@ class MemoryConsolidator:
         if not important_events:
             return "No significant events in recent history."
 
+        # Adaptive ordering: highest score first, then dedupe by task_id.
+        important_events.sort(key=lambda e: e.get("_score", 0.0), reverse=True)
+        seen_tasks = set()
+        deduped = []
+        for ev in important_events:
+            tid = ev.get("task_id")
+            if tid and tid in seen_tasks:
+                continue
+            if tid:
+                seen_tasks.add(tid)
+            deduped.append(ev)
+
+        # Re-sort by timestamp for readable narrative (newest first).
+        deduped.sort(key=lambda e: e.get("ts", ""), reverse=True)
+
         summary_parts = []
-        for ev in reversed(important_events):
+        for ev in deduped[:limit]:
             ts = ev.get("ts", "").split(".")[0].replace("T", " ")
             etype = ev.get("type")
             if etype == "task_done":
                 summary_parts.append(f"- [{ts}] Task Completed: {ev.get('task_id')} in {ev.get('duration_sec')}s")
             elif etype == "task_error":
-                summary_parts.append(f"- [{ts}] Task FAILED: {ev.get('task_id')} - {ev.get('error')[:100]}")
+                summary_parts.append(f"- [{ts}] Task FAILED: {ev.get('task_id')} - {str(ev.get('error', ''))[:100]}")
             elif etype == "worker_boot":
                 summary_parts.append(
                     f"- [{ts}] System RESTARTED (PID {ev.get('pid')}) on branch {ev.get('git_branch')}"
