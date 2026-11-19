@@ -803,6 +803,22 @@ def _run_via_llm(
     raise RuntimeError(summary)
 
 
+def _proactive_suggestion(message: str, response: str) -> Optional[str]:
+    """OpenDuet-style proactive follow-up suggestion."""
+    m = (message or "").lower()
+    r = (response or "").lower()
+    suggestions = []
+    if any(k in m for k in ("fix", "bug", "error", "traceback")) and "test" not in r:
+        suggestions.append("Run the relevant tests to confirm the fix.")
+    if any(k in m for k in ("add", "implement", "create", "new feature")) and "commit" not in r:
+        suggestions.append("Commit and push the change when ready.")
+    if any(k in m for k in ("refactor", "cleanup", "optimize")) and "verify" not in r:
+        suggestions.append("Run smoke tests to verify nothing broke.")
+    if not suggestions:
+        return None
+    return "💡 Next: " + " ".join(suggestions)
+
+
 def _fallback_response(message: str, err: Optional[str] = None) -> str:
     st = _provider_status()
     lines = []
@@ -852,6 +868,10 @@ def generate_response(
     try:
         text, meta = _run_via_llm(message, merged_history, requested_model=requested_model)
         if text:
+            # OpenDuet-style proactive follow-up suggestion
+            suggestion = _proactive_suggestion(message, text)
+            if suggestion:
+                text = text.rstrip() + "\n\n" + suggestion
             sess.append({"role": "user", "content": message})
             sess.append({"role": "assistant", "content": text})
             if len(sess) > _SESSION_MAX:
