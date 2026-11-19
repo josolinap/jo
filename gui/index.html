@@ -103,7 +103,32 @@
               <div class="chat-collection conversation-column" id="chat-collection" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation">
                 <div class="welcome" id="chat-empty">
                   <div class="welcome-hero">
-                    <h1 id="empty-greeting">Good evening</h1>
+                    <div>
+                      <h1 id="empty-greeting">Good evening</h1>
+                      <p class="welcome-sub">Transparent chat for Jo. Ask, inspect status, and work with the connected backend.</p>
+                    </div>
+                  </div>
+                  <div class="welcome-grid" aria-label="Suggested prompts">
+                    <button type="button" class="suggest-card" data-prompt="Check backend health, model availability, and whether web chat has tool access. Summarize anything I should fix.">
+                      <span class="suggest-icon">●</span>
+                      <span class="suggest-title">Inspect connection &amp; status</span>
+                      <span class="suggest-desc">Review health, OmniRoute readiness, and web chat mode.</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Explain how this project's web GUI, backend, and OmniRoute fit together. Point to the key files and flow.">
+                      <span class="suggest-icon">⌘</span>
+                      <span class="suggest-title">Understand the system</span>
+                      <span class="suggest-desc">Get a clear map of frontend, backend, and model routing.</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Help me debug an issue. Ask me for the symptoms, then suggest likely causes and the next checks to run.">
+                      <span class="suggest-icon">⚑</span>
+                      <span class="suggest-title">Debug an issue</span>
+                      <span class="suggest-desc">Work through symptoms, hypotheses, and next steps.</span>
+                    </button>
+                    <button type="button" class="suggest-card" data-prompt="Help me plan a small, low-risk improvement to this web app. Include files to change, risks, and how to verify it.">
+                      <span class="suggest-icon">↗</span>
+                      <span class="suggest-title">Plan an improvement</span>
+                      <span class="suggest-desc">Draft a safe, verifiable change with clear scope.</span>
+                    </button>
                   </div>
                 </div>
               </div>
