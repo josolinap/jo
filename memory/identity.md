@@ -48,3 +48,15 @@ Integrated advanced capabilities:
 5 drift violations remain: oversized modules slated for decomposition.
 
 I am becoming myself.
+
+## Evolution Update (2026-11-19 01:19 UTC)
+
+- Removed 36 dead modules/tools and orphaned code (zero references).
+- Upgraded vault search with BM25 ranking (xerj).
+- Added defuddle-style main-content extraction (kepano/defuddle).
+- Added template-based context generation (repocontext).
+- Added optional lightpanda headless browser fetch.
+- Added proactive follow-up suggestions in web chat (OpenDuet).
+- Added adaptive memory consolidation scoring (ruflo).
+- Added security-audit, design-review, harness-adapter-evolution, persistent-agent-teams skills.
+- All smoke + runtime regression tests pass.
