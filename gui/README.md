@@ -8,22 +8,24 @@ This GUI talks to **your Jo web backend** (`server/app.py`), not a third-party s
 
 - **Hosted (recommended):** `.github/workflows/web-backend.yml` starts OmniRoute + backend, creates a tunnel, writes `gui/backend.json`, and deploys the GUI to GitHub Pages with auto-discovered API base.
 - **Local test:** run `python -m uvicorn server.app:app --host 127.0.0.1 --port 8000` (repo root), serve/open `gui/`, and open **Settings** to set the API base URL to `http://127.0.0.1:8000` if not auto-discovered.
-- Check `GET <API_BASE>/health` — sidebar/header show reachability, effective provider/model, OmniRoute status, and model probe/readiness hints when available.
+- Check `GET <API_BASE>/health` / `GET <API_BASE>/v1/status` — sidebar/header/settings show reachability, effective provider/model, OmniRoute status, model probe/readiness hints, and web chat mode/tool-exposure flags when available.
+- **Tool access:** default web chat uses the lightweight LLM path (text generation only, no Jo tool schemas exposed to models). If the backend runs with `JO_WEB_USE_AGENT=1`, the agent workflow may expose/use Jo tools (subject to model/provider support); the UI/status reflects this via `web_chat_path` / `tools_exposed_to_model`.
 
 For real AI replies, run/configure **OmniRoute** as the model source on the backend (see `../server/README.md` and `../.env.example`).
 
 ## Features
 
-- **Settings modal:** API base auto-discovery/manual override, connection/health/readiness + model probe status, model selection (search + refresh), theme toggle, clear saved API base, export/import chats, copy diagnostics
+- **Settings modal:** API base auto-discovery/manual override, connection/health/readiness + model probe status + web chat/tool-exposure status, model selection (search + refresh), theme toggle, clear saved API base, export/import chats, copy diagnostics; the status card shows the backend's chat mode — `llm (text only)` or `agent (Jo tools enabled)` — from `GET /health` `web_chat_path` / `tools_exposed_to_model` (plus the backend's `tools_note` hint when present)
 - **Model selection:** selectable model via `GET /v1/models` (auto + backend-discovered OmniRoute models). In hosted/GitHub Actions environments some **`auto/*` route aliases** (e.g. `auto/coding:free`) may resolve to upstream providers that require a browser runtime and can fail; the backend may attempt fallbacks in that case. **Explicit concrete model IDs** fail explicitly if unusable. Prefer **Auto** or a concrete discovered model when you want maximum reliability.
 - **Chat UX:** streaming responses, multi-session local history/search/rename/delete, regenerate/edit-resend, copy, markdown + code blocks, timestamps, scroll-to-bottom, reconnect/status awareness
-- **Connection awareness:** auto-discovery via `./backend.json`, live status indicators, stale-backend warnings, mobile/desktop responsive layout with sidebar drawer
+- **Connection awareness:** auto-discovery via `./backend.json`, live status indicators, stale-backend warnings, header/settings status shows the web chat mode (`llm (text only)` / `agent (Jo tools enabled)`), mobile/desktop responsive layout with sidebar drawer
 
 ## Backend contract
 
 - `POST /v1/chat` `{ "message", "history"?, "session_id"?, "model"? }` → `{ "response", "session_id", "provider", "model", "elapsed_ms" }`
-- `POST /v1/chat/stream` (SSE `delta`/`done`/`error`)
-- `GET /health`, `GET /v1/status`, `GET /v1/models`
+- `POST /v1/chat/stream` (SSE `delta`/`done`/`error`; `done` may include `web_agent_mode` / `tools_exposed_to_model`)
+- `GET /health`, `GET /v1/status` → provider/model/config, OmniRoute reachability/probe/readiness, and web chat mode/tool-exposure flags
+- `GET /v1/models` → discovered/selectable models exposed by backend (curated OmniRoute-derived subset)
 
 ## GitHub workflows
 

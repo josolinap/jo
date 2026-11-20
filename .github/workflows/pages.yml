@@ -46,6 +46,11 @@ jobs:
           grep -q 'backend.json' gui/app.js
           grep -q '/v1/chat' gui/app.js
 
+      - name: Validate floorplan map
+        run: |
+          set -e
+          python3 scripts/build_floorplan.py --check
+
       - name: Upload GUI artifact (for inspection)
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4

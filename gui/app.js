@@ -1130,6 +1130,13 @@ function setConnState(state) {
       (state === "ok" ? " ok" : state === "warn" ? " warn" : "");
 }
 
+function webChatModeLabel(info) {
+  const path = info && info.web_chat_path;
+  if (path === "agent") return "agent (Jo tools enabled)";
+  if (path === "llm") return "llm (text only)";
+  return null;
+}
+
 function updateHeader() {
   const s = currentSession();
   if (chatTitle) chatTitle.textContent = s ? s.title || "Chat" : "New chat";
@@ -1177,8 +1184,13 @@ function updateHeader() {
     if (healthInfo.fallback_active) parts.push("fallback active");
     else if (healthInfo.local_reachable) parts.push("local fallback ready");
     const subtitleState = !configured ? "warn" : (healthInfo.fallback_active ? "warn" : "ok");
-    if (chatSubtitle) { chatSubtitle.textContent = ""; chatSubtitle.dataset.state = subtitleState; }
-    if (backendStatusEl) backendStatusEl.textContent = configured ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online") : "Status: reachable (no model configured)";
+    const modeLabel = webChatModeLabel(healthInfo);
+    if (chatSubtitle) { chatSubtitle.textContent = modeLabel || ""; chatSubtitle.dataset.state = subtitleState; }
+    let statusText = configured
+      ? (healthInfo.fallback_active ? "Status: online (fallback)" : "Status: online")
+      : "Status: reachable (no model configured)";
+    if (modeLabel) statusText += " · " + modeLabel;
+    if (backendStatusEl) backendStatusEl.textContent = statusText;
     let discoveryAgeMs = null;
     if (!getSavedApiBase() && discoveredMeta && discoveredMeta.updatedAt) {
       const t = Date.parse(discoveredMeta.updatedAt);
@@ -1225,6 +1237,9 @@ function updateHeader() {
       } else if (getSavedApiBase()) {
         meta.push("source: saved API base");
       }
+      if (modeLabel) meta.push("web chat: " + String(healthInfo.web_chat_path || ""));
+      if (typeof healthInfo.tools_exposed_to_model === "boolean")
+        meta.push("tools exposed: " + (healthInfo.tools_exposed_to_model ? "yes" : "no"));
       backendMeta.textContent = meta.join(" · ");
     }
     if (backendHint) {
@@ -1259,6 +1274,8 @@ function updateHeader() {
           "Discovered backend info is old; if chat fails, the backend run may have expired. Wait for redeploy or set a fresh API base.",
         );
       }
+      const toolsNote = healthInfo.tools_note;
+      if (toolsNote) hints.push(toolsNote);
       backendHint.textContent = hints.join(" ");
     }
     setConnState(!configured ? "warn" : "ok");
