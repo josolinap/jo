@@ -27,6 +27,9 @@
     this.edges = [];
     this.current = null;
     this.projectSummary = "";
+    this.recentWork = [];
+    this.recentMode = false;
+    this.fileToNode = new Map();
   }
 
   JoMapView.prototype.nodeById = function (id) {
@@ -59,12 +62,15 @@
         const graph = (data && data.graph) || data || {};
         this.nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
         this.edges = Array.isArray(graph.edges) ? graph.edges : (Array.isArray(data && data.edges) ? data.edges : []);
+        this.setRecentWork(data);
+        this.buildFileToNode();
         this.projectSummary =
           (data && data.summary) ||
           ((data && data.architecture && data.architecture.project && data.architecture.project.summary) || "") ||
           ((graph.project && graph.project.summary) || "") ||
           "";
         this.renderBoard();
+        if (!data.recentWork) this.fetchRecentWorkFallback();
         return;
       }
     }
@@ -80,6 +86,7 @@
     if (this.el) this.el.innerHTML = "";
     const tops = this.nodes.filter((n) => !n.parent);
     for (const n of tops) this.el.appendChild(this.card(n));
+    this.markRecent();
     this.clearDetail();
   };
 
@@ -167,6 +174,128 @@
       )
       .join("");
     if (!conns.length) this.connectionsEl.innerHTML = '<div class="map-note">(no explicit connections)</div>';
+  };
+
+  JoMapView.prototype.setRecentWork = function (data) {
+    const rw = (data && data.recentWork) || null;
+    this.recentWork = rw && Array.isArray(rw.tasks) ? rw.tasks : [];
+  };
+
+  JoMapView.prototype.buildFileToNode = function () {
+    this.fileToNode = new Map();
+    for (const n of this.nodes) {
+      if (!n.id) continue;
+      this.fileToNode.set(n.id, n.id);
+      for (const f of n.files || []) {
+        if (f && f.path) this.fileToNode.set(f.path, n.id);
+      }
+    }
+  };
+
+  JoMapView.prototype.fetchRecentWorkFallback = function () {
+    const self = this;
+    fetch("floorplan/recent-work.json", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((doc) => {
+        if (doc && Array.isArray(doc.tasks)) {
+          self.recentWork = doc.tasks;
+          self.markRecent();
+        }
+      })
+      .catch(() => {});
+  };
+
+  JoMapView.prototype.markRecent = function () {
+    const recent = new Set();
+    for (const t of this.recentWork) {
+      for (const it of t.items || []) {
+        if (it && it.ref) {
+          recent.add(it.ref);
+          const nodeId = this.fileToNode.get(it.ref);
+          if (nodeId) recent.add(nodeId);
+        }
+      }
+    }
+    for (const el of this.el.querySelectorAll(".map-card")) {
+      const node = this.nodeById(el.dataset.id);
+      const isRecent =
+        recent.has(el.dataset.id) ||
+        (!!node && (recent.has(node.id) || (node.files || []).some((f) => recent.has(f.path))));
+      el.classList.toggle("map-card--recent", isRecent);
+    }
+  };
+
+  JoMapView.prototype.toggleRecent = function () {
+    this.recentMode = !this.recentMode;
+    const btn = document.getElementById("map-recent-toggle");
+    if (btn) {
+      btn.classList.toggle("map-recent-toggle--on", this.recentMode);
+      btn.setAttribute("aria-pressed", String(this.recentMode));
+    }
+    if (this.recentMode) this.renderRecent();
+    else {
+      this.current = null;
+      this.clearDetail();
+      this.renderBoard();
+    }
+  };
+
+  JoMapView.prototype.renderRecent = function () {
+    this.el.innerHTML = "";
+    if (!this.recentWork.length) {
+      this.el.innerHTML = '<div class="map-note">No recent work recorded yet.</div>';
+      return;
+    }
+    for (const t of this.recentWork) this.el.appendChild(this.recentTaskEl(t));
+  };
+
+  JoMapView.prototype.recentTaskEl = function (t) {
+    const el = document.createElement("div");
+    el.className = "recent-task";
+    const head = document.createElement("div");
+    head.className = "recent-task-head";
+    const title = document.createElement("span");
+    title.className = "recent-task-title";
+    title.textContent = t.title || "Work";
+    const when = document.createElement("span");
+    when.className = "recent-task-when";
+    when.textContent = (t.updatedAt || "").slice(0, 10);
+    head.appendChild(title);
+    head.appendChild(when);
+    const summary = document.createElement("div");
+    summary.className = "recent-task-summary";
+    summary.textContent = trunc(t.summary || t.request || "", 130);
+    const items = document.createElement("ul");
+    items.className = "recent-task-items";
+    for (const it of t.items || []) {
+      const li = document.createElement("li");
+      li.className = "recent-item recent-item-" + (it.change === "new" ? "new" : "changed");
+      const ref = document.createElement("span");
+      ref.className = "recent-item-ref";
+      ref.textContent = it.ref;
+      const note = document.createElement("span");
+      note.className = "recent-item-note";
+      note.textContent = trunc(it.note || "", 90);
+      li.appendChild(ref);
+      li.appendChild(note);
+      items.appendChild(li);
+    }
+    el.appendChild(head);
+    el.appendChild(summary);
+    el.appendChild(items);
+    el.addEventListener("click", () => {
+      // Clicking recent work returns to the map with the changed parts highlighted.
+      this.recentMode = false;
+      const btn = document.getElementById("map-recent-toggle");
+      if (btn) {
+        btn.classList.remove("map-recent-toggle--on");
+        btn.setAttribute("aria-pressed", "false");
+      }
+      this.current = null;
+      this.clearDetail();
+      this.renderBoard();
+    });
+    return el;
   };
 
   JoMapView.prototype.clearDetail = function () {

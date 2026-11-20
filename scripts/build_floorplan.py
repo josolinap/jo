@@ -889,11 +889,56 @@ and every listed file exists on disk.
     )
 
 
+def build_recent_work(limit: int = 10) -> Dict[str, Any]:
+    """Recent work from recent git commits (Floorplan format: tasks with items)."""
+
+    def _run(cmd):
+        try:
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, timeout=30)
+            return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    shas = _run(["git", "log", f"-{limit}", "--pretty=format:%H"]).split()
+    tasks = []
+    for sha in shas:
+        subject = _run(["git", "show", "-s", "--pretty=format:%s", sha]).strip()
+        body = _run(["git", "show", "-s", "--pretty=format:%b", sha]).strip()
+        title = truncate(subject, 70) or sha[:7]
+        stat = _run(["git", "show", "--name-status", "--format=", sha])
+        items = []
+        for line in stat.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("\t")
+            status = parts[0] if parts else ""
+            path = parts[-1] if len(parts) > 1 else ""
+            if not path:
+                continue
+            change = "new" if status.startswith("A") else "changed"
+            note = f"{status} — {truncate(subject, 60)}" if subject else status
+            items.append({"ref": path, "change": change, "note": note})
+        if not items:
+            continue
+        summary = (body.splitlines()[0] if body else "") or subject or ""
+        tasks.append(
+            {
+                "title": title,
+                "request": title,
+                "summary": truncate(summary or f"Committed {sha[:7]}.", 160),
+                "items": items[:25],
+            }
+        )
+    return {"updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "tasks": tasks}
+
+
 def generate() -> Dict[str, Any]:
     graph = build_graph()
     write_json(OUT / "graph.json", graph)
     write_json(OUT / "architecture.json", architecture_doc())
     write_descriptions(graph)
+    write_json(OUT / "recent-work.json", build_recent_work())
     map_js = (ROOT / "scripts/floorplan_map.js").read_text(encoding="utf-8")
     index_html = INDEX_HTML.replace("__MAP_JS__", map_js)
     index_html = index_html.replace("__GRAPH_JSON__", json.dumps(graph, indent=2, ensure_ascii=False))
@@ -976,6 +1021,16 @@ def validate(graph: Optional[Dict[str, Any]] = None, errors: Optional[List[str]]
 
     if not (OUT / "index.html").exists() or len((OUT / "index.html").read_text(encoding="utf-8")) < 1000:
         errors.append("floorplan/index.html missing or too small")
+
+    if not (OUT / "recent-work.json").exists():
+        errors.append("missing: floorplan/recent-work.json")
+    else:
+        try:
+            rw = json.loads((OUT / "recent-work.json").read_text(encoding="utf-8"))
+            if not isinstance(rw.get("tasks"), list):
+                errors.append("floorplan/recent-work.json: missing tasks list")
+        except json.JSONDecodeError as exc:
+            errors.append(f"floorplan/recent-work.json: invalid JSON: {exc}")
 
     # The map logic lives in scripts/floorplan_map.js; it must parse as JS.
     map_js_path = ROOT / "scripts/floorplan_map.js"

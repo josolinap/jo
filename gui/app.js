@@ -66,6 +66,7 @@ const settingsRefreshModels = $("settings-refresh-models");
 const chatMapToggle = $("chat-map-toggle");
 const mapPanel = $("map-panel");
 const mapCloseBtn = $("map-close");
+const mapRecentToggle = $("map-recent-toggle");
 const mapView = new JoMapView();
 
 let busy = false;
@@ -1635,11 +1636,31 @@ function setBusyThinking(on) {
   updateScrollButton();
 }
 
+function wantsMap(message) {
+  const m = String(message || "").toLowerCase();
+  if (!m.trim()) return false;
+  return (
+    m.includes("map") ||
+    m.includes("floorplan") ||
+    m.includes("whole picture") ||
+    m.includes("app structure") ||
+    m.includes("app architecture")
+  );
+}
+
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text || busy) return;
   const base = getApiBase();
   ensureSession();
+  // "Show me the map" — open the map panel inside the chat instead of sending.
+  if (wantsMap(text)) {
+    openMap();
+    showToast("Map opened — it's right in the chat");
+    chatInput.value = "";
+    autoResize();
+    return;
+  }
   if (!base) {
     pushMessage("user", text, false);
     addMessageEl("user", text, {
@@ -2372,6 +2393,7 @@ function bindEvents() {
   // Map panel (the embedded Floorplan map, part of the chat page)
   if (chatMapToggle) chatMapToggle.addEventListener("click", openMap);
   if (mapCloseBtn) mapCloseBtn.addEventListener("click", closeMap);
+  if (mapRecentToggle) mapRecentToggle.addEventListener("click", () => mapView.toggleRecent());
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isMapOpen()) {
       e.preventDefault();

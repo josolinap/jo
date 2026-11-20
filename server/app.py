@@ -602,6 +602,7 @@ def _floorplan_summary() -> Dict[str, Any]:
         }
         for e in graph.get("edges", [])
     ]
+    recent_work = _floorplan_json("recent-work.json") or {}
     return {
         "summary": (
             (architecture.get("project") or {}).get("summary")
@@ -612,6 +613,7 @@ def _floorplan_summary() -> Dict[str, Any]:
         "connections": connections,
         "graph": graph,
         "architecture": architecture,
+        "recentWork": recent_work,
         "generatedAt": graph.get("generatedAt"),
     }
 

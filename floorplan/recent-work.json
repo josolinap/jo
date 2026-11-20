@@ -1,0 +1,381 @@
+{
+  "updatedAt": "2026-11-20T06:52:26Z",
+  "tasks": [
+    {
+      "title": "feat(gui): embed the Floorplan map in the chat page",
+      "request": "feat(gui): embed the Floorplan map in the chat page",
+      "summary": "- gui/map-view.js — JoMapView: the embedded map viewer (cards + detail with",
+      "items": [
+        {
+          "ref": "floorplan/graph.json",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "gui/README.md",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "gui/app.js",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "gui/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "gui/map-view.js",
+          "change": "new",
+          "note": "A — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "gui/styles.css",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        },
+        {
+          "ref": "tests/test_gui_smoke.py",
+          "change": "changed",
+          "note": "M — feat(gui): embed the Floorplan map in the chat page"
+        }
+      ]
+    },
+    {
+      "title": "feat(web): wire Floorplan map into OmniRoute chat + GUI map link",
+      "request": "feat(web): wire Floorplan map into OmniRoute chat + GUI map link",
+      "summary": "- server/app.py: new GET /v1/floorplan endpoint (serves the app's Floorplan map",
+      "items": [
+        {
+          "ref": "floorplan/architecture.json",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "floorplan/descriptions/server.status.json",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "floorplan/graph.json",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "gui/README.md",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "gui/index.html",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "scripts/build_floorplan.py",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "server/README.md",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "server/app.py",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "tests/test_gui_smoke.py",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        },
+        {
+          "ref": "tests/test_web_backend.py",
+          "change": "changed",
+          "note": "M — feat(web): wire Floorplan map into OmniRoute chat + GUI map…"
+        }
+      ]
+    },
+    {
+      "title": "chore: commit in-flight changes — OmniRoute free-model discovery & do…",
+      "request": "chore: commit in-flight changes — OmniRoute free-model discovery & do…",
+      "summary": "- ouroboros/llm.py: dynamic OmniRoute free-model discovery in LLMClient (auto-alias handling, family ranking)",
+      "items": [
+        {
+          "ref": ".github/workflows/web-backend.yml",
+          "change": "changed",
+          "note": "M — chore: commit in-flight changes — OmniRoute free-model disc…"
+        },
+        {
+          "ref": "README.md",
+          "change": "changed",
+          "note": "M — chore: commit in-flight changes — OmniRoute free-model disc…"
+        },
+        {
+          "ref": "ouroboros/llm.py",
+          "change": "changed",
+          "note": "M — chore: commit in-flight changes — OmniRoute free-model disc…"
+        },
+        {
+          "ref": "server/README.md",
+          "change": "changed",
+          "note": "M — chore: commit in-flight changes — OmniRoute free-model disc…"
+        },
+        {
+          "ref": "server/app.py",
+          "change": "changed",
+          "note": "M — chore: commit in-flight changes — OmniRoute free-model disc…"
+        }
+      ]
+    },
+    {
+      "title": "Merge origin/main",
+      "request": "Merge origin/main",
+      "summary": "Merge origin/main",
+      "items": [
+        {
+          "ref": "gui/app.js",
+          "change": "changed",
+          "note": "MM — Merge origin/main"
+        }
+      ]
+    },
+    {
+      "title": "chore(floorplan): refresh map — includes itself and newly committed f…",
+      "request": "chore(floorplan): refresh map — includes itself and newly committed f…",
+      "summary": "Regenerated after fixes; the map now includes itself (the docs part claims",
+      "items": [
+        {
+          "ref": "floorplan/descriptions/docs.json",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "floorplan/descriptions/scripts.json",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "floorplan/descriptions/tests.json",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "floorplan/graph.json",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "scripts/build_floorplan.py",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        },
+        {
+          "ref": "scripts/floorplan_map.js",
+          "change": "changed",
+          "note": "M — chore(floorplan): refresh map — includes itself and newly c…"
+        }
+      ]
+    },
+    {
+      "title": "feat(web): surface web chat mode/tools status in GUI + tests",
+      "request": "feat(web): surface web chat mode/tools status in GUI + tests",
+      "summary": "- gui/app.js: status card now shows the backend's web chat mode (llm (text only) / agent (Jo tools enabled)), tools exposure and the tools note, from GET /heal…",
+      "items": [
+        {
+          "ref": ".github/workflows/pages.yml",
+          "change": "changed",
+          "note": "M — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "gui/README.md",
+          "change": "changed",
+          "note": "M — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "gui/app.js",
+          "change": "changed",
+          "note": "M — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "memory/identity.md",
+          "change": "changed",
+          "note": "M — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "memory/scratchpad.md",
+          "change": "changed",
+          "note": "M — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "tests/test_gui_smoke.py",
+          "change": "new",
+          "note": "A — feat(web): surface web chat mode/tools status in GUI + tests"
+        },
+        {
+          "ref": "tests/test_web_backend.py",
+          "change": "new",
+          "note": "A — feat(web): surface web chat mode/tools status in GUI + tests"
+        }
+      ]
+    },
+    {
+      "title": "feat(floorplan): add interactive app map of Jo",
+      "request": "feat(floorplan): add interactive app map of Jo",
+      "summary": "- floorplan/: interactive map of the whole app — gui, server, ouroboros, supervisor, vault, memory, prompts, scripts, tests, docs, CI. 18 parts, 703 files, 5 e…",
+      "items": [
+        {
+          "ref": "floorplan/README.md",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/architecture.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/config.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/docs.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/gui.chat.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/gui.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/gui.status.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/infra.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/ouroboros.identity.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/ouroboros.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/ouroboros.memory.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/ouroboros.tools.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/prompts.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/scripts.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/server.chat.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/server.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/server.status.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/supervisor.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/tests.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/descriptions/vault.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/graph.json",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "scripts/build_floorplan.py",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        },
+        {
+          "ref": "scripts/floorplan_map.js",
+          "change": "new",
+          "note": "A — feat(floorplan): add interactive app map of Jo"
+        }
+      ]
+    },
+    {
+      "title": "feat(server): improve OmniRoute free-model discovery and diagnostics",
+      "request": "feat(server): improve OmniRoute free-model discovery and diagnostics",
+      "summary": "feat(server): improve OmniRoute free-model discovery and diagnostics",
+      "items": [
+        {
+          "ref": "server/app.py",
+          "change": "changed",
+          "note": "M — feat(server): improve OmniRoute free-model discovery and di…"
+        }
+      ]
+    }
+  ]
+}

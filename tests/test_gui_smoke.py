@@ -109,7 +109,7 @@ def _stub_health(web_chat_path: str, tools_exposed: bool) -> dict:
 
 def _stub_floorplan() -> dict:
     nodes = [
-        {"id": "gui", "label": "Jo Web GUI", "kind": "ui", "summary": "The Jo Web GUI — the chat interface (gui/).", "files": [], "endpoints": []},
+        {"id": "gui", "label": "Jo Web GUI", "kind": "ui", "summary": "The Jo Web GUI — the chat interface (gui/).", "files": [{"path": "gui/app.js", "description": "Jo web GUI app — polished chat UX."}, {"path": "gui/index.html", "description": "Jo Web GUI — the chat page skeleton."}], "endpoints": []},
         {
             "id": "server",
             "label": "Jo Web Backend",
@@ -143,6 +143,20 @@ def _stub_floorplan() -> dict:
         "summary": "Jo is a self-modifying AI agent (the Ouroboros agent core) with a FastAPI web chat backend (server/) and a browser GUI (gui/). Web chat: GUI → server (/v1/chat, /v1/chat/stream) → Ouroboros agent workflow or the lightweight LLM path via OmniRoute.",
         "parts": [{"id": "gui", "label": "Jo Web GUI"}, {"id": "server", "label": "Jo Web Backend"}, {"id": "ouroboros", "label": "Ouroboros — Jo's agent core"}],
         "connections": edges,
+        "recentWork": {
+            "updatedAt": "2026-11-20T00:00:00Z",
+            "tasks": [
+                {
+                    "title": "feat(gui): embed the Floorplan map in the chat page",
+                    "request": "feat(gui): embed the Floorplan map in the chat page",
+                    "summary": "The map panel is now embedded in the chat page, with an interactive Recent work mode.",
+                    "items": [
+                        {"ref": "gui/app.js", "change": "changed", "note": "M — feat(gui): embed the Floorplan map in the chat page"},
+                        {"ref": "gui/index.html", "change": "changed", "note": "M — feat(gui): embed the Floorplan map in the chat page"},
+                    ],
+                }
+            ],
+        },
         "graph": {
             "nodes": nodes,
             "edges": edges,
@@ -295,6 +309,60 @@ def test_gui_map_panel_in_chat(servers):
             assert "Jo Web GUI" in page.locator("#map-title").inner_text()
             assert page.locator("#map-connections .map-conn").count() >= 1
             # Esc closes the map panel.
+            page.keyboard.press("Escape")
+            page.wait_for_selector("#map-panel", state="hidden", timeout=10000)
+        finally:
+            browser.close()
+
+
+def test_gui_map_recent_work(servers):
+    """The map is interactive: the Recent work toggle lists the model's recent work."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            # In app mode the parts the model worked on recently are highlighted.
+            page.wait_for_selector(".map-card--recent", timeout=15000)
+            # The Recent work toggle switches the map area to the interactive recent-work list.
+            page.click("#map-recent-toggle")
+            page.wait_for_selector(".recent-task", timeout=10000)
+            tasks = page.locator(".recent-task").all_inner_texts()
+            assert any("Floorplan map" in t for t in tasks)
+            # Clicking a recent-work entry returns to the map (aria-pressed back to false).
+            page.locator(".recent-task").first.click()
+            page.wait_for_selector(".map-card", timeout=10000)
+            page.wait_for_function(
+                "document.getElementById('map-recent-toggle').getAttribute('aria-pressed') === 'false'",
+                timeout=10000,
+            )
+        finally:
+            browser.close()
+
+
+def test_gui_map_intent_opens_map(servers):
+    """Typing a map request in the chat ("the map") opens the map panel in the chat."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            page.fill("#chat-input", "the map")
+            page.click("#chat-send")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            page.wait_for_timeout(500)
+            # The request opened the map instead of sending a chat message.
+            assert page.locator("#chat-collection .message-user").count() == 0
             page.keyboard.press("Escape")
             page.wait_for_selector("#map-panel", state="hidden", timeout=10000)
         finally:

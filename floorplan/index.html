@@ -87,7 +87,7 @@ button.icon:hover { background:var(--card-hover); }
 </main>
 <p class="footer">Jo Floorplan — interactive map of Jo. Regenerate with <code>python scripts/build_floorplan.py</code>.</p>
 <script>var GRAPH = {
-  "generatedAt": "2026-11-20T06:20:24Z",
+  "generatedAt": "2026-11-20T06:52:24Z",
   "generatedBy": "scripts/build_floorplan.py",
   "project": {
     "name": "Jo",
@@ -108,7 +108,12 @@ button.icon:hover { background:var(--card-hover); }
       "paths": [
         "gui/**"
       ],
-      "files": [],
+      "files": [
+        {
+          "path": "gui/map-view.js",
+          "description": "Clicking recent work returns to the map with the changed parts highlighted."
+        }
+      ],
       "endpoints": [],
       "screens": [
         "gui/index.html"
@@ -3526,7 +3531,7 @@ button.icon:hover { background:var(--card-hover); }
   ],
   "counts": {
     "nodes": 18,
-    "files": 729,
+    "files": 730,
     "endpoints": 6,
     "edges": 16,
     "screens": 1

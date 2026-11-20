@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-20T06:20:24Z",
+  "generatedAt": "2026-11-20T06:52:24Z",
   "generatedBy": "scripts/build_floorplan.py",
   "project": {
     "name": "Jo",
@@ -20,7 +20,12 @@
       "paths": [
         "gui/**"
       ],
-      "files": [],
+      "files": [
+        {
+          "path": "gui/map-view.js",
+          "description": "Clicking recent work returns to the map with the changed parts highlighted."
+        }
+      ],
       "endpoints": [],
       "screens": [
         "gui/index.html"
@@ -3438,7 +3443,7 @@
   ],
   "counts": {
     "nodes": 18,
-    "files": 729,
+    "files": 730,
     "endpoints": 6,
     "edges": 16,
     "screens": 1
