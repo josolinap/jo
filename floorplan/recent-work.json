@@ -1,6 +1,73 @@
 {
-  "updatedAt": "2026-11-20T06:52:26Z",
+  "updatedAt": "2026-11-20T07:31:28Z",
   "tasks": [
+    {
+      "title": "feat(gui): interactive Recent work in the embedded map",
+      "request": "feat(gui): interactive Recent work in the embedded map",
+      "summary": "The model's work is now an interactive map, in the chat:",
+      "items": [
+        {
+          "ref": "floorplan/descriptions/gui.json",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "floorplan/graph.json",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "floorplan/recent-work.json",
+          "change": "new",
+          "note": "A — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "gui/README.md",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "gui/app.js",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "gui/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "gui/map-view.js",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "gui/styles.css",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "scripts/build_floorplan.py",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "server/app.py",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        },
+        {
+          "ref": "tests/test_gui_smoke.py",
+          "change": "changed",
+          "note": "M — feat(gui): interactive Recent work in the embedded map"
+        }
+      ]
+    },
     {
       "title": "feat(gui): embed the Floorplan map in the chat page",
       "request": "feat(gui): embed the Floorplan map in the chat page",

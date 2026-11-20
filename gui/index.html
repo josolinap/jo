@@ -147,6 +147,7 @@
                 <p class="map-detail-summary" id="map-summary"></p>
               </div>
               <div class="map-panel-head-actions">
+                <input type="search" id="map-search" class="map-search" placeholder="Search the map…" aria-label="Search the map">
                 <button type="button" class="map-recent-toggle" id="map-recent-toggle" aria-pressed="false">Recent work</button>
                 <button type="button" class="icon-btn ghost map-panel-close" id="map-close" aria-label="Close map">&times;</button>
               </div>
@@ -161,6 +162,10 @@
                 <h4>Screens</h4><div class="map-screens" id="map-screens"></div>
                 <h4>Connections</h4><div class="map-connections" id="map-connections"></div>
               </div>
+            </div>
+            <div class="map-ask" id="map-ask-wrap">
+              <input type="text" id="map-ask" class="map-ask-input" placeholder="Ask the map about the app…" autocomplete="off" aria-label="Ask the map">
+              <button type="button" class="map-ask-send" id="map-ask-send">Ask</button>
             </div>
           </aside>
         </main>

@@ -53,7 +53,8 @@
     "floorplan/descriptions/tests.json",
     "floorplan/descriptions/vault.json",
     "floorplan/graph.json",
-    "floorplan/index.html"
+    "floorplan/index.html",
+    "floorplan/recent-work.json"
   ],
   "endpoints": [],
   "screens": []

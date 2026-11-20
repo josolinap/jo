@@ -346,6 +346,68 @@ def test_gui_map_recent_work(servers):
             browser.close()
 
 
+def test_gui_map_search_and_connection_nav(servers):
+    """The map is an interactive workbench: search filters parts; connections navigate."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            page.wait_for_selector(".map-card", timeout=15000)
+            assert page.locator(".map-card").count() >= 3
+            # Search filters the cards by name/summary/id.
+            page.fill("#map-search", "backend")
+            page.wait_for_timeout(400)
+            cards = page.locator(".map-card").all_inner_texts()
+            assert any("Jo Web Backend" in t for t in cards)
+            # Clicking a part opens its detail.
+            page.fill("#map-search", "")
+            page.wait_for_timeout(200)
+            page.locator(".map-card").first.click()
+            page.wait_for_function("document.getElementById('map-title').textContent.trim() !== ''", timeout=10000)
+            # Clicking a connection in the detail navigates to the other part.
+            conn = page.locator("#map-connections .map-conn-link").first
+            assert conn.count() >= 1
+            conn.click()
+            page.wait_for_function("document.getElementById('map-title').textContent.trim() !== ''", timeout=10000)
+            assert page.locator("#map-title").inner_text() == "Jo Web Backend"
+            # Escape closes the map panel.
+            page.keyboard.press("Escape")
+            page.wait_for_selector("#map-panel", state="hidden", timeout=10000)
+        finally:
+            browser.close()
+
+
+def test_gui_map_ask(servers):
+    """The map is a workbench: 'Ask the map' questions go to Jo in the chat."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            page.fill("#map-ask", "Where does the chat request go?")
+            page.click("#map-ask-send")
+            # The question appears as a user message in the chat.
+            page.wait_for_function(
+                "document.querySelector('#chat-collection .message-user')?.textContent?.includes('Where does the chat request go?')",
+                timeout=15000,
+            )
+        finally:
+            browser.close()
+
+
 def test_gui_map_intent_opens_map(servers):
     """Typing a map request in the chat ("the map") opens the map panel in the chat."""
     with sync_playwright() as p:

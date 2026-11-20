@@ -67,6 +67,9 @@ const chatMapToggle = $("chat-map-toggle");
 const mapPanel = $("map-panel");
 const mapCloseBtn = $("map-close");
 const mapRecentToggle = $("map-recent-toggle");
+const mapSearchInput = $("map-search");
+const mapAskInput = $("map-ask");
+const mapAskSend = $("map-ask-send");
 const mapView = new JoMapView();
 
 let busy = false;
@@ -2055,6 +2058,42 @@ function closeMap() {
   document.body.style.overflow = "";
 }
 
+/* Ask the map — map questions go to Jo in the chat (the map is in the system prompt) */
+async function askMap() {
+  const q = (mapAskInput && mapAskInput.value ? mapAskInput.value : "").trim();
+  if (!q || busy) return;
+  const base = getApiBase();
+  if (!base) {
+    pushMessage(
+      "assistant",
+      "No backend configured — open Settings and set the API base, then ask the map.",
+      true,
+    );
+    renderMessages();
+    return;
+  }
+  pushMessage("user", q, false);
+  renderMessages();
+  if (mapAskInput) mapAskInput.value = "";
+  setBusyThinking(true);
+  controller = new AbortController();
+  try {
+    const result = await sendToJo(q, controller.signal, null);
+    pushMessage("assistant", (result && result.text) || "", false, (result && result.meta) || null);
+    renderMessages();
+  } catch (error) {
+    pushMessage(
+      "assistant",
+      error && error.message ? "Could not ask the map: " + error.message : "Could not ask the map.",
+      true,
+    );
+    renderMessages();
+  } finally {
+    controller = null;
+    setBusyThinking(false);
+  }
+}
+
 /* Events */
 function bindEvents() {
   if (chatForm)
@@ -2394,6 +2433,15 @@ function bindEvents() {
   if (chatMapToggle) chatMapToggle.addEventListener("click", openMap);
   if (mapCloseBtn) mapCloseBtn.addEventListener("click", closeMap);
   if (mapRecentToggle) mapRecentToggle.addEventListener("click", () => mapView.toggleRecent());
+  if (mapSearchInput) mapSearchInput.addEventListener("input", () => mapView.renderBoard());
+  if (mapAskSend) mapAskSend.addEventListener("click", askMap);
+  if (mapAskInput)
+    mapAskInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        askMap();
+      }
+    });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isMapOpen()) {
       e.preventDefault();

@@ -23,6 +23,7 @@
     this.endpointsEl = document.getElementById("map-endpoints");
     this.screensEl = document.getElementById("map-screens");
     this.connectionsEl = document.getElementById("map-connections");
+    this.searchInput = document.getElementById("map-search");
     this.nodes = [];
     this.edges = [];
     this.current = null;
@@ -81,10 +82,17 @@
     this.renderBoard();
   };
 
+  function matchesName(n, q) {
+    const text = String(q || "").trim().toLowerCase();
+    if (!text) return true;
+    return (n.id + " " + (n.label || "") + " " + (n.summary || "")).toLowerCase().includes(text);
+  }
+
   JoMapView.prototype.renderBoard = function () {
     this.current = null;
     if (this.el) this.el.innerHTML = "";
-    const tops = this.nodes.filter((n) => !n.parent);
+    const q = this.searchInput ? this.searchInput.value : "";
+    const tops = this.nodes.filter((n) => !n.parent && matchesName(n, q));
     for (const n of tops) this.el.appendChild(this.card(n));
     this.markRecent();
     this.clearDetail();
@@ -158,22 +166,25 @@
     if (!screens.length) this.screensEl.innerHTML = '<div class="map-note">(no separate screens)</div>';
     const conns = this.edgesTouching(id);
     this.connectionsEl.innerHTML = conns
-      .map(
-        (e) =>
-          '<div class="map-conn"><span class="map-conn-from">' +
-          esc(e.from) +
-          " → " +
-          esc(e.to) +
-          "</span><span class=\"map-conn-label\">" +
-          esc(e.label) +
-          "</span>" +
+      .map((e) => {
+        const other = e.to === id ? e.from : e.to;
+        const linkable = !!this.nodeById(other);
+        const cls = "map-conn" + (linkable ? " map-conn-link" : "");
+        return (
+          '<div class="' + cls + '" data-node="' + esc(other) + '">' +
+          '<span class="map-conn-from">' + esc(e.from) + " → " + esc(e.to) + "</span>" +
+          '<span class="map-conn-label">' + esc(e.label) + "</span>" +
           (e.description
             ? '<span class="map-conn-desc">' + esc(trunc(e.description, 90)) + "</span>"
             : "") +
-          "</div>",
-      )
+          "</div>"
+        );
+      })
       .join("");
     if (!conns.length) this.connectionsEl.innerHTML = '<div class="map-note">(no explicit connections)</div>';
+    this.connectionsEl.querySelectorAll(".map-conn-link").forEach((el) => {
+      el.addEventListener("click", () => this.openDetail(el.dataset.node));
+    });
   };
 
   JoMapView.prototype.setRecentWork = function (data) {
