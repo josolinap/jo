@@ -815,30 +815,77 @@ class LLMClient:
 
         client = self._get_client()
         env_model = (os.environ.get("OMNIROUTE_MODEL") or "").strip()
+        requested = (model or "").strip()
         preferred = []
         if env_model and env_model not in ("", "inherit"):
             preferred.append(env_model)
-        # honor explicit model arg if it's a concrete routed id
-        if model and model not in preferred and model != "auto":
-            preferred.append(model)
-        for m in ("auto", "openrouter/free"):
-            if m not in preferred:
-                preferred.append(m)
+        # honor explicit model arg if it's a concrete/routed id
+        if requested and requested not in preferred and requested != "auto":
+            preferred.append(requested)
 
         discovered = self._discover_omniroute_models()
 
-        def _rank(mid: str) -> tuple:
-            ml = mid.lower()
-            return (
-                0 if ml == "auto" else 1 if ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml else 2,
-                0 if any(x in ml for x in ("llama", "qwen", "gemma", "mistral", "gpt", "deepseek")) else 1,
-            )
-        discovered = [d for d in discovered if d not in preferred]
-        discovered = sorted(discovered, key=_rank)
+        def _is_auto_alias(mid: str) -> bool:
+            ml = (mid or "").lower()
+            return ml == "auto" or ml.startswith("auto/") or ml.startswith("auto-")
+
+        def _is_free_id(mid: str) -> bool:
+            ml = (mid or "").lower()
+            return ":free" in ml or ml.endswith("/free") or "/free" in ml
+
+        def _family_rank(mid: str) -> int:
+            ml = (mid or "").lower()
+            return 0 if any(x in ml for x in ("llama", "qwen", "gemma", "mistral", "gpt", "deepseek", "glm", "kimi", "minimax", "phi")) else 1
+
+        free_concrete, free_auto, other_concrete, other_auto = [], [], [], []
+        seen_disc = set()
+        for d in discovered:
+            dm = str(d or "").strip()
+            if not dm:
+                continue
+            dl = dm.lower()
+            if dl in seen_disc or dm in preferred:
+                continue
+            seen_disc.add(dl)
+            is_auto = _is_auto_alias(dm)
+            is_free = _is_free_id(dm)
+            if is_free and is_auto:
+                free_auto.append(dm)
+            elif is_free:
+                free_concrete.append(dm)
+            elif is_auto:
+                other_auto.append(dm)
+            else:
+                other_concrete.append(dm)
+
+        free_concrete.sort(key=lambda m: (_family_rank(m), m.lower()))
+        other_concrete.sort(key=lambda m: (_family_rank(m), m.lower()))
+        free_auto.sort(key=lambda m: (0 if ":free" in m.lower() else 1, m.lower()))
+        other_auto.sort(key=lambda m: m.lower())
+
         candidates = []
-        for m in preferred + discovered:
-            if m and m not in candidates:
-                candidates.append(m)
+        def _add(mid: str):
+            if mid and mid not in candidates:
+                candidates.append(mid)
+
+        # Keep explicit/env preferences first, then dynamically discovered free models (updates anytime), then auto.
+        for m in preferred:
+            _add(m)
+        for m in free_concrete:
+            _add(m)
+        for m in free_auto:
+            _add(m)
+        if not any(_is_auto_alias(c) for c in candidates):
+            _add("auto")
+        elif (env_model and env_model.lower() == "auto") or requested == "auto":
+            _add("auto")
+
+        # Best-effort fallback pool if needed
+        if len(candidates) <= 1:
+            for m in other_concrete[:10]:
+                _add(m)
+            for m in other_auto:
+                _add(m)
         if not candidates:
             candidates = ["auto"]
 

@@ -318,7 +318,10 @@ jobs:
             PROBE_MODEL=$(jq -r '.model_probe.model // ""' /tmp/status.json 2>/dev/null || echo "")
             PROBE_LAT=$(jq -r '.model_probe.latency_ms // ""' /tmp/status.json 2>/dev/null || echo "")
             PROBE_ERR=$(jq -r '.model_probe.error // ""' /tmp/status.json 2>/dev/null || echo "")
+            WEB_CHAT_PATH=$(jq -r '.web_chat_path // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
+            TOOLS_EXPOSED=$(jq -r '.tools_exposed_to_model // "n/a"' /tmp/status.json 2>/dev/null || echo "n/a")
             echo "- **Active provider/model:** \`$PROVIDER\` / \`$MODEL\` (source: \`$MSRC\`)" >> "$SUMMARY"
+            echo "- **Web chat path / tools exposed:** \`$WEB_CHAT_PATH\` / \`$TOOLS_EXPOSED\`" >> "$SUMMARY"
             echo "- **OmniRoute reachable:** \`$OMNI\` (models: \`$OMC\`)" >> "$SUMMARY"
             echo "- **OmniRoute base:** \`$OMNI_BASE\`" >> "$SUMMARY"
             if [ -n "$OMNI_OK" ] && [ "$OMNI_OK" != "n/a" ] && [ "$OMNI_OK" != "null" ]; then echo "- **OmniRoute models endpoint:** \`$OMNI_OK\`" >> "$SUMMARY"; fi
@@ -465,7 +468,7 @@ jobs:
                 echo "[$ts] OmniRoute reachable (periodic snapshot; probe codes: /v1/models=${m_code:-n/a} /health=${h_code:-n/a} /=${r_code:-n/a})"
                 curl -fsS --max-time 10 http://127.0.0.1:8000/v1/status >/tmp/status.keep.json 2>/dev/null || true
                 if [ -s /tmp/status.keep.json ]; then
-                  jq -r '"  - omniroute_reachable=" + ((.omniroute_reachable // .omniroute.reachable // "n/a")|tostring) + ", model_count=" + ((.omniroute.model_count // "n/a")|tostring) + ", error=" + ((.omniroute.error // "")|tostring)' /tmp/status.keep.json 2>/dev/null || true
+                  jq -r '"  - omniroute_reachable=" + ((.omniroute_reachable // .omniroute.reachable // "n/a")|tostring) + ", model_count=" + ((.omniroute.model_count // "n/a")|tostring) + ", web_chat_path=" + ((.web_chat_path // "n/a")|tostring) + ", tools_exposed_to_model=" + ((.tools_exposed_to_model // "n/a")|tostring) + ", error=" + ((.omniroute.error // "")|tostring)' /tmp/status.keep.json 2>/dev/null || true
                 fi
               fi
             fi

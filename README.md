@@ -33,7 +33,7 @@ This repo is not just a vision — it includes a live, inspectable web stack tha
 - **Web backend (API):** FastAPI service in [`server/app.py`](server/app.py), deployed by GitHub Actions with an ephemeral tunnel and auto-published discovery
 - **Model gateway:** **OmniRoute-only** backend (`OMNIROUTE_BASE_URL`, `OMNIROUTE_MODEL=auto`) — OmniRoute is the sole generation source for the web chat path
 - **End-to-end flow:** GUI discovers `gui/backend.json` → checks `/health` & `/v1/status` → loads `/v1/models` → chats via `/v1/chat` and `/v1/chat/stream`
-- **Verified behavior:** backend reports OmniRoute reachability, discovered model catalog, and serves real chat/stream responses (with clear degraded/setup messaging if OmniRoute/upstream is unavailable)
+- **Verified behavior:** backend reports OmniRoute reachability, discovered model catalog, web chat mode/tool-exposure status, and serves real chat/stream responses (with clear degraded/setup messaging if OmniRoute/upstream is unavailable)
 
 > Note: the hosted web backend runs on an ephemeral Actions tunnel/keep-alive job. Availability depends on the active `Web Backend (Pages API)` run and a fresh published `backend.json`.
 
@@ -42,14 +42,15 @@ This repo is not just a vision — it includes a live, inspectable web stack tha
 - Polished chat interface with responsive desktop/mobile layout and sidebar sessions
 - **Settings modal:** API base URL (auto-discovery via `./backend.json` or manual override), connection/health/readiness status, model selection + filter + refresh, theme toggle, clear saved API base, export/import chats (JSON), copy diagnostics
 - **Chat UX:** streaming responses, multi-session local history (search/rename/delete), regenerate/edit-resend, copy, markdown + code blocks, timestamps, scroll-to-bottom, reconnect/status awareness
-- **Transparent status:** shows provider/model, OmniRoute reachability, discovered model count, readiness reasons, and deployment/discovery metadata (including stale-backend hints)
+- **Transparent status:** shows provider/model, OmniRoute reachability, discovered model count, readiness reasons, web chat mode/tool-exposure, and deployment/discovery metadata (including stale-backend hints)
 
 ### Backend (FastAPI + OmniRoute) — `server/`
 
 - Endpoints: `POST /v1/chat`, `POST /v1/chat/stream` (SSE), `GET /health`, `GET /v1/status`, `GET /v1/models`
 - OmniRoute-only provider mode for web generation (no local/direct/public fallback generation paths in `server/app.py`)
-- Model discovery from OmniRoute with ranking/selection tuned to avoid unusable headless-CI routes and prefer concrete working models
-- Observability-first responses: reachability, selected/default model, model counts/samples, probe info, and actionable readiness reasons
+- Default web chat path is lightweight (plain chat completions; **no Jo tool schemas exposed to models**). Set `JO_WEB_USE_AGENT=1` to route web chat through the agent workflow when tool-capable behavior is desired (subject to model/provider/tool-call support).
+- Dynamic free-model discovery/selection from OmniRoute at runtime (no hardcoded specific free model IDs in backend policy/fallbacks), with ranking/filters tuned to avoid unusable headless-CI routes and prefer working free models
+- Observability-first responses: reachability, selected/default model, model counts/samples, probe info, readiness reasons, and web chat/tool-exposure flags (`web_agent_mode`, `web_chat_path`, `tools_exposed_to_model`, `tools_note`)
 
 ### Deployment & operations (GitHub Actions)
 
@@ -304,6 +305,7 @@ Jo's memory is **narrative, not database**:
 **Known operational constraints**
 
 - Hosted backend uses an **ephemeral tunnel** and depends on an active keep-alive run; stale `backend.json`/tunnel can make the UI unreachable until a fresh deploy publishes
+- Default web GUI chat does **not** expose Jo tools to selected models (lightweight LLM path). Tool-capable web behavior requires `JO_WEB_USE_AGENT=1` and compatible models/providers.
 - Chat quality/availability depends on OmniRoute having at least one working upstream provider/model configured and reachable in the runtime environment
 
 ---

@@ -97,6 +97,34 @@ _OMNI_MODEL_PROBE_TTL = 300.0
 _OMNI_MODEL_PROBE_TIMEOUT = 8  # seconds (kept short for stability)
 
 
+def _env_truthy(name: str) -> bool:
+    return (_env(name) or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _is_headless_bridge_route(ml: str) -> bool:
+    s = (ml or "").lower()
+    return (
+        s.startswith("cfp/")
+        or s.startswith("dva/")
+        or "cloudflare playground" in s
+        or "playwright" in s
+        or "devin agentic bridge" in s
+    )
+
+
+def _exclude_headless_bridge_route(ml: str, explicit: bool = False) -> bool:
+    """Whether to exclude routes that are commonly unusable in headless/CI OmniRoute setups.
+
+    Default preserves prior behavior (exclude). Set JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES=1
+    to include them when they are actually available in your environment.
+    """
+    if explicit:
+        return False
+    if _env_truthy("JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES"):
+        return False
+    return _is_headless_bridge_route(ml)
+
+
 def _is_free_model_entry(model: Any) -> bool:
     """Heuristic: detect free/zero-cost models dynamically from OmniRoute model IDs/metadata."""
     if isinstance(model, dict):
@@ -109,7 +137,7 @@ def _is_free_model_entry(model: Any) -> bool:
     if not mid:
         return False
     # explicit id hints
-    if ":free" in ml or ml.endswith("/free") or "/free" in ml or ml.endswith("-free"):
+    if ":free" in ml or ml.endswith("/free") or "/free" in ml or ml.endswith("-free") or "free-tier" in ml:
         return True
     # metadata hints (best-effort, schema varies by gateway/provider)
     for k in ("free", "is_free", "isFree"):
@@ -117,6 +145,10 @@ def _is_free_model_entry(model: Any) -> bool:
         if v is True:
             return True
         if isinstance(v, str) and v.lower() in ("true", "1", "yes", "free"):
+            return True
+    for k in ("tier", "plan", "pricing_tier", "access_tier"):
+        v = obj.get(k)
+        if isinstance(v, str) and v.strip().lower() in ("free", "tier:free", "free-tier"):
             return True
     pricing = obj.get("pricing") or obj.get("cost") or obj.get("price")
     if isinstance(pricing, dict):
@@ -133,8 +165,10 @@ def _is_free_model_entry(model: Any) -> bool:
             return True
     # some providers tag tiers
     tags = obj.get("tags") or obj.get("capabilities") or []
-    if isinstance(tags, list) and any(str(t).lower() in ("free", "tier:free") for t in tags):
-        return True
+    if isinstance(tags, list):
+        norm_tags = {str(t).strip().lower() for t in tags if t is not None}
+        if norm_tags & {"free", "tier:free", "free-tier", "pricing:free"}:
+            return True
     return False
 
 
@@ -338,6 +372,7 @@ def _get_default_probe_model(base: str, preferred: Optional[str] = None) -> str:
         return cand
     try:
         discovered, _ = _fetch_omniroute_models(base, timeout=4, use_cache=True)
+        # Prefer dynamically discovered free concrete models for probing; fall back to free auto-routes, then auto.
         for entry in discovered:
             if isinstance(entry, dict):
                 mid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
@@ -346,13 +381,27 @@ def _get_default_probe_model(base: str, preferred: Optional[str] = None) -> str:
             ml = mid.lower()
             if not mid or ml == "auto" or ml.startswith("auto/") or ml.startswith("auto-"):
                 continue
-            if ml.startswith("cfp/") or ml.startswith("dva/") or "playwright" in ml or "cloudflare playground" in ml:
+            if _exclude_headless_bridge_route(ml):
+                continue
+            if _is_free_model_entry(entry if isinstance(entry, dict) else mid):
+                return mid
+        for entry in discovered:
+            if isinstance(entry, dict):
+                mid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
+            else:
+                mid = str(entry or "").strip()
+            ml = mid.lower()
+            if not mid or ml == "auto":
+                continue
+            if not (ml.startswith("auto/") or ml.startswith("auto-")):
+                continue
+            if _exclude_headless_bridge_route(ml):
                 continue
             if _is_free_model_entry(entry if isinstance(entry, dict) else mid):
                 return mid
     except Exception:
         pass
-    return "openrouter/free"
+    return "auto"
 
 
 def _provider_status() -> Dict[str, Any]:
@@ -425,6 +474,15 @@ def _provider_status() -> Dict[str, Any]:
         elif model_probe.get("ok") is False:
             reasons.append("default_model_probe_failed")
 
+    web_agent_mode = _env("JO_WEB_USE_AGENT") == "1"
+    tools_exposed_to_model = web_agent_mode  # llm path sends plain chat (no tool schemas); agent path can use tools
+    web_chat_path = "agent" if web_agent_mode else "llm"
+    tools_note = (
+        "Agent chat path enabled (Jo tools may be available via agent workflow)."
+        if web_agent_mode
+        else "Lightweight chat path: model calls do not include Jo tool schemas; selected models have no direct tool access in this mode."
+    )
+
     return {
         "provider": "omniroute",
         "model": _env("OMNIROUTE_MODEL") or "auto",
@@ -444,6 +502,10 @@ def _provider_status() -> Dict[str, Any]:
         "fallback_active": False,
         "model_source": "omniroute",
         "model_probe": model_probe,
+        "web_agent_mode": web_agent_mode,
+        "web_chat_path": web_chat_path,
+        "tools_exposed_to_model": tools_exposed_to_model,
+        "tools_note": tools_note,
         "omniroute": {
             "configured": bool(omni_base),
             "reachable": bool(omni_reachable),
@@ -579,101 +641,9 @@ def _run_via_llm(
                 max_retries=0,
             )
             last_oe = None
-            preferred = []
             req_model = (requested_model or "").strip()
             env_model = (_env("OMNIROUTE_MODEL") or "").strip()
-            # If user explicitly selected a model, try it first via OmniRoute (priority path)
-            if req_model and req_model.lower() != "auto":
-                preferred.append(req_model)
-            if env_model and env_model not in preferred:
-                preferred.append(env_model)
-            # prefer concrete/free models over abstract auto aliases to avoid long hangs
-            for m in ("openrouter/free", "auto"):
-                if m not in preferred:
-                    preferred.append(m)
-            discovered = []
-            # try to discover available models from OmniRoute (tolerant auth/endpoints)
-            try:
-                import urllib.request as _ur, json as _json
 
-                _murls = [omni_base.rstrip("/") + "/models", (omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/v1/models")]
-                _seen_murls = set()
-                _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
-                md = None
-                for _mu in _murls:
-                    for _mh in _omni_auth_header_variants():
-                        try:
-                            mreq = _ur.Request(_mu, headers=_mh or {})
-                            with _ur.urlopen(mreq, timeout=6) as mr:
-                                md = _json.loads(mr.read().decode("utf-8", "replace"))
-                            if md is not None:
-                                break
-                        except Exception:
-                            md = None
-                            continue
-                    if md is not None:
-                        break
-                if md is not None:
-                    for item in md.get("data") or md.get("models") or []:
-                        mid = (item or {}).get("id") if isinstance(item, dict) else item
-                        if not mid and isinstance(item, dict):
-                            mid = item.get("name") or item.get("model")
-                        if not mid:
-                            continue
-                        mid = str(mid).strip()
-                        if not mid or mid in preferred or mid in discovered:
-                            continue
-                        discovered.append(mid)
-            except Exception:
-                pass
-
-            # prioritize explicit/free/concrete discovered models over many auto aliases, cap attempts
-            def _skip_in_ci(ml: str, explicit: bool = False) -> bool:
-                if explicit:
-                    return False
-                # Known unusable in headless CI OmniRoute: browser runtime deps or unconfigured bridges
-                return (
-                    ml.startswith("cfp/")
-                    or ml.startswith("dva/")
-                    or "cloudflare playground" in ml
-                    or "playwright" in ml
-                    or "devin agentic bridge" in ml
-                )
-
-            def _omni_rank(mid: str) -> tuple:
-                ml = mid.lower()
-                broken_env = _skip_in_ci(ml)
-                is_free = ":free" in ml or ml.endswith("/free") or "openrouter/free" in ml
-                is_auto_alias = ml.startswith("auto")
-                is_concrete = ("/" in ml) and not is_auto_alias
-                preferred_family = (
-                    0
-                    if any(
-                        k in ml
-                        for k in (
-                            "llama",
-                            "qwen",
-                            "gemma",
-                            "mistral",
-                            "gpt-oss",
-                            "deepseek",
-                            "glm",
-                            "kimi",
-                            "minimax",
-                            "phi",
-                            "smol",
-                        )
-                    )
-                    else 1
-                )
-                return (
-                    9 if broken_env else 0 if is_free else 1 if is_concrete else 4 if is_auto_alias else 3,
-                    preferred_family,
-                    0 if is_free else 1,
-                )
-
-            discovered = sorted(discovered, key=_omni_rank)
-            candidates: list[str] = []
             req_is_explicit = bool(req_model and req_model.lower() != "auto")
             req_ml = (req_model or "").lower()
             # Auto-route/alias selections (e.g. auto/coding:free, auto/best-*) are not concrete models;
@@ -682,6 +652,117 @@ def _run_via_llm(
                 req_ml.startswith("auto/") or req_ml.startswith("auto-") or req_ml == "auto"
             )
             strict_explicit = req_is_explicit and not req_is_auto_route
+
+            # Discover models dynamically from OmniRoute (IDs + metadata) so free models can change over time.
+            discovered_entries: list[Any] = []
+            try:
+                discovered_entries, _ = _fetch_omniroute_models(omni_base, timeout=6, use_cache=True)
+            except Exception:
+                discovered_entries = []
+
+            # Fallback: minimal ID-only discovery if rich fetch failed
+            if not discovered_entries:
+                try:
+                    import urllib.request as _ur, json as _json
+
+                    _murls = [omni_base.rstrip("/") + "/models", (omni_base.rstrip("/").rsplit("/v1", 1)[0] + "/v1/models")]
+                    _seen_murls = set()
+                    _murls = [u for u in _murls if not (u in _seen_murls or _seen_murls.add(u))]
+                    md = None
+                    for _mu in _murls:
+                        for _mh in _omni_auth_header_variants():
+                            try:
+                                mreq = _ur.Request(_mu, headers=_mh or {})
+                                with _ur.urlopen(mreq, timeout=6) as mr:
+                                    md = _json.loads(mr.read().decode("utf-8", "replace"))
+                                if md is not None:
+                                    break
+                            except Exception:
+                                md = None
+                                continue
+                        if md is not None:
+                            break
+                    if md is not None:
+                        for item in md.get("data") or md.get("models") or []:
+                            if isinstance(item, dict):
+                                mid = str(item.get("id") or item.get("name") or item.get("model") or "").strip()
+                                if mid:
+                                    discovered_entries.append(item)
+                            else:
+                                mid = str(item or "").strip()
+                                if mid:
+                                    discovered_entries.append(mid)
+                except Exception:
+                    pass
+
+            def _skip_in_ci(ml: str, explicit: bool = False) -> bool:
+                if explicit:
+                    return False
+                # Known unusable in headless CI OmniRoute unless explicitly allowed.
+                return _exclude_headless_bridge_route(ml, explicit=False)
+
+            def _entry_id(entry: Any) -> str:
+                if isinstance(entry, dict):
+                    return str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
+                return str(entry or "").strip()
+
+            def _entry_is_free(entry: Any, mid: str) -> bool:
+                try:
+                    if _is_free_model_entry(entry if isinstance(entry, dict) else mid):
+                        return True
+                except Exception:
+                    pass
+                ml = (mid or "").lower()
+                return ":free" in ml or ml.endswith("/free") or "/free" in ml
+
+            def _family_rank(mid: str) -> int:
+                ml = (mid or "").lower()
+                return 0 if any(
+                    k in ml
+                    for k in (
+                        "llama", "qwen", "gemma", "mistral", "gpt-oss", "deepseek",
+                        "glm", "kimi", "minimax", "phi", "smol",
+                    )
+                ) else 1
+
+            def _is_auto_alias(mid: str) -> bool:
+                ml = (mid or "").lower()
+                return ml == "auto" or ml.startswith("auto/") or ml.startswith("auto-")
+
+            # Build dynamic candidate pools from discovered models (free-first, no hardcoded model IDs).
+            free_concrete: list[str] = []
+            free_auto: list[str] = []
+            other_concrete: list[str] = []
+            other_auto: list[str] = []
+            seen_disc: set[str] = set()
+            for entry in discovered_entries:
+                mid = _entry_id(entry)
+                if not mid:
+                    continue
+                ml = mid.lower()
+                if ml in seen_disc:
+                    continue
+                seen_disc.add(ml)
+                if _skip_in_ci(ml):
+                    continue
+                is_auto = _is_auto_alias(ml)
+                is_free = _entry_is_free(entry, mid)
+                if is_free and is_auto:
+                    free_auto.append(mid)
+                elif is_free:
+                    free_concrete.append(mid)
+                elif is_auto:
+                    other_auto.append(mid)
+                else:
+                    other_concrete.append(mid)
+
+            free_concrete.sort(key=lambda m: (_family_rank(m), m.lower()))
+            other_concrete.sort(key=lambda m: (_family_rank(m), m.lower()))
+            # Prefer explicit "free" auto-routes first, then generic auto aliases.
+            free_auto.sort(key=lambda m: (0 if ":free" in m.lower() or m.lower().endswith("/free") else 1, m.lower()))
+            other_auto.sort(key=lambda m: m.lower())
+
+            candidates: list[str] = []
 
             def _add_candidate(mid: str):
                 if not mid:
@@ -699,29 +780,34 @@ def _run_via_llm(
             # 1) explicit request (if any) — try selected model/route first
             if req_is_explicit:
                 _add_candidate(req_model)
-            # 2) concrete discovered models (non-auto, preferred families first by sort)
-            for m in discovered:
-                ml = m.lower()
-                if not ml.startswith("auto"):
-                    _add_candidate(m)
-            # 3) configured env model if concrete
-            if env_model and env_model.lower() != "auto":
+            # 2) explicit env model preference (if different)
+            if env_model and env_model.lower() != "auto" and env_model not in candidates:
                 _add_candidate(env_model)
-            # 4) safe/common fallbacks
-            for m in ("openrouter/free",):
+            elif env_model and env_model.lower() == "auto" and not req_is_explicit:
+                # if env requests auto, prioritize auto router after dynamic free models below
+                pass
+
+            # 3) dynamically discovered free models (update-anytime via OmniRoute)
+            for m in free_concrete:
                 _add_candidate(m)
-            # 5) aliases only if useful (or nothing else)
-            if (
-                (not req_is_explicit)
-                or req_is_auto_route
-                or not any(not c.lower().startswith("auto") for c in candidates)
-            ):
-                for m in discovered:
-                    if m.lower().startswith("auto"):
-                        _add_candidate(m)
-                _add_candidate("auto")
+            for m in free_auto:
+                _add_candidate(m)
+
+            # 4) generic auto router (dynamic gateway routing), useful when no specific free model responded
+            if (not req_is_explicit) or req_is_auto_route or not any(not _is_auto_alias(c) for c in candidates):
+                _add_candidate(env_model if (env_model and env_model.lower() == "auto") else "auto")
+
+            # 5) if still sparse, allow other discovered non-free/non-auto models as last resort (best-effort)
+            if not strict_explicit and (len(candidates) <= 1 or req_is_auto_route):
+                for m in other_concrete[:10]:
+                    _add_candidate(m)
+                for m in other_auto:
+                    _add_candidate(m)
+
+            # 6) absolute fallback (no hardcoded free model ID)
             if not candidates:
-                candidates = ["openrouter/free", "auto"]
+                _add_candidate(env_model or "auto")
+                _add_candidate("auto")
 
             # Strict explicit concrete model: preserve selection semantics (no silent fallback).
             # Explicit auto-routes keep fallbacks because the route itself may resolve to unusable upstreams.
@@ -785,6 +871,7 @@ def _run_via_llm(
             errors.append(f"omniroute: {e}")
 
     # OmniRoute-only backend: no local/direct/public provider fallbacks.
+    req_model = (requested_model or "").strip()
     req_ml = (req_model or "").lower()
     strict_explicit = bool(req_model and req_model.lower() != "auto") and not (
         req_ml.startswith("auto/") or req_ml.startswith("auto-") or req_ml == "auto"
@@ -860,8 +947,16 @@ def generate_response(
     if history:
         # if client provides history, prefer it (but keep reasonable)
         merged_history = [h for h in history if isinstance(h, dict)]
+    web_agent_mode = _env("JO_WEB_USE_AGENT") == "1"
+    tools_exposed_to_model = web_agent_mode
+
     if not message:
-        return "Send a message to start chatting with Jo.", sid, {"provider": "system", "model": "none"}
+        return "Send a message to start chatting with Jo.", sid, {
+            "provider": "system",
+            "model": "none",
+            "web_agent_mode": web_agent_mode,
+            "tools_exposed_to_model": tools_exposed_to_model,
+        }
 
     errors = []
     # Prefer lightweight direct LLM path (robust in minimal environments)
@@ -877,7 +972,10 @@ def generate_response(
             if len(sess) > _SESSION_MAX:
                 del sess[:-_SESSION_MAX]
             _SESSIONS[sid] = sess
-            return text, sid, (meta or {})
+            out_meta = dict(meta or {})
+            out_meta["web_agent_mode"] = web_agent_mode
+            out_meta["tools_exposed_to_model"] = tools_exposed_to_model
+            return text, sid, out_meta
         errors.append("llm returned empty content")
     except Exception as e:
         errors.append(f"llm: {e}")
@@ -892,7 +990,12 @@ def generate_response(
                 if len(sess) > _SESSION_MAX:
                     del sess[:-_SESSION_MAX]
                 _SESSIONS[sid] = sess
-                return text, sid, {"provider": "agent", "model": "agent"}
+                return text, sid, {
+                    "provider": "agent",
+                    "model": "agent",
+                    "web_agent_mode": True,
+                    "tools_exposed_to_model": True,
+                }
             errors.append("agent returned no message")
         except Exception as e:
             errors.append(f"agent: {e}")
@@ -905,7 +1008,12 @@ def generate_response(
     if len(sess) > _SESSION_MAX:
         del sess[:-_SESSION_MAX]
     _SESSIONS[sid] = sess
-    return resp, sid, {"provider": "fallback", "model": "unavailable"}
+    return resp, sid, {
+        "provider": "fallback",
+        "model": "unavailable",
+        "web_agent_mode": web_agent_mode,
+        "tools_exposed_to_model": tools_exposed_to_model,
+    }
 
 
 def _chunk_text(text: str, size: int = 80) -> Iterator[str]:
@@ -932,6 +1040,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
     t0 = asyncio.get_running_loop().time()
     meta: Dict[str, Any] = {}
     sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
+    web_agent_mode = _env("JO_WEB_USE_AGENT") == "1"
     try:
         response, sid, meta = await asyncio.wait_for(
             asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model),
@@ -939,7 +1048,12 @@ async def chat(req: ChatRequest) -> ChatResponse:
         )
     except Exception as e:
         response = _fallback_response(req.message, f"request_timeout_or_error: {e}")
-        meta = {"provider": "fallback", "model": "unavailable"}
+        meta = {
+            "provider": "fallback",
+            "model": "unavailable",
+            "web_agent_mode": web_agent_mode,
+            "tools_exposed_to_model": web_agent_mode,
+        }
     elapsed_ms = int((asyncio.get_running_loop().time() - t0) * 1000)
     return ChatResponse(
         response=response or "",
@@ -958,6 +1072,7 @@ async def chat_stream(req: ChatRequest):
         sid = (req.session_id or "").strip() or ("web_" + uuid.uuid4().hex[:10])
         t0 = asyncio.get_running_loop().time()
         meta: Dict[str, Any] = {}
+        web_agent_mode = _env("JO_WEB_USE_AGENT") == "1"
         try:
             response, sid, meta = await asyncio.wait_for(
                 asyncio.to_thread(generate_response, req.message, history, req.session_id, req.model),
@@ -966,7 +1081,12 @@ async def chat_stream(req: ChatRequest):
         except Exception as e:
             yield _sse({"error": str(e), "session_id": sid})
             response = _fallback_response(req.message, f"request_timeout_or_error: {e}")
-            meta = {"provider": "fallback", "model": "unavailable"}
+            meta = {
+                "provider": "fallback",
+                "model": "unavailable",
+                "web_agent_mode": web_agent_mode,
+                "tools_exposed_to_model": web_agent_mode,
+            }
         response = response or ""
         for part in _chunk_text(response, 120):
             yield _sse({"delta": part, "session_id": sid})
@@ -980,6 +1100,8 @@ async def chat_stream(req: ChatRequest):
                 "provider": (meta or {}).get("provider"),
                 "model": (meta or {}).get("model") or req.model,
                 "elapsed_ms": elapsed_ms,
+                "web_agent_mode": bool((meta or {}).get("web_agent_mode")),
+                "tools_exposed_to_model": bool((meta or {}).get("tools_exposed_to_model")),
             }
         )
 
@@ -1039,10 +1161,26 @@ def _list_models() -> Dict[str, Any]:
 
     # Dynamically discover and expose all available free models from OmniRoute.
     # "Free" is detected from model IDs and metadata (pricing/tags/flags) when present.
+    diagnostics: Dict[str, Any] = {
+        "raw_discovered": 0,
+        "free_detected": 0,
+        "excluded_headless_bridge": 0,
+        "excluded_not_free": 0,
+        "exposed_free": 0,
+        "include_headless_bridge_routes": _env_truthy("JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES"),
+        "excluded_headless_bridge_sample": [],
+        "excluded_not_free_sample": [],
+    }
+    sample_limit = 10
     if omni_base:
         try:
-            discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
-            for entry in discovered:
+            discovered, info = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
+            diagnostics["raw_discovered"] = len(discovered or [])
+            diagnostics["fetch_reachable"] = bool(info.get("reachable"))
+            diagnostics["fetch_cached"] = bool(info.get("cached"))
+            if info.get("error"):
+                diagnostics["fetch_error"] = info.get("error")
+            for entry in discovered or []:
                 if isinstance(entry, dict):
                     smid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
                     meta = entry
@@ -1052,15 +1190,21 @@ def _list_models() -> Dict[str, Any]:
                 ml = smid.lower()
                 if not smid or ml == "auto":
                     continue
-                # Exclude routes known to require browser/runtime bridges in headless CI.
-                if ml.startswith("cfp/") or ml.startswith("dva/"):
-                    continue
-                if "cloudflare playground" in ml or "playwright" in ml or "devin agentic bridge" in ml:
+
+                # Exclude routes commonly unusable in headless/CI unless explicitly allowed.
+                if _exclude_headless_bridge_route(ml):
+                    diagnostics["excluded_headless_bridge"] += 1
+                    if len(diagnostics["excluded_headless_bridge_sample"]) < sample_limit:
+                        diagnostics["excluded_headless_bridge_sample"].append(smid)
                     continue
 
                 is_free = _is_free_model_entry(meta if meta else smid)
                 if not is_free:
+                    diagnostics["excluded_not_free"] += 1
+                    if len(diagnostics["excluded_not_free_sample"]) < sample_limit:
+                        diagnostics["excluded_not_free_sample"].append(smid)
                     continue
+                diagnostics["free_detected"] += 1
 
                 extra: Dict[str, Any] = {"dynamic": True, "free": True}
                 # Preserve useful metadata if OmniRoute provides it (helps UI/debugging)
@@ -1082,11 +1226,19 @@ def _list_models() -> Dict[str, Any]:
                         }
                 except Exception:
                     pass
+                before = len(models)
                 add(smid, "omniroute", label=smid, **extra)
-        except Exception:
-            pass
+                if len(models) > before:
+                    diagnostics["exposed_free"] += 1
+        except Exception as e:
+            diagnostics["error"] = f"{type(e).__name__}: {e}"
 
-    return {"models": models, "default": _env("OMNIROUTE_MODEL") or "auto"}
+    diagnostics["listed"] = len(models)
+    return {
+        "models": models,
+        "default": _env("OMNIROUTE_MODEL") or "auto",
+        "diagnostics": diagnostics,
+    }
 
 
 @app.get("/v1/models")
