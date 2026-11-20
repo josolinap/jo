@@ -1,0 +1,21 @@
+{
+  "name": "Status & models endpoints",
+  "description": "GET /health and GET /v1/status: provider/model, OmniRoute reachability, dynamic model probe results, readiness reasons, and the web chat mode/tools flags (web_agent_mode, web_chat_path, tools_exposed_to_model, tools_note); GET /v1/models: the curated OmniRoute catalog — 'auto' plus dynamically discovered free models, with headless/CI bridge routes excluded.",
+  "files": [],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models"
+    }
+  ],
+  "screens": [],
+  "parent": "server"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Scripts",
+  "description": "Dev & ops scripts (scripts/): build_floorplan.py (generates/validates the Floorplan map), check_module_health.py + check_bugs.py + check_principle5.py + self_check.py (health & invariants), health_audit.py + code_health_monitor.py + code_health_analysis.py (code health), watchdog.py + sys_ops.py + debug_check.py (system ops), colab_launcher.py, validate_data_files.py, pre-commit.",
+  "files": [
+    "scripts/check_bugs.py",
+    "scripts/check_module_health.py",
+    "scripts/check_params.py",
+    "scripts/check_principle5.py",
+    "scripts/code_health_analysis.py",
+    "scripts/code_health_monitor.py",
+    "scripts/colab_launcher.py",
+    "scripts/debug_check.py",
+    "scripts/health_audit.py",
+    "scripts/pattern_scanner.py",
+    "scripts/pre-commit",
+    "scripts/run_health.py",
+    "scripts/self_check.py",
+    "scripts/validate_data_files.py"
+  ],
+  "endpoints": [],
+  "screens": []
+}

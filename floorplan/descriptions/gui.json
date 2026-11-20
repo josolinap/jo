@@ -1,0 +1,9 @@
+{
+  "name": "Jo Web GUI",
+  "description": "The Jo Web GUI — a polished chat interface (gui/) served from GitHub Pages. It composes the chat page, streaming messages, the settings and shortcuts modals, and the theme toggle; it discovers the backend via gui/backend.json and polls its health.",
+  "files": [],
+  "endpoints": [],
+  "screens": [
+    "gui/index.html"
+  ]
+}

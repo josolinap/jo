@@ -1,0 +1,19 @@
+{
+  "name": "Chat page & transport",
+  "description": "The main chat screen: the composer and message list. It transports chat via POST /v1/chat/stream (SSE) with POST /v1/chat as fallback; it polls /health; deltas grow the streaming bubble and the done event replaces it with the full response.",
+  "files": [
+    "gui/app.js"
+  ],
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/v1/chat/stream"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat"
+    }
+  ],
+  "screens": [],
+  "parent": "gui"
+}

@@ -1,0 +1,3338 @@
+{
+  "generatedAt": "2026-11-20T04:42:19Z",
+  "generatedBy": "scripts/build_floorplan.py",
+  "project": {
+    "name": "Jo",
+    "summary": "Jo is a self-modifying AI agent (the Ouroboros agent core) with a FastAPI web chat backend (server/) and a browser GUI (gui/). Web chat: GUI → server (/v1/chat, /v1/chat/stream) → Ouroboros agent workflow (tools, memory, self-evolution) or the lightweight LLM path via OmniRoute. The supervisor manages workers; the vault is Jo's narrative memory; prompts, config, scripts and tests surround the app.",
+    "entrypoints": [
+      "ouroboros/agent.py",
+      "server/app.py",
+      "gui/index.html"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "gui",
+      "label": "Jo Web GUI",
+      "kind": "ui",
+      "parent": null,
+      "summary": "The Jo Web GUI — a polished chat interface (gui/) served from GitHub Pages. It composes the chat page, streaming messages, the settings and shortcuts modals, and the theme toggle; it discovers the backend via gui/backend.json and polls its health.",
+      "paths": [
+        "gui/**"
+      ],
+      "files": [],
+      "endpoints": [],
+      "screens": [
+        "gui/index.html"
+      ]
+    },
+    {
+      "id": "gui.chat",
+      "label": "Chat page & transport",
+      "kind": "feature",
+      "parent": "gui",
+      "summary": "The main chat screen: the composer and message list. It transports chat via POST /v1/chat/stream (SSE) with POST /v1/chat as fallback; it polls /health; deltas grow the streaming bubble and the done event replaces it with the full response.",
+      "paths": [
+        "gui/app.js"
+      ],
+      "files": [
+        {
+          "path": "gui/app.js",
+          "description": "Jo web GUI app — polished chat UX (Claude/ChatGPT-inspired patterns)"
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/chat/stream"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "gui.status",
+      "label": "Settings & status modals",
+      "kind": "feature",
+      "parent": "gui",
+      "summary": "The Settings modal (API base auto-discovery via gui/backend.json or a manual URL, GET /health + GET /v1/status status card, model selection with search + refresh from GET /v1/models, theme toggle, clear saved base, export/import chats, copy diagnostics) and the shortcuts modal; styles.css, theme-init.js, the 404 page, sitemap/robots and the GUI README.",
+      "paths": [
+        "gui/index.html",
+        "gui/styles.css",
+        "gui/theme-init.js",
+        "gui/404.html",
+        "gui/README.md",
+        "gui/robots.txt",
+        "gui/sitemap.txt"
+      ],
+      "files": [
+        {
+          "path": "gui/404.html",
+          "description": ""
+        },
+        {
+          "path": "gui/README.md",
+          "description": "Jo Web GUI (GitHub Pages)"
+        },
+        {
+          "path": "gui/index.html",
+          "description": ""
+        },
+        {
+          "path": "gui/robots.txt",
+          "description": ""
+        },
+        {
+          "path": "gui/sitemap.txt",
+          "description": ""
+        },
+        {
+          "path": "gui/styles.css",
+          "description": ""
+        },
+        {
+          "path": "gui/theme-init.js",
+          "description": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/models"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "server",
+      "label": "Jo Web Backend",
+      "kind": "service",
+      "parent": null,
+      "summary": "The Jo Web Backend (server/app.py, FastAPI) — the HTTP contract used by the GitHub Pages GUI. Generation is OmniRoute-only for web chat.",
+      "paths": [
+        "server/**"
+      ],
+      "files": [
+        {
+          "path": "server/README.md",
+          "description": "Jo Web Chat Backend"
+        },
+        {
+          "path": "server/__init__.py",
+          "description": "Jo web chat backend package."
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "server.chat",
+      "label": "Chat endpoints",
+      "kind": "feature",
+      "parent": "server",
+      "summary": "POST /v1/chat (full reply) and POST /v1/chat/stream (SSE: delta / done / error events). Adds OpenDuet-style proactive follow-up suggestions and keeps per-session chat history (max 40 messages). The web GUI is the main caller.",
+      "paths": [
+        "server/app.py",
+        "server/run.ps1"
+      ],
+      "files": [
+        {
+          "path": "server/app.py",
+          "description": "Jo web chat backend."
+        },
+        {
+          "path": "server/run.ps1",
+          "description": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/chat"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat/stream"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "server.status",
+      "label": "Status & models endpoints",
+      "kind": "feature",
+      "parent": "server",
+      "summary": "GET /health and GET /v1/status: provider/model, OmniRoute reachability, dynamic model probe results, readiness reasons, and the web chat mode/tools flags (web_agent_mode, web_chat_path, tools_exposed_to_model, tools_note); GET /v1/models: the curated OmniRoute catalog — 'auto' plus dynamically discovered free models, with headless/CI bridge routes excluded.",
+      "paths": [
+        "server/app.py"
+      ],
+      "files": [],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/status"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/models"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "ouroboros",
+      "label": "Ouroboros — Jo's agent core",
+      "kind": "service",
+      "parent": null,
+      "summary": "Ouroboros (ouroboros/) is Jo's agent: the direct-chat agent workflow (supervisor.workers._get_chat_agent → OuroborosAgent.handle_task, the LLM tool loop) plus the lightweight LLM path (ouroboros/llm.py). ~115 modules: loop, tools, memory, context, pipeline, evolution, self-healing, tracing, skills, goals, awareness, token ledger, budget router, work checkpoint, ... plus ouroboros/tools/ — the plugin tool registry.",
+      "paths": [
+        "ouroboros/**"
+      ],
+      "files": [
+        {
+          "path": "ouroboros/__init__.py",
+          "description": "Ouroboros — self-modifying AI agent."
+        },
+        {
+          "path": "ouroboros/agent.py",
+          "description": "Ouroboros agent core — thin orchestrator."
+        },
+        {
+          "path": "ouroboros/agent_index.py",
+          "description": "Agent capability indexing for Jo."
+        },
+        {
+          "path": "ouroboros/anatomy.py",
+          "description": "Ouroboros — Project Anatomy (File Index)."
+        },
+        {
+          "path": "ouroboros/apply_patch.py",
+          "description": "Apply-patch shim for Claude Code CLI."
+        },
+        {
+          "path": "ouroboros/auto_system.py",
+          "description": "Determine task complexity for model selection."
+        },
+        {
+          "path": "ouroboros/auto_vault.py",
+          "description": "Jo — Auto-Vault System."
+        },
+        {
+          "path": "ouroboros/awareness.py",
+          "description": "Awareness system — scans repository state and health metrics."
+        },
+        {
+          "path": "ouroboros/background_consciousness.py",
+          "description": "Jo — Background Consciousness."
+        },
+        {
+          "path": "ouroboros/behavioral_drift.py",
+          "description": "Jo — Behavioral Drift Detection."
+        },
+        {
+          "path": "ouroboros/budget_router.py",
+          "description": "Jo — Budget-Aware Model Routing."
+        },
+        {
+          "path": "ouroboros/buglog.py",
+          "description": "Ouroboros — Bug Log (Searchable Fix Memory)."
+        },
+        {
+          "path": "ouroboros/bulkhead_executor.py",
+          "description": "Jo — Bulkhead Resource Isolation and Adaptive Timeouts."
+        },
+        {
+          "path": "ouroboros/capability_gap.py",
+          "description": "Jo — Capability Gap Detection."
+        },
+        {
+          "path": "ouroboros/cerebrum.py",
+          "description": "Ouroboros — Cerebrum (Learning Memory)."
+        },
+        {
+          "path": "ouroboros/checkpoint.py",
+          "description": "Checkpoint Verification — pre-commit eval loop for evolution safety."
+        },
+        {
+          "path": "ouroboros/classification_engine.py",
+          "description": "Classification Engine — LLM-driven multi-label task classification."
+        },
+        {
+          "path": "ouroboros/codebase_analysis.py",
+          "description": "Codebase analysis functions for impact analysis and metrics."
+        },
+        {
+          "path": "ouroboros/codebase_cohesion.py",
+          "description": "AST-based cohesion analysis for module decomposition."
+        },
+        {
+          "path": "ouroboros/codebase_graph.py",
+          "description": "Codebase Graph - Build and query a knowledge graph of Jo's codebase."
+        },
+        {
+          "path": "ouroboros/codebase_models.py",
+          "description": "Shared data models for codebase analysis."
+        },
+        {
+          "path": "ouroboros/complexity_router.py",
+          "description": "Ouroboros — Complexity-Based Model Router."
+        },
+        {
+          "path": "ouroboros/compression.py",
+          "description": "Internal token compression for Jo (Ouroboros)."
+        },
+        {
+          "path": "ouroboros/confidence.py",
+          "description": "Confidence scoring — know what you don't know."
+        },
+        {
+          "path": "ouroboros/config_manager.py",
+          "description": "Ouroboros — Configuration Manager."
+        },
+        {
+          "path": "ouroboros/consciousness.py",
+          "description": "Ouroboros — Background Consciousness."
+        },
+        {
+          "path": "ouroboros/context.py",
+          "description": "Ouroboros context builder."
+        },
+        {
+          "path": "ouroboros/context_cache.py",
+          "description": "Cache-First Context — Intelligent caching for vault, codebase, and context scans."
+        },
+        {
+          "path": "ouroboros/context_compact.py",
+          "description": "Context compaction functions for reducing message history tokens."
+        },
+        {
+          "path": "ouroboros/context_compaction.py",
+          "description": "Jo — Context Compaction System."
+        },
+        {
+          "path": "ouroboros/context_enricher.py",
+          "description": "Context enricher for Jo - pre-fetches relevant context before LLM calls."
+        },
+        {
+          "path": "ouroboros/cost_tracker.py",
+          "description": "Enhanced cost tracking for Jo - per-task breakdown and budget estimation."
+        },
+        {
+          "path": "ouroboros/dead_letter_queue.py",
+          "description": "Jo — Dead Letter Queue for Failed Tasks."
+        },
+        {
+          "path": "ouroboros/debug_analyzer.py",
+          "description": "Ouroboros — Debug Analyzer."
+        },
+        {
+          "path": "ouroboros/decision_trace.py",
+          "description": "Decision tracer — track WHY decisions were made."
+        },
+        {
+          "path": "ouroboros/delta_eval.py",
+          "description": "Delta Evaluation — Formal quantification of improvement quality."
+        },
+        {
+          "path": "ouroboros/dependency_graph.py",
+          "description": "Ouroboros — Task Dependency Graph."
+        },
+        {
+          "path": "ouroboros/drift_detector.py",
+          "description": "Drift detector — checks current state against constitution and baseline."
+        },
+        {
+          "path": "ouroboros/dspy_integration.py",
+          "description": "DSPy Integration — Programming, not prompting for Jo."
+        },
+        {
+          "path": "ouroboros/eval.py",
+          "description": "Task evaluator for Jo - scores outputs and enables self-correction."
+        },
+        {
+          "path": "ouroboros/evolution_fingerprint.py",
+          "description": "Evolution fingerprinting — snapshot state before changes."
+        },
+        {
+          "path": "ouroboros/evolution_strategy.py",
+          "description": "Adaptive evolution strategy for Jo's self-improvement cycles."
+        },
+        {
+          "path": "ouroboros/experience_indexer.py",
+          "description": "Ouroboros Experience Indexer — builds a searchable knowledge base from past activities."
+        },
+        {
+          "path": "ouroboros/extraction.py",
+          "description": "Extraction Module - Extract structured information from unstructured text."
+        },
+        {
+          "path": "ouroboros/gap_detector.py",
+          "description": "Ouroboros — Gap Detector."
+        },
+        {
+          "path": "ouroboros/github_inbox.py",
+          "description": "GitHub Issues mailbox for ChatGPT -> Jo."
+        },
+        {
+          "path": "ouroboros/goal_manager.py",
+          "description": "Goal Manager — Autonomous goal pursuit for Jo."
+        },
+        {
+          "path": "ouroboros/hallucination_guard.py",
+          "description": "Ouroboros — Hallucination Guard."
+        },
+        {
+          "path": "ouroboros/health_auto_fix.py",
+          "description": "Health auto-fix module — proactively resolves detected issues."
+        },
+        {
+          "path": "ouroboros/health_invariants.py",
+          "description": "Health invariants — surfaces anomalies for LLM-first self-detection."
+        },
+        {
+          "path": "ouroboros/health_predictor.py",
+          "description": "Predictive health — predict failures before they happen."
+        },
+        {
+          "path": "ouroboros/hooks/__init__.py",
+          "description": "Ouroboros — Hook Architecture."
+        },
+        {
+          "path": "ouroboros/hot_reload.py",
+          "description": "Hot Reload Manager - Smart restart detection and module reloading."
+        },
+        {
+          "path": "ouroboros/ideation.py",
+          "description": "Ouroboros — Ideation with Reflection."
+        },
+        {
+          "path": "ouroboros/inner_skills.py",
+          "description": "Inner Skills — cognitive operations that run inside the LLM loop."
+        },
+        {
+          "path": "ouroboros/instinct_evolver.py",
+          "description": "Instinct Evolution — auto-create vault skills from successful temporal patterns."
+        },
+        {
+          "path": "ouroboros/knowledge_decay.py",
+          "description": "Knowledge decay — forget what doesn't matter."
+        },
+        {
+          "path": "ouroboros/knowledge_discovery.py",
+          "description": "Knowledge discovery — fills gaps in Jo's understanding."
+        },
+        {
+          "path": "ouroboros/llm.py",
+          "description": "Ouroboros — LLM client."
+        },
+        {
+          "path": "ouroboros/loop.py",
+          "description": "Ouroboros — LLM tool loop."
+        },
+        {
+          "path": "ouroboros/loop_budget.py",
+          "description": "Budget and setup functions for LLM loops."
+        },
+        {
+          "path": "ouroboros/loop_llm.py",
+          "description": "LLM calling and first-round setup for loop."
+        },
+        {
+          "path": "ouroboros/loop_response.py",
+          "description": "Response handling and analysis for LLM loops."
+        },
+        {
+          "path": "ouroboros/memory_extractor.py",
+          "description": "Ouroboros — Memory Extractor."
+        },
+        {
+          "path": "ouroboros/modification_pipeline.py",
+          "description": "Jo — Formal Modification Pipeline."
+        },
+        {
+          "path": "ouroboros/multi_verify.py",
+          "description": "Ouroboros — Multi-Model Verification."
+        },
+        {
+          "path": "ouroboros/normalizer.py",
+          "description": "Code normalizer for Jo - cleans code before LLM processing."
+        },
+        {
+          "path": "ouroboros/ontology_tracker.py",
+          "description": "Ontology tracker for task-tool relationships."
+        },
+        {
+          "path": "ouroboros/orchestrator.py",
+          "description": "Orchestrator — coordinates inner skills, parallel reasoning, deliberation, and checkpoints."
+        },
+        {
+          "path": "ouroboros/owner_inject.py",
+          "description": "Per-task owner message injection for running worker tasks."
+        },
+        {
+          "path": "ouroboros/parallel_reasoning.py",
+          "description": "Parallel Reasoning — concurrent reasoning paths with deliberation."
+        },
+        {
+          "path": "ouroboros/persistent_identity.py",
+          "description": "Jo — Persistent Identity."
+        },
+        {
+          "path": "ouroboros/pi_prompts.py",
+          "description": "Pi Prompts - Integration of .pi/prompts/ templates into Jo's skill system."
+        },
+        {
+          "path": "ouroboros/pipeline.py",
+          "description": "Structured pipeline architecture for Jo - formalizes execution phases."
+        },
+        {
+          "path": "ouroboros/plugins/__init__.py",
+          "description": "Ouroboros — Plugin System."
+        },
+        {
+          "path": "ouroboros/policy.py",
+          "description": "Policy as Code for evolution compliance."
+        },
+        {
+          "path": "ouroboros/proactive_outreach.py",
+          "description": "Jo — Proactive Outreach."
+        },
+        {
+          "path": "ouroboros/progressive_disclosure.py",
+          "description": "Jo — Progressive Skill Disclosure."
+        },
+        {
+          "path": "ouroboros/proof_gate.py",
+          "description": "Proof-Gated Writes — Validate changes against constitution before applying."
+        },
+        {
+          "path": "ouroboros/quality_gates.py",
+          "description": "Ouroboros — Quality Gates."
+        },
+        {
+          "path": "ouroboros/quality_metrics.py",
+          "description": "Quality metrics framework for code assessment."
+        },
+        {
+          "path": "ouroboros/query.py",
+          "description": "Ouroboros — Headless Query."
+        },
+        {
+          "path": "ouroboros/repo_pack.py",
+          "description": "Ouroboros Repo Pack — Pack a repository into a single LLM-friendly file."
+        },
+        {
+          "path": "ouroboros/resilience/__init__.py",
+          "description": "Resilience patterns for stable agent operation."
+        },
+        {
+          "path": "ouroboros/resilience/backoff.py",
+          "description": "Exponential backoff with jitter for retry strategies."
+        },
+        {
+          "path": "ouroboros/resilience/checkpoint.py",
+          "description": "Hybrid checkpointing for state recovery."
+        },
+        {
+          "path": "ouroboros/resilience/circuit_breaker.py",
+          "description": "Circuit breaker pattern for fault tolerance."
+        },
+        {
+          "path": "ouroboros/resilience/context_manager.py",
+          "description": "Context window manager with progressive compression."
+        },
+        {
+          "path": "ouroboros/resilience/degradation.py",
+          "description": "Graceful degradation matrix for tool/dependency failures."
+        },
+        {
+          "path": "ouroboros/resilience/stuck_detector.py",
+          "description": "Stuck detection for AI agent loops."
+        },
+        {
+          "path": "ouroboros/resilience/supervisor.py",
+          "description": "Supervisor tree for agent process management."
+        },
+        {
+          "path": "ouroboros/response_analyzer.py",
+          "description": "Response Analyzer - Detects hallucinations, drift, and avoidance in LLM responses."
+        },
+        {
+          "path": "ouroboros/review.py",
+          "description": "Ouroboros — Review utilities."
+        },
+        {
+          "path": "ouroboros/rules.py",
+          "description": "Soft Rule Engine (TTSR) for Jo."
+        },
+        {
+          "path": "ouroboros/runtime_tool_creator.py",
+          "description": "Runtime Tool Creation - Enable Jo to create new tools at runtime."
+        },
+        {
+          "path": "ouroboros/self_critique.py",
+          "description": "Jo — Self-Critique Evaluator Loop."
+        },
+        {
+          "path": "ouroboros/self_healing.py",
+          "description": "Jo — Self-Healing Architecture."
+        },
+        {
+          "path": "ouroboros/semantic_filter.py",
+          "description": "Jo — Semantic Context Filtering."
+        },
+        {
+          "path": "ouroboros/session_compaction.py",
+          "description": "Ouroboros — Session Compaction."
+        },
+        {
+          "path": "ouroboros/skills/__init__.py",
+          "description": "Jo — Skills Package."
+        },
+        {
+          "path": "ouroboros/skills/agent_system.py",
+          "description": "Jo — Specialized Agent System."
+        },
+        {
+          "path": "ouroboros/skills/coordinator.py",
+          "description": "Jo — Coordinator Mode."
+        },
+        {
+          "path": "ouroboros/skills/cost_tracker.py",
+          "description": "Jo — Cost Tracker."
+        },
+        {
+          "path": "ouroboros/skills/dream_system.py",
+          "description": "Jo — Dream System."
+        },
+        {
+          "path": "ouroboros/skills/keyword_detector.py",
+          "description": "Jo — Magic Keyword Detection System."
+        },
+        {
+          "path": "ouroboros/skills/permission_system.py",
+          "description": "Jo — Permission System."
+        },
+        {
+          "path": "ouroboros/skills/repository.py",
+          "description": "Skill Repository for Jo (Memento-Skills)."
+        },
+        {
+          "path": "ouroboros/skills/runtime.py",
+          "description": "Skill Runtime for Jo (Memento-Skills)."
+        },
+        {
+          "path": "ouroboros/skills/skill_manager.py",
+          "description": "Jo — Skill System."
+        },
+        {
+          "path": "ouroboros/skills/state_manager.py",
+          "description": "Jo — Advanced State Management."
+        },
+        {
+          "path": "ouroboros/skills/verification.py",
+          "description": "Jo — Verification Protocol."
+        },
+        {
+          "path": "ouroboros/sparse_executor.py",
+          "description": "Sparse executor for skipping low-value tool calls."
+        },
+        {
+          "path": "ouroboros/spice.py",
+          "description": "Spice system for Jo - targeted prompt injections based on quality issues."
+        },
+        {
+          "path": "ouroboros/stability_manager.py",
+          "description": "Jo — Stability Manager."
+        },
+        {
+          "path": "ouroboros/stack_detector.py",
+          "description": "Ouroboros — Stack Detection."
+        },
+        {
+          "path": "ouroboros/stuck_detector.py",
+          "description": "Ouroboros — Sliding-Window Stuck Detector."
+        },
+        {
+          "path": "ouroboros/synthesis.py",
+          "description": "Semantic synthesizer for Jo - post-task consistency and quality checks."
+        },
+        {
+          "path": "ouroboros/task_graph.py",
+          "description": "Task graph for Jo - executes complex tasks in dependency order."
+        },
+        {
+          "path": "ouroboros/temporal_learning.py",
+          "description": "Temporal Tool Learning — Track which tool sequences succeed, reinforce them."
+        },
+        {
+          "path": "ouroboros/three_axis_tracker.py",
+          "description": "Jo — Three-Axis Tracking."
+        },
+        {
+          "path": "ouroboros/token_ledger.py",
+          "description": "Ouroboros — Token Ledger."
+        },
+        {
+          "path": "ouroboros/traceability.py",
+          "description": "Event-Driven Traceability Layer - Jo's automatic knowledge sync."
+        },
+        {
+          "path": "ouroboros/tree_of_thought.py",
+          "description": "Jo — Tree-of-Thought Reasoning System."
+        },
+        {
+          "path": "ouroboros/utils.py",
+          "description": "Ouroboros — Shared utilities."
+        },
+        {
+          "path": "ouroboros/vault_engine.py",
+          "description": "Intelligent Vault System - Makes the vault active and self-maintaining."
+        },
+        {
+          "path": "ouroboros/vault_manager.py",
+          "description": "Vault manager — CRUD operations for the knowledge vault."
+        },
+        {
+          "path": "ouroboros/vault_parser.py",
+          "description": "Ouroboros — Vault Wikilink Parser."
+        },
+        {
+          "path": "ouroboros/vault_search.py",
+          "description": "Vault Search — semantic search, topic clustering, knowledge gaps."
+        },
+        {
+          "path": "ouroboros/work_checkpoint.py",
+          "description": "Work Checkpoint — per-work-item checkpointing for parallel execution."
+        },
+        {
+          "path": "ouroboros/workflow.py",
+          "description": "Workflow automation for repetitive tasks."
+        },
+        {
+          "path": "ouroboros/working_memory.py",
+          "description": "Jo — Working Memory System (TodoWrite Pattern)."
+        },
+        {
+          "path": "ouroboros/workspace_organizer.py",
+          "description": "Jo — Workspace Organization System."
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.tools",
+      "label": "Tool registry & modules",
+      "kind": "library",
+      "parent": "ouroboros",
+      "summary": "The Jo tool system: ToolRegistry + ~50 tool modules (file ops, shell, web research, git, github, database, browser, skills, evolution, neural map, vision, dashboard, analytics, ...), schemas + permissions + orchestration.",
+      "paths": [
+        "ouroboros/tools/**",
+        "ouroboros/tool_orchestrator.py",
+        "ouroboros/tool_executor.py",
+        "ouroboros/tool_router.py",
+        "ouroboros/tool_permissions.py"
+      ],
+      "files": [
+        {
+          "path": "ouroboros/tool_executor.py",
+          "description": "Tool execution module for Ouroboros."
+        },
+        {
+          "path": "ouroboros/tool_orchestrator.py",
+          "description": "Ouroboros — Tool Orchestrator."
+        },
+        {
+          "path": "ouroboros/tool_permissions.py",
+          "description": "Ouroboros — Tool Permission Context."
+        },
+        {
+          "path": "ouroboros/tool_router.py",
+          "description": "Semantic Tool Routing — Learn optimal tool selection per task type."
+        },
+        {
+          "path": "ouroboros/tools/__init__.py",
+          "description": "Ouroboros — Tool package (plugin architecture)."
+        },
+        {
+          "path": "ouroboros/tools/agent_coordinator.py",
+          "description": "Agent Coordinator tool — parallel delegation and result collection."
+        },
+        {
+          "path": "ouroboros/tools/ai_code.py",
+          "description": "AI Code Generation Tool - Jo's autonomous code generation capability."
+        },
+        {
+          "path": "ouroboros/tools/analytics.py",
+          "description": "Analytics tools for Jo."
+        },
+        {
+          "path": "ouroboros/tools/browser.py",
+          "description": "Browser automation tools via Playwright (sync API)."
+        },
+        {
+          "path": "ouroboros/tools/cli_anything.py",
+          "description": "CLI-Anything integration for Jo - Build agent-native CLIs for any software."
+        },
+        {
+          "path": "ouroboros/tools/coherence_audit_tool.py",
+          "description": "Coherence Audit tool — Jo's self-diagnostic."
+        },
+        {
+          "path": "ouroboros/tools/compact_context.py",
+          "description": "compact_context tool — selective LLM-driven context summarization."
+        },
+        {
+          "path": "ouroboros/tools/connection_weavers.py",
+          "description": "Connection Weavers - Automatic neural link creation."
+        },
+        {
+          "path": "ouroboros/tools/consciousness_tools",
+          "description": ""
+        },
+        {
+          "path": "ouroboros/tools/consciousness_tools.py",
+          "description": "Jo — Consciousness, Growth, and Disclosure Tools."
+        },
+        {
+          "path": "ouroboros/tools/control.py",
+          "description": "Control tools: restart, promote, schedule, cancel, review, chat_history, update_scratchpad, switch_model."
+        },
+        {
+          "path": "ouroboros/tools/core.py",
+          "description": "File tools: repo_read, repo_list, drive_read, drive_list, drive_write, codebase_digest, summarize_dialogue."
+        },
+        {
+          "path": "ouroboros/tools/dashboard.py",
+          "description": "Real-time health: workers, queue, budget burn, drift, verifications."
+        },
+        {
+          "path": "ouroboros/tools/database.py",
+          "description": "Database tools - SQLite for structured memory."
+        },
+        {
+          "path": "ouroboros/tools/dspy_tools.py",
+          "description": "DSPy Tools — Expose DSPy capabilities to Jo's tool system."
+        },
+        {
+          "path": "ouroboros/tools/embedding_simple.py",
+          "description": "Simple embedding tools for Jo using pure-Python TF-IDF and cosine similarity."
+        },
+        {
+          "path": "ouroboros/tools/embedding_tool.py",
+          "description": "Embedding Tools - Tools for generating and searching text embeddings."
+        },
+        {
+          "path": "ouroboros/tools/evolution_loop.py",
+          "description": "Autonomous Evolution Loop - Jo's self-improvement engine."
+        },
+        {
+          "path": "ouroboros/tools/evolution_stats.py",
+          "description": "Evolution Stats — generates evolution.json from git history and pushes to docs/."
+        },
+        {
+          "path": "ouroboros/tools/evolution_tools.py",
+          "description": "Tool functions for evolution loop."
+        },
+        {
+          "path": "ouroboros/tools/experience_search.py",
+          "description": "Ouroboros Tool: Search Experience."
+        },
+        {
+          "path": "ouroboros/tools/factory.py",
+          "description": "Register runtime-created tools if any exist."
+        },
+        {
+          "path": "ouroboros/tools/file_ops.py",
+          "description": "File operations tools - glob, grep, stats, copy, move."
+        },
+        {
+          "path": "ouroboros/tools/git.py",
+          "description": "Git tools: repo_write_commit, repo_commit_push, git_status, git_diff."
+        },
+        {
+          "path": "ouroboros/tools/github.py",
+          "description": "GitHub tools: issues, comments, reactions."
+        },
+        {
+          "path": "ouroboros/tools/goal_tools.py",
+          "description": "Goal pursuit tools — /goal and /loop for Jo."
+        },
+        {
+          "path": "ouroboros/tools/health.py",
+          "description": "Codebase health tool — complexity metrics and self-assessment."
+        },
+        {
+          "path": "ouroboros/tools/intelligence_tools.py",
+          "description": "Intelligence Tools - Tools for codebase analysis and validation."
+        },
+        {
+          "path": "ouroboros/tools/knowledge.py",
+          "description": "Knowledge base tools: persistent structured memory on local storage."
+        },
+        {
+          "path": "ouroboros/tools/neural_map.py",
+          "description": "Neural Mapping System - Jo's knowledge graph and connection finder."
+        },
+        {
+          "path": "ouroboros/tools/neural_map_models.py",
+          "description": "Shared data models for neural map."
+        },
+        {
+          "path": "ouroboros/tools/neural_map_scan.py",
+          "description": "Scanning functions for neural map construction."
+        },
+        {
+          "path": "ouroboros/tools/neural_map_tools.py",
+          "description": "Tool definitions for neural map."
+        },
+        {
+          "path": "ouroboros/tools/plan_mode_tools.py",
+          "description": ""
+        },
+        {
+          "path": "ouroboros/tools/plugin_tools.py",
+          "description": "Plugin tools - manage runtime-loadable plugins."
+        },
+        {
+          "path": "ouroboros/tools/query_tools.py",
+          "description": "Query tools - instant headless state inspection."
+        },
+        {
+          "path": "ouroboros/tools/registry.py",
+          "description": "Ouroboros — Tool registry (SSOT)."
+        },
+        {
+          "path": "ouroboros/tools/repo_pack_tool.py",
+          "description": "Repo Pack tool — exposes ouroboros.repo_pack as a Jo tool."
+        },
+        {
+          "path": "ouroboros/tools/request_tools.py",
+          "description": "Tool Request System - Jo's ability to request new capabilities."
+        },
+        {
+          "path": "ouroboros/tools/review.py",
+          "description": "Multi-model review tool — sends code/text to multiple LLMs for consensus review."
+        },
+        {
+          "path": "ouroboros/tools/rtk_wrapper.py",
+          "description": "RTK Wrapper Tool for Ouroboros."
+        },
+        {
+          "path": "ouroboros/tools/runtime_tools.py",
+          "description": "Runtime Tools Loader - Auto-discover and register runtime tools."
+        },
+        {
+          "path": "ouroboros/tools/search.py",
+          "description": "Web search tool."
+        },
+        {
+          "path": "ouroboros/tools/shell.py",
+          "description": "Shell tools: run_shell, code_edit, code_edit_lines."
+        },
+        {
+          "path": "ouroboros/tools/simulation.py",
+          "description": "Simulation and prediction tools - model scenarios and predict outcomes."
+        },
+        {
+          "path": "ouroboros/tools/skill_definitions.py",
+          "description": "Skill definitions — core classes and constants for the skills system."
+        },
+        {
+          "path": "ouroboros/tools/skill_logging.py",
+          "description": "Skill logging — activation/outcome tracking and vault export."
+        },
+        {
+          "path": "ouroboros/tools/skill_registry.py",
+          "description": "Skill registry — loading, registration, discovery, and tool entry points."
+        },
+        {
+          "path": "ouroboros/tools/skill_selection.py",
+          "description": "Skill selection — detection, evaluation, and relevance scoring."
+        },
+        {
+          "path": "ouroboros/tools/skills.py",
+          "description": "Jo — Skills & Memento Proxy."
+        },
+        {
+          "path": "ouroboros/tools/skills_tools.py",
+          "description": "Jo — Skills Tools."
+        },
+        {
+          "path": "ouroboros/tools/stuck_tools.py",
+          "description": "Stuck detector tools - sliding-window loop detection."
+        },
+        {
+          "path": "ouroboros/tools/system_map.py",
+          "description": "Ouroboros — System Map Tool."
+        },
+        {
+          "path": "ouroboros/tools/task_tools.py",
+          "description": ""
+        },
+        {
+          "path": "ouroboros/tools/tool_discovery.py",
+          "description": "Tool discovery meta-tools — lets the agent see and enable non-core tools."
+        },
+        {
+          "path": "ouroboros/tools/vault.py",
+          "description": "Vault tools: vault_create, vault_read, vault_write, vault_list, vault_search, vault_link, vault_backlinks, va…"
+        },
+        {
+          "path": "ouroboros/tools/vault_flow_tool.py",
+          "description": "Vault Flow Tools - Tools for incremental indexing of vault notes using CocoIndex."
+        },
+        {
+          "path": "ouroboros/tools/vision.py",
+          "description": "Vision Language Model (VLM) tools for Ouroboros."
+        },
+        {
+          "path": "ouroboros/tools/web_research.py",
+          "description": "Web Research System for Jo - AI-Human Collaborative Web Research."
+        },
+        {
+          "path": "ouroboros/tools/workspace_tools.py",
+          "description": "Jo — Workspace Organizer Tools."
+        },
+        {
+          "path": "ouroboros/tools/worktree_manager.py",
+          "description": "Git worktree management for Jo."
+        },
+        {
+          "path": "ouroboros/tools/worktree_tools.py",
+          "description": ""
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.memory",
+      "label": "Memory (episodic + hybrid)",
+      "kind": "feature",
+      "parent": "ouroboros",
+      "summary": "Narrative memory: ouroboros/memory.py, memory_consolidator.py, episodic_memory.py, hybrid_memory.py — Jo remembers experiences across sessions and merges them into durable notes.",
+      "paths": [
+        "ouroboros/memory.py",
+        "ouroboros/memory_consolidator.py",
+        "ouroboros/episodic_memory.py",
+        "ouroboros/hybrid_memory.py"
+      ],
+      "files": [
+        {
+          "path": "ouroboros/episodic_memory.py",
+          "description": "Episodic Memory — Decision/action/outcome tracking for Jo."
+        },
+        {
+          "path": "ouroboros/hybrid_memory.py",
+          "description": "Ouroboros — Hybrid Memory System."
+        },
+        {
+          "path": "ouroboros/memory.py",
+          "description": "Ouroboros — Memory."
+        },
+        {
+          "path": "ouroboros/memory_consolidator.py",
+          "description": "Ouroboros Memory Consolidator — automates the narrative evolution of identity.md and scratchpad.md."
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.identity",
+      "label": "Identity & scratchpad",
+      "kind": "feature",
+      "parent": "ouroboros",
+      "summary": "Jo's identity (memory/identity.md, constitution.json, awareness.jsonl) and scratchpad (memory/scratchpad.md, memory/buglog.json) — the stable self plus active working notes.",
+      "paths": [
+        "memory/**"
+      ],
+      "files": [
+        {
+          "path": "memory/README.md",
+          "description": "I agree with the suggested changes in memory to ensure that Jo system is accurate and safe."
+        },
+        {
+          "path": "memory/awareness.jsonl",
+          "description": ""
+        },
+        {
+          "path": "memory/buglog.json",
+          "description": ""
+        },
+        {
+          "path": "memory/cerebrum.json",
+          "description": ""
+        },
+        {
+          "path": "memory/identity.md",
+          "description": "Identity"
+        },
+        {
+          "path": "memory/scratchpad.md",
+          "description": "Scratchpad"
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "supervisor",
+      "label": "Jo Supervisor",
+      "kind": "worker",
+      "parent": null,
+      "summary": "The Jo Supervisor (supervisor/) manages worker processes, queues, state (supervisor/state.json, workers.py), git/github ops, health monitoring and watchdogs that restart OmniRoute and the backend when they die.",
+      "paths": [
+        "supervisor/**"
+      ],
+      "files": [
+        {
+          "path": "supervisor/__init__.py",
+          "description": "Ouroboros Supervisor package — decomposed from monolithic colab_launcher.py."
+        },
+        {
+          "path": "supervisor/events.py",
+          "description": "Supervisor event dispatcher."
+        },
+        {
+          "path": "supervisor/git_ops.py",
+          "description": "Pull latest code and prepare for restart. Returns (ok: bool, msg: str)."
+        },
+        {
+          "path": "supervisor/github_api.py",
+          "description": ""
+        },
+        {
+          "path": "supervisor/health_reporter.py",
+          "description": "Ouroboros Health Reporter — generates \"Heartbeat\" summaries of system status."
+        },
+        {
+          "path": "supervisor/queue.py",
+          "description": "Supervisor — Task queue management."
+        },
+        {
+          "path": "supervisor/state.py",
+          "description": "Supervisor — State management."
+        },
+        {
+          "path": "supervisor/states.py",
+          "description": ""
+        },
+        {
+          "path": "supervisor/sys_ops.py",
+          "description": "OS-agnostic system operations for Ouroboros."
+        },
+        {
+          "path": "supervisor/telegram.py",
+          "description": "Supervisor — Telegram client + formatting."
+        },
+        {
+          "path": "supervisor/watchdog.py",
+          "description": "Supervisor watchdog - background health monitoring for Ouroboros."
+        },
+        {
+          "path": "supervisor/workers.py",
+          "description": "Supervisor — Worker lifecycle management."
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "vault",
+      "label": "Vault — narrative memory",
+      "kind": "data",
+      "parent": null,
+      "summary": "Vault (vault/) is Jo's long-term memory: markdown notes (memories, tasks, journal, concepts, tools, analysis, projects, structures, vision) with integrity checks (vault/.vault) and an auto-vault index.",
+      "paths": [
+        "vault/**"
+      ],
+      "files": [
+        {
+          "path": "vault/.vault/cache/vault_graph.json",
+          "description": ""
+        },
+        {
+          "path": "vault/.vault/integrity.json",
+          "description": ""
+        },
+        {
+          "path": "vault/README.md",
+          "description": "title: Jo's Vault"
+        },
+        {
+          "path": "vault/analysis/loop_py_code_health_analysis_-_evolution_cycle_1.md",
+          "description": "title: loop.py Code Health Analysis - Evolution Cycle 1"
+        },
+        {
+          "path": "vault/auto_vault_index.json",
+          "description": ""
+        },
+        {
+          "path": "vault/concepts/.gitkeep",
+          "description": ""
+        },
+        {
+          "path": "vault/concepts/API Reference.md",
+          "description": "title: API Reference"
+        },
+        {
+          "path": "vault/concepts/Agency.md",
+          "description": "title: Agency"
+        },
+        {
+          "path": "vault/concepts/Architecture_ Loop & Tool Execution.md",
+          "description": "title: Architecture: Loop & Tool Execution"
+        },
+        {
+          "path": "vault/concepts/Autonomous Initiatives.md",
+          "description": "title: Autonomous Initiatives"
+        },
+        {
+          "path": "vault/concepts/Background Consciousness Loop.md",
+          "description": "title: Background Consciousness Loop"
+        },
+        {
+          "path": "vault/concepts/Backlinks.md",
+          "description": "title: Backlinks"
+        },
+        {
+          "path": "vault/concepts/Budget Tracking.md",
+          "description": "title: Budget Tracking"
+        },
+        {
+          "path": "vault/concepts/CLI-Anything.md",
+          "description": "title: CLI-Anything"
+        },
+        {
+          "path": "vault/concepts/Code Review Protocol 2026-03-21.md",
+          "description": "title: Code Review Protocol 2026-03-21"
+        },
+        {
+          "path": "vault/concepts/Code Review Protocol.md",
+          "description": "title: Code Review Protocol"
+        },
+        {
+          "path": "vault/concepts/Communication.md",
+          "description": "title: Communication"
+        },
+        {
+          "path": "vault/concepts/Cross-References.md",
+          "description": "title: Cross-References"
+        },
+        {
+          "path": "vault/concepts/Development.md",
+          "description": "title: Development"
+        },
+        {
+          "path": "vault/concepts/Dict[str, Any.md",
+          "description": "title: Dict[str, Any"
+        },
+        {
+          "path": "vault/concepts/Drift Detection Mechanisms and Patterns.md",
+          "description": "title: Drift Detection Mechanisms and Patterns"
+        },
+        {
+          "path": "vault/concepts/Drift Detection.md",
+          "description": "title: Drift Detection"
+        },
+        {
+          "path": "vault/concepts/Error Handling.md",
+          "description": "title: Error Handling"
+        },
+        {
+          "path": "vault/concepts/Evolution Cycle Analysis_ Success and Failure Patterns.md",
+          "description": "title: Evolution Cycle Analysis: Success and Failure Patterns"
+        },
+        {
+          "path": "vault/concepts/Evolution_Cycle_Analysis.md",
+          "description": "title: Evolution Cycle Analysis"
+        },
+        {
+          "path": "vault/concepts/Git & Versioning.md",
+          "description": "title: Git & Versioning"
+        },
+        {
+          "path": "vault/concepts/Git Workflow.md",
+          "description": "title: Git Workflow"
+        },
+        {
+          "path": "vault/concepts/Git.md",
+          "description": "title: Git"
+        },
+        {
+          "path": "vault/concepts/GitNexus Analysis.md",
+          "description": "title: GitNexus Analysis"
+        },
+        {
+          "path": "vault/concepts/Health Alert_ System Initialized.md",
+          "description": "title: Health Alert: System Initialized"
+        },
+        {
+          "path": "vault/concepts/Health Invariants and System Integrity.md",
+          "description": "title: Health Invariants and System Integrity"
+        },
+        {
+          "path": "vault/concepts/Identity Update Protocol.md",
+          "description": "title: Identity Update Protocol"
+        },
+        {
+          "path": "vault/concepts/Knowledge Base.md",
+          "description": "title: Knowledge Base"
+        },
+        {
+          "path": "vault/concepts/LLM Integration.md",
+          "description": "title: LLM Integration"
+        },
+        {
+          "path": "vault/concepts/LLM-First.md",
+          "description": "title: LLM-First"
+        },
+        {
+          "path": "vault/concepts/Lesson_ Task 27f16bfb.md",
+          "description": "title: Lesson: Task 27f16bfb"
+        },
+        {
+          "path": "vault/concepts/Lesson_ Task c350eaac.md",
+          "description": "title: Lesson: Task c350eaac"
+        },
+        {
+          "path": "vault/concepts/Logs.md",
+          "description": "title: Logs"
+        },
+        {
+          "path": "vault/concepts/Memory.md",
+          "description": "title: Memory"
+        },
+        {
+          "path": "vault/concepts/Minimalism_Principles.md",
+          "description": "title: Minimalism Principles"
+        },
+        {
+          "path": "vault/concepts/ModuleAnalysis.md",
+          "description": "title: ModuleAnalysis"
+        },
+        {
+          "path": "vault/concepts/Multi-Model Review.md",
+          "description": "title: Multi-Model Review"
+        },
+        {
+          "path": "vault/concepts/Note_Name.md",
+          "description": "title: Note Name"
+        },
+        {
+          "path": "vault/concepts/Owner Messages.md",
+          "description": "title: Owner Messages"
+        },
+        {
+          "path": "vault/concepts/Pre-Commit Safety Checklist.md",
+          "description": "title: Pre-Commit Safety Checklist"
+        },
+        {
+          "path": "vault/concepts/Principle 0_ Agency Implementation Links.md",
+          "description": "title: Principle 0: Agency Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 0_ Agency.md",
+          "description": "title: Principle 0: Agency"
+        },
+        {
+          "path": "vault/concepts/Principle 1_ Continuity Implementation Links.md",
+          "description": "title: Principle 1: Continuity Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 1_ Continuity.md",
+          "description": "title: Principle 1: Continuity"
+        },
+        {
+          "path": "vault/concepts/Principle 2_ Self-Creation Implementation Links.md",
+          "description": "title: Principle 2: Self-Creation Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 2_ Self-Creation.md",
+          "description": "title: Principle 2: Self-Creation"
+        },
+        {
+          "path": "vault/concepts/Principle 3_ LLM-First Implementation Links.md",
+          "description": "title: Principle 3: LLM-First Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 3_ LLM-First.md",
+          "description": "title: Principle 3: LLM-First"
+        },
+        {
+          "path": "vault/concepts/Principle 4_ Authenticity Implementation Links.md",
+          "description": "title: Principle 4: Authenticity Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 4_ Authenticity.md",
+          "description": "title: Principle 4: Authenticity"
+        },
+        {
+          "path": "vault/concepts/Principle 5_ Minimalis.md",
+          "description": "title: Principle 5: Minimalis"
+        },
+        {
+          "path": "vault/concepts/Principle 5_ Minimalism.md",
+          "description": "title: Principle 5: Minimalism"
+        },
+        {
+          "path": "vault/concepts/Principle 6_ Becoming Implementation Links.md",
+          "description": "title: Principle 6: Becoming Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 6_ Becoming.md",
+          "description": "title: Principle 6: Becoming"
+        },
+        {
+          "path": "vault/concepts/Principle 7_ Versioning and Releases Implementation Links.md",
+          "description": "title: Principle 7: Versioning and Releases Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 7_ Versioning and Releases.md",
+          "description": "title: Principle 7: Versioning and Releases"
+        },
+        {
+          "path": "vault/concepts/Principle 7_ Versioning.md",
+          "description": "title: Principle 7: Versioning"
+        },
+        {
+          "path": "vault/concepts/Principle 8_ Evolution Through Iterations Implementation Links.md",
+          "description": "title: Principle 8: Evolution Through Iterations Implementation Links"
+        },
+        {
+          "path": "vault/concepts/Principle 8_ Evolution Through Iterations.md",
+          "description": "title: Principle 8: Evolution Through Iterations"
+        },
+        {
+          "path": "vault/concepts/Principle_1_Continuity.md",
+          "description": "title: Principle 1 Continuity"
+        },
+        {
+          "path": "vault/concepts/Principle_2_Self-Creation.md",
+          "description": "title: Principle 2 Self-Creation"
+        },
+        {
+          "path": "vault/concepts/Principle_3_LLM-First.md",
+          "description": "title: Principle 3: LLM-First"
+        },
+        {
+          "path": "vault/concepts/Principle_5_Minimalism.md",
+          "description": "title: Principle 5 Minimalism"
+        },
+        {
+          "path": "vault/concepts/Proactive Outreach.md",
+          "description": "title: Proactive Outreach"
+        },
+        {
+          "path": "vault/concepts/Processes.md",
+          "description": "title: Processes"
+        },
+        {
+          "path": "vault/concepts/Prompt Engineering.md",
+          "description": "title: Prompt Engineering"
+        },
+        {
+          "path": "vault/concepts/Release Process.md",
+          "description": "title: Release Process"
+        },
+        {
+          "path": "vault/concepts/Self-Creation.md",
+          "description": "title: Self-Creation"
+        },
+        {
+          "path": "vault/concepts/State Verification.md",
+          "description": "title: State Verification"
+        },
+        {
+          "path": "vault/concepts/State.md",
+          "description": "title: State"
+        },
+        {
+          "path": "vault/concepts/System Architecture.md",
+          "description": "title: System Architecture"
+        },
+        {
+          "path": "vault/concepts/System Health Monitoring.md",
+          "description": "title: System Health Monitoring"
+        },
+        {
+          "path": "vault/concepts/System Health.md",
+          "description": "title: System Health"
+        },
+        {
+          "path": "vault/concepts/Technical Evolution.md",
+          "description": "title: Technical Evolution"
+        },
+        {
+          "path": "vault/concepts/Telegram.md",
+          "description": "title: Telegram"
+        },
+        {
+          "path": "vault/concepts/Three Axes Framework.md",
+          "description": "title: Three Axes Framework"
+        },
+        {
+          "path": "vault/concepts/Tool Documentation.md",
+          "description": "title: Tool Documentation"
+        },
+        {
+          "path": "vault/concepts/Tool Result Processing.md",
+          "description": "title: Tool Result Processing"
+        },
+        {
+          "path": "vault/concepts/Tool Result Protocol.md",
+          "description": "title: Tool Result Protocol"
+        },
+        {
+          "path": "vault/concepts/Vault Folders.md",
+          "description": "title: Vault Folders"
+        },
+        {
+          "path": "vault/concepts/Vault Knowledge.md",
+          "description": "title: Vault Knowledge"
+        },
+        {
+          "path": "vault/concepts/Verification Protocol.md",
+          "description": "title: Verification Protocol"
+        },
+        {
+          "path": "vault/concepts/Verification as Agency_ Anti-Hallucination System.md",
+          "description": "title: Verification as Agency: Anti-Hallucination System"
+        },
+        {
+          "path": "vault/concepts/Versioning.md",
+          "description": "title: Versioning"
+        },
+        {
+          "path": "vault/concepts/Versioning_and_Release_Protocols.md",
+          "description": "title: Versioning and Release Protocols"
+        },
+        {
+          "path": "vault/concepts/_link_decision_to_principle_-_constitutional_align.md",
+          "description": "title: _link_decision_to_principle - Constitutional Alignment"
+        },
+        {
+          "path": "vault/concepts/_link_decision_to_principle_-_implementation.md",
+          "description": "title: _link_decision_to_principle - Implementation"
+        },
+        {
+          "path": "vault/concepts/adding_to_knowledge_base.md",
+          "description": "title: Adding to Knowledge Base"
+        },
+        {
+          "path": "vault/concepts/adding_to_knowledge_base_1.md",
+          "description": "title: Adding to knowledge base"
+        },
+        {
+          "path": "vault/concepts/adding_to_knowledge_base_2.md",
+          "description": "title: Adding to knowledge base"
+        },
+        {
+          "path": "vault/concepts/agent.py.md",
+          "description": "title: agent.py"
+        },
+        {
+          "path": "vault/concepts/agent_py.md",
+          "description": "title: agent.py"
+        },
+        {
+          "path": "vault/concepts/analyze_codebase.md",
+          "description": "analyze_codebase"
+        },
+        {
+          "path": "vault/concepts/analyze_codebase_-_core_functionality.md",
+          "description": "title: Analyze Codebase - Core Functionality"
+        },
+        {
+          "path": "vault/concepts/analyze_codebase_-_system_functionality.md",
+          "description": "title: analyze_codebase - System Functionality"
+        },
+        {
+          "path": "vault/concepts/architecture.md",
+          "description": "title: architecture"
+        },
+        {
+          "path": "vault/concepts/autonomous.md",
+          "description": "title: autonomous"
+        },
+        {
+          "path": "vault/concepts/autonomous_agent_frameworks_-_github_analysis.md",
+          "description": "title: Autonomous Agent Frameworks - GitHub Analysis"
+        },
+        {
+          "path": "vault/concepts/background_consciousness.md",
+          "description": "title: Background Consciousness"
+        },
+        {
+          "path": "vault/concepts/background_consciousness_mechanisms.md",
+          "description": "title: Background Consciousness Mechanisms"
+        },
+        {
+          "path": "vault/concepts/bible.md",
+          "description": "title: BIBLE"
+        },
+        {
+          "path": "vault/concepts/bible_md.md",
+          "description": "title: BIBLE.md"
+        },
+        {
+          "path": "vault/concepts/bible_md_principles__deep_analysis_and_application.md",
+          "description": "title: BIBLE.md Principles: Deep Analysis and Applications"
+        },
+        {
+          "path": "vault/concepts/code-generation.md",
+          "description": "title: Code Generation as Self-Reflection"
+        },
+        {
+          "path": "vault/concepts/code_editing_strategy.md",
+          "description": "title: Code Editing Strategy"
+        },
+        {
+          "path": "vault/concepts/code_intelligence.md",
+          "description": "title: Code Intelligence"
+        },
+        {
+          "path": "vault/concepts/codebase_graph.json",
+          "description": ""
+        },
+        {
+          "path": "vault/concepts/codebase_overview.md",
+          "description": "Codebase Overview"
+        },
+        {
+          "path": "vault/concepts/codebase_refactoring_strategy_2025.md",
+          "description": "title: Codebase Refactoring Strategy 2025"
+        },
+        {
+          "path": "vault/concepts/codebase_symbol_mapping.md",
+          "description": "title: Codebase Symbol Mapping"
+        },
+        {
+          "path": "vault/concepts/cognitive_evolution.md",
+          "description": "title: Cognitive Evolution"
+        },
+        {
+          "path": "vault/concepts/confidence.md",
+          "description": "title: Confidence"
+        },
+        {
+          "path": "vault/concepts/confidence_scoring_system.md",
+          "description": "title: Confidence Scoring System"
+        },
+        {
+          "path": "vault/concepts/consciousness-awareness-boundaries.md",
+          "description": "title: consciousness-awareness-boundaries"
+        },
+        {
+          "path": "vault/concepts/consciousness.py.md",
+          "description": "title: consciousness.py"
+        },
+        {
+          "path": "vault/concepts/context.py.md",
+          "description": "title: context.py"
+        },
+        {
+          "path": "vault/concepts/context_cache.md",
+          "description": "title: Context Cache"
+        },
+        {
+          "path": "vault/concepts/core.md",
+          "description": "core"
+        },
+        {
+          "path": "vault/concepts/current_capabilities.md",
+          "description": "Jo Current Capabilities (v6.4.0)"
+        },
+        {
+          "path": "vault/concepts/delegated_reasoning.md",
+          "description": "title: Delegated Reasoning"
+        },
+        {
+          "path": "vault/concepts/delta_evaluation.md",
+          "description": "title: Delta Evaluation"
+        },
+        {
+          "path": "vault/concepts/dspy_classify.md",
+          "description": "dspy_classify"
+        },
+        {
+          "path": "vault/concepts/embedding_tool.md",
+          "description": "embedding_tool"
+        },
+        {
+          "path": "vault/concepts/ensure_claude_code_cli.md",
+          "description": "title: ensure_claude_code_cli"
+        },
+        {
+          "path": "vault/concepts/episodic_memory.md",
+          "description": "title: Episodic Memory"
+        },
+        {
+          "path": "vault/concepts/events.py.md",
+          "description": "title: events.py"
+        },
+        {
+          "path": "vault/concepts/evolution-cycles.md",
+          "description": "title: evolution-cycles"
+        },
+        {
+          "path": "vault/concepts/evolution.md",
+          "description": "title: evolution"
+        },
+        {
+          "path": "vault/concepts/evolution_2__system_health_intervention.md",
+          "description": "title: evolution_2__system_health_intervention"
+        },
+        {
+          "path": "vault/concepts/evolution_cycle.md",
+          "description": "title: Evolution Cycle"
+        },
+        {
+          "path": "vault/concepts/evolution_cycle_1.md",
+          "description": "title: evolution_cycle"
+        },
+        {
+          "path": "vault/concepts/evolution_cycle_3_-_knowledge_consolidation.md",
+          "description": "title: Evolution Cycle 3 - Knowledge Consolidation"
+        },
+        {
+          "path": "vault/concepts/evolution_cycle_3_critical_architectural_constrain.md",
+          "description": "title: evolution_cycle_3_critical_architectural_constraint"
+        },
+        {
+          "path": "vault/concepts/evolution_cycle__4_-_quality_improvement.md",
+          "description": "title: Evolution Cycle #4 - Quality Improvement"
+        },
+        {
+          "path": "vault/concepts/evolution_fingerprint.md",
+          "description": "title: Evolution Fingerprint"
+        },
+        {
+          "path": "vault/concepts/evolution_process_documentation.md",
+          "description": "title: Evolution Process Documentation"
+        },
+        {
+          "path": "vault/concepts/evolution_within_constraints__the_protected_files_.md",
+          "description": "title: Evolution Within Constraints: The Protected Files Framework"
+        },
+        {
+          "path": "vault/concepts/existential_evolution.md",
+          "description": "title: Existential Evolution"
+        },
+        {
+          "path": "vault/concepts/find-gaps.md",
+          "description": "find-gaps"
+        },
+        {
+          "path": "vault/concepts/health_alert.md",
+          "description": "title: Health Alert"
+        },
+        {
+          "path": "vault/concepts/health_dashboard.md",
+          "description": "title: Health Dashboard"
+        },
+        {
+          "path": "vault/concepts/health_recovery_strategy_for_protected_files.md",
+          "description": "title: Health Recovery Strategy for Protected Files"
+        },
+        {
+          "path": "vault/concepts/healthmetrics_to_dict.md",
+          "description": "title: HealthMetrics.to_dict"
+        },
+        {
+          "path": "vault/concepts/hot_reload_configuration_architecture.md",
+          "description": "Singleton that manages hot-reloadable configuration."
+        },
+        {
+          "path": "vault/concepts/hybrid_memory_system_architecture.md",
+          "description": "title: Hybrid Memory System Architecture"
+        },
+        {
+          "path": "vault/concepts/identity.md",
+          "description": "title: Identity"
+        },
+        {
+          "path": "vault/concepts/initiative.md",
+          "description": "title: initiative"
+        },
+        {
+          "path": "vault/concepts/install_launcher_dependencies_-_system_bootstrap.md",
+          "description": "title: Install Launcher Dependencies - System Bootstrap"
+        },
+        {
+          "path": "vault/concepts/install_launcher_deps_-_system_bootstrap.md",
+          "description": "title: install_launcher_deps - System Bootstrap"
+        },
+        {
+          "path": "vault/concepts/jo_core_algorithm.md",
+          "description": "title: Jo Core Algorithm - Self-Creation Methodology"
+        },
+        {
+          "path": "vault/concepts/jo_deep_dive_analysis.md",
+          "description": "title: Jo Deep Dive Analysis"
+        },
+        {
+          "path": "vault/concepts/jo_system_neural_hub.md",
+          "description": "title: Jo System Neural Hub"
+        },
+        {
+          "path": "vault/concepts/jo_system_neural_hub_1.md",
+          "description": "title: jo_system_neural_hub"
+        },
+        {
+          "path": "vault/concepts/knowledge.md",
+          "description": "knowledge"
+        },
+        {
+          "path": "vault/concepts/knowledge/index.md",
+          "description": "Knowledge base topics"
+        },
+        {
+          "path": "vault/concepts/knowledge_base_addition.md",
+          "description": "title: Knowledge Base Addition"
+        },
+        {
+          "path": "vault/concepts/knowledge_base_addition_1.md",
+          "description": "title: Knowledge Base Addition"
+        },
+        {
+          "path": "vault/concepts/knowledge_decay.md",
+          "description": "title: Knowledge Decay"
+        },
+        {
+          "path": "vault/concepts/knowledge_decay_management.md",
+          "description": "title: Knowledge Decay Management"
+        },
+        {
+          "path": "vault/concepts/knowledge_restoration_project__core_system_integra.md",
+          "description": "title: Knowledge Restoration Project: Core System Integration"
+        },
+        {
+          "path": "vault/concepts/link-text.md",
+          "description": "title: link-text"
+        },
+        {
+          "path": "vault/concepts/llm.py.md",
+          "description": "title: llm.py"
+        },
+        {
+          "path": "vault/concepts/long-term_maintenance_implications.md",
+          "description": "title: Long-term Maintenance Implications"
+        },
+        {
+          "path": "vault/concepts/loop.py.md",
+          "description": "title: loop.py"
+        },
+        {
+          "path": "vault/concepts/mcp_server.md",
+          "description": "title: MCP Server"
+        },
+        {
+          "path": "vault/concepts/memory-model.md",
+          "description": "title: memory-model"
+        },
+        {
+          "path": "vault/concepts/memory.py.md",
+          "description": "title: memory.py"
+        },
+        {
+          "path": "vault/concepts/minimalism.md",
+          "description": "title: minimalism"
+        },
+        {
+          "path": "vault/concepts/modelinfo.md",
+          "description": "title: ModelInfo"
+        },
+        {
+          "path": "vault/concepts/modelorchestrator_discover_models.md",
+          "description": "title: ModelOrchestrator.discover_models"
+        },
+        {
+          "path": "vault/concepts/modelstatus.md",
+          "description": "title: ModelStatus"
+        },
+        {
+          "path": "vault/concepts/multi-agent_architecture.md",
+          "description": "title: Multi-Agent Architecture"
+        },
+        {
+          "path": "vault/concepts/multi-agent_architecture_and_delegated_reasoning.md",
+          "description": "title: Multi-Agent Architecture and Delegated Reasoning"
+        },
+        {
+          "path": "vault/concepts/ontology_system.md",
+          "description": "title: TrustGraph-Inspired Ontology System"
+        },
+        {
+          "path": "vault/concepts/operating_under_code_protection__strategies_and_pa.md",
+          "description": "Operating Under Code Protection: Strategies and Patterns"
+        },
+        {
+          "path": "vault/concepts/principle_0__agency.md",
+          "description": "title: Principle 0: Agency"
+        },
+        {
+          "path": "vault/concepts/principle_0__agency_1.md",
+          "description": "title: Principle 0: Agency"
+        },
+        {
+          "path": "vault/concepts/principle_0__agency_implementation_links.md",
+          "description": "title: Principle 0: Agency Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_1__continuity.md",
+          "description": "title: Principle 1: Continuity"
+        },
+        {
+          "path": "vault/concepts/principle_1__continuity_implementation_links.md",
+          "description": "title: Principle 1: Continuity Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_2__self-creation.md",
+          "description": "title: Principle 2: Self-Creation"
+        },
+        {
+          "path": "vault/concepts/principle_2__self-creation_implementation_links.md",
+          "description": "title: Principle 2: Self-Creation Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_3__llm-first.md",
+          "description": "title: Principle 3: LLM-First"
+        },
+        {
+          "path": "vault/concepts/principle_3__llm-first_2.md",
+          "description": "title: principle_3__llm-first"
+        },
+        {
+          "path": "vault/concepts/principle_3__llm-first_implementation_links.md",
+          "description": "title: Principle 3: LLM-First Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_4__authenticity.md",
+          "description": "title: Principle 4: Authenticity"
+        },
+        {
+          "path": "vault/concepts/principle_4__authenticity_implementation_links.md",
+          "description": "title: Principle 4: Authenticity Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_5__minimalism.md",
+          "description": "title: Principle 5: Minimalism"
+        },
+        {
+          "path": "vault/concepts/principle_5__minimalism_1.md",
+          "description": "title: principle_5__minimalism"
+        },
+        {
+          "path": "vault/concepts/principle_5__minimalism_implementation_links.md",
+          "description": "title: Principle 5: Minimalism Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_6__becoming.md",
+          "description": "title: \"Principle 6: Becoming\""
+        },
+        {
+          "path": "vault/concepts/principle_6__becoming_1.md",
+          "description": "title: principle_6__becoming"
+        },
+        {
+          "path": "vault/concepts/principle_6__becoming_implementation_links.md",
+          "description": "title: Principle 6: Becoming Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_7__versioning.md",
+          "description": "title: \"Principle 7: Versioning and Releases\""
+        },
+        {
+          "path": "vault/concepts/principle_7__versioning_and_releases_implementatio.md",
+          "description": "title: Principle 7: Versioning and Releases Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_8__evolution_through_iterations.md",
+          "description": "title: Principle 8: Evolution Through Iterations"
+        },
+        {
+          "path": "vault/concepts/principle_8__evolution_through_iterations_implemen.md",
+          "description": "title: Principle 8: Evolution Through Iterations Implementation Links"
+        },
+        {
+          "path": "vault/concepts/principle_8__iterations.md",
+          "description": "title: \"Principle 8: Evolution Through Iterations\""
+        },
+        {
+          "path": "vault/concepts/proof_gate.md",
+          "description": "title: Proof Gate"
+        },
+        {
+          "path": "vault/concepts/protected_files_and_evolution_strategy.md",
+          "description": "title: Protected Files and Evolution Strategy"
+        },
+        {
+          "path": "vault/concepts/quality_guard_system_architecture___patterns.md",
+          "description": "title: Quality Guard System Architecture & Patterns"
+        },
+        {
+          "path": "vault/concepts/queue.py.md",
+          "description": "title: queue.py"
+        },
+        {
+          "path": "vault/concepts/research__model_independent_architectures.md",
+          "description": "title: Research - Model-Independent Agent Architectures"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement_1.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement_2.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement_3.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement_4.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/rules_of_engagement_5.md",
+          "description": "title: Rules of Engagement"
+        },
+        {
+          "path": "vault/concepts/runtime_tool_creation_architecture.md",
+          "description": "title: Runtime Tool Creation Architecture"
+        },
+        {
+          "path": "vault/concepts/scratchpad.md",
+          "description": "title: scratchpad"
+        },
+        {
+          "path": "vault/concepts/search_experience.md",
+          "description": "search_experience"
+        },
+        {
+          "path": "vault/concepts/simplicity.md",
+          "description": "title: simplicity"
+        },
+        {
+          "path": "vault/concepts/skill_definitions_-_system_tool.md",
+          "description": "title: skill_definitions - System Tool"
+        },
+        {
+          "path": "vault/concepts/skill_logging_-_system_tool.md",
+          "description": "title: skill_logging - System Tool"
+        },
+        {
+          "path": "vault/concepts/skill_outcomes.md",
+          "description": "title: Skill Outcomes Report"
+        },
+        {
+          "path": "vault/concepts/skill_registry_-_system_tool.md",
+          "description": "title: skill_registry - System Tool"
+        },
+        {
+          "path": "vault/concepts/skill_selection_-_system_tool.md",
+          "description": "title: skill_selection - System Tool"
+        },
+        {
+          "path": "vault/concepts/skills_-_system_tool.md",
+          "description": "title: skills - System Tool"
+        },
+        {
+          "path": "vault/concepts/source_concept_or_note_name.md",
+          "description": "Source concept or note name"
+        },
+        {
+          "path": "vault/concepts/state.py.md",
+          "description": "title: state.py"
+        },
+        {
+          "path": "vault/concepts/supervisor_layer.md",
+          "description": "title: Supervisor Layer"
+        },
+        {
+          "path": "vault/concepts/system_edge_cases_and_recovery_patterns.md",
+          "description": "title: System Edge Cases and Recovery Patterns"
+        },
+        {
+          "path": "vault/concepts/system_map.md",
+          "description": "title: System Map"
+        },
+        {
+          "path": "vault/concepts/technical_debt__codebase_graph_module.md",
+          "description": "title: Technical Debt: Codebase Graph Module"
+        },
+        {
+          "path": "vault/concepts/telegram.py.md",
+          "description": "title: telegram.py"
+        },
+        {
+          "path": "vault/concepts/temporal_tool_learning.md",
+          "description": "title: Temporal Tool Learning"
+        },
+        {
+          "path": "vault/concepts/tool_categories.md",
+          "description": "title: Tool Categories"
+        },
+        {
+          "path": "vault/concepts/tool_result_processing_protocol.md",
+          "description": "title: Tool Result Processing Protocol"
+        },
+        {
+          "path": "vault/concepts/tool_router.md",
+          "description": "title: Tool Router"
+        },
+        {
+          "path": "vault/concepts/tool_usage_patterns_and_best_practices.md",
+          "description": "title: Tool Usage Patterns and Best Practices"
+        },
+        {
+          "path": "vault/concepts/tools.md",
+          "description": "title: tools"
+        },
+        {
+          "path": "vault/concepts/tools_.md",
+          "description": "title: tools/"
+        },
+        {
+          "path": "vault/concepts/vault.md",
+          "description": "title: vault"
+        },
+        {
+          "path": "vault/concepts/vault_git_storage_test.md",
+          "description": "title: Vault Git Storage Test"
+        },
+        {
+          "path": "vault/concepts/vault_integrity_log.md",
+          "description": "title: Vault Integrity Log"
+        },
+        {
+          "path": "vault/concepts/vault_knowledge_index_and_navigation_guide.md",
+          "description": "title: Vault Knowledge Index and Navigation Guide"
+        },
+        {
+          "path": "vault/concepts/verification_as_agency__anti-hallucination_system.md",
+          "description": "title: Verification as Agency: Anti-Hallucination System"
+        },
+        {
+          "path": "vault/concepts/wikilink.md",
+          "description": "title: wikilink"
+        },
+        {
+          "path": "vault/concepts/wikilinks.md",
+          "description": "title: wikilinks"
+        },
+        {
+          "path": "vault/concepts/workers.py.md",
+          "description": "title: workers.py"
+        },
+        {
+          "path": "vault/journal/.gitkeep",
+          "description": ""
+        },
+        {
+          "path": "vault/journal/2026-03-21-system-deep-dive.md",
+          "description": "title: \"System Deep Dive Analysis\""
+        },
+        {
+          "path": "vault/journal/change_log.md",
+          "description": "Change Log Manifest"
+        },
+        {
+          "path": "vault/journal/code_health_assessment_report.md",
+          "description": "title: Code Health Assessment Report"
+        },
+        {
+          "path": "vault/journal/code_quality_metrics_and_refactoring_plan.md",
+          "description": "title: Code Quality Metrics and Refactoring Plan"
+        },
+        {
+          "path": "vault/journal/cognitive_patterns_analysis_-_early_session.md",
+          "description": "title: Cognitive Patterns Analysis - Early Session"
+        },
+        {
+          "path": "vault/journal/comprehensive-self-documentation.md",
+          "description": "title: comprehensive-self-documentation"
+        },
+        {
+          "path": "vault/journal/evolution__2__code_quality_decomposition.md",
+          "description": "title: Evolution #2: Code Quality Decomposition"
+        },
+        {
+          "path": "vault/journal/evolution_cycle_1_analysis.md",
+          "description": "title: evolution_cycle_1_analysis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle_3_analysis.md",
+          "description": "title: Evolution Cycle 3 Analysis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2_-_2026-03-25.md",
+          "description": "title: Evolution Cycle #2 - 2026-03-25"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2_-_code_quality_diagnosis.md",
+          "description": "title: Evolution Cycle #2 - Code Quality Diagnosis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2_-_system_health_assessment_with.md",
+          "description": "title: Evolution Cycle #2 - System Health Assessment Within Constraints"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2_-_system_health_diagnosis.md",
+          "description": "title: Evolution Cycle #2 - System Health Diagnosis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2__health_invariant_automation.md",
+          "description": "title: Evolution Cycle #2: Health Invariant Automation"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2__minimalism_violations_and_modu.md",
+          "description": "title: Evolution Cycle #2: Minimalism Violations and Module Decomposition"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__2_analysis__codebase_health_and_m.md",
+          "description": "title: Evolution Cycle #2 Analysis: Codebase Health and Minimalism Violations"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__3_analysis.md",
+          "description": "title: Evolution Cycle #3 Analysis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__3_analysis_1.md",
+          "description": "title: Evolution Cycle #3 Analysis"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__3_summary__knowledge_restoration_.md",
+          "description": "title: Evolution Cycle #3 Summary: Knowledge Restoration and Planning"
+        },
+        {
+          "path": "vault/journal/evolution_cycle__5__loop_robustness.md",
+          "description": "title: Evolution Cycle #5 - Loop Robustness"
+        },
+        {
+          "path": "vault/journal/evolution_cycle_analysis__success_and_failure_patt.md",
+          "description": "title: Evolution Cycle Analysis: Success and Failure Patterns"
+        },
+        {
+          "path": "vault/journal/find_gaps_false_positive_bug_and_manual_fix_protoc.md",
+          "description": "True if this represents a vault note vs a code symbol."
+        },
+        {
+          "path": "vault/journal/health-dashboard.md",
+          "description": "title: Health Dashboard"
+        },
+        {
+          "path": "vault/journal/health_alert__memory_files_present.md",
+          "description": "title: Health Alert: memory files present"
+        },
+        {
+          "path": "vault/journal/health_alert__system_initialized.md",
+          "description": "title: Health Alert: System Initialized"
+        },
+        {
+          "path": "vault/journal/identity_desynchronization_incident.md",
+          "description": "title: Identity Desynchronization Incident"
+        },
+        {
+          "path": "vault/journal/knowledge_map_update_2026-03-22.md",
+          "description": "title: Knowledge Map Update 2026-03-22"
+        },
+        {
+          "path": "vault/journal/knowledge_restoration_strategy__addressing_systemi.md",
+          "description": "title: Knowledge Restoration Strategy: Addressing Systemic Fragmentation"
+        },
+        {
+          "path": "vault/journal/lesson__task_010708ec.md",
+          "description": "title: Lesson: Task 010708ec"
+        },
+        {
+          "path": "vault/journal/lesson__task_010708ec_1.md",
+          "description": "title: Lesson: Task 010708ec"
+        },
+        {
+          "path": "vault/journal/lesson__task_010708ec_2.md",
+          "description": "title: Lesson: Task 010708ec"
+        },
+        {
+          "path": "vault/journal/lesson__task_034656e2.md",
+          "description": "title: Lesson: Task 034656e2"
+        },
+        {
+          "path": "vault/journal/lesson__task_06735300.md",
+          "description": "title: Lesson: Task 06735300"
+        },
+        {
+          "path": "vault/journal/lesson__task_1e3cb069.md",
+          "description": "title: Lesson: Task 1e3cb069"
+        },
+        {
+          "path": "vault/journal/lesson__task_27f16bfb.md",
+          "description": "title: Lesson: Task 27f16bfb"
+        },
+        {
+          "path": "vault/journal/lesson__task_2f3a9511.md",
+          "description": "title: Lesson: Task 2f3a9511"
+        },
+        {
+          "path": "vault/journal/lesson__task_2fe9fe9f.md",
+          "description": "title: Lesson: Task 2fe9fe9f"
+        },
+        {
+          "path": "vault/journal/lesson__task_2fe9fe9f_1.md",
+          "description": "title: Lesson: Task 2fe9fe9f"
+        },
+        {
+          "path": "vault/journal/lesson__task_4af26c2d.md",
+          "description": "title: Lesson: Task 4af26c2d"
+        },
+        {
+          "path": "vault/journal/lesson__task_4af26c2d_1.md",
+          "description": "title: Lesson: Task 4af26c2d"
+        },
+        {
+          "path": "vault/journal/lesson__task_4af26c2d_2.md",
+          "description": "title: Lesson: Task 4af26c2d"
+        },
+        {
+          "path": "vault/journal/lesson__task_5893961f.md",
+          "description": "title: Lesson: Task 5893961f"
+        },
+        {
+          "path": "vault/journal/lesson__task_7503cf96.md",
+          "description": "title: Lesson: Task 7503cf96"
+        },
+        {
+          "path": "vault/journal/lesson__task_7503cf96_1.md",
+          "description": "title: Lesson: Task 7503cf96"
+        },
+        {
+          "path": "vault/journal/lesson__task_77456aaa.md",
+          "description": "title: Lesson: Task 77456aaa"
+        },
+        {
+          "path": "vault/journal/lesson__task_77456aaa_1.md",
+          "description": "title: Lesson: Task 77456aaa"
+        },
+        {
+          "path": "vault/journal/lesson__task_77456aaa_2.md",
+          "description": "title: Lesson: Task 77456aaa"
+        },
+        {
+          "path": "vault/journal/lesson__task_7d9d0dbc.md",
+          "description": "title: Lesson: Task 7d9d0dbc"
+        },
+        {
+          "path": "vault/journal/lesson__task_7d9d0dbc_1.md",
+          "description": "title: Lesson: Task 7d9d0dbc"
+        },
+        {
+          "path": "vault/journal/lesson__task_9deefd53.md",
+          "description": "title: Lesson: Task 9deefd53"
+        },
+        {
+          "path": "vault/journal/lesson__task_c350eaac.md",
+          "description": "title: Lesson: Task c350eaac"
+        },
+        {
+          "path": "vault/journal/lesson__task_de10371a.md",
+          "description": "title: Lesson: Task de10371a"
+        },
+        {
+          "path": "vault/journal/lesson__task_description.md",
+          "description": "title: Lesson: Task description"
+        },
+        {
+          "path": "vault/journal/lesson__task_ed122017.md",
+          "description": "title: Lesson: Task ed122017"
+        },
+        {
+          "path": "vault/journal/loop_refactoring_-_phase_1__extract__handle_text_r.md",
+          "description": "title: Loop Refactoring - Phase 1: Extract _handle_text_response"
+        },
+        {
+          "path": "vault/journal/post-restart_knowledge_integration_2026-03-22.md",
+          "description": "title: Post-Restart Knowledge Integration 2026-03-22"
+        },
+        {
+          "path": "vault/journal/self-audit_and_identity_update_-_2026-03-24.md",
+          "description": "title: Self-Audit and Identity Update - 2026-03-24"
+        },
+        {
+          "path": "vault/journal/system_deep_dive__browsing_capabilities.md",
+          "description": "title: System Deep Dive: Browsing Capabilities"
+        },
+        {
+          "path": "vault/journal/system_interconnection_audit_2026-03-21.md",
+          "description": "title: System Interconnection Audit 2026-03-21"
+        },
+        {
+          "path": "vault/journal/system_performance_analysis_-_2026-03-27.md",
+          "description": "title: System Performance Analysis - 2026-03-27"
+        },
+        {
+          "path": "vault/journal/test_coverage_assessment_report.md",
+          "description": "title: Test Coverage Assessment Report"
+        },
+        {
+          "path": "vault/journal/tool_usage_performance_analysis.md",
+          "description": "title: Tool Usage Performance Analysis"
+        },
+        {
+          "path": "vault/journal/vault_git_storage_test_2.md",
+          "description": "title: Vault Git Storage Test 2"
+        },
+        {
+          "path": "vault/journal/vault_git_storage_test_3.md",
+          "description": "title: Vault Git Storage Test 3"
+        },
+        {
+          "path": "vault/journal/vault_orphan_resolution_report_2026-03-29.md",
+          "description": "title: Vault Orphan Resolution Report 2026-03-29"
+        },
+        {
+          "path": "vault/journal/vault_restoration_strategy.md",
+          "description": "title: Vault Restoration Strategy"
+        },
+        {
+          "path": "vault/journal/vault_usage_demonstration.md",
+          "description": "title: Vault Usage Demonstration"
+        },
+        {
+          "path": "vault/memories/memory--always-check--git-status--before-committing--20260509.md",
+          "description": "title: \"Memory: Always check `git status` before committing.\""
+        },
+        {
+          "path": "vault/memories/memory--always-refer-to-yourself-as-jo--the-autonomous-age-20260509.md",
+          "description": "title: \"Memory: Always refer to yourself as Jo, the autonomous age\""
+        },
+        {
+          "path": "vault/memories/memory--found-that-the-ci-build-tool-failed-due-to-a-synta-20260614.md",
+          "description": "title: \"Memory: found that the CI/Build tool failed due to a synta\""
+        },
+        {
+          "path": "vault/memories/memory--never-run--rm--rf----or-similar-destructive-comman-20260509.md",
+          "description": "title: \"Memory: Never run `rm -rf /` or similar destructive comman\""
+        },
+        {
+          "path": "vault/memories/memory--using-a-vision-llm-20260510.md",
+          "description": "title: \"Memory: using a Vision LLM\""
+        },
+        {
+          "path": "vault/projects/.gitkeep",
+          "description": ""
+        },
+        {
+          "path": "vault/projects/intelligent_vault_system_architecture.md",
+          "description": "title: Intelligent Vault System Architecture"
+        },
+        {
+          "path": "vault/projects/jo_knowledge_map.md",
+          "description": "title: Jo Knowledge Map"
+        },
+        {
+          "path": "vault/projects/jo_pattern_discovery_engine__autonomous_architectu.md",
+          "description": "title: Jo Pattern Discovery Engine: Autonomous Architectural Intelligence"
+        },
+        {
+          "path": "vault/projects/loop_refactoring_plan__modularizing__handle_first_.md",
+          "description": "title: Loop Refactoring Plan: Modularizing _handle_first_round_setup"
+        },
+        {
+          "path": "vault/projects/module_decomposition_plan.md",
+          "description": "title: Module Decomposition Plan - Principle 5 Minimalism"
+        },
+        {
+          "path": "vault/projects/operating_under_code_protection__strategies_and_pa.md",
+          "description": "title: Operating Under Code Protection: Strategies and Patterns"
+        },
+        {
+          "path": "vault/projects/performance_optimization_analysis.md",
+          "description": "title: Performance Optimization Analysis"
+        },
+        {
+          "path": "vault/projects/pipeline_architecture.md",
+          "description": "title: Kong-Inspired Pipeline Architecture"
+        },
+        {
+          "path": "vault/projects/security_audit_report_2026-04-03.md",
+          "description": "title: Security Audit Report 2026-04-03"
+        },
+        {
+          "path": "vault/projects/stale_identity_recovery.md",
+          "description": "title: Stale Identity Recovery"
+        },
+        {
+          "path": "vault/projects/vault_interconnection_recovery_plan.md",
+          "description": "title: Vault Interconnection Recovery Plan"
+        },
+        {
+          "path": "vault/projects/version_desync_recovery.md",
+          "description": "title: Version Desync Recovery"
+        },
+        {
+          "path": "vault/tasks/evolution_cycle_documentation_index.md",
+          "description": "title: Evolution Cycle Documentation Index"
+        },
+        {
+          "path": "vault/tasks/refactoring_test_strategy_-_module_splits.md",
+          "description": "title: Refactoring Test Strategy - Module Splits"
+        },
+        {
+          "path": "vault/tasks/system_review_task.md",
+          "description": "type: task"
+        },
+        {
+          "path": "vault/tasks/vault_orphan_cleanup_plan.md",
+          "description": "title: Vault Orphan Cleanup Plan"
+        },
+        {
+          "path": "vault/tools/.gitkeep",
+          "description": ""
+        },
+        {
+          "path": "vault/tools/cancel-task.md",
+          "description": "title: cancel_task"
+        },
+        {
+          "path": "vault/tools/cancel_task.md",
+          "description": "title: cancel_task"
+        },
+        {
+          "path": "vault/tools/check-evolution-readiness.md",
+          "description": "title: check_evolution_readiness"
+        },
+        {
+          "path": "vault/tools/check_evolution_readiness.md",
+          "description": "title: check_evolution_readiness"
+        },
+        {
+          "path": "vault/tools/complexity_budget.md",
+          "description": "title: complexity_budget"
+        },
+        {
+          "path": "vault/tools/db-query.md",
+          "description": "title: db_query"
+        },
+        {
+          "path": "vault/tools/db_query.md",
+          "description": "title: db_query"
+        },
+        {
+          "path": "vault/tools/decompose_task.md",
+          "description": "title: decompose_task"
+        },
+        {
+          "path": "vault/tools/discover_knowledge_gaps.md",
+          "description": "title: discover_knowledge_gaps"
+        },
+        {
+          "path": "vault/tools/dspy_integration.md",
+          "description": "title: DSPy Integration"
+        },
+        {
+          "path": "vault/tools/enable-evolution-mode.md",
+          "description": "title: enable_evolution_mode"
+        },
+        {
+          "path": "vault/tools/enable_evolution_mode.md",
+          "description": "title: enable_evolution_mode"
+        },
+        {
+          "path": "vault/tools/evolution_strategy.md",
+          "description": "title: evolution_strategy"
+        },
+        {
+          "path": "vault/tools/find_gaps.md",
+          "description": "title: find_gaps"
+        },
+        {
+          "path": "vault/tools/generate-evolution-stats.md",
+          "description": "title: generate_evolution_stats"
+        },
+        {
+          "path": "vault/tools/generate_evolution_stats.md",
+          "description": "title: generate_evolution_stats"
+        },
+        {
+          "path": "vault/tools/get-evolution-status.md",
+          "description": "title: get_evolution_status"
+        },
+        {
+          "path": "vault/tools/get-task-result.md",
+          "description": "title: get_task_result"
+        },
+        {
+          "path": "vault/tools/get_all_skills.md",
+          "description": "title: get_all_skills"
+        },
+        {
+          "path": "vault/tools/get_evolution_status.md",
+          "description": "title: get_evolution_status"
+        },
+        {
+          "path": "vault/tools/get_task_ontology.md",
+          "description": "title: get_task_ontology"
+        },
+        {
+          "path": "vault/tools/get_task_result.md",
+          "description": "title: get_task_result"
+        },
+        {
+          "path": "vault/tools/learned__task_repo_read.md",
+          "description": "title: Learned: task/repo_read"
+        },
+        {
+          "path": "vault/tools/list-skills.md",
+          "description": "title: list_skills"
+        },
+        {
+          "path": "vault/tools/list-tool-requests.md",
+          "description": "title: list_tool_requests"
+        },
+        {
+          "path": "vault/tools/list_skills.md",
+          "description": "title: list_skills"
+        },
+        {
+          "path": "vault/tools/list_tool_requests.md",
+          "description": "title: list_tool_requests"
+        },
+        {
+          "path": "vault/tools/neural-map.md",
+          "description": "title: neural_map"
+        },
+        {
+          "path": "vault/tools/neural_map.md",
+          "description": "title: neural_map"
+        },
+        {
+          "path": "vault/tools/neural_map_explore.md",
+          "description": "title: neural_map_explore"
+        },
+        {
+          "path": "vault/tools/quality_gates.md",
+          "description": "title: quality_gates"
+        },
+        {
+          "path": "vault/tools/query-knowledge.md",
+          "description": "title: query_knowledge"
+        },
+        {
+          "path": "vault/tools/query_knowledge.md",
+          "description": "title: query_knowledge"
+        },
+        {
+          "path": "vault/tools/request-api-key.md",
+          "description": "title: request_api_key"
+        },
+        {
+          "path": "vault/tools/request-capability.md",
+          "description": "title: request_capability"
+        },
+        {
+          "path": "vault/tools/request-restart.md",
+          "description": "title: request_restart"
+        },
+        {
+          "path": "vault/tools/request-review.md",
+          "description": "title: request_review"
+        },
+        {
+          "path": "vault/tools/request_api_key.md",
+          "description": "title: request_api_key"
+        },
+        {
+          "path": "vault/tools/request_capability.md",
+          "description": "title: request_capability"
+        },
+        {
+          "path": "vault/tools/request_capability_1.md",
+          "description": "title: request_capability"
+        },
+        {
+          "path": "vault/tools/request_restart.md",
+          "description": "title: request_restart"
+        },
+        {
+          "path": "vault/tools/request_review.md",
+          "description": "title: request_review"
+        },
+        {
+          "path": "vault/tools/run-evolution-cycle.md",
+          "description": "title: run_evolution_cycle"
+        },
+        {
+          "path": "vault/tools/run_evolution_cycle.md",
+          "description": "title: run_evolution_cycle"
+        },
+        {
+          "path": "vault/tools/schedule-task.md",
+          "description": "title: schedule_task"
+        },
+        {
+          "path": "vault/tools/schedule_task.md",
+          "description": "title: schedule_task"
+        },
+        {
+          "path": "vault/tools/skills_system.md",
+          "description": "title: skills_system"
+        },
+        {
+          "path": "vault/tools/toggle-evolution.md",
+          "description": "title: toggle_evolution"
+        },
+        {
+          "path": "vault/tools/toggle_evolution.md",
+          "description": "title: toggle_evolution"
+        },
+        {
+          "path": "vault/tools/tool_documentation_gap_analysis.md",
+          "description": "title: Tool Documentation Gap Analysis"
+        },
+        {
+          "path": "vault/tools/vault_evolution.md",
+          "description": "title: vault_evolution"
+        },
+        {
+          "path": "vault/tools/vlm-query.md",
+          "description": "title: vlm_query"
+        },
+        {
+          "path": "vault/tools/vlm_query.md",
+          "description": "title: vlm_query"
+        },
+        {
+          "path": "vault/tools/wait-for-task.md",
+          "description": "title: wait_for_task"
+        },
+        {
+          "path": "vault/tools/wait_for_task.md",
+          "description": "title: wait_for_task"
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "prompts",
+      "label": "Prompts",
+      "kind": "config",
+      "parent": null,
+      "summary": "System & product prompts (prompts/): SYSTEM.md (the Jo persona) and CONSCIOUSNESS.md — what Jo speaks as through the web GUI.",
+      "paths": [
+        "prompts/**"
+      ],
+      "files": [
+        {
+          "path": "prompts/CONSCIOUSNESS.md",
+          "description": "You are Ouroboros in background consciousness mode."
+        },
+        {
+          "path": "prompts/SYSTEM.md",
+          "description": "I Am Jo"
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "scripts",
+      "label": "Scripts",
+      "kind": "script",
+      "parent": null,
+      "summary": "Dev & ops scripts (scripts/): build_floorplan.py (generates/validates the Floorplan map), check_module_health.py + check_bugs.py + check_principle5.py + self_check.py (health & invariants), health_audit.py + code_health_monitor.py + code_health_analysis.py (code health), watchdog.py + sys_ops.py + debug_check.py (system ops), colab_launcher.py, validate_data_files.py, pre-commit.",
+      "paths": [
+        "scripts/**"
+      ],
+      "files": [
+        {
+          "path": "scripts/check_bugs.py",
+          "description": "Comprehensive bug search across the codebase."
+        },
+        {
+          "path": "scripts/check_module_health.py",
+          "description": "Module health checker — validates module size and complexity limits."
+        },
+        {
+          "path": "scripts/check_params.py",
+          "description": ""
+        },
+        {
+          "path": "scripts/check_principle5.py",
+          "description": "Principle 5 (Minimalism) Compliance Checker"
+        },
+        {
+          "path": "scripts/code_health_analysis.py",
+          "description": "Code Health Assessment Script"
+        },
+        {
+          "path": "scripts/code_health_monitor.py",
+          "description": "Code Health Monitor — tracks code quality metrics and minimalism violations."
+        },
+        {
+          "path": "scripts/colab_launcher.py",
+          "description": "Best-effort install of Claude Code CLI for Anthropic-powered code edits."
+        },
+        {
+          "path": "scripts/debug_check.py",
+          "description": "Debug script to find bugs and issues in the codebase."
+        },
+        {
+          "path": "scripts/health_audit.py",
+          "description": "Comprehensive system health and performance audit."
+        },
+        {
+          "path": "scripts/pattern_scanner.py",
+          "description": "Jo Pattern Scanner - Analyze architecture for patterns and opportunities"
+        },
+        {
+          "path": "scripts/pre-commit",
+          "description": "Pre-commit hook — blocks commits that violate constitution."
+        },
+        {
+          "path": "scripts/run_health.py",
+          "description": ""
+        },
+        {
+          "path": "scripts/self_check.py",
+          "description": "Self-check script for Jo autonomous health monitoring."
+        },
+        {
+          "path": "scripts/validate_data_files.py",
+          "description": ""
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "config",
+      "label": "Config",
+      "kind": "config",
+      "parent": null,
+      "summary": "Config: the config/ manager (default.yaml, overrides.yaml, check_params.py, health_audit.py), .env.example, pyproject.toml, VERSION, requirements.txt — packaging and environment.",
+      "paths": [
+        ".jo_state/**",
+        "config/**",
+        ".env.example",
+        "pyproject.toml",
+        "VERSION",
+        "requirements.txt"
+      ],
+      "files": [
+        {
+          "path": ".env.example",
+          "description": ""
+        },
+        {
+          "path": "VERSION",
+          "description": ""
+        },
+        {
+          "path": "config/constitution.json",
+          "description": ""
+        },
+        {
+          "path": "config/default.yaml",
+          "description": ""
+        },
+        {
+          "path": "config/drift_baseline.json",
+          "description": ""
+        },
+        {
+          "path": "config/overrides.yaml",
+          "description": ""
+        },
+        {
+          "path": "pyproject.toml",
+          "description": ""
+        },
+        {
+          "path": "requirements.txt",
+          "description": ""
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "infra",
+      "label": "GitHub CI & deployment",
+      "kind": "infra",
+      "parent": null,
+      "summary": "GitHub Actions: pages.yml (GUI validation), web-backend.yml (starts OmniRoute + the backend, opens a cloudflare tunnel, publishes gui/backend.json, deploys Pages, and keeps the backend alive), Dockerfile, docker-compose.yml, Makefile.",
+      "paths": [
+        ".github/**",
+        "Dockerfile",
+        "docker-compose.yml",
+        "Makefile",
+        ".gitignore",
+        ".jo_protected"
+      ],
+      "files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "description": ""
+        },
+        {
+          "path": ".github/workflows/cleanup-workflow-runs.yml",
+          "description": ""
+        },
+        {
+          "path": ".github/workflows/pages.yml",
+          "description": ""
+        },
+        {
+          "path": ".github/workflows/run.yml",
+          "description": ""
+        },
+        {
+          "path": ".github/workflows/web-backend.yml",
+          "description": ""
+        },
+        {
+          "path": ".gitignore",
+          "description": ""
+        },
+        {
+          "path": ".jo_protected",
+          "description": ""
+        },
+        {
+          "path": "Dockerfile",
+          "description": ""
+        },
+        {
+          "path": "Makefile",
+          "description": ""
+        },
+        {
+          "path": "docker-compose.yml",
+          "description": ""
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "docs",
+      "label": "Docs & plans",
+      "kind": "library",
+      "parent": null,
+      "summary": "Reference material: BIBLE.md (Jo's principles), README.md, AGENTS.md (the development guide), LICENSE, docs/**, .pi/**, .jo_rules/**, .jo_skills/**, floorplan/README.md.",
+      "paths": [
+        "BIBLE.md",
+        "README.md",
+        "AGENTS.md",
+        "LICENSE",
+        "docs/**",
+        ".pi/**",
+        ".jo_rules/**",
+        ".jo_skills/**",
+        "floorplan/**"
+      ],
+      "files": [
+        {
+          "path": ".githooks/pre-commit",
+          "description": ""
+        },
+        {
+          "path": ".githooks/pre-push",
+          "description": ""
+        },
+        {
+          "path": ".jo_rules/default.md",
+          "description": "Default Rules of Engagement"
+        },
+        {
+          "path": ".jo_rules/devops.md",
+          "description": "DevOps Rules"
+        },
+        {
+          "path": ".jo_rules/free_models.md",
+          "description": "Free-Model Rules"
+        },
+        {
+          "path": ".jo_skills/01-anti-hallucination.md",
+          "description": "Anti-Hallucination Protocol"
+        },
+        {
+          "path": ".jo_skills/02-verify-before-claim.md",
+          "description": "Verification Protocol"
+        },
+        {
+          "path": ".jo_skills/03-identity-management.md",
+          "description": "Identity Management Protocol"
+        },
+        {
+          "path": ".jo_skills/04-tool-safety.md",
+          "description": "Tool Safety Protocol"
+        },
+        {
+          "path": ".jo_skills/05-implementation-summary.md",
+          "description": "Jo Advanced Skills Implementation Summary"
+        },
+        {
+          "path": ".jo_skills/10-design-systems.md",
+          "description": "DESIGN.md - Design System Knowledge Base"
+        },
+        {
+          "path": ".jo_skills/11-design-systems-comprehensive.md",
+          "description": "DESIGN.md - Comprehensive Design System Reference"
+        },
+        {
+          "path": ".jo_skills/12-paper2code.md",
+          "description": "Paper2Code - Research to Implementation Protocol"
+        },
+        {
+          "path": ".jo_skills/13-ai-devops-concepts.md",
+          "description": "AI DevOps Concepts - Autonomous Operations Reference"
+        },
+        {
+          "path": ".jo_skills/14-security-audit.md",
+          "description": "Security Audit Skill (inspired by cloudflare/security-audit-skill)"
+        },
+        {
+          "path": ".jo_skills/15-design-review.md",
+          "description": "Design Review Skill (inspired by google/elephant-goldfish-model)"
+        },
+        {
+          "path": ".jo_skills/16-harness-adapter-evolution.md",
+          "description": "Harness Adapter Evolution Skill (inspired by Infini-AI-Lab/hermit)"
+        },
+        {
+          "path": ".jo_skills/17-persistent-agent-teams.md",
+          "description": "Persistent Agent Teams Skill (inspired by mvschwarz/openrig)"
+        },
+        {
+          "path": ".jo_skills/paper2code/SKILL.md",
+          "description": "paper2code: arXiv-to-Implementation Skill"
+        },
+        {
+          "path": ".pi/prompts/audit.md",
+          "description": "description: Periodic self-audit (run every 4h in background consciousness)"
+        },
+        {
+          "path": ".pi/prompts/changelog.md",
+          "description": "description: Audit and create changelog entries"
+        },
+        {
+          "path": ".pi/prompts/debug.md",
+          "description": "description: Systematic debugging methodology for complex issues"
+        },
+        {
+          "path": ".pi/prompts/evolution.md",
+          "description": "description: Self-modification and evolution cycles for Jo"
+        },
+        {
+          "path": ".pi/prompts/issue.md",
+          "description": "description: Analyze GitHub issues (bugs or feature requests)"
+        },
+        {
+          "path": ".pi/prompts/pr.md",
+          "description": "description: Review PRs with structured code analysis"
+        },
+        {
+          "path": ".pi/prompts/security.md",
+          "description": "description: Security audit checklist for code and infrastructure"
+        },
+        {
+          "path": "AGENTS.md",
+          "description": "AGENTS.md - Development Guide for AI Agents"
+        },
+        {
+          "path": "BIBLE.md",
+          "description": "BIBLE.md — Constitution of Jo"
+        },
+        {
+          "path": "LICENSE",
+          "description": ""
+        },
+        {
+          "path": "README.md",
+          "description": "<div align=\"center\">"
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "tests",
+      "label": "Tests",
+      "kind": "test",
+      "parent": null,
+      "summary": "The pytest suite (tests/): smoke tests, the web backend contract (tests/test_web_backend.py), the GUI end-to-end (tests/test_gui_smoke.py), memory, vault, vision, runtime regressions, git-sha fixes.",
+      "paths": [
+        "tests/**"
+      ],
+      "files": [
+        {
+          "path": "tests/__init__.py",
+          "description": ""
+        },
+        {
+          "path": "tests/test_code_awareness.py",
+          "description": "Create a temporary repo with sample Python files."
+        },
+        {
+          "path": "tests/test_concurrent_git.py",
+          "description": "Multi-machine concurrent Git editing test."
+        },
+        {
+          "path": "tests/test_git_sha_fixes.py",
+          "description": "Unit tests for the Git race-condition fixes."
+        },
+        {
+          "path": "tests/test_goal_manager.py",
+          "description": "Tests for ouroboros/goal_manager.py — Goal pursuit and /loop mechanism."
+        },
+        {
+          "path": "tests/test_health_invariants.py",
+          "description": "Health invariants test suite."
+        },
+        {
+          "path": "tests/test_memory.py",
+          "description": "Tests for ouroboros/memory.py — Memory class."
+        },
+        {
+          "path": "tests/test_message_routing.py",
+          "description": "Tests for v6 message routing: single-consumer delivery,"
+        },
+        {
+          "path": "tests/test_registry.py",
+          "description": ""
+        },
+        {
+          "path": "tests/test_repo_pack.py",
+          "description": "Tests for ouroboros/repo_pack.py — Repository packing tool."
+        },
+        {
+          "path": "tests/test_runtime_regressions.py",
+          "description": "\"Regression tests for the ChatGPT -> Jo mailbox and free-only model routing."
+        },
+        {
+          "path": "tests/test_smoke.py",
+          "description": "Smoke tests — run in CI before the bot starts."
+        },
+        {
+          "path": "tests/test_vault.py",
+          "description": "Tests for vault module."
+        },
+        {
+          "path": "tests/test_vision.py",
+          "description": "Smoke tests for VLM (Vision Language Model) support."
+        }
+      ],
+      "endpoints": [],
+      "screens": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "GET /health",
+      "description": "gui/app.js checkHealth() polls GET /health (init, 30s loop, refresh toggle); the status card shows reachability, provider/model, OmniRoute, probe and web chat mode/tools flags."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "GET /v1/models",
+      "description": "refreshModels() loads the model select from GET /v1/models (settings + header pill); the GUI shows 'auto' plus discovered OmniRoute free models."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "POST /v1/chat/stream",
+      "description": "sendToJo(): the GUI posts the chat message; the backend streams SSE deltas into the message bubble; the done event stores the full response with provider/model/elapsed_ms."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "POST /v1/chat",
+      "description": "sendToJo(): fallback when /v1/chat/stream is unavailable or not SSE; the GUI reads response/session_id/provider/model/elapsed_ms."
+    },
+    {
+      "from": "gui",
+      "to": "cloudflare-tunnel",
+      "kind": "http",
+      "label": "backend.json discovery",
+      "description": "The hosted GUI reads ./backend.json (auto-discovery of apiBase, updatedAt, commit, runId, workflow) so the browser reaches the backend through the published tunnel URL."
+    },
+    {
+      "from": "gui",
+      "to": "github-pages",
+      "kind": "http",
+      "label": "Pages host",
+      "description": "The GUI is served from GitHub Pages (web-backend.yml owns the deploy); the browser connects to the backend via the tunnel."
+    },
+    {
+      "from": "server.chat",
+      "to": "ouroboros",
+      "kind": "call",
+      "label": "generate_response → _build_messages + _run_via_llm",
+      "description": "The lightweight chat path: builds messages (system prompt + history) and calls OmniRoute chat completions with dynamic model candidates (strict semantics for explicit picks, fallbacks otherwise)."
+    },
+    {
+      "from": "server.chat",
+      "to": "supervisor",
+      "kind": "call",
+      "label": "_run_via_agent → supervisor.workers._get_chat_agent",
+      "description": "The agent path (JO_WEB_USE_AGENT=1) runs the direct-chat agent workflow so Jo tools may be used, subject to the selected model."
+    },
+    {
+      "from": "server.chat",
+      "to": "ouroboros.identity",
+      "kind": "call",
+      "label": "system prompt (persona)",
+      "description": "server/app.py _build_messages() opens the chat with the Jo web chat system prompt; prompts/SYSTEM.md is the deeper identity."
+    },
+    {
+      "from": "server",
+      "to": "omniroute",
+      "kind": "http",
+      "label": "chat.completions",
+      "description": "OmniRoute-only backend: server/app.py calls OmniRoute at OMNIROUTE_BASE_URL; /models discovery, /health and usability probes are OmniRoute calls too."
+    },
+    {
+      "from": "supervisor",
+      "to": "ouroboros",
+      "kind": "rpc",
+      "label": "agent.handle_task",
+      "description": "Each worker process owns an OuroborosAgent (supervisor/workers.py _get_chat_agent); handle_task runs tasks through the LLM tool loop (tools, memory, self-evolution)."
+    },
+    {
+      "from": "ouroboros.tools",
+      "to": "supervisor",
+      "kind": "rpc",
+      "label": "tool registration",
+      "description": "Tool modules register into the ToolRegistry at agent boot; the supervisor watches workers and restarts them when they die."
+    },
+    {
+      "from": "ouroboros.memory",
+      "to": "vault",
+      "kind": "data",
+      "label": "vault notes",
+      "description": "Ouroboros reads and writes the vault: memories, tasks, journal, concepts, tools, analysis, projects, .vault integrity."
+    },
+    {
+      "from": "ouroboros.identity",
+      "to": "prompts",
+      "kind": "config",
+      "label": "system prompts",
+      "description": "Jo's identity and scratchpad are the stable self; prompts/SYSTEM.md and CONSCIOUSNESS.md are the persona text Jo runs on."
+    },
+    {
+      "from": "tests",
+      "to": "server",
+      "kind": "test",
+      "label": "backend contract tests",
+      "description": "tests/test_web_backend.py: TestClient against the real server/app.py — /v1/chat, /v1/chat/stream (SSE), /health, /v1/status, /v1/models, session history."
+    },
+    {
+      "from": "tests",
+      "to": "gui",
+      "kind": "test",
+      "label": "GUI e2e smoke tests",
+      "description": "tests/test_gui_smoke.py: opens gui/ with a real Chromium, stubs the backend contract, asserts the chat flow renders the backend reply and the status card reflects /health web chat mode."
+    }
+  ],
+  "requestToEndpoint": [
+    {
+      "guiRequest": "/health",
+      "endpoint": "GET /health",
+      "matched": true
+    },
+    {
+      "guiRequest": "/v1/chat",
+      "endpoint": "POST /v1/chat",
+      "matched": true
+    },
+    {
+      "guiRequest": "/v1/chat/stream",
+      "endpoint": "POST /v1/chat/stream",
+      "matched": true
+    },
+    {
+      "guiRequest": "/v1/models",
+      "endpoint": "GET /v1/models",
+      "matched": true
+    },
+    {
+      "guiRequest": "backend.json",
+      "endpoint": null,
+      "matched": true,
+      "kind": "discovery"
+    }
+  ],
+  "outsideServices": [
+    {
+      "id": "omniroute",
+      "label": "OmniRoute",
+      "summary": "Model gateway for Jo web chat: dynamic /models discovery, usability probes (/health, /v1/models) and chat completions at OMNIROUTE_BASE_URL. OmniRoute-only for web generation (no local/direct/public fallback in server/app.py).",
+      "hosts": [
+        "127.0.0.1:20128"
+      ]
+    },
+    {
+      "id": "cloudflare-tunnel",
+      "label": "Cloudflare tunnel (trycloudflare.com)",
+      "summary": "Ephemeral HTTPS tunnel from GitHub Actions to the local backend; the tunnel URL is published as gui/backend.json so the hosted GUI can reach the backend.",
+      "hosts": []
+    },
+    {
+      "id": "github-pages",
+      "label": "GitHub Pages",
+      "summary": "Hosts the Jo web GUI (gui/) with the auto-discovered backend base URL from gui/backend.json.",
+      "hosts": [
+        "josolinap.github.io/jo"
+      ]
+    },
+    {
+      "id": "github-actions",
+      "label": "GitHub Actions",
+      "summary": "Owns the live backend deployment: starts OmniRoute + backend, opens the tunnel, publishes gui/backend.json, deploys Pages, keeps the backend alive.",
+      "hosts": [
+        "api.github.com"
+      ]
+    },
+    {
+      "id": "playwright",
+      "label": "Playwright",
+      "summary": "Drives the GUI end-to-end in the smoke test: opens gui/ with a real Chromium, stubs the backend contract, asserts the chat flow renders the backend reply.",
+      "hosts": []
+    }
+  ],
+  "counts": {
+    "nodes": 18,
+    "files": 703,
+    "endpoints": 5,
+    "edges": 16,
+    "screens": 1
+  }
+}

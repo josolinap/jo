@@ -1,0 +1,16 @@
+{
+  "name": "Config",
+  "description": "Config: the config/ manager (default.yaml, overrides.yaml, check_params.py, health_audit.py), .env.example, pyproject.toml, VERSION, requirements.txt — packaging and environment.",
+  "files": [
+    ".env.example",
+    "VERSION",
+    "config/constitution.json",
+    "config/default.yaml",
+    "config/drift_baseline.json",
+    "config/overrides.yaml",
+    "pyproject.toml",
+    "requirements.txt"
+  ],
+  "endpoints": [],
+  "screens": []
+}

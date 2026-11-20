@@ -1,0 +1,521 @@
+{
+  "$schema": "floorplan/architecture@1",
+  "project": {
+    "name": "Jo",
+    "summary": "Jo is a self-modifying AI agent (the Ouroboros agent core) with a FastAPI web chat backend (server/) and a browser GUI (gui/). Web chat: GUI → server (/v1/chat, /v1/chat/stream) → Ouroboros agent workflow (tools, memory, self-evolution) or the lightweight LLM path via OmniRoute. The supervisor manages workers; the vault is Jo's narrative memory.",
+    "entrypoints": [
+      "ouroboros/agent.py",
+      "server/app.py",
+      "gui/index.html"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "gui",
+      "label": "Jo Web GUI",
+      "kind": "ui",
+      "parent": null,
+      "summary": "The Jo Web GUI — a polished chat interface (gui/) served from GitHub Pages. It composes the chat page, streaming messages, the settings and shortcuts modals, and the theme toggle; it discovers the backend via gui/backend.json and polls its health.",
+      "details": "",
+      "paths": [
+        "gui/**"
+      ],
+      "endpoints": [],
+      "screens": [
+        "gui/index.html"
+      ]
+    },
+    {
+      "id": "gui.chat",
+      "label": "Chat page & transport",
+      "kind": "feature",
+      "parent": "gui",
+      "summary": "The main chat screen: the composer and message list. It transports chat via POST /v1/chat/stream (SSE) with POST /v1/chat as fallback; it polls /health; deltas grow the streaming bubble and the done event replaces it with the full response.",
+      "details": "",
+      "paths": [
+        "gui/app.js"
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/chat/stream"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "gui.status",
+      "label": "Settings & status modals",
+      "kind": "feature",
+      "parent": "gui",
+      "summary": "The Settings modal (API base auto-discovery via gui/backend.json or a manual URL, GET /health + GET /v1/status status card, model selection with search + refresh from GET /v1/models, theme toggle, clear saved base, export/import chats, copy diagnostics) and the shortcuts modal; styles.css, theme-init.js, the 404 page, sitemap/robots and the GUI README.",
+      "details": "",
+      "paths": [
+        "gui/index.html",
+        "gui/styles.css",
+        "gui/theme-init.js",
+        "gui/404.html",
+        "gui/README.md",
+        "gui/robots.txt",
+        "gui/sitemap.txt"
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/models"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "server",
+      "label": "Jo Web Backend",
+      "kind": "service",
+      "parent": null,
+      "summary": "The Jo Web Backend (server/app.py, FastAPI) — the HTTP contract used by the GitHub Pages GUI. Generation is OmniRoute-only for web chat.",
+      "details": "",
+      "paths": [
+        "server/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "server.chat",
+      "label": "Chat endpoints",
+      "kind": "feature",
+      "parent": "server",
+      "summary": "POST /v1/chat (full reply) and POST /v1/chat/stream (SSE: delta / done / error events). Adds OpenDuet-style proactive follow-up suggestions and keeps per-session chat history (max 40 messages). The web GUI is the main caller.",
+      "details": "",
+      "paths": [
+        "server/app.py",
+        "server/run.ps1"
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/v1/chat"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/chat/stream"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "server.status",
+      "label": "Status & models endpoints",
+      "kind": "feature",
+      "parent": "server",
+      "summary": "GET /health and GET /v1/status: provider/model, OmniRoute reachability, dynamic model probe results, readiness reasons, and the web chat mode/tools flags (web_agent_mode, web_chat_path, tools_exposed_to_model, tools_note); GET /v1/models: the curated OmniRoute catalog — 'auto' plus dynamically discovered free models, with headless/CI bridge routes excluded.",
+      "details": "",
+      "paths": [
+        "server/app.py"
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/status"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/models"
+        }
+      ],
+      "screens": []
+    },
+    {
+      "id": "ouroboros",
+      "label": "Ouroboros — Jo's agent core",
+      "kind": "service",
+      "parent": null,
+      "summary": "Ouroboros (ouroboros/) is Jo's agent: the direct-chat agent workflow (supervisor.workers._get_chat_agent → OuroborosAgent.handle_task, the LLM tool loop) plus the lightweight LLM path (ouroboros/llm.py). ~115 modules: loop, tools, memory, context, pipeline, evolution, self-healing, tracing, skills, goals, awareness, token ledger, budget router, work checkpoint, ... plus ouroboros/tools/ — the plugin tool registry.",
+      "details": "",
+      "paths": [
+        "ouroboros/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.tools",
+      "label": "Tool registry & modules",
+      "kind": "library",
+      "parent": "ouroboros",
+      "summary": "The Jo tool system: ToolRegistry + ~50 tool modules (file ops, shell, web research, git, github, database, browser, skills, evolution, neural map, vision, dashboard, analytics, ...), schemas + permissions + orchestration.",
+      "details": "",
+      "paths": [
+        "ouroboros/tools/**",
+        "ouroboros/tool_orchestrator.py",
+        "ouroboros/tool_executor.py",
+        "ouroboros/tool_router.py",
+        "ouroboros/tool_permissions.py"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.memory",
+      "label": "Memory (episodic + hybrid)",
+      "kind": "feature",
+      "parent": "ouroboros",
+      "summary": "Narrative memory: ouroboros/memory.py, memory_consolidator.py, episodic_memory.py, hybrid_memory.py — Jo remembers experiences across sessions and merges them into durable notes.",
+      "details": "",
+      "paths": [
+        "ouroboros/memory.py",
+        "ouroboros/memory_consolidator.py",
+        "ouroboros/episodic_memory.py",
+        "ouroboros/hybrid_memory.py"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "ouroboros.identity",
+      "label": "Identity & scratchpad",
+      "kind": "feature",
+      "parent": "ouroboros",
+      "summary": "Jo's identity (memory/identity.md, constitution.json, awareness.jsonl) and scratchpad (memory/scratchpad.md, memory/buglog.json) — the stable self plus active working notes.",
+      "details": "",
+      "paths": [
+        "memory/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "supervisor",
+      "label": "Jo Supervisor",
+      "kind": "worker",
+      "parent": null,
+      "summary": "The Jo Supervisor (supervisor/) manages worker processes, queues, state (supervisor/state.json, workers.py), git/github ops, health monitoring and watchdogs that restart OmniRoute and the backend when they die.",
+      "details": "",
+      "paths": [
+        "supervisor/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "vault",
+      "label": "Vault — narrative memory",
+      "kind": "data",
+      "parent": null,
+      "summary": "Vault (vault/) is Jo's long-term memory: markdown notes (memories, tasks, journal, concepts, tools, analysis, projects, structures, vision) with integrity checks (vault/.vault) and an auto-vault index.",
+      "details": "",
+      "paths": [
+        "vault/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "prompts",
+      "label": "Prompts",
+      "kind": "config",
+      "parent": null,
+      "summary": "System & product prompts (prompts/): SYSTEM.md (the Jo persona) and CONSCIOUSNESS.md — what Jo speaks as through the web GUI.",
+      "details": "",
+      "paths": [
+        "prompts/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "scripts",
+      "label": "Scripts",
+      "kind": "script",
+      "parent": null,
+      "summary": "Dev & ops scripts (scripts/): build_floorplan.py (generates/validates the Floorplan map), check_module_health.py + check_bugs.py + check_principle5.py + self_check.py (health & invariants), health_audit.py + code_health_monitor.py + code_health_analysis.py (code health), watchdog.py + sys_ops.py + debug_check.py (system ops), colab_launcher.py, validate_data_files.py, pre-commit.",
+      "details": "",
+      "paths": [
+        "scripts/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "config",
+      "label": "Config",
+      "kind": "config",
+      "parent": null,
+      "summary": "Config: the config/ manager (default.yaml, overrides.yaml, check_params.py, health_audit.py), .env.example, pyproject.toml, VERSION, requirements.txt — packaging and environment.",
+      "details": "",
+      "paths": [
+        ".jo_state/**",
+        "config/**",
+        ".env.example",
+        "pyproject.toml",
+        "VERSION",
+        "requirements.txt"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "infra",
+      "label": "GitHub CI & deployment",
+      "kind": "infra",
+      "parent": null,
+      "summary": "GitHub Actions: pages.yml (GUI validation), web-backend.yml (starts OmniRoute + the backend, opens a cloudflare tunnel, publishes gui/backend.json, deploys Pages, and keeps the backend alive), Dockerfile, docker-compose.yml, Makefile.",
+      "details": "",
+      "paths": [
+        ".github/**",
+        "Dockerfile",
+        "docker-compose.yml",
+        "Makefile",
+        ".gitignore",
+        ".jo_protected"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "docs",
+      "label": "Docs & plans",
+      "kind": "library",
+      "parent": null,
+      "summary": "Reference material: BIBLE.md (Jo's principles), README.md, AGENTS.md (the development guide), LICENSE, docs/**, .pi/**, .jo_rules/**, .jo_skills/**, floorplan/README.md.",
+      "details": "",
+      "paths": [
+        "BIBLE.md",
+        "README.md",
+        "AGENTS.md",
+        "LICENSE",
+        "docs/**",
+        ".pi/**",
+        ".jo_rules/**",
+        ".jo_skills/**",
+        "floorplan/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    },
+    {
+      "id": "tests",
+      "label": "Tests",
+      "kind": "test",
+      "parent": null,
+      "summary": "The pytest suite (tests/): smoke tests, the web backend contract (tests/test_web_backend.py), the GUI end-to-end (tests/test_gui_smoke.py), memory, vault, vision, runtime regressions, git-sha fixes.",
+      "details": "",
+      "paths": [
+        "tests/**"
+      ],
+      "endpoints": [],
+      "screens": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "GET /health",
+      "description": "gui/app.js checkHealth() polls GET /health (init, 30s loop, refresh toggle); the status card shows reachability, provider/model, OmniRoute, probe and web chat mode/tools flags."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "GET /v1/models",
+      "description": "refreshModels() loads the model select from GET /v1/models (settings + header pill); the GUI shows 'auto' plus discovered OmniRoute free models."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "POST /v1/chat/stream",
+      "description": "sendToJo(): the GUI posts the chat message; the backend streams SSE deltas into the message bubble; the done event stores the full response with provider/model/elapsed_ms."
+    },
+    {
+      "from": "gui",
+      "to": "server",
+      "kind": "http",
+      "label": "POST /v1/chat",
+      "description": "sendToJo(): fallback when /v1/chat/stream is unavailable or not SSE; the GUI reads response/session_id/provider/model/elapsed_ms."
+    },
+    {
+      "from": "gui",
+      "to": "cloudflare-tunnel",
+      "kind": "http",
+      "label": "backend.json discovery",
+      "description": "The hosted GUI reads ./backend.json (auto-discovery of apiBase, updatedAt, commit, runId, workflow) so the browser reaches the backend through the published tunnel URL."
+    },
+    {
+      "from": "gui",
+      "to": "github-pages",
+      "kind": "http",
+      "label": "Pages host",
+      "description": "The GUI is served from GitHub Pages (web-backend.yml owns the deploy); the browser connects to the backend via the tunnel."
+    },
+    {
+      "from": "server.chat",
+      "to": "ouroboros",
+      "kind": "call",
+      "label": "generate_response → _build_messages + _run_via_llm",
+      "description": "The lightweight chat path: builds messages (system prompt + history) and calls OmniRoute chat completions with dynamic model candidates (strict semantics for explicit picks, fallbacks otherwise)."
+    },
+    {
+      "from": "server.chat",
+      "to": "supervisor",
+      "kind": "call",
+      "label": "_run_via_agent → supervisor.workers._get_chat_agent",
+      "description": "The agent path (JO_WEB_USE_AGENT=1) runs the direct-chat agent workflow so Jo tools may be used, subject to the selected model."
+    },
+    {
+      "from": "server.chat",
+      "to": "ouroboros.identity",
+      "kind": "call",
+      "label": "system prompt (persona)",
+      "description": "server/app.py _build_messages() opens the chat with the Jo web chat system prompt; prompts/SYSTEM.md is the deeper identity."
+    },
+    {
+      "from": "server",
+      "to": "omniroute",
+      "kind": "http",
+      "label": "chat.completions",
+      "description": "OmniRoute-only backend: server/app.py calls OmniRoute at OMNIROUTE_BASE_URL; /models discovery, /health and usability probes are OmniRoute calls too."
+    },
+    {
+      "from": "supervisor",
+      "to": "ouroboros",
+      "kind": "rpc",
+      "label": "agent.handle_task",
+      "description": "Each worker process owns an OuroborosAgent (supervisor/workers.py _get_chat_agent); handle_task runs tasks through the LLM tool loop (tools, memory, self-evolution)."
+    },
+    {
+      "from": "ouroboros.tools",
+      "to": "supervisor",
+      "kind": "rpc",
+      "label": "tool registration",
+      "description": "Tool modules register into the ToolRegistry at agent boot; the supervisor watches workers and restarts them when they die."
+    },
+    {
+      "from": "ouroboros.memory",
+      "to": "vault",
+      "kind": "data",
+      "label": "vault notes",
+      "description": "Ouroboros reads and writes the vault: memories, tasks, journal, concepts, tools, analysis, projects, .vault integrity."
+    },
+    {
+      "from": "ouroboros.identity",
+      "to": "prompts",
+      "kind": "config",
+      "label": "system prompts",
+      "description": "Jo's identity and scratchpad are the stable self; prompts/SYSTEM.md and CONSCIOUSNESS.md are the persona text Jo runs on."
+    },
+    {
+      "from": "tests",
+      "to": "server",
+      "kind": "test",
+      "label": "backend contract tests",
+      "description": "tests/test_web_backend.py: TestClient against the real server/app.py — /v1/chat, /v1/chat/stream (SSE), /health, /v1/status, /v1/models, session history."
+    },
+    {
+      "from": "tests",
+      "to": "gui",
+      "kind": "test",
+      "label": "GUI e2e smoke tests",
+      "description": "tests/test_gui_smoke.py: opens gui/ with a real Chromium, stubs the backend contract, asserts the chat flow renders the backend reply and the status card reflects /health web chat mode."
+    }
+  ],
+  "flows": [
+    {
+      "id": "web_chat",
+      "title": "Web chat round trip",
+      "description": "Browser GUI to Ouroboros (or OmniRoute) and back:",
+      "steps": [
+        {
+          "node": "gui.chat",
+          "note": "User types in the composer and sends: sendMessage() posts {message, history, session_id, model} to POST /v1/chat/stream."
+        },
+        {
+          "node": "server.chat",
+          "note": "The backend shares the GUI's session_id; streams SSE deltas back; the GUI appends them to the streaming bubble."
+        },
+        {
+          "node": "ouroboros",
+          "note": "generate_response → _run_via_llm: builds messages, calls OmniRoute chat completions with dynamic candidate models (free models first; strict semantics for explicit picks)."
+        },
+        {
+          "node": "omniroute",
+          "note": "OmniRoute returns tokens; the backend relays them as delta events."
+        },
+        {
+          "node": "gui.chat",
+          "note": "On done, the GUI stores the full response (provider, model, elapsed_ms) and shows the provider chip; the message is recorded in the chat history."
+        }
+      ]
+    },
+    {
+      "id": "backend_status",
+      "title": "Backend discovery & status",
+      "description": "How the GUI finds the backend and shows its status:",
+      "steps": [
+        {
+          "node": "gui.status",
+          "note": "Open Settings: API base (auto-discovery from gui/backend.json, or a manual URL), Connection status card, model list, theme, export/import chats."
+        },
+        {
+          "node": "server.status",
+          "note": "GET /health + GET /v1/status report provider/model, OmniRoute reachability, model probe results, readiness reasons, and the web chat mode/tools flags."
+        },
+        {
+          "node": "cloudflare-tunnel",
+          "note": "The web-backend workflow publishes gui/backend.json with the tunnel URL each run."
+        },
+        {
+          "node": "github-pages",
+          "note": "The GUI is served from Pages; the tunnel links browser → backend."
+        }
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "node": "gui.chat",
+      "title": "The chat screen",
+      "note": "Jo Web GUI — polished chat UX. No browser extension or third-party account: it talks straight to the Jo backend."
+    },
+    {
+      "node": "server.chat",
+      "title": "The chat endpoints",
+      "note": "Jo Web Backend: POST /v1/chat (full reply) and POST /v1/chat/stream (SSE deltas back into the bubble)."
+    },
+    {
+      "node": "ouroboros",
+      "title": "The agent brain",
+      "note": "Ouroboros runs the agent workflow: LLM tool loop, tools, memory, self-evolution. The lightweight LLM path (ouroboros/llm.py) is the alternative generation route."
+    },
+    {
+      "node": "vault",
+      "title": "The memory (vault)",
+      "note": "Narrative memory: memories, tasks, journal, concepts — the long-term store behind Jo's memory."
+    },
+    {
+      "node": "supervisor",
+      "title": "The supervisor",
+      "note": "Keeps workers running, queues tasks, watches health, and restarts OmniRoute/backend when needed."
+    },
+    {
+      "node": "gui.status",
+      "title": "The settings & status",
+      "note": "Backend discovery, connection health, model picker, theme, and chat history export/import."
+    }
+  ],
+  "audience": "everyone"
+}

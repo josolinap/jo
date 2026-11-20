@@ -1,0 +1,20 @@
+{
+  "name": "Chat endpoints",
+  "description": "POST /v1/chat (full reply) and POST /v1/chat/stream (SSE: delta / done / error events). Adds OpenDuet-style proactive follow-up suggestions and keeps per-session chat history (max 40 messages). The web GUI is the main caller.",
+  "files": [
+    "server/app.py",
+    "server/run.ps1"
+  ],
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/v1/chat"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat/stream"
+    }
+  ],
+  "screens": [],
+  "parent": "server"
+}

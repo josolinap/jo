@@ -1,0 +1,10 @@
+{
+  "name": "Prompts",
+  "description": "System & product prompts (prompts/): SYSTEM.md (the Jo persona) and CONSCIOUSNESS.md — what Jo speaks as through the web GUI.",
+  "files": [
+    "prompts/CONSCIOUSNESS.md",
+    "prompts/SYSTEM.md"
+  ],
+  "endpoints": [],
+  "screens": []
+}

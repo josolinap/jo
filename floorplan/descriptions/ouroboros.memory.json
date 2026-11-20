@@ -1,0 +1,13 @@
+{
+  "name": "Memory (episodic + hybrid)",
+  "description": "Narrative memory: ouroboros/memory.py, memory_consolidator.py, episodic_memory.py, hybrid_memory.py — Jo remembers experiences across sessions and merges them into durable notes.",
+  "files": [
+    "ouroboros/episodic_memory.py",
+    "ouroboros/hybrid_memory.py",
+    "ouroboros/memory.py",
+    "ouroboros/memory_consolidator.py"
+  ],
+  "endpoints": [],
+  "screens": [],
+  "parent": "ouroboros"
+}

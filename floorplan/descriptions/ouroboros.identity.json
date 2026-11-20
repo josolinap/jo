@@ -1,0 +1,15 @@
+{
+  "name": "Identity & scratchpad",
+  "description": "Jo's identity (memory/identity.md, constitution.json, awareness.jsonl) and scratchpad (memory/scratchpad.md, memory/buglog.json) — the stable self plus active working notes.",
+  "files": [
+    "memory/README.md",
+    "memory/awareness.jsonl",
+    "memory/buglog.json",
+    "memory/cerebrum.json",
+    "memory/identity.md",
+    "memory/scratchpad.md"
+  ],
+  "endpoints": [],
+  "screens": [],
+  "parent": "ouroboros"
+}

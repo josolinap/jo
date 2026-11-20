@@ -1,0 +1,25 @@
+{
+  "name": "Settings & status modals",
+  "description": "The Settings modal (API base auto-discovery via gui/backend.json or a manual URL, GET /health + GET /v1/status status card, model selection with search + refresh from GET /v1/models, theme toggle, clear saved base, export/import chats, copy diagnostics) and the shortcuts modal; styles.css, theme-init.js, the 404 page, sitemap/robots and the GUI README.",
+  "files": [
+    "gui/404.html",
+    "gui/README.md",
+    "gui/index.html",
+    "gui/robots.txt",
+    "gui/sitemap.txt",
+    "gui/styles.css",
+    "gui/theme-init.js"
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models"
+    }
+  ],
+  "screens": [],
+  "parent": "gui"
+}

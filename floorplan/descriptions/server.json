@@ -1,0 +1,10 @@
+{
+  "name": "Jo Web Backend",
+  "description": "The Jo Web Backend (server/app.py, FastAPI) — the HTTP contract used by the GitHub Pages GUI. Generation is OmniRoute-only for web chat.",
+  "files": [
+    "server/README.md",
+    "server/__init__.py"
+  ],
+  "endpoints": [],
+  "screens": []
+}

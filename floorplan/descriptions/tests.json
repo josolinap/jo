@@ -1,0 +1,22 @@
+{
+  "name": "Tests",
+  "description": "The pytest suite (tests/): smoke tests, the web backend contract (tests/test_web_backend.py), the GUI end-to-end (tests/test_gui_smoke.py), memory, vault, vision, runtime regressions, git-sha fixes.",
+  "files": [
+    "tests/__init__.py",
+    "tests/test_code_awareness.py",
+    "tests/test_concurrent_git.py",
+    "tests/test_git_sha_fixes.py",
+    "tests/test_goal_manager.py",
+    "tests/test_health_invariants.py",
+    "tests/test_memory.py",
+    "tests/test_message_routing.py",
+    "tests/test_registry.py",
+    "tests/test_repo_pack.py",
+    "tests/test_runtime_regressions.py",
+    "tests/test_smoke.py",
+    "tests/test_vault.py",
+    "tests/test_vision.py"
+  ],
+  "endpoints": [],
+  "screens": []
+}

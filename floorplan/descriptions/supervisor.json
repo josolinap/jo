@@ -1,0 +1,20 @@
+{
+  "name": "Jo Supervisor",
+  "description": "The Jo Supervisor (supervisor/) manages worker processes, queues, state (supervisor/state.json, workers.py), git/github ops, health monitoring and watchdogs that restart OmniRoute and the backend when they die.",
+  "files": [
+    "supervisor/__init__.py",
+    "supervisor/events.py",
+    "supervisor/git_ops.py",
+    "supervisor/github_api.py",
+    "supervisor/health_reporter.py",
+    "supervisor/queue.py",
+    "supervisor/state.py",
+    "supervisor/states.py",
+    "supervisor/sys_ops.py",
+    "supervisor/telegram.py",
+    "supervisor/watchdog.py",
+    "supervisor/workers.py"
+  ],
+  "endpoints": [],
+  "screens": []
+}
