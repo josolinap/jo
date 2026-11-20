@@ -107,6 +107,52 @@ def _stub_health(web_chat_path: str, tools_exposed: bool) -> dict:
     }
 
 
+def _stub_floorplan() -> dict:
+    nodes = [
+        {"id": "gui", "label": "Jo Web GUI", "kind": "ui", "summary": "The Jo Web GUI — the chat interface (gui/).", "files": [], "endpoints": []},
+        {
+            "id": "server",
+            "label": "Jo Web Backend",
+            "kind": "service",
+            "summary": "The Jo Web Backend (server/app.py, FastAPI): chat + status/models/floorplan endpoints.",
+            "files": [],
+            "endpoints": [
+                {"method": "POST", "path": "/v1/chat"},
+                {"method": "POST", "path": "/v1/chat/stream"},
+                {"method": "GET", "path": "/v1/floorplan"},
+            ],
+            "screens": ["gui/index.html"],
+        },
+        {
+            "id": "ouroboros",
+            "label": "Ouroboros — Jo's agent core",
+            "kind": "service",
+            "summary": "Ouroboros (ouroboros/) — Jo's agent core.",
+            "files": [],
+            "endpoints": [],
+            "children": [
+                {"id": "ouroboros.tools", "label": "Tool registry & modules", "kind": "library", "summary": "The Jo tool system (tool registry + tool modules).", "paths": ["ouroboros/tools/**"], "files": []}
+            ],
+        },
+    ]
+    edges = [
+        {"from": "gui", "to": "server", "kind": "http", "label": "POST /v1/chat/stream", "description": "sendToJo(): SSE deltas stream into the message bubble."},
+        {"from": "gui", "to": "server", "kind": "http", "label": "POST /v1/chat", "description": "sendToJo(): fallback when /v1/chat/stream isn't SSE."},
+    ]
+    return {
+        "summary": "Jo is a self-modifying AI agent (the Ouroboros agent core) with a FastAPI web chat backend (server/) and a browser GUI (gui/). Web chat: GUI → server (/v1/chat, /v1/chat/stream) → Ouroboros agent workflow or the lightweight LLM path via OmniRoute.",
+        "parts": [{"id": "gui", "label": "Jo Web GUI"}, {"id": "server", "label": "Jo Web Backend"}, {"id": "ouroboros", "label": "Ouroboros — Jo's agent core"}],
+        "connections": edges,
+        "graph": {
+            "nodes": nodes,
+            "edges": edges,
+            "project": {"summary": "Jo is a self-modifying AI agent (the Ouroboros agent core) with a FastAPI web chat backend (server/) and a browser GUI (gui/)."},
+        },
+        "architecture": {},
+        "generatedAt": "2026-11-20T00:00:00Z",
+    }
+
+
 def _install_routes(page, web_chat_path: str = "llm", tools_exposed: bool = False):
     def handler(route):
         url = route.request.url
@@ -128,6 +174,8 @@ def _install_routes(page, web_chat_path: str = "llm", tools_exposed: bool = Fals
             )
         elif url.endswith("/health") or url.endswith("/v1/status"):
             route.fulfill(json=_stub_health(web_chat_path, tools_exposed))
+        elif url.endswith("/v1/floorplan"):
+            route.fulfill(json=_stub_floorplan())
         elif "/v1/chat" in url:
             route.fulfill(
                 json={
@@ -218,5 +266,36 @@ def test_gui_surfaces_web_chat_mode_and_tools_flags(servers):
             meta = page.locator("#backend-meta").inner_text()
             assert "web chat: agent" in meta
             assert "tools exposed: yes" in meta
+        finally:
+            browser.close()
+
+
+def test_gui_map_panel_in_chat(servers):
+    """The map is part of the chat: the chat header opens the embedded map panel inline."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            # Open the map from the chat header — the map lives inside the chat page.
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            # The map renders the app's parts from the backend's GET /v1/floorplan.
+            page.wait_for_selector(".map-card", timeout=15000)
+            cards = page.locator(".map-card").all_inner_texts()
+            assert any("Jo Web GUI" in t for t in cards)
+            assert any("Jo Web Backend" in t for t in cards)
+            # Clicking a part shows its detail: name + connections.
+            page.locator(".map-card").first.click()
+            page.wait_for_function("document.getElementById('map-title').textContent.trim() !== ''", timeout=10000)
+            assert "Jo Web GUI" in page.locator("#map-title").inner_text()
+            assert page.locator("#map-connections .map-conn").count() >= 1
+            # Esc closes the map panel.
+            page.keyboard.press("Escape")
+            page.wait_for_selector("#map-panel", state="hidden", timeout=10000)
         finally:
             browser.close()

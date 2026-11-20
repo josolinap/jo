@@ -465,3 +465,46 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Map panel — the embedded Floorplan map, part of the chat page */
+.chat-page.map-open { flex: 0 0 62%; min-width: 0; }
+.map-panel {
+  flex: 0 0 38%; min-width: 0; display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 14px 16px; overflow-y: auto;
+  background: var(--bg-elev); border-left: 1px solid var(--border);
+}
+.map-panel[hidden] { display: none; }
+.map-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.map-panel-title-wrap { min-width: 0; }
+.map-panel-title { font-size: 14.5px; font-weight: 650; letter-spacing: -0.01em; }
+.map-panel-close { width: 30px; height: 30px; flex: none; font-size: 15px; line-height: 1; }
+.map-detail-summary { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-panel-body { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.map-view { flex: 0 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 9px; max-height: 55%; overflow-y: auto; }
+.map-detail { flex: 0 1 auto; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; background: var(--bg-elev); }
+.map-detail h4 { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 5px; }
+.map-detail h4:first-of-type { margin-top: 0; }
+.map-detail-title { margin: 0; font-size: 14px; font-weight: 650; }
+.map-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--bg-elev); cursor: pointer; transition: border-color .12s ease, transform .08s ease, box-shadow .12s ease; }
+.map-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.map-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.map-card-label { font-size: 13px; font-weight: 600; }
+.map-card-kind { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; }
+.map-card-files { font-size: 10.5px; color: var(--muted); }
+.map-card-summary { margin-top: 5px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.45; }
+.map-card-foot { margin-top: 7px; font-size: 10.5px; color: var(--muted); }
+.map-file { display: block; padding: 2px 0; border-bottom: 1px dashed var(--border); }
+.map-file-path { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.map-file-desc { display: block; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+.map-ep { font-family: var(--font-mono); font-size: 11px; padding: 2px 0; color: var(--accent-strong); }
+.map-screen { font-family: var(--font-mono); font-size: 11px; padding: 2px 0; color: var(--muted); }
+.map-conn { padding: 6px 0; border-bottom: 1px dashed var(--border); }
+.map-conn-from { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); }
+.map-conn-label { display: block; font-size: 10.5px; font-weight: 600; color: var(--accent); margin-top: 2px; }
+.map-conn-desc { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+.map-note { font-size: 11.5px; color: var(--muted); }
+.map-files, .map-endpoints, .map-screens, .map-connections { min-height: 18px; }
+@media (max-width: 980px) {
+  .chat-page.map-open { flex: 0 0 52%; min-width: 52%; }
+  .map-panel { flex: 0 0 48%; min-width: 48%; }
+}

@@ -73,6 +73,9 @@
                 </div>
               </div>
               <div class="chat-top-actions">
+                <button class="icon-btn ghost" id="chat-map-toggle" type="button" aria-label="Open map" title="Open the map (the whole picture)">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><path d="M7 16v3h3"/></svg>
+                </button>
                 <div class="model-pill-dropdown" id="model-pill-wrap" title="Select model">
                   <span class="model-pill-dot" id="model-pill-dot" aria-hidden="true"></span>
                   <select id="model-pill-select" class="model-pill-select" aria-label="Select model"></select>
@@ -137,6 +140,26 @@
               <div class="chat-footnote">Jo can make mistakes. Check important info. · <span class="kbd-hint">Ctrl+/ shortcuts</span></div>
             </div>
           </div>
+          <aside class="map-panel" id="map-panel" hidden>
+            <div class="map-panel-head">
+              <div class="map-panel-title-wrap">
+                <div class="map-panel-title">The whole picture — Jo Map</div>
+                <p class="map-detail-summary" id="map-summary"></p>
+              </div>
+              <button type="button" class="icon-btn ghost map-panel-close" id="map-close" aria-label="Close map">&times;</button>
+            </div>
+            <div class="map-panel-body">
+              <div class="map-view" id="map-view"></div>
+              <div class="map-detail">
+                <h4>Selected part</h4>
+                <p class="map-detail-title" id="map-title"></p>
+                <h4>Files</h4><div class="map-files" id="map-files"></div>
+                <h4>Endpoints</h4><div class="map-endpoints" id="map-endpoints"></div>
+                <h4>Screens</h4><div class="map-screens" id="map-screens"></div>
+                <h4>Connections</h4><div class="map-connections" id="map-connections"></div>
+              </div>
+            </div>
+          </aside>
         </main>
       </div>
     </div>
@@ -247,6 +270,7 @@
   </div>
 
   <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
+  <script src="map-view.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

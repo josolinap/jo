@@ -63,6 +63,10 @@ const modelPillSelect = $("model-pill-select");
 const modelPillDot = $("model-pill-dot");
 const modelInfo = $("model-info");
 const settingsRefreshModels = $("settings-refresh-models");
+const chatMapToggle = $("chat-map-toggle");
+const mapPanel = $("map-panel");
+const mapCloseBtn = $("map-close");
+const mapView = new JoMapView();
 
 let busy = false;
 let sessionSearchQuery = "";
@@ -2008,6 +2012,28 @@ function importChatsFromText(text) {
   );
 }
 
+/* Map panel — the embedded Floorplan map, part of the chat page */
+function isMapOpen() {
+  return !!(mapPanel && !mapPanel.hidden);
+}
+
+function openMap() {
+  if (!mapPanel || isMapOpen()) return;
+  mapPanel.hidden = false;
+  const page = document.getElementById("chat-page");
+  if (page) page.classList.add("map-open");
+  document.body.style.overflow = "hidden";
+  mapView.load(getApiBase()).catch(() => {});
+}
+
+function closeMap() {
+  if (!mapPanel || !isMapOpen()) return;
+  mapPanel.hidden = true;
+  const page = document.getElementById("chat-page");
+  if (page) page.classList.remove("map-open");
+  document.body.style.overflow = "";
+}
+
 /* Events */
 function bindEvents() {
   if (chatForm)
@@ -2342,6 +2368,16 @@ function bindEvents() {
       setSelectedModel(modelSelect.value || "auto", { notify: true });
     });
   }
+
+  // Map panel (the embedded Floorplan map, part of the chat page)
+  if (chatMapToggle) chatMapToggle.addEventListener("click", openMap);
+  if (mapCloseBtn) mapCloseBtn.addEventListener("click", closeMap);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && isMapOpen()) {
+      e.preventDefault();
+      closeMap();
+    }
+  });
 }
 
 async function init() {
