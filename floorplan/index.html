@@ -87,7 +87,7 @@ button.icon:hover { background:var(--card-hover); }
 </main>
 <p class="footer">Jo Floorplan — interactive map of Jo. Regenerate with <code>python scripts/build_floorplan.py</code>.</p>
 <script>var GRAPH = {
-  "generatedAt": "2026-11-20T05:07:39Z",
+  "generatedAt": "2026-11-20T05:38:25Z",
   "generatedBy": "scripts/build_floorplan.py",
   "project": {
     "name": "Jo",
@@ -274,6 +274,10 @@ button.icon:hover { background:var(--card-hover); }
         {
           "method": "GET",
           "path": "/v1/models"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/floorplan"
         }
       ],
       "screens": []
@@ -3523,7 +3527,7 @@ button.icon:hover { background:var(--card-hover); }
   "counts": {
     "nodes": 18,
     "files": 729,
-    "endpoints": 5,
+    "endpoints": 6,
     "edges": 16,
     "screens": 1
   }

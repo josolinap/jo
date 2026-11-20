@@ -8,6 +8,7 @@ HTTP backend for the GitHub Pages GUI (`gui/`).
 - `POST /v1/chat/stream` same body → SSE events (`delta`, `done`, `error`); `done` also includes `web_agent_mode` and `tools_exposed_to_model`
 - `GET /health` / `GET /v1/status` → provider/model/config + OmniRoute reachability/status, model probe results, readiness reasons, and web chat/tool exposure flags (`web_agent_mode`, `web_chat_path`, `tools_exposed_to_model`, `tools_note`)
 - `GET /v1/models` → discovered/selectable models exposed by this backend (OmniRoute-derived; see policy below)
+- `GET /v1/floorplan` → the app's Floorplan map data (`floorplan/graph.json` + `architecture.json` summary: parts, connections, project summary). The interactive map itself is `floorplan/index.html`; the web chat system prompt includes a summary of this map so the model can reference how the app is put together.
 
 CORS is enabled for the web GUI.
 

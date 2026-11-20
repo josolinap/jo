@@ -142,3 +142,21 @@ def test_stream_error_event_when_generate_raises(client, monkeypatch):
                 if line.startswith("data: ")
             ]
     assert any(e.get("error") for e in events)
+
+
+def test_floorplan_endpoint(client):
+    d = client.get("/v1/floorplan").json()
+    assert set(d) >= {"summary", "parts", "connections", "graph", "architecture", "generatedAt"}
+    ids = {p["id"] for p in d["parts"]}
+    labels = {p["label"] for p in d["parts"]}
+    assert {"gui", "server", "ouroboros"} <= ids
+    assert {"Jo Web GUI", "Jo Web Backend", "Ouroboros — Jo's agent core"} <= labels
+    assert d["connections"], "expected graph connections"
+    assert d["summary"], "expected a project summary"
+
+
+def test_chat_system_prompt_includes_floorplan_map(client):
+    msgs = server_app._build_messages("hello", [])
+    assert msgs[0]["role"] == "system"
+    assert "Floorplan" in msgs[0]["content"]
+    assert any(p in msgs[0]["content"] for p in ("Jo Web GUI", "Jo Web Backend", "Ouroboros"))

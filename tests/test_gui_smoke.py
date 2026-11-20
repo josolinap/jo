@@ -172,6 +172,9 @@ def test_gui_chat_roundtrip_through_backend(servers):
             page.keyboard.press(",")
             page.keyboard.up("Control")
             page.wait_for_selector("#api-base", state="visible", timeout=15000)
+            # The settings panel surfaces the Floorplan map link.
+            page.wait_for_selector("#floorplan-link", state="visible", timeout=15000)
+            assert "floorplan" in (page.locator("#floorplan-link").get_attribute("href") or "")
             page.fill("#api-base", BACKEND_URL)
             page.click("#settings-refresh")
             page.wait_for_function(

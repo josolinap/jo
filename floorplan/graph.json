@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-20T05:07:39Z",
+  "generatedAt": "2026-11-20T05:38:25Z",
   "generatedBy": "scripts/build_floorplan.py",
   "project": {
     "name": "Jo",
@@ -186,6 +186,10 @@
         {
           "method": "GET",
           "path": "/v1/models"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/floorplan"
         }
       ],
       "screens": []
@@ -3435,7 +3439,7 @@
   "counts": {
     "nodes": 18,
     "files": 729,
-    "endpoints": 5,
+    "endpoints": 6,
     "edges": 16,
     "screens": 1
   }

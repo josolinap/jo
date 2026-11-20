@@ -114,6 +114,7 @@ NODES: List[Dict[str, Any]] = [
             {"method": "GET", "path": "/health"},
             {"method": "GET", "path": "/v1/status"},
             {"method": "GET", "path": "/v1/models"},
+            {"method": "GET", "path": "/v1/floorplan"},
         ],
     },
     {

@@ -4,9 +4,13 @@ Exposes the chat contract used by the GitHub Pages GUI:
 
     POST /v1/chat         {"message": "..."}  ->  {"response": "..."}
     POST /v1/chat/stream  {"message": "..."}  ->  SSE: data: {"delta"|"done"|"error"}
+    GET /v1/floorplan     ->  the app's Floorplan map data (floorplan/graph.json + architecture summary)
 
-The endpoint reuses Jo's direct-chat agent path when available, and falls
-back to a direct LLM call when the full agent workflow cannot run.
+The web chat system prompt includes a summary of the app's Floorplan map
+(parts, connections, project summary) so the model can reference how the app
+is put together. The endpoint reuses Jo's direct-chat agent path when
+available, and falls back to a direct LLM call when the full agent workflow
+cannot run.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ import asyncio
 import json
 import os
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
 from fastapi import FastAPI
@@ -563,6 +568,54 @@ def _get_session(session_id: Optional[str]) -> tuple[str, list[Dict[str, str]]]:
     return sid, hist
 
 
+_FLOORPLAN_DIR = Path(__file__).resolve().parents[1] / "floorplan"
+
+
+def _floorplan_json(name: str) -> Dict[str, Any]:
+    """Read a JSON file from the floorplan/ map folder (empty dict when missing or invalid)."""
+    try:
+        return json.loads((_FLOORPLAN_DIR / name).read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _floorplan_summary() -> Dict[str, Any]:
+    """Summary of the app's Floorplan map: project summary, parts and connections."""
+    graph = _floorplan_json("graph.json")
+    architecture = _floorplan_json("architecture.json")
+    parts = [
+        {
+            "id": n.get("id"),
+            "label": n.get("label"),
+            "kind": n.get("kind"),
+            "summary": n.get("summary", ""),
+        }
+        for n in graph.get("nodes", [])
+    ]
+    connections = [
+        {
+            "from": e.get("from"),
+            "to": e.get("to"),
+            "kind": e.get("kind"),
+            "label": e.get("label", ""),
+            "description": e.get("description", ""),
+        }
+        for e in graph.get("edges", [])
+    ]
+    return {
+        "summary": (
+            (architecture.get("project") or {}).get("summary")
+            or (graph.get("project") or {}).get("summary")
+            or ""
+        ),
+        "parts": parts,
+        "connections": connections,
+        "graph": graph,
+        "architecture": architecture,
+        "generatedAt": graph.get("generatedAt"),
+    }
+
+
 def _build_messages(message: str, history: Optional[list[Dict[str, str]]] = None) -> list[Dict[str, str]]:
     msgs: list[Dict[str, str]] = [
         {
@@ -570,6 +623,16 @@ def _build_messages(message: str, history: Optional[list[Dict[str, str]]] = None
             "content": "You are Jo, a self-creating AI agent speaking through the web GUI. Be direct, helpful, and authentic. Use conversation history when provided.",
         }
     ]
+    # Include the app's Floorplan map summary so the model can reference how the app is put together.
+    try:
+        fp = _floorplan_summary()
+        parts_label = ", ".join((p.get("label") or str(p.get("id") or "")) for p in fp.get("parts", [])[:20])
+        extra = f"\n\nThe app's Floorplan map (interactive: floorplan/index.html): {fp.get('summary', '')}"
+        if parts_label:
+            extra += f"\nParts: {parts_label}."
+        msgs[0]["content"] += extra
+    except Exception:
+        pass
     for h in (history or [])[-20:]:
         role = str(h.get("role") or "user")
         content = str(h.get("content") or "")
@@ -1127,6 +1190,12 @@ async def status() -> Dict[str, Any]:
     st = _provider_status()
     st["status"] = "ok"
     return st
+
+
+@app.get("/v1/floorplan")
+async def get_floorplan() -> Dict[str, Any]:
+    """The app's Floorplan map data (graph + architecture summary) — for models and the GUI."""
+    return await asyncio.to_thread(_floorplan_summary)
 
 
 def _list_models() -> Dict[str, Any]:
