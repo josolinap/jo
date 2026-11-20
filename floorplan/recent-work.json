@@ -1,6 +1,63 @@
 {
-  "updatedAt": "2026-11-20T07:31:28Z",
+  "updatedAt": "2026-11-20T08:01:48Z",
   "tasks": [
+    {
+      "title": "feat(gui): map is now an interactive workbench",
+      "request": "feat(gui): map is now an interactive workbench",
+      "summary": "The embedded map panel is now an interactive workbench:",
+      "items": [
+        {
+          "ref": "floorplan/descriptions/docs.json",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "floorplan/graph.json",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "floorplan/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "floorplan/recent-work.json",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "gui/README.md",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "gui/app.js",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "gui/index.html",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "gui/map-view.js",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "gui/styles.css",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        },
+        {
+          "ref": "tests/test_gui_smoke.py",
+          "change": "changed",
+          "note": "M — feat(gui): map is now an interactive workbench"
+        }
+      ]
+    },
     {
       "title": "feat(gui): interactive Recent work in the embedded map",
       "request": "feat(gui): interactive Recent work in the embedded map",
@@ -429,18 +486,6 @@
           "ref": "scripts/floorplan_map.js",
           "change": "new",
           "note": "A — feat(floorplan): add interactive app map of Jo"
-        }
-      ]
-    },
-    {
-      "title": "feat(server): improve OmniRoute free-model discovery and diagnostics",
-      "request": "feat(server): improve OmniRoute free-model discovery and diagnostics",
-      "summary": "feat(server): improve OmniRoute free-model discovery and diagnostics",
-      "items": [
-        {
-          "ref": "server/app.py",
-          "change": "changed",
-          "note": "M — feat(server): improve OmniRoute free-model discovery and di…"
         }
       ]
     }

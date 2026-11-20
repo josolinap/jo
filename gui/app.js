@@ -68,9 +68,11 @@ const mapPanel = $("map-panel");
 const mapCloseBtn = $("map-close");
 const mapRecentToggle = $("map-recent-toggle");
 const mapSearchInput = $("map-search");
+const mapSessionsToggle = $("map-sessions-toggle");
 const mapAskInput = $("map-ask");
 const mapAskSend = $("map-ask-send");
 const mapView = new JoMapView();
+mapView.setSessions(() => ({ sessions: sessions, currentId: currentSessionId }), switchSession);
 
 let busy = false;
 let sessionSearchQuery = "";
@@ -2434,6 +2436,7 @@ function bindEvents() {
   if (mapCloseBtn) mapCloseBtn.addEventListener("click", closeMap);
   if (mapRecentToggle) mapRecentToggle.addEventListener("click", () => mapView.toggleRecent());
   if (mapSearchInput) mapSearchInput.addEventListener("input", () => mapView.renderBoard());
+  if (mapSessionsToggle) mapSessionsToggle.addEventListener("click", () => mapView.toggleSessions());
   if (mapAskSend) mapAskSend.addEventListener("click", askMap);
   if (mapAskInput)
     mapAskInput.addEventListener("keydown", (e) => {

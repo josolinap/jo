@@ -543,6 +543,18 @@ a { color: inherit; text-decoration: none; }
 .map-search:focus { outline: none; border-color: var(--accent); background: var(--bg-elev); }
 .map-conn-link { cursor: pointer; }
 .map-conn-link:hover .map-conn-label { text-decoration: underline; }
+.map-sessions { max-height: 34%; overflow-y: auto; padding: 6px 10px 10px; }
+.map-sessions-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.map-session-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 12px; cursor: pointer; transition: background .12s ease, border-color .12s ease;
+}
+.map-session-item:hover { background: var(--bg-hover); }
+.map-session-item.active { background: var(--accent-soft); border-color: var(--accent-strong); }
+.map-session-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.map-session-item.active .map-session-title { font-weight: 650; }
+.map-view { transform-origin: 0 0; transition: transform .1s ease-out; }
 .map-ask { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--border); }
 .map-ask-input {
   flex: 1; min-width: 0; height: 32px; padding: 0 12px;

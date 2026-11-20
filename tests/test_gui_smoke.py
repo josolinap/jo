@@ -346,6 +346,72 @@ def test_gui_map_recent_work(servers):
             browser.close()
 
 
+def test_gui_map_sessions(servers):
+    """The map shows the user's active sessions; clicking one switches to it."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            # Send a message so the session gets a title (avoid map-intent words like "map").
+            page.fill("#chat-input", "Sessions check")
+            page.click("#chat-send")
+            page.wait_for_selector("#chat-collection .message-user", timeout=15000)
+            page.wait_for_function(
+                "document.getElementById('chat-title').textContent.trim().length > 0", timeout=10000
+            )
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            page.click("#map-sessions-toggle")
+            page.wait_for_selector(".map-session-item", timeout=10000)
+            items = page.locator(".map-session-item").all_inner_texts()
+            assert any("Sessions check" in t for t in items)
+            # The current session is marked active.
+            assert page.locator("#map-sessions-list .map-session-item.active").count() == 1
+            # Clicking a session switches the chat to it.
+            page.locator(".map-session-item").first.click()
+            page.wait_for_function(
+                "document.getElementById('chat-title').textContent.includes('Sessions check')",
+                timeout=10000,
+            )
+        finally:
+            browser.close()
+
+
+def test_gui_map_zoom(servers):
+    """The map is interactive: wheel zooms, double-click resets the scale."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        _install_routes(page)
+        page.add_init_script(f"localStorage.setItem('jo.apiBase', 'http://127.0.0.1:{BACKEND_PORT}')")
+        try:
+            page.goto(GUI_URL + "/", wait_until="load")
+            page.wait_for_selector("#chat-input", timeout=15000)
+            page.click("#chat-map-toggle")
+            page.wait_for_selector("#map-panel", state="visible", timeout=15000)
+            page.wait_for_selector(".map-card", timeout=15000)
+            # Wheel zooms the map view.
+            page.dispatch_event("#map-view", "wheel", {"deltaY": -100})
+            page.wait_for_function(
+                "document.getElementById('map-view').style.transform.includes('scale(')",
+                timeout=5000,
+            )
+            # Double-click resets the zoom.
+            page.dispatch_event("#map-view", "dblclick")
+            page.wait_for_function(
+                "document.getElementById('map-view').style.transform.includes('scale(1)')",
+                timeout=5000,
+            )
+        finally:
+            browser.close()
+
+
 def test_gui_map_search_and_connection_nav(servers):
     """The map is an interactive workbench: search filters parts; connections navigate."""
     with sync_playwright() as p:

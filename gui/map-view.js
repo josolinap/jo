@@ -30,6 +30,7 @@
     this.projectSummary = "";
     this.recentWork = [];
     this.recentMode = false;
+    this.sessionsOpen = false;
     this.fileToNode = new Map();
   }
 
@@ -95,6 +96,7 @@
     const tops = this.nodes.filter((n) => !n.parent && matchesName(n, q));
     for (const n of tops) this.el.appendChild(this.card(n));
     this.markRecent();
+    this.setupZoom();
     this.clearDetail();
   };
 
@@ -307,6 +309,103 @@
       this.renderBoard();
     });
     return el;
+  };
+
+  JoMapView.prototype.setSessions = function (provider, onSelect) {
+    this.sessionsProvider = provider;
+    this.sessionOnSelect = onSelect;
+  };
+
+  JoMapView.prototype.toggleSessions = function () {
+    const list = document.getElementById("map-sessions");
+    if (!list) return;
+    this.sessionsOpen = !this.sessionsOpen;
+    list.hidden = !this.sessionsOpen;
+    const btn = document.getElementById("map-sessions-toggle");
+    if (btn) {
+      btn.classList.toggle("map-recent-toggle--on", this.sessionsOpen);
+      btn.setAttribute("aria-pressed", String(this.sessionsOpen));
+    }
+    if (this.sessionsOpen) this.renderSessions();
+  };
+
+  JoMapView.prototype.renderSessions = function () {
+    const list = document.getElementById("map-sessions-list");
+    if (!list) return;
+    let data = { sessions: [], currentId: null };
+    try {
+      const p = this.sessionsProvider && this.sessionsProvider();
+      if (p) data = p;
+    } catch (err) {}
+    const items = data.sessions || [];
+    if (!items.length) {
+      list.innerHTML = '<div class="map-note">(none yet)</div>';
+      return;
+    }
+    const currentId = data.currentId;
+    list.innerHTML = "";
+    for (const s of items) {
+      const el = document.createElement("div");
+      el.className = "map-session-item" + (s && s.id === currentId ? " active" : "");
+      const title = document.createElement("span");
+      title.className = "map-session-title";
+      title.textContent = (s && (s.title || "New chat")) || "New chat";
+      el.appendChild(title);
+      const id = s && s.id;
+      el.addEventListener("click", () => {
+        if (this.sessionOnSelect && id) this.sessionOnSelect(id);
+      });
+      list.appendChild(el);
+    }
+  };
+
+  JoMapView.prototype.setupZoom = function () {
+    if (this.zoomSet) return;
+    this.zoomSet = true;
+    const el = this.el;
+    if (!el) return;
+    el.style.transformOrigin = "0 0";
+    this.zoom = 1;
+    this.panX = 0;
+    this.panY = 0;
+    let dragging = false;
+    el.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        const f = e.deltaY < 0 ? 1.12 : 0.89;
+        this.zoom = Math.max(0.25, Math.min(4, this.zoom * f));
+        this.applyZoom();
+      },
+      { passive: false },
+    );
+    el.addEventListener("mousedown", (e) => {
+      dragging = true;
+      this.dragX = e.clientX;
+      this.dragY = e.clientY;
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      this.panX += e.clientX - this.dragX;
+      this.panY += e.clientY - this.dragY;
+      this.dragX = e.clientX;
+      this.dragY = e.clientY;
+      this.applyZoom();
+    });
+    document.addEventListener("mouseup", () => {
+      dragging = false;
+    });
+    el.addEventListener("dblclick", () => {
+      this.zoom = 1;
+      this.panX = 0;
+      this.panY = 0;
+      this.applyZoom();
+    });
+  };
+
+  JoMapView.prototype.applyZoom = function () {
+    if (this.el) this.el.style.transform = "translate(" + this.panX + "px, " + this.panY + "px) scale(" + this.zoom + ")";
   };
 
   JoMapView.prototype.clearDetail = function () {
