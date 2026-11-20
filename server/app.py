@@ -97,6 +97,34 @@ _OMNI_MODEL_PROBE_TTL = 300.0
 _OMNI_MODEL_PROBE_TIMEOUT = 8  # seconds (kept short for stability)
 
 
+def _env_truthy(name: str) -> bool:
+    return (_env(name) or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _is_headless_bridge_route(ml: str) -> bool:
+    s = (ml or "").lower()
+    return (
+        s.startswith("cfp/")
+        or s.startswith("dva/")
+        or "cloudflare playground" in s
+        or "playwright" in s
+        or "devin agentic bridge" in s
+    )
+
+
+def _exclude_headless_bridge_route(ml: str, explicit: bool = False) -> bool:
+    """Whether to exclude routes that are commonly unusable in headless/CI OmniRoute setups.
+
+    Default preserves prior behavior (exclude). Set JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES=1
+    to include them when they are actually available in your environment.
+    """
+    if explicit:
+        return False
+    if _env_truthy("JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES"):
+        return False
+    return _is_headless_bridge_route(ml)
+
+
 def _is_free_model_entry(model: Any) -> bool:
     """Heuristic: detect free/zero-cost models dynamically from OmniRoute model IDs/metadata."""
     if isinstance(model, dict):
@@ -109,7 +137,7 @@ def _is_free_model_entry(model: Any) -> bool:
     if not mid:
         return False
     # explicit id hints
-    if ":free" in ml or ml.endswith("/free") or "/free" in ml or ml.endswith("-free"):
+    if ":free" in ml or ml.endswith("/free") or "/free" in ml or ml.endswith("-free") or "free-tier" in ml:
         return True
     # metadata hints (best-effort, schema varies by gateway/provider)
     for k in ("free", "is_free", "isFree"):
@@ -117,6 +145,10 @@ def _is_free_model_entry(model: Any) -> bool:
         if v is True:
             return True
         if isinstance(v, str) and v.lower() in ("true", "1", "yes", "free"):
+            return True
+    for k in ("tier", "plan", "pricing_tier", "access_tier"):
+        v = obj.get(k)
+        if isinstance(v, str) and v.strip().lower() in ("free", "tier:free", "free-tier"):
             return True
     pricing = obj.get("pricing") or obj.get("cost") or obj.get("price")
     if isinstance(pricing, dict):
@@ -133,8 +165,10 @@ def _is_free_model_entry(model: Any) -> bool:
             return True
     # some providers tag tiers
     tags = obj.get("tags") or obj.get("capabilities") or []
-    if isinstance(tags, list) and any(str(t).lower() in ("free", "tier:free") for t in tags):
-        return True
+    if isinstance(tags, list):
+        norm_tags = {str(t).strip().lower() for t in tags if t is not None}
+        if norm_tags & {"free", "tier:free", "free-tier", "pricing:free"}:
+            return True
     return False
 
 
@@ -346,7 +380,7 @@ def _get_default_probe_model(base: str, preferred: Optional[str] = None) -> str:
             ml = mid.lower()
             if not mid or ml == "auto" or ml.startswith("auto/") or ml.startswith("auto-"):
                 continue
-            if ml.startswith("cfp/") or ml.startswith("dva/") or "playwright" in ml or "cloudflare playground" in ml:
+            if _exclude_headless_bridge_route(ml):
                 continue
             if _is_free_model_entry(entry if isinstance(entry, dict) else mid):
                 return mid
@@ -631,14 +665,8 @@ def _run_via_llm(
             def _skip_in_ci(ml: str, explicit: bool = False) -> bool:
                 if explicit:
                     return False
-                # Known unusable in headless CI OmniRoute: browser runtime deps or unconfigured bridges
-                return (
-                    ml.startswith("cfp/")
-                    or ml.startswith("dva/")
-                    or "cloudflare playground" in ml
-                    or "playwright" in ml
-                    or "devin agentic bridge" in ml
-                )
+                # Known unusable in headless CI OmniRoute unless explicitly allowed.
+                return _exclude_headless_bridge_route(ml, explicit=False)
 
             def _omni_rank(mid: str) -> tuple:
                 ml = mid.lower()
@@ -1019,10 +1047,26 @@ def _list_models() -> Dict[str, Any]:
 
     # Dynamically discover and expose all available free models from OmniRoute.
     # "Free" is detected from model IDs and metadata (pricing/tags/flags) when present.
+    diagnostics: Dict[str, Any] = {
+        "raw_discovered": 0,
+        "free_detected": 0,
+        "excluded_headless_bridge": 0,
+        "excluded_not_free": 0,
+        "exposed_free": 0,
+        "include_headless_bridge_routes": _env_truthy("JO_WEB_OMNIROUTE_INCLUDE_HEADLESS_BRIDGE_ROUTES"),
+        "excluded_headless_bridge_sample": [],
+        "excluded_not_free_sample": [],
+    }
+    sample_limit = 10
     if omni_base:
         try:
-            discovered, _ = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
-            for entry in discovered:
+            discovered, info = _fetch_omniroute_models(omni_base, timeout=5, use_cache=True)
+            diagnostics["raw_discovered"] = len(discovered or [])
+            diagnostics["fetch_reachable"] = bool(info.get("reachable"))
+            diagnostics["fetch_cached"] = bool(info.get("cached"))
+            if info.get("error"):
+                diagnostics["fetch_error"] = info.get("error")
+            for entry in discovered or []:
                 if isinstance(entry, dict):
                     smid = str(entry.get("id") or entry.get("name") or entry.get("model") or "").strip()
                     meta = entry
@@ -1032,15 +1076,21 @@ def _list_models() -> Dict[str, Any]:
                 ml = smid.lower()
                 if not smid or ml == "auto":
                     continue
-                # Exclude routes known to require browser/runtime bridges in headless CI.
-                if ml.startswith("cfp/") or ml.startswith("dva/"):
-                    continue
-                if "cloudflare playground" in ml or "playwright" in ml or "devin agentic bridge" in ml:
+
+                # Exclude routes commonly unusable in headless/CI unless explicitly allowed.
+                if _exclude_headless_bridge_route(ml):
+                    diagnostics["excluded_headless_bridge"] += 1
+                    if len(diagnostics["excluded_headless_bridge_sample"]) < sample_limit:
+                        diagnostics["excluded_headless_bridge_sample"].append(smid)
                     continue
 
                 is_free = _is_free_model_entry(meta if meta else smid)
                 if not is_free:
+                    diagnostics["excluded_not_free"] += 1
+                    if len(diagnostics["excluded_not_free_sample"]) < sample_limit:
+                        diagnostics["excluded_not_free_sample"].append(smid)
                     continue
+                diagnostics["free_detected"] += 1
 
                 extra: Dict[str, Any] = {"dynamic": True, "free": True}
                 # Preserve useful metadata if OmniRoute provides it (helps UI/debugging)
@@ -1062,11 +1112,19 @@ def _list_models() -> Dict[str, Any]:
                         }
                 except Exception:
                     pass
+                before = len(models)
                 add(smid, "omniroute", label=smid, **extra)
-        except Exception:
-            pass
+                if len(models) > before:
+                    diagnostics["exposed_free"] += 1
+        except Exception as e:
+            diagnostics["error"] = f"{type(e).__name__}: {e}"
 
-    return {"models": models, "default": _env("OMNIROUTE_MODEL") or "auto"}
+    diagnostics["listed"] = len(models)
+    return {
+        "models": models,
+        "default": _env("OMNIROUTE_MODEL") or "auto",
+        "diagnostics": diagnostics,
+    }
 
 
 @app.get("/v1/models")
