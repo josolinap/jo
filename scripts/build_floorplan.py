@@ -773,7 +773,7 @@ button.icon:hover { background:var(--card-hover); }
   </aside>
 </main>
 <p class="footer">Jo Floorplan — interactive map of Jo. Regenerate with <code>python scripts/build_floorplan.py</code>.</p>
-<script>const GRAPH = __GRAPH_JSON__;</script>
+<script>var GRAPH = __GRAPH_JSON__;</script>
 <script>__MAP_JS__</script>
 </body>
 </html>

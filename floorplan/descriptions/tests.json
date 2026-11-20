@@ -7,6 +7,7 @@
     "tests/test_concurrent_git.py",
     "tests/test_git_sha_fixes.py",
     "tests/test_goal_manager.py",
+    "tests/test_gui_smoke.py",
     "tests/test_health_invariants.py",
     "tests/test_memory.py",
     "tests/test_message_routing.py",
@@ -15,7 +16,8 @@
     "tests/test_runtime_regressions.py",
     "tests/test_smoke.py",
     "tests/test_vault.py",
-    "tests/test_vision.py"
+    "tests/test_vision.py",
+    "tests/test_web_backend.py"
   ],
   "endpoints": [],
   "screens": []

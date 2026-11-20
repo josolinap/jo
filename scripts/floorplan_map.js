@@ -48,7 +48,7 @@
   }
   function renderStats() {
     var files = nodes.reduce(function (a, n) { return a + filesOf(n.id).length; }, 0);
-    var eps = (G.endpoints || []).length;
+    var eps = nodes.reduce(function (a, n) { return a + (n.endpoints || []).length; }, 0);
     var svcs = (G.outsideServices || []).length;
     statsEl.textContent = nodes.length + " parts \u00b7 " + files + " files \u00b7 " + eps + " endpoints \u00b7 " + svcs + " services";
     projectSummary.textContent = (G.project && G.project.summary) ? G.project.summary : "";
